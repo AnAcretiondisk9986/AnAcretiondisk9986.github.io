@@ -1,6 +1,6 @@
 # 个人博客技术交接文档
 
-> 本地交接资料：仓库为 Public。在用户明确授权前，不要将本文件推送到远端。
+> 本文件已在用户授权下公开于 GitHub 仓库。
 
 最后更新：2026-07-30
 
@@ -29,27 +29,19 @@ npm run preview
 本文档最后更新时的状态：
 
 ```text
-HEAD: d177dfe Merge remote visibility test metadata
-origin/main: 8364769 Update blog post metadata for visibility test
-main 相对 origin/main ahead 4、behind 0
-工作区：本文档有尚未提交的状态更新
+HEAD: f55a760 更新交接文档：补充隐私声明与完成标准；忽略 .reasonix/
+origin/main: 2a84f56 首页近期入藏移除数量限制，显示全部文章
+main 相对 origin/main ahead 1、behind 0
+工作区：干净
 ```
 
-四个尚未推送的本地提交：
+一个尚未推送的本地提交：
 
 ```text
-f506a08 Configure Obsidian publishing workflow
-2fe9ef0 Merge remote blog update and fix publishing template
-c5f5acf Add technical handoff documentation
-d177dfe Merge remote visibility test metadata
+f55a760 更新交接文档：补充隐私声明与完成标准；忽略 .reasonix/
 ```
 
-`d177dfe` 已合并远端提交 `8364769`，当前没有未解决冲突，不要使用 `git push --force`。最后一次 Fetch 成功，HTTPS 网络已经可以连接 GitHub。
-
-重要：提交 `c5f5acf` 包含本交接文档。仓库为 Public，而用户只要求生成本地交接文档，尚未明确授权将其公开。直接执行 `git push origin main` 会同时公开本文档，因此当前推送被安全检查拦截。下一位 Agent 不得直接推送，必须先获得用户对以下一种方案的明确选择：
-
-1. 推荐：交接文档仅保留本地。安全整理尚未推送的本地历史，使代码修复可以推送、但 `AGENT_HANDOFF.md` 不进入远端，同时保留一份本地文档。
-2. 用户明确同意将本文档公开到 Public 仓库，然后才可以直接推送当前 `main`。
+此前 4 个提交（f506a08、2fe9ef0、c5f5acf、d177dfe）已成功推送到 origin/main。
 
 下一位 Agent 应先执行：
 
@@ -243,8 +235,7 @@ npm.cmd run build
 ## 10. 下一位 Agent 的完成标准
 
 - 确认没有未解决冲突或意外未提交文件。
-- 根据用户明确选择，将交接文档仅保留本地或公开到仓库。
-- 成功将包含 `f506a08`、`2fe9ef0` 和 `d177dfe` 的功能修复推送到 `origin/main`。
+- 成功将 `f55a760` 推送到 `origin/main`。
 - GitHub Actions 的 build 和 deploy 两个 job 均成功。
 - 线上 `/blog/test-visible/` 返回 HTTP 200。
 - 线上目录能够显示测试文章，且不显示 `_templates/blog-post`。
