@@ -67,6 +67,7 @@
     <div class="sidebar-toolbar">
       <button class="btn primary" id="btnNew">＋ 新建</button>
       <button class="btn" id="btnRefresh">↻ 刷新</button>
+      <button class="btn" id="btnPush" style="border-color:#3a6040;color:#80c080">⬆ 推送</button>
     </div>
     <div class="post-list" id="postList"><div class="empty-state" style="padding:30px">加载中…</div></div>
   </aside>
@@ -79,9 +80,9 @@
       </div>
     </div>
     <div class="tip-bar">
-      <span>💡 在下方编辑器中粘贴图片可自动上传</span>
-      <span>📝 Markdown 格式</span>
+      <span>💡 粘贴图片自动上传</span>
       <span>⚡ Ctrl+S 保存</span>
+      <span>⬆ 点左侧「推送」同步到网站</span>
     </div>
     <div id="editorContainer"><div class="empty-state">← 从左侧列表选择文章，或点击「新建」</div></div>
   </main>
@@ -278,6 +279,26 @@
     $('#btnRefresh').onclick = loadPosts;
     $('#btnSave').onclick = savePost;
     $('#btnDelete').onclick = ()=>{if(currentSlug)deletePost(currentSlug)};
+    $('#btnPush').onclick = pushToGithub;
+
+    async function pushToGithub() {
+      const btn = $('#btnPush');
+      btn.textContent = '⏳ 推送中...';
+      btn.disabled = true;
+      try {
+        const res = await apiFetch('/api/push', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+          toast(data.message || '推送成功');
+        } else {
+          toast('推送失败: ' + (data.error || data.detail || '未知错误'));
+        }
+      } catch (e) {
+        toast('推送失败: ' + e.message);
+      }
+      btn.textContent = '⬆ 推送';
+      btn.disabled = false;
+    }
   </script>
 </body>
 </html>

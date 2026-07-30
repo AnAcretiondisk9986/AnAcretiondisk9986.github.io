@@ -253,6 +253,44 @@ app.post('/api/upload', (req, res, next) => {
   });
 });
 
+// Git push
+app.post('/api/push', async (_req, res) => {
+  const run = (cmd) => new Promise((resolve, reject) => {
+    exec(cmd, { cwd: __dirname, timeout: 60000 }, (err, stdout, stderr) => {
+      if (err) reject(new Error(stderr || err.message));
+      else resolve(stdout.trim());
+    });
+  });
+
+  try {
+    // Stage blog changes
+    await run('git add src/content/blog/');
+
+    // Check if there are staged changes
+    let hasChanges = false;
+    try {
+      await run('git diff --cached --quiet');
+    } catch {
+      hasChanges = true;
+    }
+
+    if (!hasChanges) {
+      return res.json({ success: true, message: '没有需要推送的更改' });
+    }
+
+    // Commit
+    await run('git commit -m "通过管理面板更新博客"');
+
+    // Push
+    const pushResult = await run('git push origin main');
+
+    res.json({ success: true, message: '推送成功', detail: pushResult });
+  } catch (err) {
+    console.error('Push Error:', err.message);
+    res.status(500).json({ error: '推送失败', detail: err.message });
+  }
+});
+
 // Static files from public/
 app.use(express.static(join(__dirname, 'public')));
 
