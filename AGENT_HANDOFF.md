@@ -13,231 +13,218 @@
 - 技术栈：Astro 静态站点、Markdown Content Collections、GitHub Actions、GitHub Pages
 - 包管理器：npm
 - GitHub Actions Node.js 版本：22
-- Astro 配置为 `output: 'static'`，且站点是用户主页仓库，因此没有额外 `base` 路径。
+- Astro 配置为 `output: 'static'`，站点为用户主页仓库，无额外 `base` 路径。
+- 根目录 `.nojekyll` 禁用 GitHub Pages 默认 Jekyll 构建。
 
 常用命令：
 
 ```powershell
 npm install
-npm run dev
-npm run build
-npm run preview
+npm run dev          # Astro 开发服务器
+npm run build        # 生产构建
+npm run preview      # 预览构建结果
+npm run admin        # 启动博客管理面板
 ```
 
 ## 2. 当前 Git 状态
 
-本文档最后更新时的状态：
-
 ```text
-HEAD: f55a760 更新交接文档：补充隐私声明与完成标准；忽略 .reasonix/
-origin/main: 2a84f56 首页近期入藏移除数量限制，显示全部文章
-main 相对 origin/main ahead 1、behind 0
-工作区：干净
+HEAD: 669b974 改进推送错误提示：区分网络故障，延长 toast 显示
+origin/main: a27a444 管理面板添加一键推送功能
+main 相对 origin/main ahead 2、behind 0
+工作区：干净（仅 reasonix.toml 未跟踪）
 ```
 
-一个尚未推送的本地提交：
+两个尚未推送的本地提交：
 
 ```text
-f55a760 更新交接文档：补充隐私声明与完成标准；忽略 .reasonix/
+a01e54c 通过管理面板更新博客
+669b974 改进推送错误提示：区分网络故障，延长 toast 显示
 ```
 
-此前 4 个提交（f506a08、2fe9ef0、c5f5acf、d177dfe）已成功推送到 origin/main。
+> **注意**：GitHub 443 端口近期间歇性不通（`Connection reset` / `Could not connect to server`），
+> 但 `github.com` 网页可正常访问。推送失败时通常是网络问题而非代码问题，
+> 稍等片刻重试即可。若持续失败，检查是否有代理或防火墙阻止 git 协议的 443 端口。
 
 下一位 Agent 应先执行：
 
 ```powershell
 git status --branch --short
 git fetch origin main
-git log --oneline --decorate --graph --max-count=10 --all
+git log --oneline --max-count=10 --all
 ```
 
-处理交接文档的公开范围后，如果远端又有新增提交，应先安全合并，禁止强制覆盖：
+如果有 ahead 提交，直接推送（禁止 force push）：
 
 ```powershell
-git merge origin/main
+git push origin main
+```
+
+如果远端有新提交，先合并：
+
+```powershell
+git pull --no-edit origin main
 npm run build
 git push origin main
 ```
 
-推送成功后，需要等待 GitHub Actions 完成，再验证：
+## 3. 博客内容
 
-```text
-https://anacretiondisk9986.github.io/
-https://anacretiondisk9986.github.io/blog/test-visible/
-```
+当前共 3 篇文章（已删除 hello-world、blog-user-guide、test-visible）：
 
-## 3. 本次故障与根因
+| 文件 | 标题 | 标签 |
+|------|------|------|
+| `HealthCN2030.md` | 关于健康中国2030战略 | 医疗、政策 |
+| `social-paper.md` | 社会实践调研论文写作skill | AI Agent |
+| `write-social-practice-reflection-SKILL.md` | 社会实践心得体会的skills | 计算机、AI |
 
-GitHub Actions 的报错不是 Git 本身没有提交，而是提交已经到达远端后，Astro 构建失败：
-
-```text
-[InvalidContentEntryDataError] blog -> blog-post data does not match collection schema
-description: Expected type "string", received "object"
-pubDate: Expected type "date", received "object"
-```
-
-远端曾存在 `src/content/blog/blog-post.md`。它是 Obsidian 模板，却位于正式文章目录根部，因此 Astro 将其识别为 ID 为 `blog-post` 的文章。模板中的空值和未展开表达式被 YAML 解析为对象，最终不符合 Content Collection schema。
-
-同时，用户在 GitHub 网页修改了 `test-visible.md`，本地也修改了同一个文件，Obsidian Git Pull 后产生未解决冲突。冲突辅助文件为 `src/content/blog/conflict-files-obsidian-git.md`，现已删除；`test-visible.md` 已保留本地的合法 Frontmatter 和正文版本。
-
-已完成的修复：
-
-- 删除正式文章路径中的 `src/content/blog/blog-post.md`。
-- 将模板迁移到 `src/content/blog/_templates/blog-post.md`。
-- Content Collection 显式忽略 `_templates/**` 和所有 `.obsidian/**`。
-- 模板日期写法修正为 `pubDate: "{{date:YYYY-MM-DD}}"`，避免 Obsidian YAML 解析错误。
-- `hello-world.md` 的错误字段 `drafts:false` 已修正为 `draft: false`。
-- `test-visible.md` 已使用合法 YAML，并设置 `draft: false`。
-- 合并冲突已经解决并提交。
-
-2026-07-30 17:24 的本地 `npm run build` 成功，共生成 8 个页面。
-
-## 4. 内容系统
-
-内容配置位于 `src/content.config.ts`。文章目录为 `src/content/blog/`，支持 `.md` 和 `.mdx`。
-
-当前 schema：
+Content Collection schema（`src/content.config.ts`）：
 
 ```yaml
-title: string
-description: string
-pubDate: date
-updatedDate: optional date
-tags: string array, default []
-draft: boolean, default false
+title: string          # 必填
+description: string    # 必填
+pubDate: date          # 必填，YYYY-MM-DD
+updatedDate: date      # 可选
+tags: string[]         # 默认 []
+draft: boolean         # 默认 false
 ```
 
-标准 Frontmatter：
+模板位于 `src/content/blog/_templates/blog-post.md`，Content Collection 已配置忽略 `_templates/**`。
 
-```yaml
----
-title: "文章标题"
-description: "一句完整的文章简介"
-pubDate: 2026-07-30
-tags:
-  - 标签
-draft: false
----
+排序规则：`pubDate` 降序 → 同天按 `slug` 字母降序。首页和目录页一致。
+
+## 4. 博客管理面板（新增）
+
+独立于 Astro 的本地 Web 管理工具。
+
+### 启动方式
+
+**双击** 项目根目录的 `启动管理面板.bat`，浏览器自动打开 `http://localhost:4322/admin`。
+
+也可以命令行启动：
+
+```powershell
+npm run admin
 ```
 
-注意事项：
+### 功能
 
-- YAML 字段名后的英文冒号必须带一个空格。
-- 标题或简介包含英文冒号时，整个值需要放在引号中。
-- `description` 不能留空。
-- `pubDate` 必须是可解析日期，建议使用 `YYYY-MM-DD`。
-- `draft: true` 的文章不会出现在首页、目录页或静态文章路由中。
-- 文件名会成为文章 URL，建议使用稳定的英文小写名称和连字符。
-- 模板必须保留在 `_templates/`，不要移动回文章目录根部。
+| 功能 | 说明 |
+|------|------|
+| 📋 文章列表 | 左侧边栏，显示标题/日期/草稿状态 |
+| ✏️ 新建/编辑 | 标题、Slug、描述、日期、标签、草稿开关、Markdown 正文 |
+| 🖼 图片上传 | 拖放/粘贴/点击上传 → `public/image/`，自动插入 Markdown |
+| 🗑 删除 | 确认后删除 Markdown 文件 |
+| ⬆ 一键推送 | git add → commit → push，自动同步到网站 |
+| 💾 快捷键 | Ctrl+S 保存 |
+
+### 技术细节
+
+- 服务器：Express（`admin-server.mjs`），端口 4322，绑定 127.0.0.1
+- 前端：`admin/index.html`，纯 HTML/CSS/JS，暗色主题
+- API 端点：`/api/posts`（CRUD）、`/api/upload`（图片）、`/api/push`（Git 推送）
+- 认证：HTTP Header `x-admin-token`，默认值 `acr-admin`，可通过环境变量 `ADMIN_TOKEN` 覆盖
+- 安全：路径穿越防护、MIME 白名单（仅图片）、YAML 转义、错误脱敏
+
+### 依赖
+
+除 Astro 外新增了三个 npm 包：
+
+```json
+"express": "^5.2.1",
+"gray-matter": "^4.0.3",
+"multer": "^2.2.0"
+```
 
 ## 5. 前端结构
 
-主要文件：
-
-```text
-src/pages/index.astro             首页
-src/pages/blog/index.astro        文章目录
-src/pages/blog/[...id].astro      文章详情静态路由
-src/pages/about.astro             关于页
-src/pages/404.astro               404 页面
-src/layouts/BaseLayout.astro      公共 HTML、导航、页脚、主题切换
-src/styles/global.css             全站视觉样式
-src/components/ArchiveSeal.astro  印章组件
+```
+src/pages/index.astro              首页
+src/pages/blog/index.astro         文章目录
+src/pages/blog/[...id].astro       文章详情静态路由
+src/pages/about.astro              关于页
+src/pages/404.astro                404 页面
+src/layouts/BaseLayout.astro       公共 HTML、导航、页脚、主题切换
+src/styles/global.css              全站视觉样式
+src/components/ArchiveSeal.astro   印章组件
 src/components/SpecimenPlate.astro 首页标本图版组件
-public/                            静态资源
+public/image/                      上传的图片
+public/.nojekyll                   禁用 Jekyll
 ```
 
-前端使用“私人档案、博物志、编目册”方向的视觉语言。首页和文章列表都会先过滤 `draft: true`，再按 `pubDate` 从新到旧排序。明暗主题保存在浏览器 `localStorage` 的 `theme` 键中。
+项目根目录关键文件：
+
+```
+admin-server.mjs         管理面板服务器
+admin/index.html         管理面板前端
+启动管理面板.bat          双击启动脚本
+.nojekyll                禁用 Jekyll
+.githooks/pre-commit     提交前构建保护
+```
 
 ## 6. GitHub Pages 部署
 
-工作流文件：`.github/workflows/deploy.yml`
-
-流程：
+工作流：`.github/workflows/deploy.yml`
 
 ```text
-push main
-  -> actions/checkout
-  -> Node.js 22
-  -> npm ci
-  -> npm run build
-  -> 上传 dist
-  -> GitHub Pages 部署
+push main → checkout → Node 22 → npm ci → npm run build → upload dist → deploy
 ```
 
-“Obsidian 显示 commit 成功”只代表本地提交成功，不代表以下步骤全部成功：
-
-```text
-本地 commit -> pull/merge -> push -> GitHub Actions build -> GitHub Pages deploy
-```
-
-排错时应分别检查 `git status`、Push 输出、GitHub Actions 和线上 URL。
+`.nojekyll` 文件存在于根目录和 `public/`，确保 GitHub Pages 不会尝试用 Jekyll 构建 Astro 项目。
 
 ## 7. Obsidian 集成
 
-Obsidian Vault 目录：
-
-```text
-C:\Users\AnAcretiondisk\Documents\个人博客\src\content\blog
-```
+Obsidian Vault 目录：`src/content/blog`
 
 本机配置：
 
-- 内部链接使用标准 Markdown 格式。
-- 链接使用相对路径。
-- 附件目录为 `image`。
-- 模板目录为 `_templates`。
-- Obsidian Git 的 `basePath` 为 `../../..`，即 Git 仓库根目录。
-- 启动时自动 Pull。
-- Commit-and-sync 前 Pull，提交后 Push。
-- `syncMethod` 为 `merge`。
-- 自动提交、自动 Pull 和自动 Push 的定时间隔均为 `0`。
-- 提交信息为 `通过 Obsidian 更新博客：{{date}}`。
-- 提交正文列出修改文件。
+- 附件目录 `image`，模板目录 `_templates`
+- Obsidian Git `basePath` 为 `../../..`（仓库根目录）
+- `syncMethod` 为 `merge`
+- 提交信息：`通过 Obsidian 更新博客：{{date}}`
+- `.obsidian` 已加入 `.gitignore`
 
-本地 `.obsidian` 已加入 `.gitignore`，不会继续推送插件、工作区布局或个人设置。配置文件仍保留在本机。
+日常发布流程（两种方式任选）：
 
-日常发布流程：
+**方式一：管理面板**
+1. 双击 `启动管理面板.bat`
+2. 新建/编辑文章
+3. 点击左侧「⬆ 推送」
 
-1. 在 Obsidian 中新建英文文件名的文章。
-2. 插入 `_templates/blog-post.md` 模板。
-3. 填写标题、简介、日期、标签和正文。
-4. 准备公开时将 `draft: true` 改为 `draft: false`。
-5. 执行 `Obsidian Git: Commit-and-sync`。
-6. 等待 GitHub Actions 和 Pages 部署完成。
+**方式二：Obsidian + Git**
+1. 在 Obsidian 中编辑 Markdown
+2. `Obsidian Git: Commit-and-sync`
+3. 等待 Actions 部署
 
-不要在本地存在未推送改动时，再通过 GitHub 网页编辑同一个 Markdown 文件；这会再次产生合并冲突。
+两种方式可以混用，但注意避免同时编辑同一文件产生冲突。
 
 ## 8. 提交前构建保护
 
-仓库包含 `.githooks/pre-commit`，本机已执行：
+`.githooks/pre-commit` 已在本地配置：
 
 ```powershell
 git config core.hooksPath .githooks
 ```
 
-每次本机 Git 提交前都会执行：
+每次 `git commit` 前自动执行 `npm.cmd run build`，构建失败阻止提交。
 
-```powershell
-npm.cmd run build
-```
+## 9. 已解决的历史问题
 
-构建失败时提交会被阻止。`.gitattributes` 强制 `.githooks/*` 使用 LF，避免 Windows shell 脚本行尾问题。
-
-注意：`core.hooksPath` 是本机 Git 配置，不会随仓库克隆自动生效。换电脑后需要重新执行配置命令。当前 hook 使用 `npm.cmd`，面向 Windows 环境；在 macOS/Linux 上应改用 `npm` 或增加跨平台判断。
-
-## 9. 隐私与仓库历史
-
-仓库目前为 Public，因此任何人都能查看仓库文件和提交历史，但只有有写入权限的人才能直接修改 `main`。
-
-`.obsidian` 已从当前版本停止跟踪，但旧提交历史中仍存在这些文件。尚未执行历史重写和强制推送，因为这会改写公开仓库历史。若需要彻底移除，应在用户明确授权后使用 `git filter-repo` 等工具，并通知所有本地副本重新同步。
+| 问题 | 修复 |
+|------|------|
+| Obsidian 模板被当作文章导致构建失败 | 迁移模板到 `_templates/`，Content Collection 忽略 |
+| `hello-world.md` 字段名错误 `drafts` | 修正为 `draft` |
+| test-visible.md 合并冲突 | 手动解决 |
+| GitHub Pages Jekyll 解析 .astro 报错 | 添加 `.nojekyll` |
+| 首页「近期入藏」硬编码只显示 3 篇 | 移除 `.slice(0,3)` |
+| 同天文章排序不稳定 | 添加 slug 二级排序键 |
+| 管理面板保存报「服务器内部错误」 | 添加 `express.urlencoded` 中间件 |
 
 ## 10. 下一位 Agent 的完成标准
 
-- 确认没有未解决冲突或意外未提交文件。
-- 成功将 `f55a760` 推送到 `origin/main`。
-- GitHub Actions 的 build 和 deploy 两个 job 均成功。
-- 线上 `/blog/test-visible/` 返回 HTTP 200。
-- 线上目录能够显示测试文章，且不显示 `_templates/blog-post`。
-- 最终 `git status --branch --short` 与 `origin/main` 同步。
-- 不使用强制推送，不覆盖用户新产生的远端文章。
+- `git status --branch --short` 工作区干净，与 `origin/main` 同步
+- 如有 ahead 提交，成功推送到 `origin/main`
+- `npm run build` 成功
+- 线上首页正常显示，文章数与本地一致
+- 管理面板 `npm run admin` 可正常启动
+- 未使用 force push
