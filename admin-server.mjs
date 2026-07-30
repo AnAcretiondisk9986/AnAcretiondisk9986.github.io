@@ -121,11 +121,11 @@ app.route('/api/posts')
         '---',
         `title: ${yamlStr(title)}`,
         `description: ${yamlStr(description)}`,
-        `pubDate: ${pubDate || new Date().toISOString().split('T')[0]}`,
+        `pubDate: ${yamlStr(pubDate || new Date().toISOString().split('T')[0])}`,
       ];
       if (tagArray.length) {
         fm.push('tags:');
-        tagArray.forEach(t => fm.push(`  - ${t}`));
+        tagArray.forEach(t => fm.push(`  - ${yamlStr(t)}`));
       }
       fm.push(`draft: ${draft === 'true'}`);
       fm.push('---');
@@ -179,11 +179,11 @@ app.route('/api/posts/:slug')
         '---',
         `title: ${yamlStr(title)}`,
         `description: ${yamlStr(description)}`,
-        `pubDate: ${pubDate || new Date().toISOString().split('T')[0]}`,
+        `pubDate: ${yamlStr(pubDate || new Date().toISOString().split('T')[0])}`,
       ];
       if (tagArray.length) {
         fm.push('tags:');
-        tagArray.forEach(t => fm.push(`  - ${t}`));
+        tagArray.forEach(t => fm.push(`  - ${yamlStr(t)}`));
       }
       fm.push(`draft: ${draft === 'true'}`);
       fm.push('---');
@@ -240,7 +240,7 @@ app.get('/admin', (_req, res) => {
   res.sendFile(join(__dirname, 'admin', 'index.html'));
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, '127.0.0.1', () => {
   console.log(`\n📚 博客管理面板已启动: http://localhost:${PORT}/admin\n`);
   console.log(`   仅限本地使用 — 请勿暴露到公网\n`);
 });
