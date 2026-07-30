@@ -1,10 +1,11 @@
 ---
 title: 关于健康中国2030战略
 description: 对于此政策做一个总结和分析
-pubDate: 2026-07-30
+pubDate: "2026-07-30"
 tags:
   - 医疗
   - 政策
+draft: false
 ---
 
 # 健康中国 2030
