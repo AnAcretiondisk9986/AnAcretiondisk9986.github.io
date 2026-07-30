@@ -1,37 +1,83 @@
 import express from 'express';
 import multer from 'multer';
 import { readdir, readFile, writeFile, unlink, mkdir } from 'node:fs/promises';
-import { join, dirname, extname } from 'node:path';
+import { join, dirname, extname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import matter from 'gray-matter';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const BLOG_DIR = join(__dirname, 'src', 'content', 'blog');
-const IMAGE_DIR = join(__dirname, 'public', 'image');
+const BLOG_DIR = resolve(__dirname, 'src', 'content', 'blog');
+const IMAGE_DIR = resolve(__dirname, 'public', 'image');
 const PORT = 4322;
 
 const app = express();
 
-// Multer for image upload
+// ── Slug validation ──
+const SLUG_RE = /^[a-z0-9\u4e00-\u9fff]([a-z0-9\u4e00-\u9fff-]*[a-z0-9\u4e00-\u9fff])?$/i;
+
+function validateSlug(raw) {
+  const slug = raw?.toString().trim() || '';
+  if (!SLUG_RE.test(slug)) return null;
+  const filePath = resolve(join(BLOG_DIR, `${slug}.md`));
+  if (!filePath.startsWith(BLOG_DIR + '\\') && !filePath.startsWith(BLOG_DIR + '/')) return null;
+  return { slug, filePath };
+}
+
+// ── YAML-safe string escaping ──
+function yamlStr(s) {
+  const str = String(s || '');
+  // If the string contains special chars, wrap in double quotes with escaping
+  if (/[":#{}[\]&*!|>'"@`,\n\r]/.test(str) || str.includes('\\')) {
+    return '"' + str
+      .replace(/\\/g, '\\\\')
+      .replace(/"/g, '\\"')
+      .replace(/\n/g, '\\n')
+      .replace(/\r/g, '\\r') + '"';
+  }
+  // If string looks like a number, boolean, null etc, quote it
+  if (/^(true|false|null|yes|no|on|off|\d+(\.\d+)?)$/i.test(str)) {
+    return `"${str}"`;
+  }
+  return str || '""';
+}
+
+// ── Safe date formatting ──
+function safeDate(val, fallback = '') {
+  if (!val) return fallback;
+  const d = val instanceof Date ? val : new Date(val);
+  if (isNaN(d.getTime())) return fallback;
+  return d.toISOString().split('T')[0];
+}
+
+// ── Multer: image-only upload ──
+const ALLOWED_MIME = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml'];
 const upload = multer({
   storage: multer.diskStorage({
-    destination: async (_req, _file, cb) => {
-      await mkdir(IMAGE_DIR, { recursive: true });
-      cb(null, IMAGE_DIR);
+    destination: (_req, _file, cb) => {
+      try {
+        mkdir(IMAGE_DIR, { recursive: true }).then(() => cb(null, IMAGE_DIR), err => cb(err));
+      } catch (err) { cb(err); }
     },
     filename: (_req, file, cb) => {
       const safeName = file.originalname
         .replace(/\.[^.]+$/, '')
         .replace(/[^a-zA-Z0-9\u4e00-\u9fff_-]/g, '-')
         .substring(0, 60);
-      const ext = extname(file.originalname);
+      const ext = extname(file.originalname).toLowerCase();
       cb(null, `${safeName}_${Date.now()}${ext}`);
     },
   }),
+  fileFilter: (_req, file, cb) => {
+    if (ALLOWED_MIME.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('仅支持 PNG / JPEG / GIF / WebP / SVG 图片格式'), false);
+    }
+  },
   limits: { fileSize: 20 * 1024 * 1024 },
 });
 
-// === API Routes ===
+// ── API Routes ──
 
 // List / create posts
 app.route('/api/posts')
@@ -48,12 +94,13 @@ app.route('/api/posts')
           slug,
           title: data.title || slug,
           description: data.description || '',
-          pubDate: data.pubDate ? new Date(data.pubDate).toISOString().split('T')[0] : '',
+          pubDate: safeDate(data.pubDate),
           tags: data.tags || [],
           draft: data.draft ?? false,
         });
       }
       posts.sort((a, b) => b.pubDate.localeCompare(a.pubDate) || b.slug.localeCompare(a.slug));
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
       res.json(posts);
     } catch (err) {
       res.status(500).json({ error: err.message });
@@ -62,15 +109,18 @@ app.route('/api/posts')
   .post(upload.none(), async (req, res) => {
     try {
       const { title, description, pubDate, tags, content, draft } = req.body;
-      const slug = req.body.slug || title
-        ?.toLowerCase().replace(/[^a-z0-9\u4e00-\u9fff]+/g, '-').replace(/^-|-$/g, '')
-        || 'untitled';
+      const candidate = (req.body.slug
+        || (title || '').toLowerCase().replace(/[^a-z0-9\u4e00-\u9fff]+/g, '-').replace(/^-|-$/g, '')
+        || 'untitled');
+      const checked = validateSlug(candidate);
+      if (!checked) return res.status(400).json({ error: 'Slug 包含无效字符或路径非法' });
+
       const tagArray = (tags || '').split(/[,，]/).map(t => t.trim()).filter(Boolean);
 
       const fm = [
         '---',
-        `title: "${(title || '').replace(/"/g, '\\"')}"`,
-        `description: "${(description || '').replace(/"/g, '\\"')}"`,
+        `title: ${yamlStr(title)}`,
+        `description: ${yamlStr(description)}`,
         `pubDate: ${pubDate || new Date().toISOString().split('T')[0]}`,
       ];
       if (tagArray.length) {
@@ -82,8 +132,9 @@ app.route('/api/posts')
       fm.push('');
       fm.push(content || '');
 
-      await writeFile(join(BLOG_DIR, `${slug}.md`), fm.join('\n'), 'utf-8');
-      res.status(201).json({ success: true, slug });
+      await writeFile(checked.filePath, fm.join('\n'), 'utf-8');
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.status(201).json({ success: true, slug: checked.slug });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
@@ -93,32 +144,41 @@ app.route('/api/posts')
 app.route('/api/posts/:slug')
   .get(async (req, res) => {
     try {
-      const filePath = join(BLOG_DIR, `${req.params.slug}.md`);
-      const raw = await readFile(filePath, 'utf-8');
+      const checked = validateSlug(req.params.slug);
+      if (!checked) return res.status(400).json({ error: '无效的 Slug' });
+      const raw = await readFile(checked.filePath, 'utf-8');
       const { data, content } = matter(raw);
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
       res.json({
-        slug: req.params.slug,
+        slug: checked.slug,
         title: data.title || '',
         description: data.description || '',
-        pubDate: data.pubDate ? new Date(data.pubDate).toISOString().split('T')[0] : '',
+        pubDate: safeDate(data.pubDate),
         tags: data.tags || [],
         draft: data.draft ?? false,
         content: content.trim(),
       });
-    } catch {
-      res.status(404).json({ error: '文章不存在' });
+    } catch (err) {
+      if (err.code === 'ENOENT') return res.status(404).json({ error: '文章不存在' });
+      res.status(500).json({ error: err.message });
     }
   })
   .put(upload.none(), async (req, res) => {
     try {
+      const oldChecked = validateSlug(req.params.slug);
+      if (!oldChecked) return res.status(400).json({ error: '无效的 Slug' });
+
       const { title, description, pubDate, tags, content, draft, slug: newSlug } = req.body;
       const finalSlug = newSlug || req.params.slug;
+      const newChecked = validateSlug(finalSlug);
+      if (!newChecked) return res.status(400).json({ error: '新 Slug 包含无效字符或路径非法' });
+
       const tagArray = (tags || '').split(/[,，]/).map(t => t.trim()).filter(Boolean);
 
       const fm = [
         '---',
-        `title: "${(title || '').replace(/"/g, '\\"')}"`,
-        `description: "${(description || '').replace(/"/g, '\\"')}"`,
+        `title: ${yamlStr(title)}`,
+        `description: ${yamlStr(description)}`,
         `pubDate: ${pubDate || new Date().toISOString().split('T')[0]}`,
       ];
       if (tagArray.length) {
@@ -130,29 +190,46 @@ app.route('/api/posts/:slug')
       fm.push('');
       fm.push(content || '');
 
-      const oldPath = join(BLOG_DIR, `${req.params.slug}.md`);
-      const newPath = join(BLOG_DIR, `${finalSlug}.md`);
-      if (oldPath !== newPath) await unlink(oldPath);
-      await writeFile(newPath, fm.join('\n'), 'utf-8');
+      // Write new file first, then delete old (safe rename)
+      const isRename = oldChecked.filePath !== newChecked.filePath;
+      if (isRename) {
+        await writeFile(newChecked.filePath, fm.join('\n'), 'utf-8');
+        await unlink(oldChecked.filePath);
+      } else {
+        await writeFile(oldChecked.filePath, fm.join('\n'), 'utf-8');
+      }
 
-      res.json({ success: true, slug: finalSlug });
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.json({ success: true, slug: newChecked.slug });
     } catch (err) {
+      if (err.code === 'ENOENT') return res.status(404).json({ error: '文章不存在' });
       res.status(500).json({ error: err.message });
     }
   })
   .delete(async (req, res) => {
     try {
-      await unlink(join(BLOG_DIR, `${req.params.slug}.md`));
+      const checked = validateSlug(req.params.slug);
+      if (!checked) return res.status(400).json({ error: '无效的 Slug' });
+      await unlink(checked.filePath);
       res.json({ success: true });
     } catch (err) {
+      if (err.code === 'ENOENT') return res.status(404).json({ error: '文章不存在' });
       res.status(500).json({ error: err.message });
     }
   });
 
 // Image upload
-app.post('/api/upload', upload.single('file'), (req, res) => {
-  if (!req.file) return res.status(400).json({ error: '未选择文件' });
-  res.status(201).json({ success: true, url: `/image/${req.file.filename}` });
+app.post('/api/upload', (req, res, next) => {
+  upload.single('file')(req, res, err => {
+    if (err) {
+      if (err.message && err.message.includes('仅支持')) {
+        return res.status(400).json({ error: err.message });
+      }
+      return res.status(500).json({ error: err.message });
+    }
+    if (!req.file) return res.status(400).json({ error: '未选择文件' });
+    res.status(201).json({ success: true, url: `/image/${req.file.filename}` });
+  });
 });
 
 // Static files from public/
@@ -165,4 +242,5 @@ app.get('/admin', (_req, res) => {
 
 app.listen(PORT, () => {
   console.log(`\n📚 博客管理面板已启动: http://localhost:${PORT}/admin\n`);
+  console.log(`   仅限本地使用 — 请勿暴露到公网\n`);
 });
