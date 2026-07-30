@@ -7,9 +7,13 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "admin": "node admin-server.mjs"
   },
   "dependencies": {
-    "astro": "latest"
+    "astro": "latest",
+    "express": "^5.2.1",
+    "gray-matter": "^4.0.3",
+    "multer": "^2.2.0"
   }
 }
