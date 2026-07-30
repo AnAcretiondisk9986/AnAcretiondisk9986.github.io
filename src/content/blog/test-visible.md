@@ -1,10 +1,10 @@
 ---
-title:draft参数的可用性测试
-description:
-pubDate:2026-7-30
+title: 渲染器测试
+description: 
+pubDate: 2026-07-30
 tags:
   - 测试
-draft: false
+  - 博客调试
 ---
 # 这是一级标题
 ## 这是二级标题
