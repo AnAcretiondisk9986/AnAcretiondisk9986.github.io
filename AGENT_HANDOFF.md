@@ -7,7 +7,7 @@
 ## 1. 项目概况
 
 - 本地路径：`C:\Users\AnAcretiondisk\Documents\个人博客`
-- GitHub 仓库：`https://github.com/AnAcretiondisk9986/AnAcretiondisk9986.github.io`
+- GitHub 仓库：`git@github.com:AnAcretiondisk9986/AnAcretiondisk9986.github.io.git`（SSH）
 - 线上地址：`https://anacretiondisk9986.github.io/`
 - 当前分支：`main`
 - 技术栈：Astro 静态站点、Markdown Content Collections、GitHub Actions、GitHub Pages
@@ -15,6 +15,7 @@
 - GitHub Actions Node.js 版本：22
 - Astro 配置为 `output: 'static'`，站点为用户主页仓库，无额外 `base` 路径。
 - 根目录 `.nojekyll` 禁用 GitHub Pages 默认 Jekyll 构建。
+- **Git 远程协议**：SSH（`git@github.com:...`），本机已生成 ED25519 密钥并添加到 GitHub。
 
 常用命令：
 
@@ -42,9 +43,7 @@ a01e54c 通过管理面板更新博客
 669b974 改进推送错误提示：区分网络故障，延长 toast 显示
 ```
 
-> **注意**：GitHub 443 端口近期间歇性不通（`Connection reset` / `Could not connect to server`），
-> 但 `github.com` 网页可正常访问。推送失败时通常是网络问题而非代码问题，
-> 稍等片刻重试即可。若持续失败，检查是否有代理或防火墙阻止 git 协议的 443 端口。
+> **Git 远程已切换为 SSH**。推送走 22 端口，不再受 HTTPS 443 端口阻断影响。管理面板的「⬆ 推送」按钮可正常使用。
 
 下一位 Agent 应先执行：
 
