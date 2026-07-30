@@ -5,7 +5,7 @@ import ArchiveSeal from '../components/ArchiveSeal.astro';
 import SpecimenPlate from '../components/SpecimenPlate.astro';
 
 const posts = (await getCollection('blog', ({ data }) => !data.draft))
-  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf() || b.id.localeCompare(a.id));
 ---
 
 <BaseLayout>
