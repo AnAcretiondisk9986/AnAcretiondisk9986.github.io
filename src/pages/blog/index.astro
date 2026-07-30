@@ -1,0 +1,33 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+const posts = (await getCollection('blog', ({ data }) => !data.draft))
+  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+---
+
+<BaseLayout title="文章" description="Acretiondisk 的全部文章。">
+  <header class="page-heading">
+    <p class="eyebrow">WRITING</p>
+    <h1>文章</h1>
+    <p>技术、医学，以及生活里值得记住的细节。</p>
+  </header>
+
+  <div class="post-list">
+    {posts.map((post) => (
+      <article class="post-card">
+        <time datetime={post.data.pubDate.toISOString()}>
+          {post.data.pubDate.toLocaleDateString('zh-CN')}
+        </time>
+        <h2><a href={`/blog/${post.id}/`}>{post.data.title}</a></h2>
+        <p>{post.data.description}</p>
+        {post.data.tags.length > 0 && (
+          <ul class="tag-list" aria-label="标签">
+            {post.data.tags.map((tag) => <li>{tag}</li>)}
+          </ul>
+        )}
+      </article>
+    ))}
+  </div>
+</BaseLayout>
+
