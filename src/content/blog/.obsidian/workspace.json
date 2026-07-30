@@ -11,14 +11,14 @@
             "id": "b0cedfebc6a69e55",
             "type": "leaf",
             "state": {
-              "type": "split-diff-view",
+              "type": "markdown",
               "state": {
-                "aFile": "src/content/blog/hello-world.md",
-                "bFile": "src/content/blog/hello-world.md",
-                "aRef": ""
+                "file": "test-visible.md",
+                "mode": "source",
+                "source": true
               },
-              "icon": "diff",
-              "title": "Diff: hello-world  (Working Tree)"
+              "icon": "lucide-file",
+              "title": "test-visible"
             }
           }
         ]
@@ -197,7 +197,10 @@
   },
   "active": "b0cedfebc6a69e55",
   "lastOpenFiles": [
+    "blog-user-guide.md",
+    "test-visible.md",
     "blog-post.md",
+    "hello-world.md",
     "image",
     "新建文件夹"
   ]
