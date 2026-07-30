@@ -268,7 +268,7 @@
 
     function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
     function escAttr(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;')}
-    function toast(msg){const t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),2500)}
+    function toast(msg){const t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),4000)}
 
     document.addEventListener('keydown', e => {
       if((e.ctrlKey||e.metaKey)&&e.key==='s'){e.preventDefault();savePost()}

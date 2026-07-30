@@ -282,9 +282,16 @@ app.post('/api/push', async (_req, res) => {
     await run('git commit -m "通过管理面板更新博客"');
 
     // Push
-    const pushResult = await run('git push origin main');
-
-    res.json({ success: true, message: '推送成功', detail: pushResult });
+    try {
+      const pushResult = await run('git push origin main');
+      res.json({ success: true, message: '推送成功！网站即将更新', detail: pushResult });
+    } catch (pushErr) {
+      const msg = pushErr.message || '';
+      if (msg.includes('Connection') || msg.includes('Could not connect') || msg.includes('reset')) {
+        return res.status(500).json({ error: '推送失败：无法连接 GitHub（网络问题），已本地提交，稍后重试' });
+      }
+      return res.status(500).json({ error: '推送失败：已本地提交但推送出错，请检查网络后重试', detail: msg });
+    }
   } catch (err) {
     console.error('Push Error:', err.message);
     res.status(500).json({ error: '推送失败', detail: err.message });
