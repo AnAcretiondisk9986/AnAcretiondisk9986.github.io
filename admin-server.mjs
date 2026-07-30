@@ -1,6 +1,7 @@
 import express from 'express';
 import multer from 'multer';
 import { readdir, readFile, writeFile, unlink, mkdir } from 'node:fs/promises';
+import { exec } from 'node:child_process';
 import { join, dirname, extname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import matter from 'gray-matter';
@@ -260,6 +261,17 @@ app.get('/admin', (_req, res) => {
 });
 
 app.listen(PORT, '127.0.0.1', () => {
-  console.log(`\n📚 博客管理面板已启动: http://localhost:${PORT}/admin\n`);
+  const url = `http://localhost:${PORT}/admin`;
+  console.log(`\n📚 博客管理面板已启动: ${url}\n`);
   console.log(`   仅限本地使用 — 请勿暴露到公网\n`);
+
+  // Auto-open browser
+  const cmd = process.platform === 'win32'
+    ? `start "" "${url}"`
+    : process.platform === 'darwin'
+      ? `open "${url}"`
+      : `xdg-open "${url}"`;
+  exec(cmd, (err) => {
+    if (err) console.log('   请手动打开浏览器访问上述地址');
+  });
 });
