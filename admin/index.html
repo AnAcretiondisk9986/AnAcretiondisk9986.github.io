@@ -89,12 +89,18 @@
 
   <script>
     const API = '/api/posts';
+    const TOKEN = 'acr-admin';
     let currentSlug = null, posts = [];
     const $ = s => document.querySelector(s);
 
+    async function apiFetch(url, opts = {}) {
+      opts.headers = { ...(opts.headers || {}), 'x-admin-token': TOKEN };
+      return fetch(url, opts);
+    }
+
     async function loadPosts() {
       try {
-        const res = await fetch(API);
+        const res = await apiFetch(API);
         posts = await res.json();
         renderList();
       } catch(e) { toast('加载失败: '+e.message) }
@@ -118,7 +124,7 @@
     async function selectPost(slug) {
       currentSlug = slug;
       try {
-        const res = await fetch(`${API}/${slug}`);
+        const res = await apiFetch(`${API}/${slug}`);
         const post = await res.json();
         if(post.error){toast(post.error);return}
         renderEditor(post); renderList();
@@ -200,7 +206,7 @@
       try {
         const url = currentSlug ? `${API}/${currentSlug}` : API;
         const method = currentSlug ? 'PUT' : 'POST';
-        const res = await fetch(url, { method, body: formData, headers:{'Content-Type':'application/x-www-form-urlencoded'} });
+        const res = await apiFetch(url, { method, body: formData, headers:{'Content-Type':'application/x-www-form-urlencoded'} });
         const data = await res.json();
         if(data.error){toast(data.error);return}
         toast(currentSlug?'已保存':'已创建'); currentSlug = data.slug;
@@ -211,7 +217,7 @@
     async function deletePost(slug) {
       if(!confirm(`确定删除「${slug}」？此操作不可撤销。`)) return;
       try {
-        const res = await fetch(`${API}/${slug}`, { method:'DELETE' });
+        const res = await apiFetch(`${API}/${slug}`, { method:'DELETE' });
         const data = await res.json();
         if(data.error){toast(data.error);return}
         toast('已删除');
@@ -249,7 +255,7 @@
       toast('上传中…');
       const fd = new FormData(); fd.set('file', file);
       try {
-        const res = await fetch('/api/upload', { method:'POST', body:fd });
+        const res = await apiFetch('/api/upload', { method:'POST', body:fd });
         const data = await res.json();
         if(data.error){toast(data.error);return}
         const md = `![${file.name}](${data.url})`;

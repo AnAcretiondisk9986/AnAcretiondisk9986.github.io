@@ -9,6 +9,16 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const BLOG_DIR = resolve(__dirname, 'src', 'content', 'blog');
 const IMAGE_DIR = resolve(__dirname, 'public', 'image');
 const PORT = 4322;
+const ADMIN_TOKEN = process.env.ADMIN_TOKEN || 'acr-admin';
+
+// ── Auth middleware ──
+function auth(req, res, next) {
+  if (!ADMIN_TOKEN) return next();
+  if (req.path === '/admin' && req.method === 'GET') return next();
+  const token = req.headers['x-admin-token'] || req.query.token || '';
+  if (token === ADMIN_TOKEN) return next();
+  res.status(401).json({ error: '未授权' });
+}
 
 const app = express();
 
@@ -27,7 +37,7 @@ function validateSlug(raw) {
 function yamlStr(s) {
   const str = String(s || '');
   // If the string contains special chars, wrap in double quotes with escaping
-  if (/[":#{}[\]&*!|>'"@`,\n\r]/.test(str) || str.includes('\\')) {
+  if (/[":#{}[\]&*!|>'"@`,\n\r%?-]/.test(str) || str.includes('\\') || /^[-?]\s/.test(str)) {
     return '"' + str
       .replace(/\\/g, '\\\\')
       .replace(/"/g, '\\"')
@@ -79,6 +89,9 @@ const upload = multer({
 
 // ── API Routes ──
 
+// Auth for all API routes
+app.use('/api', auth);
+
 // List / create posts
 app.route('/api/posts')
   .get(async (_req, res) => {
@@ -103,7 +116,8 @@ app.route('/api/posts')
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
       res.json(posts);
     } catch (err) {
-      res.status(500).json({ error: err.message });
+      console.error('API Error:', err.message);
+      res.status(500).json({ error: '服务器内部错误' });
     }
   })
   .post(upload.none(), async (req, res) => {
@@ -136,7 +150,8 @@ app.route('/api/posts')
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
       res.status(201).json({ success: true, slug: checked.slug });
     } catch (err) {
-      res.status(500).json({ error: err.message });
+      console.error('API Error:', err.message);
+      res.status(500).json({ error: '服务器内部错误' });
     }
   });
 
@@ -160,7 +175,8 @@ app.route('/api/posts/:slug')
       });
     } catch (err) {
       if (err.code === 'ENOENT') return res.status(404).json({ error: '文章不存在' });
-      res.status(500).json({ error: err.message });
+      console.error('API Error:', err.message);
+      res.status(500).json({ error: '服务器内部错误' });
     }
   })
   .put(upload.none(), async (req, res) => {
@@ -203,7 +219,8 @@ app.route('/api/posts/:slug')
       res.json({ success: true, slug: newChecked.slug });
     } catch (err) {
       if (err.code === 'ENOENT') return res.status(404).json({ error: '文章不存在' });
-      res.status(500).json({ error: err.message });
+      console.error('API Error:', err.message);
+      res.status(500).json({ error: '服务器内部错误' });
     }
   })
   .delete(async (req, res) => {
@@ -214,7 +231,8 @@ app.route('/api/posts/:slug')
       res.json({ success: true });
     } catch (err) {
       if (err.code === 'ENOENT') return res.status(404).json({ error: '文章不存在' });
-      res.status(500).json({ error: err.message });
+      console.error('API Error:', err.message);
+      res.status(500).json({ error: '服务器内部错误' });
     }
   });
 
