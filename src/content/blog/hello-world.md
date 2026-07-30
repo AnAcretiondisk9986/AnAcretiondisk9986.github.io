@@ -5,6 +5,7 @@ pubDate: 2026-07-30
 tags:
   - 博客
   - 开始
+drafts:false
 ---
 
 这是我的第一篇文章。
@@ -27,4 +28,3 @@ console.log('Hello, world!');
 ```
 
 > 保持好奇，持续记录。
-
