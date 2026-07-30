@@ -1,6 +1,8 @@
 ---
 import { getCollection } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
+import ArchiveSeal from '../components/ArchiveSeal.astro';
+import SpecimenPlate from '../components/SpecimenPlate.astro';
 
 const posts = (await getCollection('blog', ({ data }) => !data.draft))
   .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf())
@@ -8,35 +10,81 @@ const posts = (await getCollection('blog', ({ data }) => !data.draft))
 ---
 
 <BaseLayout>
-  <section class="hero">
-    <p class="eyebrow">HELLO, WORLD</p>
-    <h1>记录好奇心生长的轨迹。</h1>
-    <p class="hero-copy">
-      这里将收集我对计算机、临床医学、音乐、动画与艺术的观察。
-    </p>
-    <div class="hero-actions">
-      <a class="primary-link" href="/blog/">阅读文章</a>
-      <a href="/about/">认识我 →</a>
+  <section class="codex-hero">
+    <div class="hero-copy-panel">
+      <div class="folio-kicker">
+        <span>PERSONAL ARCHIVE</span>
+        <span>VOL. I · MMXXVI</span>
+      </div>
+
+      <p class="eyebrow">一份仍在书写的私人行记</p>
+      <h1>
+        <span>在众声之间，</span>
+        <em>保存一人的观察。</em>
+      </h1>
+      <p class="hero-copy">
+        记录计算机、临床医学、音乐、动画与艺术——以及这些事物如何在同一个人的生命里彼此照见。
+      </p>
+
+      <div class="hero-actions">
+        <a class="primary-link" href="/blog/">
+          <span>展开卷册</span>
+          <span aria-hidden="true">→</span>
+        </a>
+        <a class="text-link" href="/about/">阅览编目者档案</a>
+      </div>
+
+      <dl class="hero-register">
+        <div><dt>编目范围</dt><dd>医学 / 技术 / 艺术</dd></div>
+        <div><dt>记录状态</dt><dd>持续更新</dd></div>
+        <div><dt>馆藏编号</dt><dd>ACR—001</dd></div>
+      </dl>
+    </div>
+
+    <div class="hero-plate-panel">
+      <SpecimenPlate />
+      <ArchiveSeal class="hero-seal" />
     </div>
   </section>
 
-  <section class="section-block">
-    <div class="section-heading">
-      <h2>最近文章</h2>
-      <a href="/blog/">查看全部 →</a>
+  <section class="archive-section">
+    <div class="section-heading codex-heading">
+      <div>
+        <p class="eyebrow">RECENT FOLIOS</p>
+        <h2>近期入藏</h2>
+      </div>
+      <div class="heading-note">
+        <span>{String(posts.length).padStart(2, '0')} 件记录</span>
+        <a href="/blog/">完整目录 →</a>
+      </div>
     </div>
 
-    <div class="post-list">
-      {posts.map((post) => (
-        <article class="post-card">
-          <time datetime={post.data.pubDate.toISOString()}>
-            {post.data.pubDate.toLocaleDateString('zh-CN')}
-          </time>
-          <h3><a href={`/blog/${post.id}/`}>{post.data.title}</a></h3>
-          <p>{post.data.description}</p>
+    <div class="archive-list">
+      {posts.map((post, index) => (
+        <article class="archive-entry">
+          <div class="entry-number">
+            <span>FOLIO</span>
+            <b>{String(index + 1).padStart(3, '0')}</b>
+          </div>
+          <div class="entry-main">
+            <div class="entry-register">
+              <time datetime={post.data.pubDate.toISOString()}>
+                {post.data.pubDate.toLocaleDateString('zh-CN')}
+              </time>
+              <span>{post.data.tags.join(' · ') || '未分类记录'}</span>
+            </div>
+            <h3><a href={`/blog/${post.id}/`}>{post.data.title}</a></h3>
+            <p>{post.data.description}</p>
+          </div>
+          <a class="entry-arrow" href={`/blog/${post.id}/`} aria-label={`阅读《${post.data.title}》`}>↗</a>
         </article>
       ))}
     </div>
   </section>
-</BaseLayout>
 
+  <section class="index-coda">
+    <ArchiveSeal class="coda-seal" />
+    <blockquote>“记录并非为了留住一切，而是为了在时间中辨认自己。”</blockquote>
+    <p>FINIS PAGINAE · INITIUM SEQUENTIS</p>
+  </section>
+</BaseLayout>

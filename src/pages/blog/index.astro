@@ -1,33 +1,60 @@
 ---
 import { getCollection } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import ArchiveSeal from '../../components/ArchiveSeal.astro';
 
 const posts = (await getCollection('blog', ({ data }) => !data.draft))
   .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
 ---
 
 <BaseLayout title="文章" description="Acretiondisk 的全部文章。">
-  <header class="page-heading">
-    <p class="eyebrow">WRITING</p>
-    <h1>文章</h1>
-    <p>技术、医学，以及生活里值得记住的细节。</p>
+  <header class="catalog-header">
+    <div class="catalog-title">
+      <p class="eyebrow">CATALOGUS SCRIPTORUM</p>
+      <h1>卷册目录</h1>
+      <p>技术、医学、艺术，以及生活里值得被编目的细节。</p>
+    </div>
+    <div class="catalog-mark">
+      <ArchiveSeal />
+      <dl>
+        <div><dt>馆藏总数</dt><dd>{String(posts.length).padStart(3, '0')}</dd></div>
+        <div><dt>卷册状态</dt><dd>开放编目</dd></div>
+        <div><dt>排序规则</dt><dd>由新至旧</dd></div>
+      </dl>
+    </div>
   </header>
 
-  <div class="post-list">
-    {posts.map((post) => (
-      <article class="post-card">
+  <div class="catalog-rule" aria-hidden="true">
+    <span>INDEX</span><span>TITULUS</span><span>CLASSIS</span><span>DATE</span>
+  </div>
+
+  <div class="catalog-list">
+    {posts.map((post, index) => (
+      <article class="catalog-entry">
+        <div class="catalog-index">
+          <span>{String(index + 1).padStart(2, '0')}</span>
+          <small>FOLIO</small>
+        </div>
+        <div class="catalog-content">
+          <h2><a href={`/blog/${post.id}/`}>{post.data.title}</a></h2>
+          <p>{post.data.description}</p>
+          {post.data.tags.length > 0 && (
+            <ul class="tag-list" aria-label="标签">
+              {post.data.tags.map((tag) => <li>{tag}</li>)}
+            </ul>
+          )}
+        </div>
         <time datetime={post.data.pubDate.toISOString()}>
-          {post.data.pubDate.toLocaleDateString('zh-CN')}
+          <span>{post.data.pubDate.getFullYear()}</span>
+          <b>{String(post.data.pubDate.getMonth() + 1).padStart(2, '0')}.{String(post.data.pubDate.getDate()).padStart(2, '0')}</b>
         </time>
-        <h2><a href={`/blog/${post.id}/`}>{post.data.title}</a></h2>
-        <p>{post.data.description}</p>
-        {post.data.tags.length > 0 && (
-          <ul class="tag-list" aria-label="标签">
-            {post.data.tags.map((tag) => <li>{tag}</li>)}
-          </ul>
-        )}
+        <a class="catalog-open" href={`/blog/${post.id}/`} aria-label={`打开《${post.data.title}》`}>打开<br />记录 ↗</a>
       </article>
     ))}
   </div>
-</BaseLayout>
 
+  <footer class="catalog-footer">
+    <span>所有条目均由编目者亲自记录</span>
+    <span>ACR / CATALOGUS / {new Date().getFullYear()}</span>
+  </footer>
+</BaseLayout>

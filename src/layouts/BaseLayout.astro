@@ -1,5 +1,6 @@
 ---
 import '../styles/global.css';
+import ArchiveSeal from '../components/ArchiveSeal.astro';
 
 interface Props {
   title?: string;
@@ -12,6 +13,12 @@ const {
 } = Astro.props;
 
 const pageTitle = title === 'Acretiondisk' ? title : `${title} · Acretiondisk`;
+const pathname = Astro.url.pathname;
+const navigation = [
+  { href: '/', label: '首页', index: 'I' },
+  { href: '/blog/', label: '卷册', index: 'II' },
+  { href: '/about/', label: '关于', index: 'III' },
+];
 ---
 
 <!doctype html>
@@ -30,24 +37,70 @@ const pageTitle = title === 'Acretiondisk' ? title : `${title} · Acretiondisk`;
     </script>
   </head>
   <body>
-    <header class="site-header">
-      <a class="site-name" href="/">Acretiondisk</a>
-      <nav aria-label="主导航">
-        <a href="/">首页</a>
-        <a href="/blog/">文章</a>
-        <a href="/about/">关于</a>
-        <button class="theme-toggle" type="button" aria-label="切换明暗主题">◐</button>
-      </nav>
-    </header>
+    <div class="paper-grain" aria-hidden="true"></div>
+    <div class="site-shell">
+      <aside class="edge-note edge-note--left" aria-hidden="true">
+        <span>ARCHIVUM PERSONAE</span>
+        <span>31°14′ N · 121°29′ E</span>
+      </aside>
+      <aside class="edge-note edge-note--right" aria-hidden="true">
+        <span>CATALOGUS I</span>
+        <span>{new Date().getFullYear()}</span>
+      </aside>
 
-    <main>
-      <slot />
-    </main>
+      <header class="site-header">
+        <div class="header-register">
+          <span>ACR—LOG / PERSONAL CODEX</span>
+          <span>EST. MMXXVI</span>
+        </div>
 
-    <footer class="site-footer">
-      <span>© {new Date().getFullYear()} Acretiondisk</span>
-      <a href="https://github.com/AnAcretiondisk9986">GitHub</a>
-    </footer>
+        <div class="header-main">
+          <a class="site-name" href="/" aria-label="Acretiondisk 首页">
+            <ArchiveSeal class="site-seal" />
+            <span>
+              <b>Acretiondisk</b>
+              <small>一人之观察与行记</small>
+            </span>
+          </a>
+
+          <nav aria-label="主导航">
+            {navigation.map((item) => {
+              const active = item.href === '/'
+                ? pathname === '/'
+                : pathname.startsWith(item.href);
+              return (
+                <a href={item.href} aria-current={active ? 'page' : undefined}>
+                  <span>{item.index}</span>
+                  {item.label}
+                </a>
+              );
+            })}
+            <button class="theme-toggle" type="button" aria-label="切换明暗主题">
+              <span aria-hidden="true">☼</span>
+              <span class="theme-toggle__label">昼夜</span>
+            </button>
+          </nav>
+        </div>
+      </header>
+
+      <main>
+        <slot />
+      </main>
+
+      <footer class="site-footer">
+        <div class="footer-mark">
+          <ArchiveSeal class="footer-seal" label="Acretiondisk" />
+          <p>
+            <strong>私人典藏 · 持续编目</strong>
+            <span>以文字保存观察，以设计标记时间。</span>
+          </p>
+        </div>
+        <div class="footer-meta">
+          <span>© {new Date().getFullYear()} ACRETIONDISK</span>
+          <a href="https://github.com/AnAcretiondisk9986">GITHUB ↗</a>
+        </div>
+      </footer>
+    </div>
 
     <script>
       const button = document.querySelector<HTMLButtonElement>('.theme-toggle');
@@ -56,7 +109,8 @@ const pageTitle = title === 'Acretiondisk' ? title : `${title} · Acretiondisk`;
         document.documentElement.dataset.theme = next;
         localStorage.setItem('theme', next);
       });
+
+      requestAnimationFrame(() => document.documentElement.classList.add('is-ready'));
     </script>
   </body>
 </html>
-

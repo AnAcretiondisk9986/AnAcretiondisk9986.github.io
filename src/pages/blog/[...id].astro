@@ -16,28 +16,52 @@ interface Props {
 
 const { post } = Astro.props;
 const { Content } = await render(post);
+const folioCode = `${post.data.pubDate.getFullYear()}—${String(post.data.pubDate.getMonth() + 1).padStart(2, '0')}${String(post.data.pubDate.getDate()).padStart(2, '0')}`;
 ---
 
 <BaseLayout title={post.data.title} description={post.data.description}>
-  <article class="article">
-    <header class="article-header">
-      <a class="back-link" href="/blog/">← 返回文章列表</a>
-      <h1>{post.data.title}</h1>
-      <p>{post.data.description}</p>
-      <div class="article-meta">
-        <time datetime={post.data.pubDate.toISOString()}>
-          发布于 {post.data.pubDate.toLocaleDateString('zh-CN')}
-        </time>
-        {post.data.updatedDate && (
-          <time datetime={post.data.updatedDate.toISOString()}>
-            更新于 {post.data.updatedDate.toLocaleDateString('zh-CN')}
-          </time>
-        )}
-      </div>
-    </header>
-    <div class="prose">
-      <Content />
-    </div>
-  </article>
-</BaseLayout>
+  <div class="article-shell">
+    <aside class="article-margin">
+      <a class="back-link" href="/blog/">← 返回卷册目录</a>
+      <dl>
+        <div><dt>条目编号</dt><dd>{folioCode}</dd></div>
+        <div><dt>分类标签</dt><dd>{post.data.tags.join(' / ') || '未分类'}</dd></div>
+        <div><dt>记录者</dt><dd>Acretiondisk</dd></div>
+        <div><dt>状态</dt><dd>公开阅览</dd></div>
+      </dl>
+      <p class="margin-note">原始观察记录。文字与观点会随认知更新而修订。</p>
+    </aside>
 
+    <article class="article">
+      <header class="article-header">
+        <div class="article-register">
+          <span>FOLIO {folioCode}</span>
+          <span>ARCHIVUM PERSONAE</span>
+        </div>
+        <h1>{post.data.title}</h1>
+        <p class="article-deck">{post.data.description}</p>
+        <div class="article-meta">
+          <time datetime={post.data.pubDate.toISOString()}>
+            发布 · {post.data.pubDate.toLocaleDateString('zh-CN')}
+          </time>
+          {post.data.updatedDate && (
+            <time datetime={post.data.updatedDate.toISOString()}>
+              修订 · {post.data.updatedDate.toLocaleDateString('zh-CN')}
+            </time>
+          )}
+        </div>
+      </header>
+
+      <div class="article-ornament" aria-hidden="true"><span>✦</span></div>
+
+      <div class="prose">
+        <Content />
+      </div>
+
+      <footer class="article-endmark">
+        <span>FINIS</span>
+        <p>本条目至此结束</p>
+      </footer>
+    </article>
+  </div>
+</BaseLayout>
