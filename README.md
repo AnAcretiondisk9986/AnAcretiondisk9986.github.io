@@ -2,12 +2,6 @@
 
 使用 Astro 构建的个人博客，部署到 GitHub Pages。
 
-## 本地开发
-
-```powershell
-npm.cmd install
-npm.cmd run dev
-```
 
 ## 写新文章
 
