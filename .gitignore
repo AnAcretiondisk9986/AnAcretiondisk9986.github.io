@@ -5,3 +5,4 @@ dist/
 src/content/blog/.obsidian/
 .DS_Store
 *.log
+.reasonix/
