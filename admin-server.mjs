@@ -22,6 +22,7 @@ function auth(req, res, next) {
 }
 
 const app = express();
+app.use(express.urlencoded({ extended: true }));
 
 // ── Slug validation ──
 const SLUG_RE = /^[a-z0-9\u4e00-\u9fff]([a-z0-9\u4e00-\u9fff-]*[a-z0-9\u4e00-\u9fff])?$/i;
