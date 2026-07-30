@@ -1,9 +1,10 @@
 ---
-title: draft 参数与标题层级测试
+title: 渲染器测试
 description: 用于确认博客文章显示、草稿状态以及 Markdown 标题层级是否正常。
 pubDate: 2026-07-30
 tags:
   - 测试
+  - 博客调试
 draft: false
 ---
 
