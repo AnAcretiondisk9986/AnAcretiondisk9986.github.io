@@ -240,10 +240,11 @@ app.route('/api/posts/:slug')
 app.post('/api/upload', (req, res, next) => {
   upload.single('file')(req, res, err => {
     if (err) {
+      console.error('Upload Error:', err.message);
       if (err.message && err.message.includes('仅支持')) {
         return res.status(400).json({ error: err.message });
       }
-      return res.status(500).json({ error: err.message });
+      return res.status(500).json({ error: '上传失败' });
     }
     if (!req.file) return res.status(400).json({ error: '未选择文件' });
     res.status(201).json({ success: true, url: `/image/${req.file.filename}` });
