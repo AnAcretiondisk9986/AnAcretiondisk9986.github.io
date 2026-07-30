@@ -1,7 +1,7 @@
 ---
 title: "{{title}}"
 description: 请填写一句能够概括文章内容的简介
-pubDate: {{date:YYYY-MM-DD}}
+pubDate: "{{date:YYYY-MM-DD}}"
 tags:
   - 博客
 draft: true
