@@ -5,7 +5,7 @@ pubDate: 2026-07-30
 tags:
   - 博客
   - 开始
-drafts:false
+draft: false
 ---
 
 这是我的第一篇文章。

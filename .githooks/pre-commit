@@ -1,0 +1,13 @@
+#!/bin/sh
+
+echo "Running Astro production build before commit..."
+ASTRO_TELEMETRY_DISABLED=1 npm.cmd run build
+build_status=$?
+
+if [ "$build_status" -ne 0 ]; then
+  echo ""
+  echo "Commit blocked: Astro build failed. Fix the article metadata or page error, then commit again."
+  exit "$build_status"
+fi
+
+echo "Astro build passed."
