@@ -19,7 +19,7 @@
 
    | 变量 | 必填 | 值 |
    | --- | --- | --- |
-   | `LEAN_KEY` / `LEAN_ID` | 任选其一存储方案 | 推荐直接用 **Vercel KV (Upstash)**：Add → Vercel KV → 创建后自动注入 `KV_URL` 等变量，无需手动填。也可用 LeanCloud / MySQL / MongoDB（见下方备选） |
+   | 存储 | 任选其一 | 推荐 **Neon (PostgreSQL)**：`Storage` → `Create Database` → 选 Neon → 建库后在 Neon 的 SQL Editor 执行 `assets/waline.pgsql` 建表（见下文「三、创建数据库」）。也可用 MySQL / MongoDB（见下方备选） |
    | `WORD_LIMIT` | 建议 | `0,300` — 服务端强制单条留言不超过 300 字 |
    | `AUTHOR_EMAIL` | 是 | 你的邮箱（用于邮件通知等） |
    | `JWT_TOKEN` | 是 | 任意随机长字符串（管理令牌签名密钥，例如 `openssl rand -hex 32`） |
@@ -43,7 +43,13 @@
 - 本地调试仍可用 `?server=http://127.0.0.1:8765` 临时切换回 mock 服务（仅当前浏览器生效）。
 - 若将来更换 Waline 地址，改 `DEFAULT_SERVER` 常量即可；也支持浏览器访问 `/guestbook/?server=新地址` 覆盖。
 
-## 三、本地预览（可选，无需部署）
+## 三、创建数据库（Neon，官方推荐）
+
+1. 项目顶部 `Storage` → `Create Database` → 选 **Neon**（PostgreSQL）→ `Continue` → 跳转 Neon 时 `Accept and Create` → 套餐直接 `Continue` → 数据库名不用改 → `Continue`。
+2. `Storage` 列表点进刚建的数据库 → `Open in Neon` → 左侧 **SQL Editor** → 把仓库 `assets/waline.pgsql` 中的 SQL 粘贴执行（建 `wl_comment` / `wl_counter` / `wl_users` 三张表）。
+3. 回 Vercel → `Deployments` → 最新一次部署 → `Redeploy`，让数据库连接变量生效。
+
+## 四、本地预览（可选，无需部署）
 
 仓库自带一个与 Waline API 契约一致的本地 mock 服务（数据存 `.mock-waline/`，仅本机）：
 
@@ -57,15 +63,21 @@ mock 管理员：`admin@acretiondisk.local` / `admin123`（可用环境变量 `M
 
 > mock 的 IP 属地为轮换示例数据（本地无公网 IP 可解析）；真实部署后由 Waline 服务端自动解析真实属地。
 
-## 四、存储方案备选（如不用 Vercel KV）
+## 三、创建数据库（Neon，官方推荐）
 
-- **LeanCloud 国际版**：`LEAN_ID` + `LEAN_KEY`（免费额度够个人博客用）；
+1. 项目顶部 `Storage` → `Create Database` → 选 **Neon**（PostgreSQL）→ `Continue` → 跳转 Neon 时 `Accept and Create` → 套餐直接 `Continue` → 数据库名不用改 → `Continue`。
+2. `Storage` 列表点进刚建的数据库 → `Open in Neon` → 左侧 **SQL Editor** → 把仓库 `assets/waline.pgsql` 中的 SQL 粘贴执行（建 `wl_comment` / `wl_counter` / `wl_users` 三张表）。
+3. 回 Vercel → `Deployments` → 最新一次部署 → `Redeploy`，让数据库连接变量生效。
+
+## 五、存储方案备选
+
+- ~~**LeanCloud**：已停止对外提供服务（2027-01-12 关停，2026-01-12 起冻结新用户/新应用），不再可用。~~
 - **MySQL**：`MYSQL_DB` / `MYSQL_HOST` / `MYSQL_PORT` / `MYSQL_USER` / `MYSQL_PASSWORD`；
 - **MongoDB Atlas**：`MONGO_DB` / `MONGO_USER` / `MONGO_PASSWORD` / `MONGO_HOST` / `MONGO_PORT`。
 
 其他平台（Railway / Fly.io / Docker）见 <https://waline.js.org/guide/deploy/>。
 
-## 五、常见问题
+## 六、常见问题
 
 - **留言页提示「留言服务尚未连接」**：访客浏览器尚未带 `?server=` 且页面内未写死默认地址 → 按上文「二、接入」写死默认值。
 - **IP 属地不显示**：确认 `DISABLE_REGION` 未设置；新部署后首条留言需等 ip2region 首次加载。
