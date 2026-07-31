@@ -71,6 +71,13 @@ origin/main: d21ff97 已推送（970e9e1..d21ff97）
 - 细节修复：斜体 `_` 正则加单词边界，避免误伤文件名下划线（如 `31_16-45-36_`）；代码块去除末尾换行；admin 页补 `<link rel="icon">` 消除 favicon 404。
 - 验证：渲染器 23 项断言单测全过（含 XSS 用例）；headless Chrome 端到端实测：打开文章默认分屏、实时渲染标题/加粗/斜体/代码/图片/列表/引用、真实图片加载成功、三态切换、画廊↔文章模式往返、插入图片后预览自动刷新，页面 0 JS 错误；`npm run build` 13 页成功。
 
+**🐛 修复：编辑器无法纵向滚动、Markdown 预览区不可滚动**
+
+- **文件**：`admin/index.html`
+- **根因**：`#editorContainer` 是非 flex 普通 div，`.editor{flex:1;overflow-y:auto}` 因父容器非 flex 而失效——编辑器高度随内容增长，超出 `.main`（`overflow:hidden`）被裁剪，整页无法纵向滚动、正文区被挤到可视区下方；正文 `editor-wrap` 的 `min-height:auto` 又取预览渲染内容高度（max-content），把预览区撑到与内容等高，`overflow-y:auto` 永不触发。
+- **修复**：`#editorContainer{flex:1;display:flex;flex-direction:column;min-height:0}` 使 `.editor` 参与 flex 布局并撑满剩余高度；`.editor-wrap{min-height:300px}` 覆盖 `min-height:auto`，让 flex 分配主导、预览区高度受容器约束。
+- **验证**：headless Chrome 实测——矮窗口（500px）编辑器整体滚动且滚动后正文可见、正常窗口（900px）正文区占满无整体滚动、预览区（382px 视口 vs 2929px 内容）内部滚动生效、仅预览模式同样可滚动、画廊矮窗口表单可滚动，0 错误；`npm run build` 13 页成功。
+
 ### 2026-07-31（文章导出 PDF）
 
 **📄 文章页新增「导出 PDF」：A4 档案版式打印样式**
