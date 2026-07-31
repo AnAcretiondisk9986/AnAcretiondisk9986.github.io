@@ -11,7 +11,7 @@
     .sidebar-header{padding:16px;border-bottom:1px solid #2a2a30}
     .sidebar-header h1{font-size:16px;color:#c8b080;letter-spacing:2px;margin-bottom:4px}
     .sidebar-header small{font-size:11px;color:#6a6a70}
-    .sidebar-toolbar{padding:10px 16px;border-bottom:1px solid #2a2a30;display:flex;gap:8px}
+    .sidebar-toolbar{padding:10px 16px;border-bottom:1px solid #2a2a30;display:flex;flex-wrap:wrap;gap:8px}
     .btn{padding:7px 14px;border:1px solid #3a3a40;background:#222228;color:#c8b080;cursor:pointer;font-size:12px;letter-spacing:1px;transition:all .15s}
     .btn:hover{background:#2a2a34;border-color:#5a5a60}
     .btn.primary{background:#2a2818;border-color:#5a5020}
@@ -89,7 +89,8 @@
     <div class="sidebar-toolbar">
       <button class="btn primary" id="btnNew">＋ 新建</button>
       <button class="btn" id="btnRefresh">↻ 刷新</button>
-      <button class="btn" id="btnPush" style="border-color:#3a6040;color:#80c080">⬆ 推送</button>
+      <button class="btn" id="btnPush" style="border-color:#3a6040;color:#80c080" title="推送文章/图片/画廊数据">⬆ 推送</button>
+      <button class="btn" id="btnPushFull" style="border-color:#806040;color:#c0a080" title="推送全部改动（含页面代码等），排除 reasonix.toml">⬆ 全量推送</button>
       <button class="btn" id="btnSite" style="border-color:#3a4060;color:#80a0c0" title="打开博客网站">🌐</button>
     </div>
     <div class="post-list" id="postList"><div class="empty-state" style="padding:30px">加载中…</div></div>
@@ -105,7 +106,7 @@
     <div class="tip-bar">
       <span>💡 粘贴图片自动上传</span>
       <span>⚡ Ctrl+S 保存</span>
-      <span>⬆ 点左侧「推送」同步到网站</span>
+      <span>⬆ 推送=内容 / 全量推送=含代码</span>
     </div>
     <div id="editorContainer"><div class="empty-state">← 从左侧列表选择文章，或点击「新建」</div></div>
   </main>
@@ -395,6 +396,7 @@
     $('#btnSave').onclick = () => currentMode === 'gallery' ? saveGalleryItem() : savePost();
     $('#btnDelete').onclick = () => currentMode === 'gallery' ? (currentGalleryId && deleteGalleryItem(currentGalleryId)) : (currentSlug && deletePost(currentSlug));
     $('#btnPush').onclick = pushToGithub;
+    $('#btnPushFull').onclick = pushToGithubFull;
     $('#btnSite').onclick = () => window.open('https://anacretiondisk9986.github.io/', '_blank');
 
     // ═══════════════════════════════════════
@@ -562,6 +564,25 @@
         toast('推送失败: ' + e.message);
       }
       btn.textContent = '⬆ 推送';
+      btn.disabled = false;
+    }
+
+    async function pushToGithubFull() {
+      const btn = $('#btnPushFull');
+      btn.textContent = '⏳ 全量推送中...';
+      btn.disabled = true;
+      try {
+        const res = await apiFetch('/api/push-full', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+          toast(data.message || '全量推送成功');
+        } else {
+          toast('全量推送失败: ' + (data.error || data.detail || '未知错误'));
+        }
+      } catch (e) {
+        toast('全量推送失败: ' + e.message);
+      }
+      btn.textContent = '⬆ 全量推送';
       btn.disabled = false;
     }
 

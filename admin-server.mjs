@@ -374,7 +374,8 @@ app.post('/api/import-url', async (req, res) => {
 });
 
 // Git push
-app.post('/api/push', async (_req, res) => {
+// Git push（内容推送：仅文章/图片/画廊数据；全量推送：全部改动含代码，排除 reasonix.toml）
+async function pushGitChanges({ stageCmd, commitMsg }) {
   const run = (cmd) => new Promise((resolve, reject) => {
     exec(cmd, { cwd: __dirname, timeout: 60000 }, (err, stdout, stderr) => {
       if (err) reject(new Error(stderr || err.message));
@@ -382,39 +383,66 @@ app.post('/api/push', async (_req, res) => {
     });
   });
 
+  await run(stageCmd);
+
+  // Check if there are staged changes
+  let hasChanges = false;
   try {
-    // Stage blog changes + uploaded images
-    await run('git add src/content/blog/ public/image/ src/data/gallery.json');
+    await run('git diff --cached --quiet');
+  } catch {
+    hasChanges = true;
+  }
 
-    // Check if there are staged changes
-    let hasChanges = false;
-    try {
-      await run('git diff --cached --quiet');
-    } catch {
-      hasChanges = true;
+  if (!hasChanges) {
+    return { success: true, message: '没有需要推送的更改' };
+  }
+
+  // Commit
+  await run(`git commit -m "${commitMsg}"`);
+
+  // Push
+  try {
+    const pushResult = await run('git push origin main');
+    return { success: true, message: '推送成功！网站即将更新', detail: pushResult };
+  } catch (pushErr) {
+    const msg = pushErr.message || '';
+    if (msg.includes('Connection') || msg.includes('Could not connect') || msg.includes('reset')) {
+      const err = new Error('推送失败：无法连接 GitHub（网络问题），已本地提交，稍后重试');
+      err.status = 500;
+      throw err;
     }
+    const err = new Error('推送失败：已本地提交但推送出错，请检查网络后重试');
+    err.status = 500;
+    err.detail = msg;
+    throw err;
+  }
+}
 
-    if (!hasChanges) {
-      return res.json({ success: true, message: '没有需要推送的更改' });
-    }
-
-    // Commit
-    await run('git commit -m "通过管理面板更新博客"');
-
-    // Push
-    try {
-      const pushResult = await run('git push origin main');
-      res.json({ success: true, message: '推送成功！网站即将更新', detail: pushResult });
-    } catch (pushErr) {
-      const msg = pushErr.message || '';
-      if (msg.includes('Connection') || msg.includes('Could not connect') || msg.includes('reset')) {
-        return res.status(500).json({ error: '推送失败：无法连接 GitHub（网络问题），已本地提交，稍后重试' });
-      }
-      return res.status(500).json({ error: '推送失败：已本地提交但推送出错，请检查网络后重试', detail: msg });
-    }
+// 内容推送：仅文章 / 图片 / 画廊数据
+app.post('/api/push', async (_req, res) => {
+  try {
+    const result = await pushGitChanges({
+      stageCmd: 'git add src/content/blog/ public/image/ src/data/gallery.json',
+      commitMsg: '通过管理面板更新博客',
+    });
+    res.json(result);
   } catch (err) {
     console.error('Push Error:', err.message);
-    res.status(500).json({ error: '推送失败', detail: err.message });
+    res.status(err.status || 500).json({ error: err.message, detail: err.detail });
+  }
+});
+
+// 全量推送：所有改动（含页面代码 / 管理面板等），排除 reasonix.toml
+app.post('/api/push-full', async (_req, res) => {
+  try {
+    const result = await pushGitChanges({
+      stageCmd: 'git add -A -- . ":(exclude)reasonix.toml"',
+      commitMsg: '通过管理面板全量推送',
+    });
+    res.json(result);
+  } catch (err) {
+    console.error('Push Full Error:', err.message);
+    res.status(err.status || 500).json({ error: err.message, detail: err.detail });
   }
 });
 
