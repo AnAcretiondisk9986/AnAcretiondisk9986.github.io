@@ -68,6 +68,13 @@ origin/main: d21ff97 已推送（970e9e1..d21ff97）
 - 管理面板：文章与画廊表单新增「同日序号」输入框（留空自动推导为同日最大 +1），列表 meta 显示 `#N`；`GET /api/posts` 排序同步加入 dayIndex。
 - 验证：`npm run build` 12 页成功；API 实测新建自动推导 / 手动修改 / 清空重推导 / 删除全部通过（node fetch 实测，curl 在 Windows 下会转 GBK 不可用）。
 
+**🔄 主页与卷册目录页新增「从新至旧 / 从旧至新」切换**
+
+- **文件**：`src/scripts/order-toggle.ts`（新增，两页共用）、`src/pages/index.astro`、`src/pages/blog/index.astro`
+- 与画廊同一套控件样式（`.gallery-order-bar` 复用）；排序键：日期 → `dayIndex` → 初始位置兜底；`?order=oldest` 记忆状态；条目 FOLIO 编号随排序重编（目录页 2 位、首页 3 位），同日序号 `DAY NN` / `· #NN` 不随排序变化。
+- 验证：`npm run build` 12 页成功；node 模拟比较器实测从旧至新为从新至旧的完全反转。
+- **部署备注**：管理面板「推送」仅 `git add src/content/blog/ public/image/ src/data/gallery.json`（内容文件），**不包含页面代码**——用户推送 dayIndex 数据后线上无变化即因此。本次代码改动已手动提交 `59b4eed` 并 push（SSH），线上由 Actions 重新构建部署。
+
 ### 2026-07-31（推送与线上接入）
 
 - 提交 `d21ff97` 已推送至 `main`（含留言页 + 图志遗留改动，12 文件 +1495/-26），pre-commit 构建通过。
