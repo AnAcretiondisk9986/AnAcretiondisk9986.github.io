@@ -932,6 +932,35 @@ main {
   letter-spacing: 0.08em;
 }
 
+.print-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 42px;
+  padding: 9px 16px;
+  border: 1px solid var(--red);
+  border-radius: 2px;
+  color: var(--red);
+  background: transparent;
+  font-family: var(--serif);
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+}
+
+.print-action:hover {
+  color: var(--paper-light);
+  background: var(--red);
+  box-shadow: 0 2px 10px var(--shadow);
+}
+
+.print-action:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
 .article-margin dl {
   margin: 0;
   border-top: 1px solid var(--rule-strong);
@@ -2507,6 +2536,12 @@ main {
     margin-bottom: 0;
   }
 
+  .article-margin .print-action {
+    grid-column: 1 / -1;
+    margin-bottom: 22px;
+    justify-self: start;
+  }
+
   .margin-note {
     margin: 0;
   }
@@ -2856,5 +2891,290 @@ main {
 
   .footer-meta {
     justify-content: flex-start;
+  }
+}
+
+/* ============================================================
+   打印 / 导出 PDF（A4 档案版式）
+   文章页「导出 PDF」按钮触发 window.print()，此处重排打印版式
+   ============================================================ */
+@media print {
+  /* 强制浅色配色——覆盖暗色主题变量，保证纸面可读 */
+  :root,
+  :root[data-theme='dark'] {
+    color-scheme: light;
+    --paper: #fffdf7;
+    --paper-deep: #fffdf7;
+    --paper-light: #fffdf7;
+    --ink: #211d17;
+    --ink-soft: #4c463c;
+    --ink-faint: #837b6d;
+    --rule: rgba(53, 44, 32, 0.22);
+    --rule-strong: rgba(53, 44, 32, 0.48);
+    --red: #8d302b;
+    --red-dark: #67221f;
+    --gold: #8a6d33;
+    --gold-light: #a8874a;
+    --shadow: transparent;
+  }
+
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  html {
+    background: var(--paper) !important;
+  }
+
+  body {
+    background: var(--paper) !important;
+    background-image: none !important;
+  }
+
+  /* —— 隐藏站点框架与交互元素 —— */
+  .paper-grain,
+  .site-header,
+  .site-footer,
+  .edge-note,
+  .theme-toggle,
+  .back-link,
+  .margin-note,
+  .print-action {
+    display: none !important;
+  }
+
+  /* —— 容器重置为纯文档流 —— */
+  .site-shell {
+    width: auto !important;
+    max-width: none !important;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    box-shadow: none;
+  }
+
+  main {
+    width: auto !important;
+    max-width: none !important;
+    margin: 0;
+  }
+
+  /* —— 文章版式：单栏全宽 —— */
+  .article-shell {
+    display: block;
+    width: auto;
+    padding: 0;
+  }
+
+  /* 侧栏化为「档案登记条」，置于标题上方 */
+  .article-margin {
+    position: static;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0;
+    margin: 0 0 30px;
+    padding: 0 0 16px;
+    border-bottom: 1px solid var(--rule-strong);
+  }
+
+  .article-margin dl {
+    display: contents;
+    margin: 0;
+    border: 0;
+  }
+
+  .article-margin dl div {
+    padding: 6px 14px 4px 0;
+    border: 0;
+  }
+
+  .article-margin dl div + div {
+    padding-left: 14px;
+    border-left: 1px solid var(--rule);
+  }
+
+  .article-margin dt {
+    margin: 0;
+    font-size: 6.5pt;
+    letter-spacing: 0.14em;
+  }
+
+  .article-margin dd {
+    margin: 4px 0 0;
+    font-size: 8.5pt;
+    letter-spacing: 0.03em;
+    line-height: 1.5;
+  }
+
+  /* —— 文章头部 —— */
+  .article-header {
+    padding-bottom: 22px;
+  }
+
+  .article-register {
+    margin-bottom: 20px;
+    font-size: 7pt;
+  }
+
+  .article-header h1 {
+    margin-bottom: 14px;
+    font-size: 25pt;
+    font-weight: 600;
+    letter-spacing: -0.03em;
+    line-height: 1.18;
+  }
+
+  .article-deck {
+    margin-bottom: 16px;
+    font-size: 10.5pt;
+    line-height: 1.75;
+  }
+
+  .article-meta {
+    gap: 14px;
+    font-size: 7.5pt;
+  }
+
+  .article-ornament {
+    margin-block: 26px;
+  }
+
+  /* —— 正文 —— */
+  .prose {
+    font-size: 10.5pt;
+    line-height: 1.9;
+    letter-spacing: 0.02em;
+  }
+
+  .prose > p:first-of-type::first-letter {
+    color: var(--red);
+  }
+
+  .prose p {
+    margin-bottom: 1.15em;
+    orphans: 3;
+    widows: 3;
+  }
+
+  .prose h2,
+  .prose h3 {
+    margin: 1.8em 0 0.75em;
+    break-after: avoid-page;
+  }
+
+  .prose h2 {
+    padding-bottom: 0.35em;
+    font-size: 14pt;
+  }
+
+  .prose h3 {
+    font-size: 12pt;
+  }
+
+  .prose a {
+    color: var(--red-dark);
+    text-decoration: underline;
+    text-decoration-thickness: 0.5pt;
+    text-underline-offset: 0.2em;
+  }
+
+  /* 外链附注完整地址，便于纸面溯源 */
+  .prose a[href]::after {
+    content: ' [' attr(href) ']';
+    color: var(--ink-faint);
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 0.7em;
+    word-break: break-all;
+  }
+
+  .prose pre a[href]::after,
+  .prose a[href^='#']::after,
+  .prose a[href^='mailto:']::after {
+    content: none;
+  }
+
+  .prose ul,
+  .prose ol {
+    margin-bottom: 1.2em;
+  }
+
+  .prose li {
+    break-inside: avoid-page;
+  }
+
+  .prose img {
+    max-width: 100%;
+    margin-inline: auto;
+    padding: 3px;
+    border-color: var(--rule-strong);
+    filter: none !important;
+  }
+
+  .prose figure {
+    break-inside: avoid-page;
+  }
+
+  .prose pre {
+    margin-block: 1.4em;
+    padding: 12px 14px;
+    border-color: var(--rule-strong);
+    background: #f6f1e4;
+    box-shadow: inset 3px 0 var(--red);
+    font-size: 8pt;
+    line-height: 1.55;
+    break-inside: avoid-page;
+  }
+
+  .prose code:not(pre code) {
+    padding: 0.1em 0.3em;
+    background: rgba(138, 109, 51, 0.14);
+    font-size: 0.84em;
+  }
+
+  .prose blockquote {
+    margin: 1.5em 0;
+    padding: 14px 18px 14px 30px;
+    border-block: 1px solid var(--rule);
+    background: rgba(138, 109, 51, 0.07);
+    font-size: 10pt;
+  }
+
+  .prose blockquote::before {
+    top: 11px;
+    left: 11px;
+  }
+
+  .prose table {
+    width: 100%;
+    margin-block: 1.5em;
+    border-collapse: collapse;
+    font-size: 9pt;
+    line-height: 1.55;
+  }
+
+  .prose th,
+  .prose td {
+    padding: 5px 9px;
+    border: 1px solid var(--rule-strong);
+    text-align: left;
+    vertical-align: top;
+  }
+
+  .prose th {
+    background: rgba(138, 109, 51, 0.16);
+    font-weight: 600;
+  }
+
+  .prose tr {
+    break-inside: avoid-page;
+  }
+
+  /* —— 结束标记 —— */
+  .article-endmark {
+    margin-top: 46px;
+    padding-top: 18px;
+    break-inside: avoid-page;
   }
 }

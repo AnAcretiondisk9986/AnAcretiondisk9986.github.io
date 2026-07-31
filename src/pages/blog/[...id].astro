@@ -26,12 +26,19 @@ interface Props {
 
 const { post, folioCode } = Astro.props;
 const { Content } = await render(post);
+const printFolio = JSON.stringify(`FOLIO ${folioCode}`);
+const printUrl = JSON.stringify(
+  `${Astro.site?.origin ?? ''}${Astro.url.pathname}`.replace(/\/$/, ''),
+);
 ---
 
 <BaseLayout title={post.data.title} description={post.data.description}>
   <div class="article-shell">
     <aside class="article-margin">
       <a class="back-link" href="/blog/">← 返回卷册目录</a>
+      <button class="print-action" type="button" onclick="window.print()">
+        <span aria-hidden="true">⤓</span> 导出 PDF
+      </button>
       <dl>
         <div><dt>条目编号</dt><dd>{folioCode}</dd></div>
         <div><dt>分类标签</dt><dd>{post.data.tags.join(' / ') || '未分类'}</dd></div>
@@ -74,3 +81,38 @@ const { Content } = await render(post);
     </article>
   </div>
 </BaseLayout>
+
+<style is:global is:inline>
+  /* 打印页眉页脚：Chrome / Edge / Safari 支持 @page margin boxes，Firefox 优雅降级（仅无页眉页脚） */
+  @page {
+    size: A4;
+    margin: 21mm 19mm 20mm;
+    @top-left {
+      content: 'ACRETIONDISK — ARCHIVUM PERSONAE';
+      font-family: Georgia, 'Times New Roman', serif;
+      font-size: 7.5pt;
+      letter-spacing: 0.16em;
+      color: #8a8378;
+    }
+    @top-right {
+      content: ${printFolio};
+      font-family: Georgia, 'Times New Roman', serif;
+      font-size: 7.5pt;
+      letter-spacing: 0.16em;
+      color: #8d302b;
+    }
+    @bottom-left {
+      content: ${printUrl};
+      font-family: 'Cascadia Code', Consolas, monospace;
+      font-size: 7pt;
+      color: #9a948a;
+    }
+    @bottom-right {
+      content: '第 ' counter(page) ' 页 · 共 ' counter(pages) ' 页';
+      font-family: Georgia, 'Times New Roman', serif;
+      font-size: 7.5pt;
+      letter-spacing: 0.1em;
+      color: #8a8378;
+    }
+  }
+</style>

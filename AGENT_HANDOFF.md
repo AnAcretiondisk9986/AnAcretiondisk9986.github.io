@@ -57,6 +57,20 @@ origin/main: d21ff97 已推送（970e9e1..d21ff97）
 
 ## 变更日志
 
+### 2026-07-31（文章导出 PDF）
+
+**📄 文章页新增「导出 PDF」：A4 档案版式打印样式**
+
+- **文件**：`src/pages/blog/[...id].astro`、`src/styles/global.css`
+- 文章侧栏新增「⤓ 导出 PDF」按钮（档案红描边样式，移动端占整行），点击触发 `window.print()`，浏览器「另存为 PDF」即可导出——不引入任何依赖，文字矢量可选、无中文乱码问题。
+- 打印版式（`@media print`，A4）：
+  - 页眉页脚用 `@page` margin boxes（Chrome/Edge/Safari 支持，Firefox 优雅降级）：左上站点名、右上 FOLIO 编号（文章页注入）、左下文章 URL、右下「第 X 页 · 共 Y 页」；`@page` 嵌套 at-rule 需用 `<style is:inline>` 绕过 lightningcss 压缩器。
+  - 侧栏化为四栏「档案登记条」（条目编号/分类标签/记录者/状态）置于标题上方；隐藏站点导航、页脚、纸张纹理、按钮。
+  - 强制浅色配色（覆盖暗色主题变量，暗色模式下打印仍是米白纸面），`print-color-adjust: exact` 保留品牌红金装饰；首段首字下沉、§ 章节标记、FINIS 结束标记保留。
+  - 分页控制：标题 `break-after: avoid`，图片/代码块/引用/表格/列表项/结束标记 `break-inside: avoid`，段落 `orphans/widows: 3`；图片去除屏幕滤镜原样输出。
+  - 正文外链自动附注完整 URL（`a::after`），便于纸面溯源；代码块白底红条、表格合并边框。
+- 验证：`npm run build` 12 页成功；headless Chrome 实测导出 3 篇：`social-paper` 6 页（页眉页脚/页码/登记条齐全）、`healthcn2030` 5 页（外链附注正常）、`apurupai` 6 页（4 张大图各占一页、FINIS 与结束标记同页）；暗色模式（--force-dark-mode）打印背景仍为 #FFFDF6。
+
 ### 2026-07-31（全量推送按钮）
 
 **⬆ 管理面板新增「全量推送」，与内容推送区分**
