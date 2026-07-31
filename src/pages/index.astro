@@ -5,7 +5,17 @@ import ArchiveSeal from '../components/ArchiveSeal.astro';
 import SpecimenPlate from '../components/SpecimenPlate.astro';
 
 const posts = (await getCollection('blog', ({ data }) => !data.draft))
-  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf() || b.id.localeCompare(a.id));
+  .sort((a, b) =>
+    b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
+    || (b.data.dayIndex ?? 0) - (a.data.dayIndex ?? 0)
+    || b.id.localeCompare(a.id));
+
+const dayCounts = new Map<string, number>();
+for (const post of posts) {
+  const key = post.data.pubDate.toISOString().slice(0, 10);
+  dayCounts.set(key, (dayCounts.get(key) ?? 0) + 1);
+}
+const dayKeyOf = (post: (typeof posts)[number]) => post.data.pubDate.toISOString().slice(0, 10);
 ---
 
 <BaseLayout>
@@ -58,17 +68,33 @@ const posts = (await getCollection('blog', ({ data }) => !data.draft))
       </div>
     </div>
 
-    <div class="archive-list">
+    <div class="gallery-order-bar" aria-label="文章展示顺序">
+      <div class="gallery-order-label">
+        <span>DISPLAY ORDER</span>
+        <strong data-order-status>从新至旧</strong>
+      </div>
+      <div class="gallery-sort" role="group" aria-label="文章展示顺序">
+        <button type="button" data-order-sort="newest" aria-pressed="true">
+          <span aria-hidden="true">↓</span>从新至旧
+        </button>
+        <button type="button" data-order-sort="oldest" aria-pressed="false">
+          <span aria-hidden="true">↑</span>从旧至新
+        </button>
+      </div>
+    </div>
+
+    <div class="archive-list" data-order-list>
       {posts.map((post, index) => (
-        <article class="archive-entry">
+        <article class="archive-entry" data-order-card data-order-date={post.data.pubDate.toISOString().slice(0, 10)} data-order-day-index={post.data.dayIndex ?? 0} data-order-position={index}>
           <div class="entry-number">
             <span>FOLIO</span>
-            <b>{String(index + 1).padStart(3, '0')}</b>
+            <b data-order-sequence data-order-pad="3">{String(index + 1).padStart(3, '0')}</b>
           </div>
           <div class="entry-main">
             <div class="entry-register">
               <time datetime={post.data.pubDate.toISOString()}>
                 {post.data.pubDate.toLocaleDateString('zh-CN')}
+                {dayCounts.get(dayKeyOf(post))! > 1 && ` · #${String(post.data.dayIndex ?? 0).padStart(2, '0')}`}
               </time>
               <span>{post.data.tags.join(' · ') || '未分类记录'}</span>
             </div>
@@ -87,3 +113,8 @@ const posts = (await getCollection('blog', ({ data }) => !data.draft))
     <p>FINIS PAGINAE · INITIUM SEQUENTIS</p>
   </section>
 </BaseLayout>
+
+<script>
+  import { initOrderToggle } from '../scripts/order-toggle';
+  initOrderToggle();
+</script>

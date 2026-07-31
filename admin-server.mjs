@@ -62,6 +62,45 @@ function safeDate(val, fallback = '') {
   return d.toISOString().split('T')[0];
 }
 
+// ── Day index helpers（同一天内的发表顺序，1 = 当天第一篇）──
+async function readPosts() {
+  const files = await readdir(BLOG_DIR);
+  const posts = [];
+  for (const file of files) {
+    if (!file.endsWith('.md') && !file.endsWith('.mdx')) continue;
+    const raw = await readFile(join(BLOG_DIR, file), 'utf-8');
+    const { data } = matter(raw);
+    const slug = file.replace(/\.(md|mdx)$/, '');
+    posts.push({
+      slug,
+      title: data.title || slug,
+      description: data.description || '',
+      pubDate: safeDate(data.pubDate),
+      tags: data.tags || [],
+      draft: data.draft ?? false,
+      dayIndex: data.dayIndex || undefined,
+    });
+  }
+  return posts;
+}
+
+function parseDayIndex(raw) {
+  const n = parseInt(raw, 10);
+  return Number.isInteger(n) && n >= 1 ? n : null;
+}
+
+function nextDayIndex(posts, date) {
+  return posts
+    .filter(p => p.pubDate === date)
+    .reduce((max, p) => Math.max(max, p.dayIndex || 0), 0) + 1;
+}
+
+function nextGalleryDayIndex(items, date) {
+  return items
+    .filter(i => i.date === date)
+    .reduce((max, i) => Math.max(max, i.dayIndex || 0), 0) + 1;
+}
+
 // ── Multer: image-only upload ──
 const ALLOWED_MIME = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml', 'image/x-icon'];
 const upload = multer({
@@ -99,23 +138,8 @@ app.use('/api', auth);
 app.route('/api/posts')
   .get(async (_req, res) => {
     try {
-      const files = await readdir(BLOG_DIR);
-      const posts = [];
-      for (const file of files) {
-        if (!file.endsWith('.md') && !file.endsWith('.mdx')) continue;
-        const raw = await readFile(join(BLOG_DIR, file), 'utf-8');
-        const { data } = matter(raw);
-        const slug = file.replace(/\.(md|mdx)$/, '');
-        posts.push({
-          slug,
-          title: data.title || slug,
-          description: data.description || '',
-          pubDate: safeDate(data.pubDate),
-          tags: data.tags || [],
-          draft: data.draft ?? false,
-        });
-      }
-      posts.sort((a, b) => b.pubDate.localeCompare(a.pubDate) || b.slug.localeCompare(a.slug));
+      const posts = await readPosts();
+      posts.sort((a, b) => b.pubDate.localeCompare(a.pubDate) || (b.dayIndex || 0) - (a.dayIndex || 0) || b.slug.localeCompare(a.slug));
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
       res.json(posts);
     } catch (err) {
@@ -125,7 +149,7 @@ app.route('/api/posts')
   })
   .post(upload.none(), async (req, res) => {
     try {
-      const { title, description, pubDate, tags, content, draft } = req.body;
+      const { title, description, pubDate, dayIndex, tags, content, draft } = req.body;
       const candidate = (req.body.slug
         || (title || '').toLowerCase().replace(/[^a-z0-9\u4e00-\u9fff]+/g, '-').replace(/^-|-$/g, '')
         || 'untitled');
@@ -133,12 +157,16 @@ app.route('/api/posts')
       if (!checked) return res.status(400).json({ error: 'Slug 包含无效字符或路径非法' });
 
       const tagArray = (tags || '').split(/[,，]/).map(t => t.trim()).filter(Boolean);
+      const finalPubDate = pubDate || new Date().toISOString().split('T')[0];
+      const allPosts = await readPosts();
+      const di = parseDayIndex(dayIndex);
 
       const fm = [
         '---',
         `title: ${yamlStr(title)}`,
         `description: ${yamlStr(description)}`,
-        `pubDate: ${yamlStr(pubDate || new Date().toISOString().split('T')[0])}`,
+        `pubDate: ${yamlStr(finalPubDate)}`,
+        `dayIndex: ${di ?? nextDayIndex(allPosts, finalPubDate)}`,
       ];
       if (tagArray.length) {
         fm.push('tags:');
@@ -172,6 +200,7 @@ app.route('/api/posts/:slug')
         title: data.title || '',
         description: data.description || '',
         pubDate: safeDate(data.pubDate),
+        dayIndex: data.dayIndex || undefined,
         tags: data.tags || [],
         draft: data.draft ?? false,
         content: content.trim(),
@@ -187,18 +216,23 @@ app.route('/api/posts/:slug')
       const oldChecked = validateSlug(req.params.slug);
       if (!oldChecked) return res.status(400).json({ error: '无效的 Slug' });
 
-      const { title, description, pubDate, tags, content, draft, slug: newSlug } = req.body;
+      const { title, description, pubDate, dayIndex, tags, content, draft, slug: newSlug } = req.body;
       const finalSlug = newSlug || req.params.slug;
       const newChecked = validateSlug(finalSlug);
       if (!newChecked) return res.status(400).json({ error: '新 Slug 包含无效字符或路径非法' });
 
       const tagArray = (tags || '').split(/[,，]/).map(t => t.trim()).filter(Boolean);
+      const finalPubDate = pubDate || new Date().toISOString().split('T')[0];
+      const allPosts = await readPosts();
+      const others = allPosts.filter(p => p.slug !== oldChecked.slug);
+      const di = parseDayIndex(dayIndex);
 
       const fm = [
         '---',
         `title: ${yamlStr(title)}`,
         `description: ${yamlStr(description)}`,
-        `pubDate: ${yamlStr(pubDate || new Date().toISOString().split('T')[0])}`,
+        `pubDate: ${yamlStr(finalPubDate)}`,
+        `dayIndex: ${di ?? nextDayIndex(others, finalPubDate)}`,
       ];
       if (tagArray.length) {
         fm.push('tags:');
@@ -413,19 +447,22 @@ app.route('/api/gallery')
   })
   .post(upload.none(), async (req, res) => {
     try {
-      const { src, alt, title, caption, date, sourceUrl, sourceTitle } = req.body;
+      const { src, alt, title, caption, date, dayIndex, sourceUrl, sourceTitle } = req.body;
       if (!src || !title) {
         return res.status(400).json({ error: 'src 和 title 为必填字段' });
       }
       const id = `独立-${Date.now()}`;
       const items = await readGallery();
+      const finalDate = safeDate(date, (new Date()).toISOString().split('T')[0]);
+      const di = parseDayIndex(dayIndex);
       const item = {
         id,
         src: src.trim(),
         alt: (alt || '').trim(),
         title: title.trim(),
         caption: (caption || '').trim(),
-        date: safeDate(date, (new Date()).toISOString().split('T')[0]),
+        date: finalDate,
+        dayIndex: di ?? nextGalleryDayIndex(items, finalDate),
       };
       if (sourceUrl) item.sourceUrl = sourceUrl.trim();
       if (sourceTitle) item.sourceTitle = sourceTitle.trim();
@@ -457,18 +494,22 @@ app.route('/api/gallery/:id')
       const idx = items.findIndex(i => i.id === req.params.id);
       if (idx === -1) return res.status(404).json({ error: '图像不存在' });
 
-      const { src, alt, title, caption, date, sourceUrl, sourceTitle } = req.body;
+      const { src, alt, title, caption, date, dayIndex, sourceUrl, sourceTitle } = req.body;
       if (!src || !title) {
         return res.status(400).json({ error: 'src 和 title 为必填字段' });
       }
 
+      const finalDate = safeDate(date, items[idx].date);
+      const others = items.filter((_, i) => i !== idx);
+      const di = parseDayIndex(dayIndex);
       items[idx] = {
         ...items[idx],
         src: src.trim(),
         alt: (alt || '').trim(),
         title: title.trim(),
         caption: (caption || '').trim(),
-        date: safeDate(date, items[idx].date),
+        date: finalDate,
+        dayIndex: di ?? nextGalleryDayIndex(others, finalDate),
         sourceUrl: (sourceUrl || '').trim() || undefined,
         sourceTitle: (sourceTitle || '').trim() || undefined,
       };

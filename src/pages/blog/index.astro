@@ -4,7 +4,17 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import ArchiveSeal from '../../components/ArchiveSeal.astro';
 
 const posts = (await getCollection('blog', ({ data }) => !data.draft))
-  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf() || b.id.localeCompare(a.id));
+  .sort((a, b) =>
+    b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
+    || (b.data.dayIndex ?? 0) - (a.data.dayIndex ?? 0)
+    || b.id.localeCompare(a.id));
+
+const dayCounts = new Map<string, number>();
+for (const post of posts) {
+  const key = post.data.pubDate.toISOString().slice(0, 10);
+  dayCounts.set(key, (dayCounts.get(key) ?? 0) + 1);
+}
+const dayKeyOf = (post: (typeof posts)[number]) => post.data.pubDate.toISOString().slice(0, 10);
 ---
 
 <BaseLayout title="文章" description="Acretiondisk 的全部文章。">
@@ -19,20 +29,35 @@ const posts = (await getCollection('blog', ({ data }) => !data.draft))
       <dl>
         <div><dt>馆藏总数</dt><dd>{String(posts.length).padStart(3, '0')}</dd></div>
         <div><dt>卷册状态</dt><dd>开放编目</dd></div>
-        <div><dt>排序规则</dt><dd>由新至旧</dd></div>
+        <div><dt>排序规则</dt><dd data-order-text>由新至旧</dd></div>
       </dl>
     </div>
   </header>
+
+  <div class="gallery-order-bar" aria-label="文章展示顺序">
+    <div class="gallery-order-label">
+      <span>DISPLAY ORDER</span>
+      <strong data-order-status>从新至旧</strong>
+    </div>
+    <div class="gallery-sort" role="group" aria-label="文章展示顺序">
+      <button type="button" data-order-sort="newest" aria-pressed="true">
+        <span aria-hidden="true">↓</span>从新至旧
+      </button>
+      <button type="button" data-order-sort="oldest" aria-pressed="false">
+        <span aria-hidden="true">↑</span>从旧至新
+      </button>
+    </div>
+  </div>
 
   <div class="catalog-rule" aria-hidden="true">
     <span>INDEX</span><span>TITULUS</span><span>CLASSIS</span><span>DATE</span>
   </div>
 
-  <div class="catalog-list">
+  <div class="catalog-list" data-order-list>
     {posts.map((post, index) => (
-      <article class="catalog-entry">
+      <article class="catalog-entry" data-order-card data-order-date={post.data.pubDate.toISOString().slice(0, 10)} data-order-day-index={post.data.dayIndex ?? 0} data-order-position={index}>
         <div class="catalog-index">
-          <span>{String(index + 1).padStart(2, '0')}</span>
+          <span data-order-sequence data-order-pad="2">{String(index + 1).padStart(2, '0')}</span>
           <small>FOLIO</small>
         </div>
         <div class="catalog-content">
@@ -47,6 +72,9 @@ const posts = (await getCollection('blog', ({ data }) => !data.draft))
         <time datetime={post.data.pubDate.toISOString()}>
           <span>{post.data.pubDate.getFullYear()}</span>
           <b>{String(post.data.pubDate.getMonth() + 1).padStart(2, '0')}.{String(post.data.pubDate.getDate()).padStart(2, '0')}</b>
+          {dayCounts.get(dayKeyOf(post))! > 1 && (
+            <span class="catalog-day-index">DAY {String(post.data.dayIndex ?? 0).padStart(2, '0')}</span>
+          )}
         </time>
         <a class="catalog-open" href={`/blog/${post.id}/`} aria-label={`打开《${post.data.title}》`}>打开<br />记录 ↗</a>
       </article>
@@ -58,3 +86,8 @@ const posts = (await getCollection('blog', ({ data }) => !data.draft))
     <span>ACR / CATALOGUS / {new Date().getFullYear()}</span>
   </footer>
 </BaseLayout>
+
+<script>
+  import { initOrderToggle } from '../../scripts/order-toggle';
+  initOrderToggle();
+</script>

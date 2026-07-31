@@ -2,7 +2,7 @@
 
 > 本文件已在用户授权下公开于 GitHub 仓库。每位 Agent 完成工作后在此记录变更。
 
-最后更新：2026-07-31（留言页）
+最后更新：2026-07-31（日内索引号）
 
 ---
 
@@ -56,6 +56,17 @@ origin/main: d21ff97 已推送（970e9e1..d21ff97）
 ---
 
 ## 变更日志
+
+### 2026-07-31（日内索引号 dayIndex）
+
+**🔢 同日条目增加发表顺序索引号**
+
+- **文件**：`src/content.config.ts`、`src/data/gallery.json`、`src/pages/gallery.astro`、`src/pages/blog/index.astro`、`src/pages/index.astro`、`src/pages/blog/[...id].astro`、`admin-server.mjs`、`admin/index.html`、`_templates/blog-post.md`、6 篇博客 frontmatter
+- 博客 schema 新增可选 `dayIndex`（同一天内的发表顺序，1 = 当天第一篇）；模板已加默认值，6 篇现有文章按 git 首次提交时间推导写入（07-30：HealthCN2030=1、social-paper=2、write-SKILL=3；07-31：论文代写=1、apurupai=2、观梦限大=3）。
+- 画廊「从新至旧/从旧至新」的同日第二排序键从「初始位置」改为 `dayIndex`；卡片新增日内序号标签 `D.03/05`；独立收藏 6 条已按 `id` 内嵌毫秒时间戳推导 dayIndex（07-31：Yuri=1、ui=2、洁尔佩塔=3、Amiya=4、小羊=5）。
+- 博客目录页与首页同日排序改用 dayIndex（缺省按文件名兜底）；目录页同日多篇时日期旁显示 `DAY 02`，首页显示 `· #02`；文章详情页条目编号在同日多篇时带序号（如 `2026—0731—03`）。
+- 管理面板：文章与画廊表单新增「同日序号」输入框（留空自动推导为同日最大 +1），列表 meta 显示 `#N`；`GET /api/posts` 排序同步加入 dayIndex。
+- 验证：`npm run build` 12 页成功；API 实测新建自动推导 / 手动修改 / 清空重推导 / 删除全部通过（node fetch 实测，curl 在 Windows 下会转 GBK 不可用）。
 
 ### 2026-07-31（推送与线上接入）
 

@@ -144,7 +144,7 @@
         <div class="post-item${p.slug===currentSlug?' active':''}" data-slug="${p.slug}">
           <div class="info" onclick="selectPost('${p.slug}')">
             <div class="title">${esc(p.title||p.slug)}</div>
-            <div class="meta">${p.pubDate||''}${p.draft?' <span class="draft-badge">草稿</span>':''}</div>
+            <div class="meta">${p.pubDate||''}${p.dayIndex?` · #${p.dayIndex}`:''}${p.draft?' <span class="draft-badge">草稿</span>':''}</div>
           </div>
           <div class="actions">
             <button class="btn small danger" onclick="event.stopPropagation();deletePost('${p.slug}')">×</button>
@@ -181,6 +181,7 @@
           <div class="form-group"><label>描述</label><input id="fDesc" value="${escAttr(post.description||'')}" placeholder="一句完整的文章简介"/></div>
           <div class="form-row">
             <div class="form-group"><label>发布日期</label><input id="fPubDate" type="date" value="${post.pubDate||''}"/></div>
+            <div class="form-group"><label>同日序号</label><input id="fDayIndex" type="number" min="1" value="${post.dayIndex||''}" placeholder="自动" title="同一天内的发表顺序，1 = 当天第一篇；留空自动推导"/></div>
             <div class="form-group"><label>标签 (逗号分隔)</label><input id="fTags" value="${escAttr((post.tags||[]).join(', '))}" placeholder="博客, Astro"/></div>
           </div>
           <div class="toggle-row">
@@ -215,6 +216,7 @@
           <div class="form-group"><label>描述</label><input id="fDesc" value="" placeholder="一句完整的文章简介"/></div>
           <div class="form-row">
             <div class="form-group"><label>发布日期</label><input id="fPubDate" type="date" value="${today}"/></div>
+            <div class="form-group"><label>同日序号</label><input id="fDayIndex" type="number" min="1" value="" placeholder="自动" title="同一天内的发表顺序，1 = 当天第一篇；留空自动推导"/></div>
             <div class="form-group"><label>标签 (逗号分隔)</label><input id="fTags" value="" placeholder="博客, Astro"/></div>
           </div>
           <div class="toggle-row">
@@ -241,6 +243,7 @@
       const formData = new URLSearchParams();
       formData.set('title', title); formData.set('slug', slug);
       formData.set('description', description); formData.set('pubDate', pubDate);
+      formData.set('dayIndex', $('#fDayIndex')?.value || '');
       formData.set('tags', tags); formData.set('content', content);
       formData.set('draft', String(draft));
 
@@ -414,7 +417,7 @@
           <img src="${item.src}" alt="${escAttr(item.alt||item.title)}" loading="lazy" onerror="this.style.display='none'" />
           <div class="info" onclick="selectGalleryItem('${item.id}')">
             <div class="title">${esc(item.title)}</div>
-            <div class="meta">${item.date||'无日期'}</div>
+            <div class="meta">${item.date||'无日期'}${item.dayIndex?` · #${item.dayIndex}`:''}</div>
           </div>
           <div class="actions">
             <button class="btn small danger" onclick="event.stopPropagation();deleteGalleryItem('${item.id}')">×</button>
@@ -447,6 +450,7 @@
           <div class="form-row">
             <div class="form-group" style="flex:2"><label>图像地址 (src) *</label><input id="fSrc" value="${escAttr(item.src||'')}" placeholder="/image/example.jpg"/></div>
             <div class="form-group" style="flex:1"><label>日期</label><input id="fGalleryDate" type="date" value="${item.date||''}"/></div>
+            <div class="form-group" style="flex:1"><label>同日序号</label><input id="fGalleryDayIndex" type="number" min="1" value="${item.dayIndex||''}" placeholder="自动" title="同一天内的顺序，1 = 当天最早；留空自动推导"/></div>
           </div>
           <div class="form-row">
             <div class="form-group" style="flex:2"><label>标题 *</label><input id="fGalleryTitle" value="${escAttr(item.title||'')}" placeholder="图像标题"/></div>
@@ -482,6 +486,7 @@
           <div class="form-row">
             <div class="form-group" style="flex:2"><label>图像地址 (src) *</label><input id="fSrc" value="" placeholder="/image/example.jpg" autofocus/></div>
             <div class="form-group" style="flex:1"><label>日期</label><input id="fGalleryDate" type="date" value="${today}"/></div>
+            <div class="form-group" style="flex:1"><label>同日序号</label><input id="fGalleryDayIndex" type="number" min="1" value="" placeholder="自动" title="同一天内的顺序，1 = 当天最早；留空自动推导"/></div>
           </div>
           <div class="form-row">
             <div class="form-group" style="flex:2"><label>标题 *</label><input id="fGalleryTitle" value="" placeholder="图像标题"/></div>
@@ -510,6 +515,7 @@
       formData.set('title', title);
       formData.set('caption', $('#fCaption')?.value || '');
       formData.set('date', $('#fGalleryDate')?.value || '');
+      formData.set('dayIndex', $('#fGalleryDayIndex')?.value || '');
       formData.set('sourceUrl', $('#fSourceUrl')?.value || '');
       formData.set('sourceTitle', $('#fSourceTitle')?.value || '');
 

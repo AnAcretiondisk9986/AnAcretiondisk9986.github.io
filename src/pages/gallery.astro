@@ -11,15 +11,42 @@ interface GalleryImage {
   title: string;
   caption?: string;
   date?: string;
+  dayIndex?: number;
+  daySequence?: number;
+  dayTotal?: number;
   sourceUrl?: string;
   sourceTitle?: string;
 }
 
 const imageTime = (image: GalleryImage) => image.date ? Date.parse(image.date) : Number.NEGATIVE_INFINITY;
-const sortNewestFirst = (images: GalleryImage[]) => [...images].sort((a, b) => imageTime(b) - imageTime(a));
+const dayIndexOf = (image: GalleryImage) => image.dayIndex ?? 0;
+const sortNewestFirst = (images: GalleryImage[]) => [...images].sort((a, b) =>
+  imageTime(b) - imageTime(a) || dayIndexOf(b) - dayIndexOf(a));
+
+// 为同一天内的图像分配日内序号（1 = 当天最早），不改变数组本身顺序
+const assignDaySequence = (images: GalleryImage[]) => {
+  const byDay = new Map<string, GalleryImage[]>();
+  for (const image of images) {
+    if (!image.date) continue;
+    const day = image.date.slice(0, 10);
+    const list = byDay.get(day);
+    if (list) list.push(image);
+    else byDay.set(day, [image]);
+  }
+  for (const list of byDay.values()) {
+    list.sort((a, b) => dayIndexOf(a) - dayIndexOf(b));
+    list.forEach((image, i) => {
+      image.daySequence = i + 1;
+      image.dayTotal = list.length;
+    });
+  }
+};
 
 const posts = (await getCollection('blog', ({ data }) => !data.draft))
-  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+  .sort((a, b) =>
+    b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
+    || (b.data.dayIndex ?? 0) - (a.data.dayIndex ?? 0)
+    || b.id.localeCompare(a.id));
 
 const markdownImage = /!\[([^\]]*)\]\(([^)\s]+)(?:\s+["'][^"']*["'])?\)/g;
 const journalImages: GalleryImage[] = posts.flatMap((post) => {
@@ -41,6 +68,8 @@ const journalImages: GalleryImage[] = posts.flatMap((post) => {
 });
 
 const standaloneImages = sortNewestFirst(standaloneGallery as GalleryImage[]);
+assignDaySequence(journalImages);
+assignDaySequence(standaloneImages);
 const totalImages = journalImages.length + standaloneImages.length;
 ---
 
@@ -102,7 +131,7 @@ const totalImages = journalImages.length + standaloneImages.length;
       {journalImages.length > 0 ? (
         <div class="gallery-masonry">
           {journalImages.map((image, index) => (
-            <article class="gallery-card" data-gallery-card data-gallery-date={image.date} data-gallery-position={index}>
+            <article class="gallery-card" data-gallery-card data-gallery-date={image.date} data-gallery-day-sequence={image.daySequence ?? 0} data-gallery-position={index}>
               <button
                 class="gallery-image-button"
                 type="button"
@@ -122,6 +151,9 @@ const totalImages = journalImages.length + standaloneImages.length;
               <div class="gallery-card-meta">
                 <div>
                   <span class="gallery-card-label">{image.date}</span>
+                  {image.daySequence && image.dayTotal && (
+                    <span class="gallery-card-label" data-gallery-day>D.{String(image.daySequence).padStart(2, '0')}/{String(image.dayTotal).padStart(2, '0')}</span>
+                  )}
                   <span class="gallery-card-label" data-gallery-sequence data-gallery-sequence-prefix="FOLIO ">FOLIO {String(index + 1).padStart(2, '0')}</span>
                 </div>
                 <h2>{image.caption}</h2>
@@ -143,7 +175,7 @@ const totalImages = journalImages.length + standaloneImages.length;
       {standaloneImages.length > 0 ? (
         <div class="gallery-masonry gallery-masonry--independent">
           {standaloneImages.map((image, index) => (
-            <article class="gallery-card" data-gallery-card data-gallery-date={image.date || ''} data-gallery-position={index}>
+            <article class="gallery-card" data-gallery-card data-gallery-date={image.date || ''} data-gallery-day-sequence={image.daySequence ?? 0} data-gallery-position={index}>
               <button
                 class="gallery-image-button"
                 type="button"
@@ -163,6 +195,9 @@ const totalImages = journalImages.length + standaloneImages.length;
               <div class="gallery-card-meta">
                 <div>
                   {image.date && <span class="gallery-card-label">{image.date}</span>}
+                  {image.daySequence && image.dayTotal && (
+                    <span class="gallery-card-label" data-gallery-day>D.{String(image.daySequence).padStart(2, '0')}/{String(image.dayTotal).padStart(2, '0')}</span>
+                  )}
                   <span class="gallery-card-label" data-gallery-sequence data-gallery-sequence-prefix="INDEPENDENT / ">INDEPENDENT / {String(index + 1).padStart(2, '0')}</span>
                 </div>
                 <h2>{image.title}</h2>
@@ -230,6 +265,9 @@ const totalImages = journalImages.length + standaloneImages.length;
         const bHasDate = Number.isFinite(bTime);
         if (aHasDate !== bHasDate) return aHasDate ? -1 : 1;
         if (aHasDate && bHasDate && aTime !== bTime) return order === 'newest' ? bTime - aTime : aTime - bTime;
+        const aSeq = Number(a.dataset.galleryDaySequence || '0');
+        const bSeq = Number(b.dataset.galleryDaySequence || '0');
+        if (aHasDate && bHasDate && aSeq !== bSeq) return order === 'newest' ? bSeq - aSeq : aSeq - bSeq;
         const positionDelta = Number(a.dataset.galleryPosition) - Number(b.dataset.galleryPosition);
         return order === 'newest' ? positionDelta : -positionDelta;
       });
