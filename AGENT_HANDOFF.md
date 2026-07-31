@@ -57,6 +57,16 @@ origin/main: d21ff97 已推送（970e9e1..d21ff97）
 
 ## 变更日志
 
+### 2026-07-31（全量推送按钮）
+
+**⬆ 管理面板新增「全量推送」，与内容推送区分**
+
+- **文件**：`admin-server.mjs`、`admin/index.html`
+- 原「推送」仅 `git add src/content/blog/ public/image/ src/data/gallery.json`（内容文件，不含代码）；新增「全量推送」`git add -A` 并排除 `reasonix.toml`，提交信息「通过管理面板全量推送」与内容推送（「通过管理面板更新博客」）区分。
+- 后端将推送流程抽为 `pushGitChanges({ stageCmd, commitMsg })` 共用函数，`/api/push` 与 `/api/push-full` 两个端点复用；错误处理（网络失败区分）保持一致。
+- 前端侧边栏工具栏新增琥珀色「⬆ 全量推送」按钮（toolbar 加 `flex-wrap` 防挤压），tip 栏更新为「推送=内容 / 全量推送=含代码」。
+- 验证：`node --check` 与前端脚本语法通过；实测 `/api/push` 无内容改动时报「没有需要推送的更改」；`/api/push-full` 将本轮代码改动提交为 `22356ae` 并成功推送（`git show` 确认仅含 admin-server.mjs + admin/index.html，reasonix.toml 未被纳入）。
+
 ### 2026-07-31（日内索引号 dayIndex）
 
 **🔢 同日条目增加发表顺序索引号**
