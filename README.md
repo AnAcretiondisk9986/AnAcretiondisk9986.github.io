@@ -25,3 +25,10 @@ draft: false
 - 全局样式：`src/styles/global.css`
 - 图片等静态资源：`public/`
 
+## 留言页
+
+- 页面：`/guestbook/`（第五页，B 站评论区版式）
+- 后端：Waline 评论服务，部署与接入见 [`docs/WALINE_DEPLOY.md`](docs/WALINE_DEPLOY.md)
+- 本地预览（无需部署）：`npm run mock:waline` 后访问 `http://localhost:4321/guestbook/?server=http://127.0.0.1:8765`
+- 留言管理：`npm run admin` → 管理面板「留言」标签页
+

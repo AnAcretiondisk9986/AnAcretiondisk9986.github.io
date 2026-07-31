@@ -115,7 +115,7 @@ const totalImages = journalImages.length + standaloneImages.length;
                 data-gallery-source-title={image.sourceTitle}
                 aria-label={`查看${image.title}中的${image.caption}`}
               >
-                <img src={image.src} alt={image.alt} loading={index < 3 ? 'eager' : 'lazy'} decoding="async" />
+                <img src={image.src} alt={image.alt} loading={index < 3 ? 'eager' : 'lazy'} decoding="async" referrerpolicy="no-referrer" />
                 <span class="gallery-image-stamp">{String(index + 1).padStart(2, '0')}</span>
                 <span class="gallery-image-expand" aria-hidden="true">↗</span>
               </button>
@@ -156,7 +156,7 @@ const totalImages = journalImages.length + standaloneImages.length;
                 data-gallery-source-title={image.sourceTitle || ''}
                 aria-label={`查看${image.title}`}
               >
-                <img src={image.src} alt={image.alt || image.title} loading="lazy" decoding="async" />
+                <img src={image.src} alt={image.alt || image.title} loading="lazy" decoding="async" referrerpolicy="no-referrer" />
                 <span class="gallery-image-stamp">{String(index + 1).padStart(2, '0')}</span>
                 <span class="gallery-image-expand" aria-hidden="true">↗</span>
               </button>
@@ -191,7 +191,7 @@ const totalImages = journalImages.length + standaloneImages.length;
 <dialog class="gallery-viewer" id="gallery-viewer" aria-labelledby="gallery-viewer-title">
   <div class="gallery-viewer-frame">
     <button class="gallery-viewer-close" type="button" data-gallery-close aria-label="关闭图像预览">×</button>
-    <div class="gallery-viewer-media"><img id="gallery-viewer-image" alt="" /></div>
+    <div class="gallery-viewer-media"><img id="gallery-viewer-image" alt="" referrerpolicy="no-referrer" /></div>
     <footer class="gallery-viewer-meta">
       <div>
         <span class="gallery-card-label" id="gallery-viewer-caption"></span>

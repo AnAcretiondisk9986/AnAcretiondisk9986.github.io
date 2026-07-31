@@ -2,7 +2,7 @@
 
 > 本文件已在用户授权下公开于 GitHub 仓库。每位 Agent 完成工作后在此记录变更。
 
-最后更新：2026-07-31
+最后更新：2026-07-31（留言页）
 
 ---
 
@@ -37,14 +37,16 @@ HEAD: 9ea6b19 通过管理面板更新博客
 origin/main: 9ea6b19 通过管理面板更新博客
 本地 ahead 0，behind 0
 工作区：
-  M AGENT_HANDOFF.md              ← 持续变更日志
-  M admin-server.mjs              ← slug 修复 + 独立收藏 API
-  M admin/index.html              ← 管理面板新增画廊模式
-  M src/layouts/BaseLayout.astro  ← 主导航新增「图志」
-  M src/styles/global.css         ← 图志页面样式
-  ?? src/pages/gallery.astro      ← 图志页面
-  ?? src/data/gallery.json        ← 独立收藏数据源（当前 3 条）
-  ?? reasonix.toml                ← 未跟踪（Reasonix 配置）
+  M .gitignore                  ← 忽略 .mock-waline/
+  M admin/index.html            ← 管理面板新增「留言」模式（Waline 连接/列表/删除）
+  M package.json                ← 新增 npm run mock:waline
+  M src/layouts/BaseLayout.astro ← 主导航新增「V 留言」
+  M src/styles/global.css       ← 留言页样式（B 站评论区版式）
+  ?? src/pages/guestbook.astro  ← 留言页（第五页）
+  ?? scripts/mock-waline.mjs    ← 本地 Waline 兼容服务（预览用）
+  ?? docs/WALINE_DEPLOY.md      ← Waline 线上部署指引
+  ?? reasonix.toml              ← 未跟踪（Reasonix 配置）
+  （注：admin-server.mjs、gallery.astro 等图志相关改动为上一轮遗留，尚未提交）
 ```
 
 **文章：5 篇**
@@ -63,7 +65,21 @@ origin/main: 9ea6b19 通过管理面板更新博客
 
 ## 变更日志
 
-### 2026-07-31
+### 2026-07-31（留言）
+
+**✍ 新增「留言」第五页面（B 站评论区版式 + Waline）**
+
+- **文件**：`src/pages/guestbook.astro`、`src/layouts/BaseLayout.astro`、`src/styles/global.css`、`admin/index.html`、`scripts/mock-waline.mjs`、`docs/WALINE_DEPLOY.md`、`.gitignore`、`package.json`
+- 新增 `/guestbook/`（导航「V 留言」），延续私人档案视觉；版式仿 B 站评论区：左侧圆形字母头像（按昵称哈希取色）、昵称、楼层号、相对时间、正文；发送区为头像 + 可编辑昵称 + 300 字计数 + 发送按钮。
+- **不可附加图片**：前端无任何图片上传/粘贴入口，渲染时用 DOMParser 剥离 img/svg/script/iframe 等全部媒体元素。
+- **300 字限制**：前端 `maxlength` + 计数校验；服务端由 Waline `WORD_LIMIT=0,300` 强制。
+- **IP 属地**：Waline 服务端用内置 ip2region 解析发送端 IP（中国显示省份、国外显示国家），以次级要素「IP属地：××」标签展示在昵称旁；管理员视角另可见原始 IP。
+- **后端选型**：Waline 评论服务（部署到 Vercel，见 `docs/WALINE_DEPLOY.md`）。前端按 Waline 官方 API 契约实现（GET/POST `/api/comment`），`?server=` 参数可临时指定服务地址并记忆（localStorage）。
+- **管理面板**：新增「留言」模式——填 Waline serverURL + 管理员邮箱/密码换 token，列出留言（属地/原始 IP/邮箱/时间）并可删除（`Authorization: Bearer`）。
+- **本地预览**：`scripts/mock-waline.mjs` 提供与 Waline API 契约一致的本地服务（`npm run mock:waline` → `http://127.0.0.1:8765`，管理员 `admin@acretiondisk.local`/`admin123`），数据存 `.mock-waline/`（已 gitignore）。
+- 验证：`npm run build` 11 页成功；mock 全链路通过（UTF-8 发布/301 字拒绝/列表属地/管理登录/删除/401）；dev 服务器 `/guestbook/` 200；admin 面板脚本语法检查通过。
+
+### 2026-07-31（图志）
 
 **🖼 新增「图志」页面与双图像档案**
 

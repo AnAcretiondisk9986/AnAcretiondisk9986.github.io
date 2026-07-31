@@ -3,6 +3,7 @@ dist/
 .astro/
 .obsidian/
 src/content/blog/.obsidian/
+.mock-waline/
 .DS_Store
 *.log
 .reasonix/

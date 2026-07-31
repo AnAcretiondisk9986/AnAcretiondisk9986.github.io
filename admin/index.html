@@ -69,6 +69,8 @@
     .gallery-list-item .info{flex:1;min-width:0}
     .gallery-list-item .title{font-size:12px;color:#d4d0c8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .gallery-list-item .meta{font-size:10px;color:#6a6a70;margin-top:1px}
+    .url-import-bar{display:flex;gap:6px;margin-top:6px}
+    .url-import-bar input{flex:1;font-size:11px;padding:4px 8px}
     @keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
     @media(max-width:700px){body{flex-direction:column}.sidebar{width:100%;min-width:100%;max-height:40vh}}
   </style>
@@ -81,6 +83,7 @@
       <div class="mode-tabs" id="modeTabs">
         <button class="mode-tab active" data-mode="posts">文章</button>
         <button class="mode-tab" data-mode="gallery">画廊</button>
+        <button class="mode-tab" data-mode="guestbook">留言</button>
       </div>
     </div>
     <div class="sidebar-toolbar">
@@ -113,6 +116,11 @@
     const TOKEN = 'acr-admin';
     let currentSlug = null, posts = [];
     let currentMode = 'posts', galleryItems = [], currentGalleryId = null;
+    // ── 留言（Waline）状态 ──
+    let walineServer = localStorage.getItem('waline-server') || '';
+    let walineToken = localStorage.getItem('waline-token') || '';
+    let walineEmail = localStorage.getItem('waline-email') || '';
+    let walineComments = [];
     const GALLERY_API = '/api/gallery';
     const $ = s => document.querySelector(s);
 
@@ -161,6 +169,11 @@
       $('#editorContainer').innerHTML = `
         <div class="editor">
           <div class="upload-area" id="uploadArea">📎 拖放或点击上传图片 → 自动插入 Markdown</div>
+          <div class="url-import-bar">
+            <input id="fImportUrl" placeholder="或粘贴外部图片 URL，点导入 →" />
+            <button class="btn small" id="btnImportUrl">导入</button>
+            <input id="fImportReferer" placeholder="防盗链 Referer（可选）" style="width:140px" title="如 Pixiv 需填 https://www.pixiv.net/" />
+          </div>
           <div class="form-row">
             <div class="form-group" style="flex:2"><label>标题</label><input id="fTitle" value="${escAttr(post.title||'')}" placeholder="文章标题"/></div>
             <div class="form-group" style="flex:1"><label>Slug / URL</label><input id="fSlug" value="${escAttr(post.slug||'')}" placeholder="url-name"/></div>
@@ -190,6 +203,11 @@
       $('#editorContainer').innerHTML = `
         <div class="editor">
           <div class="upload-area" id="uploadArea">📎 拖放或点击上传图片 → 自动插入 Markdown</div>
+          <div class="url-import-bar">
+            <input id="fImportUrl" placeholder="或粘贴外部图片 URL，点导入 →" />
+            <button class="btn small" id="btnImportUrl">导入</button>
+            <input id="fImportReferer" placeholder="防盗链 Referer（可选）" style="width:140px" title="如 Pixiv 需填 https://www.pixiv.net/" />
+          </div>
           <div class="form-row">
             <div class="form-group" style="flex:2"><label>标题</label><input id="fTitle" value="" placeholder="文章标题" autofocus/></div>
             <div class="form-group" style="flex:1"><label>Slug / URL</label><input id="fSlug" value="" placeholder="自动从标题生成"/></div>
@@ -263,6 +281,32 @@
       area.ondrop = async e=>{e.preventDefault();area.classList.remove('dragover');const f=e.dataTransfer.files[0];if(f)await uploadImage(f)};
       $('#fileInput').onchange = async ()=>{const f=$('#fileInput').files[0];if(f){await uploadImage(f);$('#fileInput').value=''}};
 
+      // URL import button
+      const btnImport = $('#btnImportUrl');
+      if (btnImport) btnImport.onclick = async () => {
+        const url = $('#fImportUrl')?.value?.trim();
+        if (!url) { toast('请粘贴图片 URL'); return; }
+        btnImport.textContent = '⏳'; btnImport.disabled = true;
+        try {
+          const fd = new URLSearchParams();
+          fd.set('url', url);
+          fd.set('referer', $('#fImportReferer')?.value?.trim() || '');
+          const res = await apiFetch('/api/import-url', { method: 'POST', body: fd, headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
+          const data = await res.json();
+          if (data.error) { toast(data.error); btnImport.textContent = '导入'; btnImport.disabled = false; return; }
+          if (currentMode === 'gallery') {
+            const srcInput = $('#fSrc');
+            if (srcInput) { srcInput.value = data.url; srcInput.focus(); }
+          } else {
+            const md = `![](${data.url})`;
+            const ta = $('#fContent');
+            if (ta) { const s = ta.selectionStart; ta.value = ta.value.substring(0, s) + md + '\n' + ta.value.substring(ta.selectionEnd); ta.focus(); }
+          }
+          toast('已导入: ' + data.url);
+        } catch (e) { toast('导入失败: ' + e.message); }
+        btnImport.textContent = '导入'; btnImport.disabled = false;
+      };
+
       // Paste image support
       document.onpaste = async e => {
         const item = e.clipboardData?.items?.[0];
@@ -299,7 +343,7 @@
     function toast(msg){const t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),4000)}
 
     document.addEventListener('keydown', e => {
-      if((e.ctrlKey||e.metaKey)&&e.key==='s'){e.preventDefault();currentMode==='gallery'?saveGalleryItem():savePost()}
+      if((e.ctrlKey||e.metaKey)&&e.key==='s'){e.preventDefault();currentMode==='gallery'?saveGalleryItem():currentMode==='guestbook'?null:savePost()}
     });
 
     loadPosts();
@@ -321,9 +365,20 @@
         $('#btnSave').disabled = true;
         $('#editorContainer').innerHTML = '<div class="empty-state">← 从左侧列表选择图像，或点击「新建」</div>';
         loadGallery();
+      } else if (mode === 'guestbook') {
+        currentSlug = null;
+        $('#editorTitle').textContent = '留言管理（Waline）';
+        $('#btnDelete').style.display = 'none';
+        $('#btnSave').style.display = 'none';
+        $('#btnNew').style.display = 'none';
+        $('#editorContainer').innerHTML = '<div class="empty-state">连接 Waline 服务后管理留言</div>';
+        renderGuestbookList();
+        loadGuestbookComments();
       } else {
         currentGalleryId = null;
         $('#editorTitle').textContent = '选择或创建一篇文章';
+        $('#btnSave').style.display = '';
+        $('#btnNew').style.display = '';
         $('#btnDelete').style.display = 'none';
         $('#btnSave').disabled = true;
         $('#editorContainer').innerHTML = '<div class="empty-state">← 从左侧列表选择文章，或点击「新建」</div>';
@@ -333,7 +388,7 @@
 
     // ── 按钮分发 ──
     $('#btnNew').onclick = () => currentMode === 'gallery' ? newGalleryItem() : newPost();
-    $('#btnRefresh').onclick = () => currentMode === 'gallery' ? loadGallery() : loadPosts();
+    $('#btnRefresh').onclick = () => currentMode === 'gallery' ? loadGallery() : currentMode === 'guestbook' ? loadGuestbookComments() : loadPosts();
     $('#btnSave').onclick = () => currentMode === 'gallery' ? saveGalleryItem() : savePost();
     $('#btnDelete').onclick = () => currentMode === 'gallery' ? (currentGalleryId && deleteGalleryItem(currentGalleryId)) : (currentSlug && deletePost(currentSlug));
     $('#btnPush').onclick = pushToGithub;
@@ -384,6 +439,11 @@
       $('#editorContainer').innerHTML = `
         <div class="editor">
           <div class="upload-area" id="uploadArea">📎 拖放或点击上传图片 → 自动填入图像地址</div>
+          <div class="url-import-bar">
+            <input id="fImportUrl" placeholder="或粘贴外部图片 URL，点导入 →" />
+            <button class="btn small" id="btnImportUrl">导入</button>
+            <input id="fImportReferer" placeholder="防盗链 Referer（可选）" style="width:140px" title="如 Pixiv 需填 https://www.pixiv.net/" />
+          </div>
           <div class="form-row">
             <div class="form-group" style="flex:2"><label>图像地址 (src) *</label><input id="fSrc" value="${escAttr(item.src||'')}" placeholder="/image/example.jpg"/></div>
             <div class="form-group" style="flex:1"><label>日期</label><input id="fGalleryDate" type="date" value="${item.date||''}"/></div>
@@ -414,6 +474,11 @@
       $('#editorContainer').innerHTML = `
         <div class="editor">
           <div class="upload-area" id="uploadArea">📎 拖放或点击上传图片 → 自动填入图像地址</div>
+          <div class="url-import-bar">
+            <input id="fImportUrl" placeholder="或粘贴外部图片 URL，点导入 →" />
+            <button class="btn small" id="btnImportUrl">导入</button>
+            <input id="fImportReferer" placeholder="防盗链 Referer（可选）" style="width:140px" title="如 Pixiv 需填 https://www.pixiv.net/" />
+          </div>
           <div class="form-row">
             <div class="form-group" style="flex:2"><label>图像地址 (src) *</label><input id="fSrc" value="" placeholder="/image/example.jpg" autofocus/></div>
             <div class="form-group" style="flex:1"><label>日期</label><input id="fGalleryDate" type="date" value="${today}"/></div>
@@ -492,6 +557,194 @@
       }
       btn.textContent = '⬆ 推送';
       btn.disabled = false;
+    }
+
+    // ═══════════════════════════════════════
+    // 留言管理（Waline）
+    // ═══════════════════════════════════════
+
+    function guestbookConfigured() {
+      return !!(walineServer && walineToken);
+    }
+
+    /** 侧边栏：连接状态提示 */
+    function renderGuestbookList() {
+      const el = $('#postList');
+      if (guestbookConfigured()) {
+        el.innerHTML = `
+          <div style="padding:12px 14px;font-size:11px;color:#6a6a70;line-height:1.8">
+            <div style="color:#80a080">● 已连接 Waline</div>
+            <div>服务：${esc(walineServer)}</div>
+            <div>账号：${esc(walineEmail || '-')}</div>
+            <div>留言：${walineComments.length} 条</div>
+          </div>`;
+      } else {
+        el.innerHTML = `
+          <div style="padding:12px 14px;font-size:11px;color:#6a6a70;line-height:1.8">
+            <div style="color:#a08040">○ 未连接 Waline 服务</div>
+            <div>在右侧填入服务地址与管理员账号。</div>
+          </div>`;
+      }
+    }
+
+    /** 右侧：连接表单 / 留言列表 */
+    function renderGuestbookPanel() {
+      if (!guestbookConfigured()) {
+        $('#editorTitle').textContent = '留言管理 — 连接 Waline';
+        $('#editorContainer').innerHTML = `
+          <div class="editor" style="max-width:640px">
+            <div class="form-group"><label>Waline 服务地址 (serverURL) *</label>
+              <input id="gServer" value="${escAttr(walineServer)}" placeholder="https://your-waline.vercel.app" />
+              <small style="color:#5a5a50;font-size:10px;margin-top:2px">部署见 docs/WALINE_DEPLOY.md；本地预览填 http://127.0.0.1:8765（需先运行 node scripts/mock-waline.mjs）</small>
+            </div>
+            <div class="form-row">
+              <div class="form-group"><label>管理员邮箱 *</label><input id="gEmail" type="email" value="${escAttr(walineEmail)}" placeholder="admin@example.com" /></div>
+              <div class="form-group"><label>管理员密码 *</label><input id="gPassword" type="password" placeholder="••••••••" /></div>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:6px">
+              <button class="btn primary" id="btnConnect">🔑 连接并加载留言</button>
+              <button class="btn" id="btnForget">忘记配置</button>
+            </div>
+            <div class="tip-bar" style="margin-top:14px;border:1px solid #2a2a20">
+              <span>提示：Waline 部署后，第一个注册的账号即为管理员；此处使用该账号登录以获取管理令牌。</span>
+            </div>
+          </div>`;
+        $('#btnConnect').onclick = connectGuestbook;
+        $('#btnForget').onclick = () => {
+          walineServer = ''; walineToken = ''; walineEmail = '';
+          localStorage.removeItem('waline-server');
+          localStorage.removeItem('waline-token');
+          localStorage.removeItem('waline-email');
+          renderGuestbookPanel(); renderGuestbookList();
+        };
+        return;
+      }
+
+      $('#editorTitle').textContent = `留言管理 — ${walineComments.length} 条`;
+      $('#editorContainer').innerHTML = `
+        <div class="editor">
+          <div class="form-group" style="flex-direction:row;align-items:center;gap:10px">
+            <span style="font-size:11px;color:#80a080">● ${esc(walineServer)}</span>
+            <button class="btn small" id="btnReconnect">重新连接</button>
+            <button class="btn small" id="btnGRefresh">↻ 刷新</button>
+          </div>
+          <div id="gCommentList"></div>
+        </div>`;
+      $('#btnReconnect').onclick = () => {
+        walineToken = '';
+        localStorage.removeItem('waline-token');
+        renderGuestbookPanel(); renderGuestbookList();
+      };
+      $('#btnGRefresh').onclick = loadGuestbookComments;
+      renderGuestbookComments();
+    }
+
+    async function connectGuestbook() {
+      const server = $('#gServer')?.value?.trim().replace(/\/+$/, '') || '';
+      const email = $('#gEmail')?.value?.trim() || '';
+      const password = $('#gPassword')?.value || '';
+      if (!server || !email || !password) { toast('请填写服务地址、邮箱与密码'); return; }
+      const btn = $('#btnConnect');
+      btn.textContent = '⏳ 连接中...'; btn.disabled = true;
+      try {
+        const res = await fetch(`${server}/api/token`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+        });
+        const json = await res.json();
+        if (!res.ok || json.errno) throw new Error(json.errmsg || `HTTP ${res.status}`);
+        walineServer = server;
+        walineToken = json.data.token;
+        walineEmail = email;
+        localStorage.setItem('waline-server', server);
+        localStorage.setItem('waline-token', walineToken);
+        localStorage.setItem('waline-email', email);
+        toast('已连接 Waline');
+        await loadGuestbookComments();
+        renderGuestbookPanel();
+      } catch (e) {
+        toast('连接失败: ' + e.message);
+        btn.textContent = '🔑 连接并加载留言'; btn.disabled = false;
+      }
+    }
+
+    async function loadGuestbookComments() {
+      if (!guestbookConfigured()) { renderGuestbookPanel(); return; }
+      try {
+        const res = await fetch(`${walineServer}/api/comment?type=list&pageSize=100&page=1`, {
+          headers: { 'Authorization': `Bearer ${walineToken}` },
+        });
+        const json = await res.json();
+        if (!res.ok || json.errno) {
+          if (res.status === 401) {
+            walineToken = '';
+            localStorage.removeItem('waline-token');
+            renderGuestbookPanel();
+            toast('令牌已失效，请重新连接');
+          }
+          throw new Error(json.errmsg || `HTTP ${res.status}`);
+        }
+        walineComments = json.data?.data || [];
+        renderGuestbookList();
+        renderGuestbookPanel();
+      } catch (e) {
+        toast('加载留言失败: ' + e.message);
+      }
+    }
+
+    function stripHtml(html) {
+      const div = document.createElement('div');
+      div.innerHTML = html || '';
+      div.querySelectorAll('img, svg, script, iframe').forEach(el => el.remove());
+      return (div.textContent || '').replace(/\s+/g, ' ').trim();
+    }
+
+    function renderGuestbookComments() {
+      const el = $('#gCommentList');
+      if (!el) return;
+      if (!walineComments.length) {
+        el.innerHTML = '<div class="empty-state" style="padding:40px">暂无留言</div>';
+        return;
+      }
+      el.innerHTML = walineComments.map(c => {
+        const time = c.time ? new Date(c.time).toLocaleString('zh-CN', { hour12: false }) : (c.insertedAt || '');
+        const status = c.status === 'approved' ? '' : ` <span style="color:#a08040">[${esc(c.status || '?')}]</span>`;
+        const text = stripHtml(c.comment).slice(0, 120) + (stripHtml(c.comment).length > 120 ? '…' : '');
+        return `
+          <div style="padding:12px 14px;border-bottom:1px solid #222228;background:#16161a;margin-bottom:8px;border-radius:2px">
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px">
+              <b style="color:#c8b080">${esc(c.nick || '匿名')}</b>
+              <span style="color:#6a6a70">IP属地：${esc(c.addr || '未知')}</span>
+              <span style="color:#4a4a50" title="原始 IP">(${esc(c.ip || '')})</span>
+              <span style="color:#6a6a70">${esc(c.mail || '')}</span>
+              <span style="color:#4a4a50;margin-left:auto">${esc(time)}</span>${status}
+            </div>
+            <div style="font-size:12px;color:#d4d0c8;margin-top:6px;line-height:1.7">${esc(text || '(空)')}</div>
+            <div style="display:flex;gap:8px;margin-top:8px">
+              <button class="btn small danger" data-gb-delete="${escAttr(c.objectId)}">🗑 删除</button>
+            </div>
+          </div>`;
+      }).join('');
+      el.querySelectorAll('[data-gb-delete]').forEach(btn => {
+        btn.addEventListener('click', () => deleteGuestbookComment(btn.getAttribute('data-gb-delete') || ''));
+      });
+    }
+
+    async function deleteGuestbookComment(objectId) {
+      if (!confirm('确定删除这条留言？此操作不可撤销。')) return;
+      try {
+        const res = await fetch(`${walineServer}/api/comment/${objectId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${walineToken}` },
+        });
+        const json = await res.json();
+        if (!res.ok || json.errno) throw new Error(json.errmsg || `HTTP ${res.status}`);
+        toast('已删除留言');
+        await loadGuestbookComments();
+      } catch (e) {
+        toast('删除失败: ' + e.message);
+      }
     }
   </script>
 </body>

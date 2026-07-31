@@ -63,7 +63,7 @@ function safeDate(val, fallback = '') {
 }
 
 // ── Multer: image-only upload ──
-const ALLOWED_MIME = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml'];
+const ALLOWED_MIME = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml', 'image/x-icon'];
 const upload = multer({
   storage: multer.diskStorage({
     destination: (_req, _file, cb) => {
@@ -267,6 +267,78 @@ app.post('/api/upload', (req, res, next) => {
   });
 });
 
+// URL import (download external image to local)
+app.post('/api/import-url', async (req, res) => {
+  try {
+    const { url, referer } = req.body;
+    if (!url || typeof url !== 'string') {
+      return res.status(400).json({ error: '请提供图片 URL' });
+    }
+
+    let parsed;
+    try {
+      parsed = new URL(url.trim());
+      if (!['http:', 'https:'].includes(parsed.protocol)) {
+        return res.status(400).json({ error: '仅支持 http/https 链接' });
+      }
+    } catch {
+      return res.status(400).json({ error: '无效的 URL' });
+    }
+
+    const fetchHeaders = {};
+    if (referer && typeof referer === 'string') {
+      fetchHeaders.Referer = referer.trim();
+    }
+
+    const remote = await fetch(url.trim(), {
+      headers: fetchHeaders,
+      signal: AbortSignal.timeout(30000),
+      redirect: 'follow',
+    });
+
+    if (!remote.ok) {
+      return res.status(502).json({ error: `远程服务器返回 ${remote.status}` });
+    }
+
+    const contentType = (remote.headers.get('content-type') || '').split(';')[0].trim();
+    if (!ALLOWED_MIME.includes(contentType)) {
+      return res.status(400).json({ error: `远程文件不是支持的图片格式（${contentType || '未知'}）` });
+    }
+
+    const contentLength = parseInt(remote.headers.get('content-length') || '0', 10);
+    if (contentLength > 35 * 1024 * 1024) {
+      return res.status(400).json({ error: '远程文件超过 35MB 限制' });
+    }
+
+    const buffer = Buffer.from(await remote.arrayBuffer());
+    if (buffer.length > 35 * 1024 * 1024) {
+      return res.status(400).json({ error: '下载文件超过 35MB 限制' });
+    }
+
+    // Generate safe filename
+    const urlPath = parsed.pathname;
+    const rawName = urlPath.split('/').pop() || 'import';
+    const safeName = rawName
+      .replace(/\.[^.]+$/, '')
+      .replace(/[^a-zA-Z0-9\u4e00-\u9fff_-]/g, '-')
+      .substring(0, 60);
+    const ext = extname(rawName).toLowerCase();
+    const finalExt = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg'].includes(ext) ? ext : '.jpg';
+    const filename = `${safeName}_${Date.now()}${finalExt}`;
+
+    await mkdir(IMAGE_DIR, { recursive: true });
+    await writeFile(join(IMAGE_DIR, filename), buffer);
+
+    res.status(201).json({ success: true, url: `/image/${filename}` });
+  } catch (err) {
+    if (err.name === 'AbortError' || err.name === 'TimeoutError') {
+      return res.status(504).json({ error: '下载超时（30 秒）' });
+    }
+    console.error('Import URL Error:', err.message);
+    res.status(500).json({ error: '导入失败' });
+  }
+});
+
 // Git push
 app.post('/api/push', async (_req, res) => {
   const run = (cmd) => new Promise((resolve, reject) => {
@@ -278,7 +350,7 @@ app.post('/api/push', async (_req, res) => {
 
   try {
     // Stage blog changes + uploaded images
-    await run('git add src/content/blog/ public/image/');
+    await run('git add src/content/blog/ public/image/ src/data/gallery.json');
 
     // Check if there are staged changes
     let hasChanges = false;
