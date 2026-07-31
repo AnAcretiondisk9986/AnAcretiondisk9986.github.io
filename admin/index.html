@@ -54,6 +54,21 @@
     .upload-area.dragover{border-color:#c8b080;background:#1a1a12}
     .toast{position:fixed;bottom:20px;right:20px;padding:10px 18px;background:#2a2a18;border:1px solid #5a5020;color:#c8b080;font-size:12px;letter-spacing:1px;z-index:999;animation:fadeIn .2s}
     .tip-bar{background:#1a1a14;border-bottom:1px solid #2a2a20;padding:8px 20px;font-size:10px;color:#5a5a40;letter-spacing:1px;display:flex;gap:20px;flex-wrap:wrap}
+    /* 模式切换 */
+    .mode-tabs{display:flex;gap:0;margin-top:8px}
+    .mode-tab{padding:4px 12px;border:1px solid #3a3a40;background:#1a1a1e;color:#6a6a70;cursor:pointer;font-size:10px;letter-spacing:1px;transition:all .15s;flex:1;text-align:center}
+    .mode-tab:first-child{border-radius:2px 0 0 2px}
+    .mode-tab:last-child{border-radius:0 2px 2px 0}
+    .mode-tab:hover{color:#9a9a9e}
+    .mode-tab.active{background:#2a2818;border-color:#5a5020;color:#c8b080}
+    /* 画廊列表 */
+    .gallery-list-item{padding:8px 12px;cursor:pointer;border-bottom:1px solid #222228;transition:background .1s;display:flex;gap:10px;align-items:center}
+    .gallery-list-item:hover{background:#1e1e24}
+    .gallery-list-item.active{background:#22221a;border-left:2px solid #c8b080}
+    .gallery-list-item img{width:48px;height:36px;object-fit:cover;border-radius:2px;flex-shrink:0;background:#1a1a1e}
+    .gallery-list-item .info{flex:1;min-width:0}
+    .gallery-list-item .title{font-size:12px;color:#d4d0c8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .gallery-list-item .meta{font-size:10px;color:#6a6a70;margin-top:1px}
     @keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
     @media(max-width:700px){body{flex-direction:column}.sidebar{width:100%;min-width:100%;max-height:40vh}}
   </style>
@@ -63,11 +78,16 @@
     <div class="sidebar-header">
       <h1>ACR—ADMIN</h1>
       <small>博客内容管理系统</small>
+      <div class="mode-tabs" id="modeTabs">
+        <button class="mode-tab active" data-mode="posts">文章</button>
+        <button class="mode-tab" data-mode="gallery">画廊</button>
+      </div>
     </div>
     <div class="sidebar-toolbar">
       <button class="btn primary" id="btnNew">＋ 新建</button>
       <button class="btn" id="btnRefresh">↻ 刷新</button>
       <button class="btn" id="btnPush" style="border-color:#3a6040;color:#80c080">⬆ 推送</button>
+      <button class="btn" id="btnSite" style="border-color:#3a4060;color:#80a0c0" title="打开博客网站">🌐</button>
     </div>
     <div class="post-list" id="postList"><div class="empty-state" style="padding:30px">加载中…</div></div>
   </aside>
@@ -92,6 +112,8 @@
     const API = '/api/posts';
     const TOKEN = 'acr-admin';
     let currentSlug = null, posts = [];
+    let currentMode = 'posts', galleryItems = [], currentGalleryId = null;
+    const GALLERY_API = '/api/gallery';
     const $ = s => document.querySelector(s);
 
     async function apiFetch(url, opts = {}) {
@@ -259,10 +281,16 @@
         const res = await apiFetch('/api/upload', { method:'POST', body:fd });
         const data = await res.json();
         if(data.error){toast(data.error);return}
-        const md = `![${file.name}](${data.url})`;
-        const ta = $('#fContent');
-        if(ta){const s=ta.selectionStart;ta.value=ta.value.substring(0,s)+md+'\n'+ta.value.substring(ta.selectionEnd);ta.focus()}
-        toast('已上传: '+data.url);
+        if (currentMode === 'gallery') {
+          const srcInput = $('#fSrc');
+          if (srcInput) { srcInput.value = data.url; srcInput.focus(); }
+          toast('已上传: ' + data.url);
+        } else {
+          const md = `![${file.name}](${data.url})`;
+          const ta = $('#fContent');
+          if(ta){const s=ta.selectionStart;ta.value=ta.value.substring(0,s)+md+'\n'+ta.value.substring(ta.selectionEnd);ta.focus()}
+          toast('已上传: '+data.url);
+        }
       } catch(e) { toast('上传失败') }
     }
 
@@ -271,15 +299,181 @@
     function toast(msg){const t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),4000)}
 
     document.addEventListener('keydown', e => {
-      if((e.ctrlKey||e.metaKey)&&e.key==='s'){e.preventDefault();savePost()}
+      if((e.ctrlKey||e.metaKey)&&e.key==='s'){e.preventDefault();currentMode==='gallery'?saveGalleryItem():savePost()}
     });
 
     loadPosts();
-    $('#btnNew').onclick = newPost;
-    $('#btnRefresh').onclick = loadPosts;
-    $('#btnSave').onclick = savePost;
-    $('#btnDelete').onclick = ()=>{if(currentSlug)deletePost(currentSlug)};
+
+    // ── 模式切换 ──
+    $('#modeTabs').addEventListener('click', e => {
+      const tab = e.target.closest('.mode-tab');
+      if (!tab || tab.dataset.mode === currentMode) return;
+      switchMode(tab.dataset.mode);
+    });
+
+    function switchMode(mode) {
+      currentMode = mode;
+      document.querySelectorAll('.mode-tab').forEach(t => t.classList.toggle('active', t.dataset.mode === mode));
+      if (mode === 'gallery') {
+        currentSlug = null;
+        $('#editorTitle').textContent = '选择或创建一幅图像';
+        $('#btnDelete').style.display = 'none';
+        $('#btnSave').disabled = true;
+        $('#editorContainer').innerHTML = '<div class="empty-state">← 从左侧列表选择图像，或点击「新建」</div>';
+        loadGallery();
+      } else {
+        currentGalleryId = null;
+        $('#editorTitle').textContent = '选择或创建一篇文章';
+        $('#btnDelete').style.display = 'none';
+        $('#btnSave').disabled = true;
+        $('#editorContainer').innerHTML = '<div class="empty-state">← 从左侧列表选择文章，或点击「新建」</div>';
+        loadPosts();
+      }
+    }
+
+    // ── 按钮分发 ──
+    $('#btnNew').onclick = () => currentMode === 'gallery' ? newGalleryItem() : newPost();
+    $('#btnRefresh').onclick = () => currentMode === 'gallery' ? loadGallery() : loadPosts();
+    $('#btnSave').onclick = () => currentMode === 'gallery' ? saveGalleryItem() : savePost();
+    $('#btnDelete').onclick = () => currentMode === 'gallery' ? (currentGalleryId && deleteGalleryItem(currentGalleryId)) : (currentSlug && deletePost(currentSlug));
     $('#btnPush').onclick = pushToGithub;
+    $('#btnSite').onclick = () => window.open('https://anacretiondisk9986.github.io/', '_blank');
+
+    // ═══════════════════════════════════════
+    // 画廊管理
+    // ═══════════════════════════════════════
+
+    async function loadGallery() {
+      try {
+        const res = await apiFetch(GALLERY_API);
+        galleryItems = await res.json();
+        renderGalleryList();
+      } catch(e) { toast('加载画廊失败: '+e.message) }
+    }
+
+    function renderGalleryList() {
+      const el = $('#postList');
+      if(!galleryItems.length){el.innerHTML='<div class="empty-state" style="padding:30px">暂无独立收藏</div>';return}
+      el.innerHTML = galleryItems.map(item=>`
+        <div class="gallery-list-item${item.id===currentGalleryId?' active':''}" data-gallery-id="${item.id}">
+          <img src="${item.src}" alt="${escAttr(item.alt||item.title)}" loading="lazy" onerror="this.style.display='none'" />
+          <div class="info" onclick="selectGalleryItem('${item.id}')">
+            <div class="title">${esc(item.title)}</div>
+            <div class="meta">${item.date||'无日期'}</div>
+          </div>
+          <div class="actions">
+            <button class="btn small danger" onclick="event.stopPropagation();deleteGalleryItem('${item.id}')">×</button>
+          </div>
+        </div>`).join('');
+    }
+
+    async function selectGalleryItem(id) {
+      currentGalleryId = id;
+      try {
+        const res = await apiFetch(`${GALLERY_API}/${id}`);
+        const item = await res.json();
+        if(item.error){toast(item.error);return}
+        renderGalleryEditor(item); renderGalleryList();
+      } catch(e) { toast('加载失败') }
+    }
+
+    function renderGalleryEditor(item) {
+      $('#editorTitle').textContent = item.title ? '编辑：' + item.title : '编辑独立收藏';
+      $('#btnDelete').style.display = '';
+      $('#btnSave').disabled = false;
+      $('#editorContainer').innerHTML = `
+        <div class="editor">
+          <div class="upload-area" id="uploadArea">📎 拖放或点击上传图片 → 自动填入图像地址</div>
+          <div class="form-row">
+            <div class="form-group" style="flex:2"><label>图像地址 (src) *</label><input id="fSrc" value="${escAttr(item.src||'')}" placeholder="/image/example.jpg"/></div>
+            <div class="form-group" style="flex:1"><label>日期</label><input id="fGalleryDate" type="date" value="${item.date||''}"/></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group" style="flex:2"><label>标题 *</label><input id="fGalleryTitle" value="${escAttr(item.title||'')}" placeholder="图像标题"/></div>
+            <div class="form-group" style="flex:1"><label>替代文本 (alt)</label><input id="fAlt" value="${escAttr(item.alt||'')}" placeholder="屏幕阅读器描述"/></div>
+          </div>
+          <div class="form-group"><label>说明文字 (caption)</label><input id="fCaption" value="${escAttr(item.caption||'')}" placeholder="显示在图像下方的简短说明"/></div>
+          <div class="form-row">
+            <div class="form-group"><label>来源链接 (sourceUrl)</label><input id="fSourceUrl" value="${escAttr(item.sourceUrl||'')}" placeholder="https://..."/></div>
+            <div class="form-group"><label>来源标题 (sourceTitle)</label><input id="fSourceTitle" value="${escAttr(item.sourceTitle||'')}" placeholder="来源名称"/></div>
+          </div>
+          <div style="margin-top:8px;padding:8px;background:#1a1a1e;border-radius:2px">
+            <img src="${escAttr(item.src||'')}" alt="预览" style="max-width:100%;max-height:200px;display:block;margin:0 auto" onerror="this.style.display='none'" />
+          </div>
+        </div>`;
+      setupUpload();
+      if(!item.title) $('#fGalleryTitle')?.focus();
+    }
+
+    function newGalleryItem() {
+      currentGalleryId = null;
+      $('#editorTitle').textContent = '新建独立收藏';
+      $('#btnDelete').style.display = 'none';
+      $('#btnSave').disabled = false;
+      const today = new Date().toISOString().split('T')[0];
+      $('#editorContainer').innerHTML = `
+        <div class="editor">
+          <div class="upload-area" id="uploadArea">📎 拖放或点击上传图片 → 自动填入图像地址</div>
+          <div class="form-row">
+            <div class="form-group" style="flex:2"><label>图像地址 (src) *</label><input id="fSrc" value="" placeholder="/image/example.jpg" autofocus/></div>
+            <div class="form-group" style="flex:1"><label>日期</label><input id="fGalleryDate" type="date" value="${today}"/></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group" style="flex:2"><label>标题 *</label><input id="fGalleryTitle" value="" placeholder="图像标题"/></div>
+            <div class="form-group" style="flex:1"><label>替代文本 (alt)</label><input id="fAlt" value="" placeholder="屏幕阅读器描述"/></div>
+          </div>
+          <div class="form-group"><label>说明文字 (caption)</label><input id="fCaption" value="" placeholder="显示在图像下方的简短说明"/></div>
+          <div class="form-row">
+            <div class="form-group"><label>来源链接 (sourceUrl)</label><input id="fSourceUrl" value="" placeholder="https://..."/></div>
+            <div class="form-group"><label>来源标题 (sourceTitle)</label><input id="fSourceTitle" value="" placeholder="来源名称"/></div>
+          </div>
+        </div>`;
+      setupUpload();
+      renderGalleryList();
+      $('#fGalleryTitle')?.focus();
+    }
+
+    async function saveGalleryItem() {
+      const src = $('#fSrc')?.value?.trim() || '';
+      const title = $('#fGalleryTitle')?.value?.trim() || '';
+      if(!src){toast('图像地址不能为空');return}
+      if(!title){toast('标题不能为空');return}
+
+      const formData = new URLSearchParams();
+      formData.set('src', src);
+      formData.set('alt', $('#fAlt')?.value || '');
+      formData.set('title', title);
+      formData.set('caption', $('#fCaption')?.value || '');
+      formData.set('date', $('#fGalleryDate')?.value || '');
+      formData.set('sourceUrl', $('#fSourceUrl')?.value || '');
+      formData.set('sourceTitle', $('#fSourceTitle')?.value || '');
+
+      try {
+        const url = currentGalleryId ? `${GALLERY_API}/${currentGalleryId}` : GALLERY_API;
+        const method = currentGalleryId ? 'PUT' : 'POST';
+        const res = await apiFetch(url, { method, body: formData, headers:{'Content-Type':'application/x-www-form-urlencoded'} });
+        const data = await res.json();
+        if(data.error){toast(data.error);return}
+        toast(currentGalleryId?'已保存':'已创建');
+        currentGalleryId = data.item?.id || currentGalleryId;
+        await loadGallery();
+        if (currentGalleryId) await selectGalleryItem(currentGalleryId);
+      } catch(e) { toast('保存失败: '+e.message) }
+    }
+
+    async function deleteGalleryItem(id) {
+      if(!confirm(`确定删除独立收藏「${id}」？此操作不可撤销。`)) return;
+      try {
+        const res = await apiFetch(`${GALLERY_API}/${id}`, { method:'DELETE' });
+        const data = await res.json();
+        if(data.error){toast(data.error);return}
+        toast('已删除');
+        if(currentGalleryId===id){currentGalleryId=null;$('#editorContainer').innerHTML='<div class="empty-state">← 从左侧列表选择图像，或点击「新建」</div>';$('#btnDelete').style.display='none';$('#btnSave').disabled=true;$('#editorTitle').textContent='选择或创建一幅图像'}
+        await loadGallery();
+      } catch(e) { toast('删除失败') }
+    }
+
+    // ═══════════════════════════════════════
 
     async function pushToGithub() {
       const btn = $('#btnPush');

@@ -1,6 +1,6 @@
 import express from 'express';
 import multer from 'multer';
-import { readdir, readFile, writeFile, unlink, mkdir } from 'node:fs/promises';
+import { readdir, readFile, writeFile, unlink, mkdir, access } from 'node:fs/promises';
 import { exec } from 'node:child_process';
 import { join, dirname, extname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -9,6 +9,7 @@ import matter from 'gray-matter';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const BLOG_DIR = resolve(__dirname, 'src', 'content', 'blog');
 const IMAGE_DIR = resolve(__dirname, 'public', 'image');
+const GALLERY_JSON = resolve(__dirname, 'src', 'data', 'gallery.json');
 const PORT = 4322;
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || 'acr-admin';
 
@@ -86,7 +87,7 @@ const upload = multer({
       cb(new Error('仅支持 PNG / JPEG / GIF / WebP / SVG 图片格式'), false);
     }
   },
-  limits: { fileSize: 20 * 1024 * 1024 },
+  limits: { fileSize: 35 * 1024 * 1024 },
 });
 
 // ── API Routes ──
@@ -209,8 +210,21 @@ app.route('/api/posts/:slug')
       fm.push(content || '');
 
       // Write new file first, then delete old (safe rename)
-      const isRename = oldChecked.filePath !== newChecked.filePath;
-      if (isRename) {
+      // Windows/macOS 文件系统不区分大小写：仅大小写不同的 slug 指向同一文件，
+      // 若按字符串比较判定为重命名，会先写后删导致文章丢失，故需大小写不敏感比较。
+      const caseInsensitiveFS = process.platform === 'win32' || process.platform === 'darwin';
+      const sameFile = caseInsensitiveFS
+        ? newChecked.filePath.toLowerCase() === oldChecked.filePath.toLowerCase()
+        : newChecked.filePath === oldChecked.filePath;
+
+      if (!sameFile) {
+        // 目标 slug 已被另一篇文章占用时拒绝，避免 writeFile 覆盖已有文件
+        try {
+          await access(newChecked.filePath);
+          return res.status(409).json({ error: `Slug「${newChecked.slug}」已存在，请更换` });
+        } catch (err) {
+          if (err.code !== 'ENOENT') throw err;
+        }
         await writeFile(newChecked.filePath, fm.join('\n'), 'utf-8');
         await unlink(oldChecked.filePath);
       } else {
@@ -297,6 +311,115 @@ app.post('/api/push', async (_req, res) => {
     res.status(500).json({ error: '推送失败', detail: err.message });
   }
 });
+
+// ── Gallery API ──
+
+// Helper: read/write gallery.json
+async function readGallery() {
+  try {
+    const raw = await readFile(GALLERY_JSON, 'utf-8');
+    return JSON.parse(raw);
+  } catch {
+    return [];
+  }
+}
+
+async function writeGallery(items) {
+  await writeFile(GALLERY_JSON, JSON.stringify(items, null, 2) + '\n', 'utf-8');
+}
+
+// List / create gallery items
+app.route('/api/gallery')
+  .get(async (_req, res) => {
+    try {
+      const items = await readGallery();
+      res.json(items);
+    } catch (err) {
+      console.error('Gallery API Error:', err.message);
+      res.status(500).json({ error: '服务器内部错误' });
+    }
+  })
+  .post(upload.none(), async (req, res) => {
+    try {
+      const { src, alt, title, caption, date, sourceUrl, sourceTitle } = req.body;
+      if (!src || !title) {
+        return res.status(400).json({ error: 'src 和 title 为必填字段' });
+      }
+      const id = `独立-${Date.now()}`;
+      const items = await readGallery();
+      const item = {
+        id,
+        src: src.trim(),
+        alt: (alt || '').trim(),
+        title: title.trim(),
+        caption: (caption || '').trim(),
+        date: safeDate(date, (new Date()).toISOString().split('T')[0]),
+      };
+      if (sourceUrl) item.sourceUrl = sourceUrl.trim();
+      if (sourceTitle) item.sourceTitle = sourceTitle.trim();
+      items.unshift(item);
+      await writeGallery(items);
+      res.status(201).json({ success: true, item });
+    } catch (err) {
+      console.error('Gallery API Error:', err.message);
+      res.status(500).json({ error: '服务器内部错误' });
+    }
+  });
+
+// Get / update / delete single gallery item
+app.route('/api/gallery/:id')
+  .get(async (req, res) => {
+    try {
+      const items = await readGallery();
+      const item = items.find(i => i.id === req.params.id);
+      if (!item) return res.status(404).json({ error: '图像不存在' });
+      res.json(item);
+    } catch (err) {
+      console.error('Gallery API Error:', err.message);
+      res.status(500).json({ error: '服务器内部错误' });
+    }
+  })
+  .put(upload.none(), async (req, res) => {
+    try {
+      const items = await readGallery();
+      const idx = items.findIndex(i => i.id === req.params.id);
+      if (idx === -1) return res.status(404).json({ error: '图像不存在' });
+
+      const { src, alt, title, caption, date, sourceUrl, sourceTitle } = req.body;
+      if (!src || !title) {
+        return res.status(400).json({ error: 'src 和 title 为必填字段' });
+      }
+
+      items[idx] = {
+        ...items[idx],
+        src: src.trim(),
+        alt: (alt || '').trim(),
+        title: title.trim(),
+        caption: (caption || '').trim(),
+        date: safeDate(date, items[idx].date),
+        sourceUrl: (sourceUrl || '').trim() || undefined,
+        sourceTitle: (sourceTitle || '').trim() || undefined,
+      };
+      await writeGallery(items);
+      res.json({ success: true, item: items[idx] });
+    } catch (err) {
+      console.error('Gallery API Error:', err.message);
+      res.status(500).json({ error: '服务器内部错误' });
+    }
+  })
+  .delete(async (req, res) => {
+    try {
+      const items = await readGallery();
+      const idx = items.findIndex(i => i.id === req.params.id);
+      if (idx === -1) return res.status(404).json({ error: '图像不存在' });
+      items.splice(idx, 1);
+      await writeGallery(items);
+      res.json({ success: true });
+    } catch (err) {
+      console.error('Gallery API Error:', err.message);
+      res.status(500).json({ error: '服务器内部错误' });
+    }
+  });
 
 // Static files from public/
 app.use(express.static(join(__dirname, 'public')));

@@ -1,0 +1,303 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import ArchiveSeal from '../components/ArchiveSeal.astro';
+import standaloneGallery from '../data/gallery.json';
+
+interface GalleryImage {
+  id: string;
+  src: string;
+  alt: string;
+  title: string;
+  caption?: string;
+  date?: string;
+  sourceUrl?: string;
+  sourceTitle?: string;
+}
+
+const imageTime = (image: GalleryImage) => image.date ? Date.parse(image.date) : Number.NEGATIVE_INFINITY;
+const sortNewestFirst = (images: GalleryImage[]) => [...images].sort((a, b) => imageTime(b) - imageTime(a));
+
+const posts = (await getCollection('blog', ({ data }) => !data.draft))
+  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+
+const markdownImage = /!\[([^\]]*)\]\(([^)\s]+)(?:\s+["'][^"']*["'])?\)/g;
+const journalImages: GalleryImage[] = posts.flatMap((post) => {
+  const body = post.body ?? '';
+  return [...body.matchAll(markdownImage)].map((match, index) => {
+    const src = match[2];
+    const fileName = decodeURIComponent(src.split('/').pop() || `image-${index + 1}`);
+    return {
+      id: `journal-${post.id}-${index + 1}`,
+      src,
+      alt: match[1] || `${post.data.title}中的图像 ${index + 1}`,
+      title: post.data.title,
+      caption: match[1] || fileName,
+      date: post.data.pubDate.toISOString().slice(0, 10),
+      sourceUrl: `/blog/${post.id}/`,
+      sourceTitle: post.data.title,
+    };
+  });
+});
+
+const standaloneImages = sortNewestFirst(standaloneGallery as GalleryImage[]);
+const totalImages = journalImages.length + standaloneImages.length;
+---
+
+<BaseLayout title="图志" description="Acretiondisk 的图像档案。">
+  <div class="gallery-shell">
+    <header class="gallery-header">
+      <div class="gallery-header-copy">
+        <div class="folio-kicker">
+          <span>IMAGO / PERSONAL ARCHIVE</span>
+          <span>VOL. I · {String(totalImages).padStart(2, '0')} IMAGES</span>
+        </div>
+        <p class="eyebrow">CATALOGUS IMAGINUM</p>
+        <h1>图像<br /><em>档案</em></h1>
+        <p class="gallery-intro">从文字中显影的片段，以及尚未归入卷册的独立收藏。</p>
+      </div>
+      <div class="gallery-header-mark">
+        <ArchiveSeal />
+        <dl>
+          <div><dt>随文图像</dt><dd>{String(journalImages.length).padStart(2, '0')}</dd></div>
+          <div><dt>独立收藏</dt><dd>{String(standaloneImages.length).padStart(2, '0')}</dd></div>
+          <div><dt>档案状态</dt><dd>持续入藏</dd></div>
+        </dl>
+      </div>
+    </header>
+
+    <div class="gallery-tabs" role="tablist" aria-label="图像档案视图">
+      <button class="gallery-tab" type="button" role="tab" aria-selected="true" aria-controls="gallery-journal" id="tab-journal" data-gallery-tab="journal">
+        <span class="gallery-tab-index">I</span>
+        <span>随文图像</span>
+        <b>{String(journalImages.length).padStart(2, '0')}</b>
+      </button>
+      <button class="gallery-tab" type="button" role="tab" aria-selected="false" aria-controls="gallery-independent" id="tab-independent" data-gallery-tab="independent">
+        <span class="gallery-tab-index">II</span>
+        <span>独立收藏</span>
+        <b>{String(standaloneImages.length).padStart(2, '0')}</b>
+      </button>
+    </div>
+
+    <div class="gallery-order-bar">
+      <div class="gallery-order-label">
+        <span>DISPLAY ORDER</span>
+        <strong data-gallery-order-status>从新至旧</strong>
+      </div>
+      <div class="gallery-sort" role="group" aria-label="照片展示顺序">
+        <button type="button" data-gallery-sort="newest" aria-pressed="true">
+          <span aria-hidden="true">↓</span>从新至旧
+        </button>
+        <button type="button" data-gallery-sort="oldest" aria-pressed="false">
+          <span aria-hidden="true">↑</span>从旧至新
+        </button>
+      </div>
+    </div>
+
+    <section class="gallery-panel" id="gallery-journal" role="tabpanel" aria-labelledby="tab-journal" data-gallery-panel="journal">
+      <div class="gallery-index-bar">
+        <span>IMAGES FOUND IN PUBLISHED FOLIOS</span>
+        <span>{journalImages.length} ITEMS / AUTO INDEXED</span>
+      </div>
+      {journalImages.length > 0 ? (
+        <div class="gallery-masonry">
+          {journalImages.map((image, index) => (
+            <article class="gallery-card" data-gallery-card data-gallery-date={image.date} data-gallery-position={index}>
+              <button
+                class="gallery-image-button"
+                type="button"
+                data-gallery-open
+                data-gallery-src={image.src}
+                data-gallery-alt={image.alt || image.title}
+                data-gallery-title={image.title}
+                data-gallery-caption={image.caption}
+                data-gallery-source={image.sourceUrl}
+                data-gallery-source-title={image.sourceTitle}
+                aria-label={`查看${image.title}中的${image.caption}`}
+              >
+                <img src={image.src} alt={image.alt} loading={index < 3 ? 'eager' : 'lazy'} decoding="async" />
+                <span class="gallery-image-stamp">{String(index + 1).padStart(2, '0')}</span>
+                <span class="gallery-image-expand" aria-hidden="true">↗</span>
+              </button>
+              <div class="gallery-card-meta">
+                <div>
+                  <span class="gallery-card-label">{image.date}</span>
+                  <span class="gallery-card-label" data-gallery-sequence data-gallery-sequence-prefix="FOLIO ">FOLIO {String(index + 1).padStart(2, '0')}</span>
+                </div>
+                <h2>{image.caption}</h2>
+                <a href={image.sourceUrl}>阅览《{image.sourceTitle}》</a>
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <div class="gallery-empty"><strong>尚无随文图像</strong><span>等待新的图像进入公开卷册。</span></div>
+      )}
+    </section>
+
+    <section class="gallery-panel" id="gallery-independent" role="tabpanel" aria-labelledby="tab-independent" data-gallery-panel="independent" hidden>
+      <div class="gallery-index-bar">
+        <span>INDEPENDENT IMAGE COLLECTION</span>
+        <span>{standaloneImages.length} ITEMS / CURATED</span>
+      </div>
+      {standaloneImages.length > 0 ? (
+        <div class="gallery-masonry gallery-masonry--independent">
+          {standaloneImages.map((image, index) => (
+            <article class="gallery-card" data-gallery-card data-gallery-date={image.date || ''} data-gallery-position={index}>
+              <button
+                class="gallery-image-button"
+                type="button"
+                data-gallery-open
+                data-gallery-src={image.src}
+                data-gallery-alt={image.alt}
+                data-gallery-title={image.title}
+                data-gallery-caption={image.caption || image.alt}
+                data-gallery-source={image.sourceUrl || ''}
+                data-gallery-source-title={image.sourceTitle || ''}
+                aria-label={`查看${image.title}`}
+              >
+                <img src={image.src} alt={image.alt || image.title} loading="lazy" decoding="async" />
+                <span class="gallery-image-stamp">{String(index + 1).padStart(2, '0')}</span>
+                <span class="gallery-image-expand" aria-hidden="true">↗</span>
+              </button>
+              <div class="gallery-card-meta">
+                <div>
+                  {image.date && <span class="gallery-card-label">{image.date}</span>}
+                  <span class="gallery-card-label" data-gallery-sequence data-gallery-sequence-prefix="INDEPENDENT / ">INDEPENDENT / {String(index + 1).padStart(2, '0')}</span>
+                </div>
+                <h2>{image.title}</h2>
+                {image.caption && <p>{image.caption}</p>}
+                {image.sourceUrl && <a href={image.sourceUrl}>{image.sourceTitle || '查看来源'}</a>}
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <div class="gallery-empty gallery-empty--independent">
+          <ArchiveSeal />
+          <strong>独立收藏尚未入藏</strong>
+          <span>此处保留给未附着于文章的图像记录。</span>
+        </div>
+      )}
+    </section>
+
+    <footer class="gallery-footer">
+      <span>IMAGO / INDEXED WITH THE PUBLISHED ARCHIVE</span>
+      <span>{new Date().getFullYear()} · ACR—GALLERY</span>
+    </footer>
+  </div>
+</BaseLayout>
+
+<dialog class="gallery-viewer" id="gallery-viewer" aria-labelledby="gallery-viewer-title">
+  <div class="gallery-viewer-frame">
+    <button class="gallery-viewer-close" type="button" data-gallery-close aria-label="关闭图像预览">×</button>
+    <div class="gallery-viewer-media"><img id="gallery-viewer-image" alt="" /></div>
+    <footer class="gallery-viewer-meta">
+      <div>
+        <span class="gallery-card-label" id="gallery-viewer-caption"></span>
+        <h2 id="gallery-viewer-title"></h2>
+      </div>
+      <a id="gallery-viewer-source" href="#" hidden>查看来源 ↗</a>
+    </footer>
+  </div>
+</dialog>
+
+<script>
+  const tabs = [...document.querySelectorAll<HTMLButtonElement>('[data-gallery-tab]')];
+  const panels = [...document.querySelectorAll<HTMLElement>('[data-gallery-panel]')];
+  const viewer = document.querySelector<HTMLDialogElement>('#gallery-viewer');
+  const viewerImage = document.querySelector<HTMLImageElement>('#gallery-viewer-image');
+  const viewerTitle = document.querySelector<HTMLElement>('#gallery-viewer-title');
+  const viewerCaption = document.querySelector<HTMLElement>('#gallery-viewer-caption');
+  const viewerSource = document.querySelector<HTMLAnchorElement>('#gallery-viewer-source');
+  const sortButtons = [...document.querySelectorAll<HTMLButtonElement>('[data-gallery-sort]')];
+  const orderStatus = document.querySelector<HTMLElement>('[data-gallery-order-status]');
+
+  type GalleryOrder = 'newest' | 'oldest';
+
+  function setGalleryOrder(order: GalleryOrder, updateUrl = true) {
+    sortButtons.forEach((button) => {
+      button.setAttribute('aria-pressed', String(button.dataset.gallerySort === order));
+    });
+    if (orderStatus) orderStatus.textContent = order === 'newest' ? '从新至旧' : '从旧至新';
+
+    document.querySelectorAll<HTMLElement>('.gallery-masonry').forEach((gallery) => {
+      const cards = [...gallery.querySelectorAll<HTMLElement>('[data-gallery-card]')];
+      cards.sort((a, b) => {
+        const aTime = Date.parse(a.dataset.galleryDate || '');
+        const bTime = Date.parse(b.dataset.galleryDate || '');
+        const aHasDate = Number.isFinite(aTime);
+        const bHasDate = Number.isFinite(bTime);
+        if (aHasDate !== bHasDate) return aHasDate ? -1 : 1;
+        if (aHasDate && bHasDate && aTime !== bTime) return order === 'newest' ? bTime - aTime : aTime - bTime;
+        const positionDelta = Number(a.dataset.galleryPosition) - Number(b.dataset.galleryPosition);
+        return order === 'newest' ? positionDelta : -positionDelta;
+      });
+      gallery.append(...cards);
+      cards.forEach((card, index) => {
+        const sequence = String(index + 1).padStart(2, '0');
+        const stamp = card.querySelector<HTMLElement>('.gallery-image-stamp');
+        const label = card.querySelector<HTMLElement>('[data-gallery-sequence]');
+        if (stamp) stamp.textContent = sequence;
+        if (label) label.textContent = `${label.dataset.gallerySequencePrefix || ''}${sequence}`;
+      });
+    });
+
+    if (updateUrl) {
+      const url = new URL(location.href);
+      if (order === 'newest') url.searchParams.delete('order');
+      else url.searchParams.set('order', 'oldest');
+      history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+    }
+  }
+
+  function selectGalleryTab(name: string, updateHash = true) {
+    tabs.forEach((tab) => {
+      const active = tab.dataset.galleryTab === name;
+      tab.setAttribute('aria-selected', String(active));
+      tab.tabIndex = active ? 0 : -1;
+    });
+    panels.forEach((panel) => {
+      panel.hidden = panel.dataset.galleryPanel !== name;
+    });
+    if (updateHash) history.replaceState(null, '', `#${name}`);
+  }
+
+  tabs.forEach((tab, index) => {
+    tab.addEventListener('click', () => selectGalleryTab(tab.dataset.galleryTab || 'journal'));
+    tab.addEventListener('keydown', (event) => {
+      if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
+      event.preventDefault();
+      const nextIndex = event.key === 'ArrowRight' ? (index + 1) % tabs.length : (index - 1 + tabs.length) % tabs.length;
+      tabs[nextIndex].focus();
+      selectGalleryTab(tabs[nextIndex].dataset.galleryTab || 'journal');
+    });
+  });
+
+  selectGalleryTab(location.hash === '#independent' ? 'independent' : 'journal', false);
+
+  sortButtons.forEach((button) => {
+    button.addEventListener('click', () => setGalleryOrder(button.dataset.gallerySort === 'oldest' ? 'oldest' : 'newest'));
+  });
+  setGalleryOrder(new URLSearchParams(location.search).get('order') === 'oldest' ? 'oldest' : 'newest', false);
+
+  document.querySelectorAll<HTMLButtonElement>('[data-gallery-open]').forEach((button) => {
+    button.addEventListener('click', () => {
+      if (!viewer || !viewerImage || !viewerTitle || !viewerCaption || !viewerSource) return;
+      viewerImage.src = button.dataset.gallerySrc || '';
+      viewerImage.alt = button.dataset.galleryAlt || '';
+      viewerTitle.textContent = button.dataset.galleryTitle || '';
+      viewerCaption.textContent = button.dataset.galleryCaption || '';
+      const source = button.dataset.gallerySource || '';
+      viewerSource.hidden = !source;
+      viewerSource.href = source || '#';
+      viewerSource.textContent = button.dataset.gallerySourceTitle ? `阅览《${button.dataset.gallerySourceTitle}》 ↗` : '查看来源 ↗';
+      viewer.showModal();
+    });
+  });
+
+  document.querySelector<HTMLButtonElement>('[data-gallery-close]')?.addEventListener('click', () => viewer?.close());
+  viewer?.addEventListener('click', (event) => {
+    if (event.target === viewer) viewer.close();
+  });
+</script>
