@@ -263,8 +263,8 @@ app.post('/api/push', async (_req, res) => {
   });
 
   try {
-    // Stage blog changes
-    await run('git add src/content/blog/');
+    // Stage blog changes + uploaded images
+    await run('git add src/content/blog/ public/image/');
 
     // Check if there are staged changes
     let hasChanges = false;
