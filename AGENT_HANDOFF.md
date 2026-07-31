@@ -33,20 +33,12 @@
 ## 当前状态快照
 
 ```
-HEAD: 9ea6b19 通过管理面板更新博客
-origin/main: 9ea6b19 通过管理面板更新博客
-本地 ahead 0，behind 0
+HEAD: d21ff97 新增留言页（Waline 后端，B站评论区版式）并收尾图志功能
+origin/main: d21ff97 已推送（970e9e1..d21ff97）
+线上：/guestbook/ 已部署，Waline 服务 https://comment-sys-ashen.vercel.app 已接入（默认地址已写死）
 工作区：
-  M .gitignore                  ← 忽略 .mock-waline/
-  M admin/index.html            ← 管理面板新增「留言」模式（Waline 连接/列表/删除）
-  M package.json                ← 新增 npm run mock:waline
-  M src/layouts/BaseLayout.astro ← 主导航新增「V 留言」
-  M src/styles/global.css       ← 留言页样式（B 站评论区版式）
-  ?? src/pages/guestbook.astro  ← 留言页（第五页）
-  ?? scripts/mock-waline.mjs    ← 本地 Waline 兼容服务（预览用）
-  ?? docs/WALINE_DEPLOY.md      ← Waline 线上部署指引
-  ?? reasonix.toml              ← 未跟踪（Reasonix 配置）
-  （注：admin-server.mjs、gallery.astro 等图志相关改动为上一轮遗留，尚未提交）
+  ?? reasonix.toml              ← 未跟踪（Reasonix 配置，不提交）
+  M AGENT_HANDOFF.md           ← 本次推送记录
 ```
 
 **文章：5 篇**
@@ -64,6 +56,13 @@ origin/main: 9ea6b19 通过管理面板更新博客
 ---
 
 ## 变更日志
+
+### 2026-07-31（推送与线上接入）
+
+- 提交 `d21ff97` 已推送至 `main`（含留言页 + 图志遗留改动，12 文件 +1495/-26），pre-commit 构建通过。
+- Waline 服务部署于 `https://comment-sys-ashen.vercel.app`（Vercel + Neon PostgreSQL），存储已验证（测试留言含 IP 属地解析）。
+- `DEFAULT_SERVER` 已写死进 `src/pages/guestbook.astro`；线上 `/guestbook/` 已部署验证（导航含「V 留言」）。
+- 国外 IP 属地按 ip2region 省级字段显示（如「伦敦」），与用户确认保持 Waline 默认行为。
 
 ### 2026-07-31（留言）
 
