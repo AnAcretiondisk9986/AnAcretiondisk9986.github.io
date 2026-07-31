@@ -1,9 +1,24 @@
 # Acretiondisk Blog — 更新日志
 
 > 使用 Astro 构建的个人博客，部署到 GitHub Pages（`https://anacretiondisk9986.github.io/`）。
-> 当前版本：**1.1.0**（2026-07-31）
+> 当前版本：**1.1.1**（2026-07-31）
 
 ---
+
+## 1.1.1（2026-07-31）
+
+### ✍ 管理面板文章编辑新增 Markdown 实时预览（含图片）
+
+- 正文编辑区改为「编辑 / 分屏 / 预览」三态视图（默认分屏，选择记忆在 localStorage `admin-editor-view`）：分屏时左侧源码右侧实时渲染，纯预览模式仅渲染结果。
+- 输入防抖 150ms 实时渲染；图片上传、外部 URL 导入、粘贴插入 Markdown 后自动刷新预览。
+- **零依赖手写 Markdown 渲染器**（延续项目无依赖风格）：标题、粗体/斜体/删除线、行内代码、围栏代码块（带语言标注）、引用（支持嵌套）、无序/有序列表（支持缩进嵌套、任务列表 `- [x]`）、表格（含对齐）、分割线、图片、链接、自动链接；图片输出 `loading="lazy"`，本地 `/image/` 由 admin-server 静态托管可直接显示。
+- 安全：文本层轻转义（`&`、`<`）保留 `>`/`"` 不破坏结构语法，属性输出单独转义引号（`mdAttr`），`<script>` 与属性注入均不可执行。
+- 细节修复：斜体 `_` 正则加单词边界避免误伤文件名下划线、代码块去除末尾换行、admin 页补 `<link rel="icon">` 消除 favicon 404。
+
+### 🐛 修复：编辑器无法纵向滚动、Markdown 预览区不可滚动
+
+- 根因：`#editorContainer` 非 flex 导致 `.editor{overflow-y:auto}` 失效，正文区随内容增长被 `overflow:hidden` 裁剪；`editor-wrap` 的 `min-height:auto` 把预览区撑到与内容等高，内部滚动永不触发。
+- 修复：`#editorContainer` 改为 `flex:1; display:flex; flex-direction:column; min-height:0`，`.editor-wrap{min-height:300px}` 覆盖 `min-height:auto`，使预览区高度受容器约束、内部滚动生效。
 
 ## 1.1.0（2026-07-31）
 
