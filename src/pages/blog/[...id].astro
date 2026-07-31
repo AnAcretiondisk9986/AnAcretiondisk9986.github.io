@@ -44,6 +44,10 @@ const printUrl = JSON.stringify(
         <div><dt>分类标签</dt><dd>{post.data.tags.join(' / ') || '未分类'}</dd></div>
         <div><dt>记录者</dt><dd>Acretiondisk</dd></div>
         <div><dt>状态</dt><dd>公开阅览</dd></div>
+        <div id="busuanzi_container_page_pv" hidden>
+          <dt>阅览次数</dt>
+          <dd><span id="busuanzi_value_page_pv">—</span></dd>
+        </div>
       </dl>
       <p class="margin-note">原始观察记录。文字与观点会随认知更新而修订。</p>
     </aside>
@@ -81,6 +85,33 @@ const printUrl = JSON.stringify(
     </article>
   </div>
 </BaseLayout>
+
+<script is:inline>
+  // 阅览次数（不蒜子统计）：按当前页面 URL 计数，境内可直连。
+  // 数字就绪后才显示条目；服务不可用时保持隐藏，不影响页面其余内容。
+  (() => {
+    const valueEl = document.getElementById('busuanzi_value_page_pv');
+    const box = document.getElementById('busuanzi_container_page_pv');
+    if (!valueEl || !box) return;
+
+    window.busuanziCallback = (data) => {
+      const n = Number(data && data.page_pv);
+      if (Number.isFinite(n) && n > 0) {
+        valueEl.textContent = n.toLocaleString('zh-CN');
+        box.hidden = false;
+      }
+    };
+
+    const s = document.createElement('script');
+    s.async = true;
+    // 不蒜子靠 Referer 的完整 URL 区分页面：必须显式允许发送完整路径，
+    // 否则浏览器默认只发域名，所有文章的浏览量会混在一起。
+    s.referrerPolicy = 'no-referrer-when-downgrade';
+    s.src = 'https://busuanzi.ibruce.info/busuanzi?jsonpCallback=busuanziCallback';
+    s.onerror = () => { box.hidden = true; };
+    document.head.appendChild(s);
+  })();
+</script>
 
 <style is:global is:inline>
   /* 打印页眉页脚：Chrome / Edge / Safari 支持 @page margin boxes，Firefox 优雅降级（仅无页眉页脚） */
