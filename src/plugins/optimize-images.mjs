@@ -9,13 +9,14 @@
 //    dist/image/opt/（vite 复制 public 先于路由渲染，渲染时写入的文件不会被
 //    本次构建复制，故由该钩子补复制；同时覆盖「渲染被缓存跳过」的场景）。
 //
-// 画廊页（src/pages/gallery.astro）从 post.body 原文解析 src，不经过此管道，
-// 因此「随文图像」与「独立收藏」都保持原图。
+// 画廊页（src/pages/gallery.astro）通过 optimizeImageUrl() 为卡片预览图取压缩版，
+// 点击查看大图（dialog viewer）时仍用原图 src。
 //
 // 参数：WebP quality 78，宽度超过 1920px 才等比缩小。
 //
 // 注意：public/image/opt/ 是构建产物，已加入 .gitignore，不入库。
 
+import { createHash } from 'node:crypto';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import sharp from 'sharp';
@@ -63,6 +64,9 @@ async function optimize(src) {
   if (cache.has(src)) return cache.get(src);
 
   const result = await (async () => {
+    if (typeof src !== 'string' || !src.startsWith('/image/')) {
+      throw new Error(`仅支持 /image/ 路径: ${src}`);
+    }
     const decoded = decodeURIComponent(src);
     const sourcePath = path.join(PUBLIC_DIR, decoded);
     // 防路径穿越：解析后必须仍位于 public/ 内
@@ -73,8 +77,19 @@ async function optimize(src) {
     const fileName = path.basename(resolved);
     const lastDot = fileName.lastIndexOf('.');
     const fileBase = lastDot > 0 ? fileName.slice(0, lastDot) : fileName;
-    const outUrl = `/image/opt/${encodeURIComponent(fileBase)}.webp`;
-    const outPath = path.join(OPT_SOURCE_DIR, `${fileBase}.webp`);
+    // 目录 hash 前缀，避免不同目录下同名文件的产物互相覆盖
+    const dirHash = createHash('sha1').update(path.dirname(decoded)).digest('hex').slice(0, 8);
+    const outName = `${dirHash}-${fileBase}.webp`;
+    const outUrl = `/image/opt/${encodeURIComponent(outName)}`;
+    const outPath = path.join(OPT_SOURCE_DIR, outName);
+
+    // 产物已存在且源文件未更新 → 直接复用，避免重复压缩；源文件更新则重新生成
+    try {
+      const [srcStat, outStat] = await Promise.all([fs.stat(sourcePath), fs.stat(outPath)]);
+      if (srcStat.mtimeMs <= outStat.mtimeMs) return { ok: true, outUrl };
+    } catch {
+      /* 产物缺失或源缺失，需要生成 */
+    }
 
     let pipeline = sharp(sourcePath);
     const meta = await pipeline.metadata();
@@ -128,3 +143,16 @@ function optimizeImagesIntegration() {
 
 export default hastPlugin;
 export { optimizeImagesIntegration };
+
+/**
+ * 给任意页面（如画廊卡片预览图）提供压缩版 URL。
+ * 压缩成功返回 /image/opt/xxx.webp，失败回退原图；非生产构建直接返回原图。
+ * @param {string} src 原图 URL（/image/xxx）
+ * @returns {Promise<string>}
+ */
+export async function optimizeImageUrl(src) {
+  if (!isProd()) return src;
+  if (typeof src !== 'string' || !src.startsWith('/image/')) return src;
+  const result = await optimize(src);
+  return result.ok ? result.outUrl : src;
+}

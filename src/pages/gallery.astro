@@ -3,10 +3,12 @@ import { getCollection } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import ArchiveSeal from '../components/ArchiveSeal.astro';
 import standaloneGallery from '../data/gallery.json';
+import { optimizeImageUrl } from '../plugins/optimize-images.mjs';
 
 interface GalleryImage {
   id: string;
   src: string;
+  thumb?: string;
   alt: string;
   title: string;
   caption?: string;
@@ -49,25 +51,32 @@ const posts = (await getCollection('blog', ({ data }) => !data.draft))
     || b.id.localeCompare(a.id));
 
 const markdownImage = /!\[([^\]]*)\]\(([^)\s]+)(?:\s+["'][^"']*["'])?\)/g;
-const journalImages: GalleryImage[] = posts.flatMap((post) => {
-  const body = post.body ?? '';
-  return [...body.matchAll(markdownImage)].map((match, index) => {
-    const src = match[2];
-    const fileName = decodeURIComponent(src.split('/').pop() || `image-${index + 1}`);
-    return {
-      id: `journal-${post.id}-${index + 1}`,
-      src,
-      alt: match[1] || `${post.data.title}中的图像 ${index + 1}`,
-      title: post.data.title,
-      caption: match[1] || fileName,
-      date: post.data.pubDate.toISOString().slice(0, 10),
-      sourceUrl: `/blog/${post.id}/`,
-      sourceTitle: post.data.title,
-    };
-  });
-});
+const journalImages: GalleryImage[] = await Promise.all(
+  posts.flatMap((post) => {
+    const body = post.body ?? '';
+    return [...body.matchAll(markdownImage)].map((match, index) => {
+      const src = match[2];
+      const fileName = decodeURIComponent(src.split('/').pop() || `image-${index + 1}`);
+      return {
+        id: `journal-${post.id}-${index + 1}`,
+        src,
+        alt: match[1] || `${post.data.title}中的图像 ${index + 1}`,
+        title: post.data.title,
+        caption: match[1] || fileName,
+        date: post.data.pubDate.toISOString().slice(0, 10),
+        sourceUrl: `/blog/${post.id}/`,
+        sourceTitle: post.data.title,
+      };
+    });
+  }).map(async (img) => ({ ...img, thumb: await optimizeImageUrl(img.src) })),
+);
 
-const standaloneImages = sortNewestFirst(standaloneGallery as GalleryImage[]);
+const standaloneImages: GalleryImage[] = await Promise.all(
+  sortNewestFirst(standaloneGallery as GalleryImage[]).map(async (img) => ({
+    ...img,
+    thumb: await optimizeImageUrl(img.src),
+  })),
+);
 assignDaySequence(journalImages);
 assignDaySequence(standaloneImages);
 const totalImages = journalImages.length + standaloneImages.length;
@@ -144,7 +153,7 @@ const totalImages = journalImages.length + standaloneImages.length;
                 data-gallery-source-title={image.sourceTitle}
                 aria-label={`查看${image.title}中的${image.caption}`}
               >
-                <img src={image.src} alt={image.alt} loading={index < 3 ? 'eager' : 'lazy'} decoding="async" referrerpolicy="no-referrer" />
+                <img src={image.thumb ?? image.src} alt={image.alt} loading={index < 3 ? 'eager' : 'lazy'} decoding="async" referrerpolicy="no-referrer" />
                 <span class="gallery-image-stamp">{String(index + 1).padStart(2, '0')}</span>
                 <span class="gallery-image-expand" aria-hidden="true">↗</span>
               </button>
@@ -188,7 +197,7 @@ const totalImages = journalImages.length + standaloneImages.length;
                 data-gallery-source-title={image.sourceTitle || ''}
                 aria-label={`查看${image.title}`}
               >
-                <img src={image.src} alt={image.alt || image.title} loading="lazy" decoding="async" referrerpolicy="no-referrer" />
+                <img src={image.thumb ?? image.src} alt={image.alt || image.title} loading="lazy" decoding="async" referrerpolicy="no-referrer" />
                 <span class="gallery-image-stamp">{String(index + 1).padStart(2, '0')}</span>
                 <span class="gallery-image-expand" aria-hidden="true">↗</span>
               </button>
