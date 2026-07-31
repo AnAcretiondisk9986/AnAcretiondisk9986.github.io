@@ -45,15 +45,6 @@
 html {
   min-width: 320px;
   scroll-behavior: smooth;
-  background: var(--paper-deep);
-}
-
-body {
-  min-height: 100vh;
-  margin: 0;
-  color: var(--ink);
-  font-family: var(--sans);
-  line-height: 1.7;
   background:
     radial-gradient(circle at 12% 10%, rgba(255, 255, 255, 0.23), transparent 25%),
     radial-gradient(circle at 82% 44%, rgba(113, 83, 42, 0.08), transparent 31%),
@@ -62,9 +53,17 @@ body {
   background-size: auto, auto, 5px 100%, auto;
 }
 
+body {
+  min-height: 100vh;
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--sans);
+  line-height: 1.7;
+}
+
 .paper-grain {
   position: fixed;
-  z-index: 20;
+  z-index: -1;
   inset: 0;
   pointer-events: none;
   opacity: 0.22;
