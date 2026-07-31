@@ -38,7 +38,9 @@ origin/main: d21ff97 已推送（970e9e1..d21ff97）
 线上：/guestbook/ 已部署，Waline 服务 https://comment-sys-ashen.vercel.app 已接入（默认地址已写死）
 工作区：
   ?? reasonix.toml              ← 未跟踪（Reasonix 配置，不提交）
+  M admin/index.html           ← 本次：文章编辑实时 Markdown 预览
   M AGENT_HANDOFF.md           ← 本次推送记录
+  M docs/WALINE_DEPLOY.md      ← 先前遗留未提交改动（非本次）
 ```
 
 **文章：5 篇**
@@ -56,6 +58,18 @@ origin/main: d21ff97 已推送（970e9e1..d21ff97）
 ---
 
 ## 变更日志
+
+### 2026-07-31（编辑实时预览）
+
+**✍ 管理面板文章编辑新增 Markdown 实时预览（含图片）**
+
+- **文件**：`admin/index.html`
+- 正文编辑区改为「编辑 / 分屏 / 预览」三态视图（默认分屏，选择记忆在 localStorage `admin-editor-view`）：分屏时左侧源码右侧实时渲染，纯预览模式仅渲染结果。
+- 输入防抖 150ms 实时渲染；图片上传、外部 URL 导入、粘贴插入 Markdown 后自动刷新预览。
+- **零依赖手写 Markdown 渲染器**（延续项目无依赖风格）：标题、粗体/斜体/删除线、行内代码、围栏代码块（带语言标注）、引用（支持嵌套）、无序/有序列表（支持缩进嵌套、任务列表 `- [x]`）、表格（含对齐）、分割线、图片、链接、自动链接。图片输出 `<img loading="lazy">`，本地 `/image/` 由 admin-server 静态托管可直接显示。
+- 安全：文本层轻转义（`&`、`<`）保留 `>`/`"` 不破坏结构语法，输出到 HTML 属性时单独转义引号（`mdAttr`），`<script>` 与属性注入均不可执行。
+- 细节修复：斜体 `_` 正则加单词边界，避免误伤文件名下划线（如 `31_16-45-36_`）；代码块去除末尾换行；admin 页补 `<link rel="icon">` 消除 favicon 404。
+- 验证：渲染器 23 项断言单测全过（含 XSS 用例）；headless Chrome 端到端实测：打开文章默认分屏、实时渲染标题/加粗/斜体/代码/图片/列表/引用、真实图片加载成功、三态切换、画廊↔文章模式往返、插入图片后预览自动刷新，页面 0 JS 错误；`npm run build` 13 页成功。
 
 ### 2026-07-31（文章导出 PDF）
 
@@ -250,7 +264,7 @@ origin/main: d21ff97 已推送（970e9e1..d21ff97）
 ## 下一位 Agent 指南
 
 1. **检查状态**
-
+   
    ```powershell
    git status --branch --short
    git fetch origin main
@@ -258,13 +272,13 @@ origin/main: d21ff97 已推送（970e9e1..d21ff97）
    ```
 
 2. **如果有 ahead 提交（如本次）→ 推送**
-
+   
    ```powershell
    git push origin main         # 禁止 force push
    ```
 
 3. **如果远端有新提交 → 合并再推送**
-
+   
    ```powershell
    git pull --no-edit origin main
    npm run build
@@ -274,7 +288,7 @@ origin/main: d21ff97 已推送（970e9e1..d21ff97）
 4. **提交本次修改**（待提交：图志页面、排序功能、`admin-server.mjs` slug 修复）
 
 5. **验证**
-
+   
    - `npm run build` 通过
    - `/gallery/` 自动索引随文图片，两个子页及新旧排序均可用
    - `npm run admin` 管理面板可启动
