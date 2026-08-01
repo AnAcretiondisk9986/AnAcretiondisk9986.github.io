@@ -10,8 +10,10 @@ tags:
 draft: false
 ---
 
-
 <iframe src="//player.bilibili.com/player.html?isOutside=true&aid=113345042582303&bvid=BV1M2yGYKEjP&cid=26396133153&p=1" title="嵌入式视频播放器" loading="lazy" allowfullscreen referrerpolicy="no-referrer-when-downgrade"></iframe>
+
+链接：https://pan.quark.cn/s/44d9165d6abd
+提取码：jKWY
 
 # 解剖学协助学习软件，3D演示图谱
 
