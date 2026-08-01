@@ -70,6 +70,14 @@ origin/main: d21ff97 已推送（970e9e1..d21ff97）
 - 后端新增 `/api/about` GET/PUT（数组字段以 JSON 字符串传输，`parseJsonArray` 解析；清洗后与旧数据 merge 保证结构完整）；「推送」的 `git add` 加入 `src/data/about.json`，头像文件本身在 `public/image/` 已覆盖。
 - 验证：`node --check` 通过；node fetch 实测 GET/PUT/再 GET 全链路 UTF-8 中文完好（curl 在 Windows 会转 GBK，不可用）；`npm run build` 15 页成功，`dist/about/index.html` 分别实测有头像（`has-avatar` + `<img>`）与无头像（书本标记回退）两种渲染。
 
+**🚀 发布 v1.3.0（双仓库 + Release）**
+
+- 主仓库 `AnAcretiondisk9986/AnAcretiondisk9986.github.io`：提交 `3225a93`（功能）+ `8da0da8`（同步 blog-template 指针），tag `v1.3.0` 已推送；README.md（更新日志）顶部新增 1.3.0 条目。
+- 模板仓库 `AnAcretiondisk9986/blog-template`：同步 `admin-server.mjs`、`admin/index.html`（保留模板占位 `<title>` 与 `btnSite` 的 `your-username.github.io`）、`src/styles/global.css`（差异仅头像样式）、`src/pages/about.astro`（与主仓库同构），新增 `src/data/about.json`（占位文案：记录名「你的名字」、兴趣「待补充」）；提交 `610953d`，tag `v1.3.0` 已推送。模板构建 7 页成功。
+- GitHub Release（均非草稿，notes 引用 1.3.0 更新日志）：
+  - https://github.com/AnAcretiondisk9986/AnAcretiondisk9986.github.io/releases/tag/v1.3.0
+  - https://github.com/AnAcretiondisk9986/blog-template/releases/tag/v1.3.0
+
 ### 2026-07-31（编辑实时预览）
 
 **✍ 管理面板文章编辑新增 Markdown 实时预览（含图片）**
