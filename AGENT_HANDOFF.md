@@ -2,6 +2,14 @@
 
 > 本文件已在用户授权下公开于 GitHub 仓库。每位 Agent 完成工作后在此记录变更。
 
+**🔗 关于页链接可跳转（静默推送，无 Release）**
+
+- `src/pages/about.astro`（主仓库 + 模板）：新增通用 `linkify()` 函数——先做 HTML 转义（`& < > "`）再按 RFC 3986 URL 字符集识别 `http(s)://` 链接，转成 `<a target="_blank" rel="noopener noreferrer">`；仅识别 http/https（`javascript:` 等协议原样输出），尾部成对标点自动剥离。所有经管理面板可编辑的文本字段统一走此函数：身份表 `value`、开头段 `lead`、正文段落 `paragraphs`、引用 `quoteText`、关联网站 `note`——后续管理面板往任意字段粘贴链接都会自动可跳转。
+- `src/styles/global.css`（主仓库 + 模板）：新增 `.dossier a` 链接样式（红色 `--red-dark` + 下划线 + hover 加深 + `word-break` 防长 URL 溢出）；`.interest-index li small a` 覆盖灰字显示链接色。引用标签 `span` 选择器改为 `.quote-label`，`quoteText` 拆为 `.quote-text` 块渲染。
+- `admin/index.html`（主仓库 + 模板）：关联网站「备注」输入框 placeholder 改为「链接/备注（粘贴 http(s) 链接自动可跳转）」。
+- 验证：`npm run build` 17 页成功；产物中 4 个关联网站均为可点击 `<a>`；linkify 单测 6 用例全过（XSS 转义、引号注入、中文标点剥离、协议白名单、多链接+查询参数、真实 B 站链接）。
+- 提交：本次为静默推送，不打 tag、不发 Release（commit hash 见 `git log`）。
+
 **🔤 文章页标题字号调小（静默推送，无 Release）**
 
 - `src/styles/global.css`（主仓库 + 模板）：文章页大标题 `.article-header h1` 字号由 `clamp(2.8rem, 6.5vw, 5.5rem)`（最大约 88px）改为 `2rem`，与正文一级标题（`.prose h1` 默认 2em）同大；`max-width: 640px` 断点内的覆盖值同步由 `clamp(2.45rem, 14vw, 4rem)` 改为 `2rem`。
@@ -25,7 +33,7 @@
 - 安全加固：预览只提取「闭合完整」的 iframe（未闭合回退为文本显示，不吞正文）；重建标签丢弃 `on*` 事件属性、src 限 http(s)；`mdInline` 捕获组排除 `\u0000` 占位符防止属性注入；`buildVideoEmbed` 对粘贴的 iframe 同样校验协议白名单；重建 iframe 补 `title` 无障碍属性。
 - 验证：27 项函数单测全过（含 XSS、未闭合 iframe、属性注入、连续多 iframe 用例）；`npm run build` 16 页成功；临时文章端到端构建产物含完整 iframe；管理面板冒烟测试 /admin 与 /api/posts 均 200。
 
-最后更新：2026-08-01（文章页标题字号调小）
+最后更新：2026-08-01（关于页链接可跳转）
 
 ---
 

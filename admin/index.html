@@ -996,7 +996,7 @@
       return `<div class="about-interest-row" style="display:flex;gap:8px;align-items:center">
         <input class="ai-index" placeholder="序号" value="${escAttr(item.index || '')}" style="width:50px" />
         <input class="ai-name" placeholder="名称" value="${escAttr(item.name || '')}" style="width:130px" />
-        <input class="ai-note" placeholder="备注" value="${escAttr(item.note || '')}" style="flex:1" />
+        <input class="ai-note" placeholder="链接/备注（粘贴 http(s) 链接自动可跳转）" value="${escAttr(item.note || '')}" style="flex:1" />
         <button class="btn small danger" type="button" data-about-del>×</button>
       </div>`;
     }

@@ -6,6 +6,27 @@ import { optimizeImageUrl } from '../plugins/optimize-images.mjs';
 
 // 头像与文章图片走同一套压缩管线（构建时转 WebP，非生产构建返回原图）
 const avatarSrc = about.avatar ? await optimizeImageUrl(about.avatar) : '';
+
+// 把文本中的 http(s) 链接转换为可点击 <a>。
+// 先转义再替换，防 HTML/属性注入；仅识别 http/https，其余原样输出。
+// 所有经管理面板可编辑的文本字段统一走此函数，后续新增字段粘贴链接即可跳转。
+function linkify(text = '') {
+  const escaped = String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+  return escaped.replace(
+    // URL 字符集采用 RFC 3986 合法字符，匹配在非 URL 字符（如中文标点）处自然停止
+    /https?:\/\/[A-Za-z0-9\-._~:\/?#\[\]@!$&'()*+,;=%]+/g,
+    (raw) => {
+      // 剥离 URL 尾部成对标点（英文/全角），避免把句号收进链接
+      const url = raw.replace(/[),.;:!?]+$/, '').replace(/[）】」』，。；：！？、]+$/, '');
+      if (!url) return raw;
+      return `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`;
+    },
+  );
+}
 ---
 
 <BaseLayout title={about.title || '关于'} description={about.subtitle || '关于 Acretiondisk。'}>
@@ -29,23 +50,23 @@ const avatarSrc = about.avatar ? await optimizeImageUrl(about.avatar) : '';
         <dl class="identity-table">
           {
             (about.identity || []).map(item => (
-              <div><dt>{item.label}</dt><dd>{item.value}</dd></div>
+              <div><dt>{item.label}</dt><dd set:html={linkify(item.value)} /></div>
             ))
           }
         </dl>
       </section>
 
       <section class="dossier-copy">
-        {about.lead && <p class="lead-paragraph">{about.lead}</p>}
+        {about.lead && <p class="lead-paragraph" set:html={linkify(about.lead)} />}
         {
           (about.paragraphs || []).map(text => (
-            <p>{text}</p>
+            <p set:html={linkify(text)} />
           ))
         }
 
         <blockquote>
-          <span>{about.quoteLabel}</span>
-          {about.quoteText}
+          <span class="quote-label">{about.quoteLabel}</span>
+          <div class="quote-text" set:html={linkify(about.quoteText)} />
         </blockquote>
 
         <div class="interest-index">
@@ -53,7 +74,7 @@ const avatarSrc = about.avatar ? await optimizeImageUrl(about.avatar) : '';
           <ol>
             {
               (about.interests || []).map(item => (
-                <li><span>{item.index}</span><b>{item.name}</b><small>{item.note}</small></li>
+                <li><span>{item.index}</span><b>{item.name}</b><small set:html={linkify(item.note)} /></li>
               ))
             }
           </ol>

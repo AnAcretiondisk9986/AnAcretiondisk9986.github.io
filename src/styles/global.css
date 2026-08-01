@@ -1331,13 +1331,17 @@ main {
   line-height: 1.8;
 }
 
-.dossier-copy blockquote span {
+.dossier-copy blockquote .quote-label {
   display: block;
   margin-bottom: 10px;
   color: var(--red);
   font-family: var(--sans);
   font-size: 0.6rem;
   letter-spacing: 0.18em;
+}
+
+.dossier-copy blockquote .quote-text {
+  display: block;
 }
 
 .interest-index h2 {
@@ -1374,6 +1378,25 @@ main {
 
 .interest-index li small {
   color: var(--ink-faint);
+}
+
+/* 关于页链接：高亮 + 可跳转（管理面板任意字段粘贴 http(s) 链接均生效） */
+.dossier a {
+  color: var(--red-dark);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--red-dark) 45%, transparent);
+  text-underline-offset: 3px;
+  word-break: break-all;
+  transition: color 0.18s ease;
+}
+
+.dossier a:hover {
+  color: var(--red);
+  text-decoration-color: var(--red);
+}
+
+.interest-index li small a {
+  color: var(--red-dark);
 }
 
 .not-found {
