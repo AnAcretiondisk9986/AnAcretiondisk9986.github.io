@@ -1110,6 +1110,17 @@ main {
   filter: saturate(0.72) contrast(1.04);
 }
 
+/* 文章内嵌流媒体视频（B站 / YouTube 等）：Markdown 中直接写 <iframe>，satteri 原样保留 */
+.prose iframe {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  height: auto;
+  margin-block: 2em;
+  border: 1px solid var(--rule-strong);
+  background: var(--paper-deep);
+}
+
 .prose pre {
   overflow-x: auto;
   margin-block: 2em;

@@ -1,9 +1,18 @@
 # Acretiondisk Blog — 更新日志
 
 > 使用 Astro 构建的个人博客，部署到 GitHub Pages（`https://anacretiondisk9986.github.io/`）。
-> 当前版本：**1.3.2**（2026-08-01）
+> 当前版本：**1.4.0**（2026-08-02）
 
 ---
+
+## 1.4.0（2026-08-02）
+
+### 🎬 文章内嵌流媒体视频播放器（B站 / YouTube / 通用 iframe）
+
+- 文章 Markdown 正文可直接写 `<iframe>` 嵌入视频播放器（satteri 原样保留），页面端新增 `.prose iframe` 响应式样式（16:9 比例、宽 100%、`height:auto` 覆盖 B站嵌入代码的固定高度），移动端不溢出。
+- 管理面板文章编辑器工具栏新增「▶ 视频」按钮：粘贴 B站视频链接（含 `?p=N` 分P、纯 BV 号）、YouTube 链接（watch / youtu.be / shorts / live）、或任意视频网站官网 iframe 嵌入代码，一键生成响应式嵌入代码插入正文光标处；b23.tv 短链接提示先展开。
+- 编辑器实时预览同步支持 iframe 渲染：仅提取闭合完整的 iframe（未闭合回退为文本显示，不吞正文）、重建标签丢弃 `on*` 事件属性、src 限 http(s) 协议、围栏代码块内的 `<iframe>` 不误提取；YouTube 嵌入走 `youtube-nocookie.com` 隐私域名。
+- 模板仓库同步发布（`blog-template` v1.4.0）。
 
 ## 1.3.2（2026-08-01）
 

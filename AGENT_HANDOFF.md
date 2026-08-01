@@ -9,7 +9,16 @@
 - 提交：主仓库 `8c0311b`、模板 `fc63ca5`。
 - 用户反馈背景：线上兴趣表并非空——`cea2633` 部署后兴趣被清空，`6f191d7` 已恢复并部署，用户看到的空表是浏览器缓存；需强制刷新。面板内编辑兴趣条目需重启管理面板（旧面板保存会再次清空）。
 
-最后更新：2026-08-01（关于页保存清空修复）
+**🎬 文章内嵌流媒体视频（B站 / YouTube / 通用 iframe）**
+
+- `admin/index.html`（主仓库 + 模板）：文章编辑器工具栏新增「▶ 视频」按钮，弹出对话框粘贴视频链接或嵌入代码，一键生成响应式 iframe 代码插入正文光标处；支持 B站完整链接（含 `?p=N` 分P、纯 BV 号）、YouTube（watch / youtu.be / shorts / live）、b23.tv 短链提示展开、以及官网 iframe 嵌入代码（自动提取 src 重建，丢弃事件属性）。
+- 预览渲染器 `mdRenderVideo`：先保护围栏代码块（其中的 `<iframe>` 不提取），再提取正文 iframe 重建为干净标签（丢弃 `on*` 事件属性、拒绝非 http(s) src），其余文本沿用轻转义；`mdParse` 新增 `\u0000K` / `\u0000V` 占位符块级分支。
+- `src/styles/global.css`（主仓库 + 模板）：新增 `.prose iframe` 响应式样式（`width:100%` + `aspect-ratio:16/9` + `height:auto` 覆盖 B站嵌入代码的固定高度），移动端不溢出；管理面板预览同步加 `.markdown-preview .video-embed` 样式。
+- 使用方式：文章 Markdown 正文直接写 `<iframe src="...">`（satteri 原样保留），或管理面板「▶ 视频」按钮自动生成；B站推荐 `player.bilibili.com/player.html?bvid=…` 播放器地址。
+- 安全加固：预览只提取「闭合完整」的 iframe（未闭合回退为文本显示，不吞正文）；重建标签丢弃 `on*` 事件属性、src 限 http(s)；`mdInline` 捕获组排除 `\u0000` 占位符防止属性注入；`buildVideoEmbed` 对粘贴的 iframe 同样校验协议白名单；重建 iframe 补 `title` 无障碍属性。
+- 验证：27 项函数单测全过（含 XSS、未闭合 iframe、属性注入、连续多 iframe 用例）；`npm run build` 16 页成功；临时文章端到端构建产物含完整 iframe；管理面板冒烟测试 /admin 与 /api/posts 均 200。
+
+最后更新：2026-08-02（文章内嵌视频功能）
 
 ---
 

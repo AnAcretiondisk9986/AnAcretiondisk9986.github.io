@@ -96,6 +96,15 @@
     .markdown-preview p{margin:6px 0}
     .markdown-preview a{color:#80a0c0;text-decoration:none;border-bottom:1px dotted #3a4a5a}
     .markdown-preview img{max-width:100%;height:auto;border-radius:2px;margin:8px 0;display:block;border:1px solid #2a2a30}
+    /* 视频嵌入预览 */
+    .markdown-preview .video-embed{margin:10px 0}
+    .markdown-preview .video-embed iframe{width:100%;aspect-ratio:16/9;height:auto;border:1px solid #2a2a30;background:#101014;border-radius:2px;display:block}
+    /* 插入视频对话框 */
+    .video-modal-mask{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:1000;display:flex;align-items:center;justify-content:center}
+    .video-modal{width:560px;max-width:92vw;background:#1a1a1e;border:1px solid #3a3a40;box-shadow:0 8px 40px rgba(0,0,0,.5);padding:18px 20px;display:flex;flex-direction:column;gap:12px;border-radius:2px}
+    .video-modal h3{margin:0;font-size:14px;color:#c8b080;letter-spacing:2px;font-weight:normal}
+    .video-modal .video-hint{font-size:10px;color:#6a6a70;line-height:1.7}
+    .video-modal .video-actions{display:flex;gap:8px;justify-content:flex-end}
     .markdown-preview code{background:#101014;border:1px solid #2a2a30;padding:1px 5px;font-family:'Cascadia Code','Consolas',monospace;font-size:12px;color:#c0b898;border-radius:2px}
     .markdown-preview pre{background:#101014;border:1px solid #2a2a30;border-left:2px solid #5a5020;padding:10px 12px;overflow-x:auto;margin:8px 0;border-radius:2px}
     .markdown-preview pre code{background:none;border:none;padding:0;font-size:12px;line-height:1.6;color:#c0b898}
@@ -143,12 +152,29 @@
     </div>
     <div class="tip-bar">
       <span>💡 粘贴图片自动上传</span>
+      <span>▶ 正文工具栏可插入 B站 / YouTube 视频</span>
       <span>⚡ Ctrl+S 保存</span>
       <span>⬆ 推送=内容 / 全量推送=含代码</span>
     </div>
     <div id="editorContainer"><div class="empty-state">← 从左侧列表选择文章，或点击「新建」</div></div>
   </main>
   <input type="file" id="fileInput" style="display:none" accept="image/*" />
+
+  <!-- 插入视频对话框 -->
+  <div class="video-modal-mask" id="videoModal" style="display:none">
+    <div class="video-modal">
+      <h3>▶ 插入视频</h3>
+      <input id="fVideoInput" placeholder="粘贴 B站 / YouTube 视频链接，或官网 iframe 嵌入代码" />
+      <div class="video-hint">
+        支持：B站视频链接（bilibili.com/video/BV…）、YouTube 链接（youtube.com/watch / youtu.be / shorts）、或视频网站提供的 iframe 嵌入代码（粘贴后自动提取地址）。<br />
+        提示：b23.tv 短链接请先打开，再复制跳转后的完整视频地址。
+      </div>
+      <div class="video-actions">
+        <button class="btn" id="btnVideoCancel">取消</button>
+        <button class="btn primary" id="btnVideoInsert">插入</button>
+      </div>
+    </div>
+  </div>
 
   <script>
     const API = '/api/posts';
@@ -230,6 +256,7 @@
           <div class="form-group editor-wrap" style="flex:1">
             <div class="editor-toolbar">
               <label>正文 (Markdown)</label>
+              <button class="btn small" id="btnInsertVideo" title="插入 B站 / YouTube 等流媒体视频">▶ 视频</button>
               <div class="view-switch" id="viewSwitch">
                 <button data-view="edit">编辑</button>
                 <button data-view="split" class="active">分屏</button>
@@ -244,6 +271,7 @@
         </div>`;
       setupUpload();
       setupPreview();
+      setupVideoInsert();
       // Focus title for new posts
       if(!post.title) $('#fTitle')?.focus();
     }
@@ -279,6 +307,7 @@
           <div class="form-group editor-wrap" style="flex:1">
             <div class="editor-toolbar">
               <label>正文 (Markdown)</label>
+              <button class="btn small" id="btnInsertVideo" title="插入 B站 / YouTube 等流媒体视频">▶ 视频</button>
               <div class="view-switch" id="viewSwitch">
                 <button data-view="edit">编辑</button>
                 <button data-view="split" class="active">分屏</button>
@@ -293,6 +322,7 @@
         </div>`;
       setupUpload();
       setupPreview();
+      setupVideoInsert();
       renderList();
       $('#fTitle')?.focus();
     }
@@ -391,6 +421,66 @@
       };
     }
 
+    /* ── 插入视频（B站 / YouTube / 通用 iframe 嵌入） ── */
+    // 把用户输入转换为标准 iframe 嵌入代码；无法识别时返回 {error}
+    function buildVideoEmbed(input){
+      const s=(input||'').trim();
+      if(!s) return {error:'请粘贴视频链接或嵌入代码'};
+      // 1) 直接粘贴 iframe 嵌入代码：提取 src 重建（丢弃原始样式与事件属性）；src 必须是 http(s)
+      if(/<iframe/i.test(s)){
+        const m=s.match(/<iframe[^>]*\bsrc\s*=\s*["']([^"']+)["']/i);
+        if(!m) return {error:'iframe 代码中未找到 src 属性'};
+        const src=m[1];
+        if(!/^(https?:)?\/\//i.test(src)) return {error:'iframe 的 src 必须是 http(s) 地址'};
+        return {html:'<div class="video-embed"><iframe src="'+src+'" title="嵌入式视频播放器" loading="lazy" allowfullscreen referrerpolicy="no-referrer-when-downgrade"></iframe></div>'};
+      }
+      // 2) B站：完整链接或 BV 号（可选 ?p=N 分P）
+      let m=s.match(/(?:bilibili\.com\/video\/)?(BV[0-9A-Za-z]{10})(?:[?#/]|$)/i);
+      if(m){
+        const page=(s.match(/[?&]p=(\d+)/i)||[])[1]||'1';
+        return {html:'<div class="video-embed"><iframe src="https://player.bilibili.com/player.html?bvid='+m[1]+'&page='+page+'&high_quality=1&danmaku=1&autoplay=0" title="哔哩哔哩视频" scrolling="no" border="0" frameborder="no" framespacing="0" allowfullscreen="true" loading="lazy"></iframe></div>'};
+      }
+      if(/b23\.tv/i.test(s)) return {error:'检测到 b23.tv 短链接：请先打开该链接，复制跳转后的完整视频地址再粘贴'};
+      // 3) YouTube：watch / embed / shorts / live / youtu.be
+      m=s.match(/(?:youtube\.com\/(?:watch\?.*?v=|embed\/|shorts\/|live\/)|youtu\.be\/)([\w-]{6,})/i);
+      if(m){
+        return {html:'<div class="video-embed"><iframe src="https://www.youtube-nocookie.com/embed/'+m[1]+'" title="YouTube 视频播放器" loading="lazy" allowfullscreen referrerpolicy="no-referrer-when-downgrade"></iframe></div>'};
+      }
+      return {error:'无法识别：请粘贴 B站 / YouTube 视频链接，或视频网站提供的 iframe 嵌入代码'};
+    }
+
+    // 文章编辑器的「▶ 视频」按钮 → 打开对话框
+    function setupVideoInsert(){
+      const btn=$('#btnInsertVideo'); if(!btn) return;
+      btn.onclick=()=>{
+        const modal=$('#videoModal'); if(!modal) return;
+        const input=$('#fVideoInput');
+        if(input) input.value='';
+        modal.style.display='flex';
+        input?.focus();
+      };
+    }
+    // 对话框事件（静态 HTML，初始化时绑定一次）
+    function bindVideoModal(){
+      const modal=$('#videoModal'); if(!modal) return;
+      $('#btnVideoCancel').onclick=()=>{modal.style.display='none'};
+      modal.addEventListener('click',e=>{if(e.target===modal)modal.style.display='none'});
+      $('#btnVideoInsert').onclick=()=>{
+        const r=buildVideoEmbed($('#fVideoInput')?.value);
+        if(r.error){toast(r.error);return}
+        const ta=$('#fContent');
+        if(ta){
+          const s=ta.selectionStart;
+          ta.value=ta.value.substring(0,s)+'\n'+r.html+'\n'+ta.value.substring(ta.selectionEnd);
+          ta.focus();
+        }
+        modal.style.display='none';
+        refreshPreview();
+        toast('已插入视频');
+      };
+      $('#fVideoInput').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('#btnVideoInsert').click()}});
+    }
+
     async function uploadImage(file) {
       if(!file||!file.type.startsWith('image/')){toast('仅支持图片');return}
       toast('上传中…');
@@ -430,12 +520,13 @@
     // 行内语法：行内代码 / 图片 / 链接 / 删除线 / 粗体 / 斜体 / 自动链接
     function mdInline(text){
       const codeSpans=[];
-      text = text.replace(/`([^`]+)`/g,(m,c)=>{codeSpans.push('<code>'+c+'</code>');return '\u0000C'+(codeSpans.length-1)+'\u0000'});
-      text = text.replace(/!\[([^\]]*)\]\(([^)\s]+)(?:\s+"([^"]*)")?\)/g,(m,alt,src,title)=>{
+      // 捕获组排除 \u0000：防止视频占位符（\u0000V…）落入行内代码 / 属性值，避免还原时注入 HTML
+      text = text.replace(/`([^`\u0000]+)`/g,(m,c)=>{codeSpans.push('<code>'+c+'</code>');return '\u0000C'+(codeSpans.length-1)+'\u0000'});
+      text = text.replace(/!\[([^\]\u0000]*)\]\(([^)\s\u0000]+)(?:\s+"([^"\u0000]*)")?\)/g,(m,alt,src,title)=>{
         const t=title?' title="'+mdAttr(title)+'"':'';
         return '<img src="'+mdAttr(src)+'" alt="'+mdAttr(alt)+'"'+t+' loading="lazy">';
       });
-      text = text.replace(/\[([^\]]*)\]\(([^)\s]+)(?:\s+"([^"]*)")?\)/g,(m,label,href,title)=>{
+      text = text.replace(/\[([^\]\u0000]*)\]\(([^)\s\u0000]+)(?:\s+"([^"\u0000]*)")?\)/g,(m,label,href,title)=>{
         const t=title?' title="'+mdAttr(title)+'"':'';
         return '<a href="'+mdAttr(href)+'"'+t+' target="_blank" rel="noopener">'+label+'</a>';
       });
@@ -444,7 +535,7 @@
       text = text.replace(/__([^_]+)__/g,'<strong>$1</strong>');
       text = text.replace(/(?<![*\w])\*([^*\n]+)\*(?![*\w])/g,'<em>$1</em>');
       text = text.replace(/(?<![\w_])_([^_\n]+)_(?![\w_])/g,'<em>$1</em>');
-      text = text.replace(/&lt;((?:https?:\/\/|mailto:)[^>\s]+)>/g,(m,url)=>'<a href="'+mdAttr(url)+'" target="_blank" rel="noopener">'+url+'</a>');
+      text = text.replace(/&lt;((?:https?:\/\/|mailto:)[^>\s\u0000]+)>/g,(m,url)=>'<a href="'+mdAttr(url)+'" target="_blank" rel="noopener">'+url+'</a>');
       text = text.replace(/\u0000C(\d+)\u0000/g,(m,i)=>codeSpans[+i]);
       return text;
     }
@@ -499,6 +590,10 @@
           html+='<pre><code'+(b.lang?' class="language-'+mdAttr(b.lang)+'"':'')+'>'+b.code.replace(/\n$/,'')+'</code></pre>\n';
           i++;continue;
         }
+        const vm=t.match(/^\u0000V(\d+)\u0000$/);
+        if(vm){html+='\u0000V'+vm[1]+'\u0000\n';i++;continue}
+        const km=t.match(/^\u0000K(\d+)\u0000$/);
+        if(km){html+='\u0000K'+km[1]+'\u0000\n';i++;continue}
         const hm=t.match(/^(#{1,6})\s+(.*)$/);
         if(hm){html+='<h'+hm[1].length+'>'+mdInline(hm[2])+'</h'+hm[1].length+'>\n';i++;continue}
         if(/^(-{3,}|\*{3,}|_{3,})\s*$/.test(t)){html+='<hr>\n';i++;continue}
@@ -536,14 +631,46 @@
       }
       return html;
     }
-    function mdRender(src){return mdParse(mdEscapeText(String(src||'')))}
+    // 实时预览渲染入口：先保护围栏代码块（其中的 <iframe> 不应被提取），再提取正文 iframe，其余文本照常轻转义
+    function mdRenderVideo(src){
+      const videos=[];
+      const blocks=[];
+      let text=String(src||'');
+      text=text.replace(/```(\w*)\n?([\s\S]*?)```/g,(m,lang,code)=>{blocks.push({lang,code});return '\u0000K'+(blocks.length-1)+'\u0000'});
+      // 仅提取「闭合完整」的 iframe 块；未闭合的保持原样按文本转义显示，避免吞掉后续正文
+      let rest=text, head='';
+      while(true){
+        const open=rest.search(/<iframe[\s>]/i);
+        if(open===-1) break;
+        const close=rest.toLowerCase().indexOf('</iframe>',open);
+        if(close===-1) break;
+        videos.push(rest.slice(open,close+9));
+        head+=rest.slice(0,open)+'\u0000V'+(videos.length-1)+'\u0000';
+        rest=rest.slice(close+9);
+      }
+      text=head+rest;
+      let html=mdParse(mdEscapeText(text));
+      html=html.replace(/\u0000V(\d+)\u0000/g,(m,i)=>videoEmbedHtml(videos[+i]));
+      html=html.replace(/\u0000K(\d+)\u0000/g,(m,i)=>{
+        const b=blocks[+i];
+        return '<pre><code'+(b.lang?' class="language-'+mdAttr(b.lang)+'"':'')+'>'+mdEscapeText(b.code).replace(/\n$/,'')+'</code></pre>';
+      });
+      return html;
+    }
+    // 从原始 iframe 中提取 src 并重建干净标签（丢弃 on* 事件等潜在危险属性）
+    function videoEmbedHtml(iframe){
+      const m=iframe.match(/<iframe[^>]*\bsrc\s*=\s*["']([^"']+)["']/i);
+      const src=m?m[1]:'';
+      if(!src||!/^(https?:)?\/\//i.test(src)) return '<p style="color:#c06050;font-size:12px">⚠ iframe 缺少有效 src，未渲染</p>';
+      return '<div class="video-embed"><iframe src="'+mdAttr(src)+'" title="嵌入式视频播放器" loading="lazy" allowfullscreen referrerpolicy="no-referrer-when-downgrade"></iframe></div>';
+    }
 
     // 实时预览：视图切换 + 输入防抖渲染
     let previewTimer=null;
     function refreshPreview(){
       const ta=$('#fContent'),pv=$('#fPreview');
       if(!ta||!pv) return;
-      pv.innerHTML=mdRender(ta.value);
+      pv.innerHTML=mdRenderVideo(ta.value);
     }
     function setupPreview(){
       const ta=$('#fContent');
@@ -574,6 +701,7 @@
       if((e.ctrlKey||e.metaKey)&&e.key==='s'){e.preventDefault();currentMode==='gallery'?saveGalleryItem():currentMode==='about'?saveAbout():currentMode==='guestbook'?null:savePost()}
     });
 
+    bindVideoModal();
     loadPosts();
 
     // ── 模式切换 ──
