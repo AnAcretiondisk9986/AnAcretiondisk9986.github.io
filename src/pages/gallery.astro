@@ -17,6 +17,7 @@ interface GalleryImage {
   dayTotal?: number;
   sourceUrl?: string;
   sourceTitle?: string;
+  original?: string;
 }
 
 const imageTime = (image: GalleryImage) => image.date ? Date.parse(image.date) : Number.NEGATIVE_INFINITY;
@@ -185,6 +186,7 @@ const totalImages = journalImages.length + standaloneImages.length;
                 type="button"
                 data-gallery-open
                 data-gallery-src={image.src}
+                data-gallery-original={image.original || ''}
                 data-gallery-alt={image.alt}
                 data-gallery-title={image.title}
                 data-gallery-caption={image.caption || image.alt}
@@ -230,7 +232,16 @@ const totalImages = journalImages.length + standaloneImages.length;
 <dialog class="gallery-viewer" id="gallery-viewer" aria-labelledby="gallery-viewer-title">
   <div class="gallery-viewer-frame">
     <button class="gallery-viewer-close" type="button" data-gallery-close aria-label="关闭图像预览">×</button>
-    <div class="gallery-viewer-media"><img id="gallery-viewer-image" alt="" referrerpolicy="no-referrer" /></div>
+    <div class="gallery-viewer-media" id="gallery-viewer-media"><img id="gallery-viewer-image" alt="" referrerpolicy="no-referrer" draggable="false" /></div>
+    <div class="gallery-viewer-tools">
+      <button class="gallery-viewer-original" type="button" data-gallery-original-btn hidden>加载原图</button>
+      <label class="gallery-viewer-zoom">
+        <span>缩放</span>
+        <input type="range" min="100" max="400" step="5" value="100" data-gallery-zoom aria-label="图像缩放" />
+        <b data-gallery-zoom-label>100%</b>
+      </label>
+      <button class="gallery-viewer-reset" type="button" data-gallery-zoom-reset>复位</button>
+    </div>
     <footer class="gallery-viewer-meta">
       <div>
         <span class="gallery-card-label" id="gallery-viewer-caption"></span>
@@ -246,9 +257,14 @@ const totalImages = journalImages.length + standaloneImages.length;
   const panels = [...document.querySelectorAll<HTMLElement>('[data-gallery-panel]')];
   const viewer = document.querySelector<HTMLDialogElement>('#gallery-viewer');
   const viewerImage = document.querySelector<HTMLImageElement>('#gallery-viewer-image');
+  const viewerMedia = document.querySelector<HTMLElement>('#gallery-viewer-media');
   const viewerTitle = document.querySelector<HTMLElement>('#gallery-viewer-title');
   const viewerCaption = document.querySelector<HTMLElement>('#gallery-viewer-caption');
   const viewerSource = document.querySelector<HTMLAnchorElement>('#gallery-viewer-source');
+  const viewerOriginalBtn = document.querySelector<HTMLButtonElement>('[data-gallery-original-btn]');
+  const zoomSlider = document.querySelector<HTMLInputElement>('[data-gallery-zoom]');
+  const zoomLabel = document.querySelector<HTMLElement>('[data-gallery-zoom-label]');
+  const zoomReset = document.querySelector<HTMLButtonElement>('[data-gallery-zoom-reset]');
   const sortButtons = [...document.querySelectorAll<HTMLButtonElement>('[data-gallery-sort]')];
   const orderStatus = document.querySelector<HTMLElement>('[data-gallery-order-status]');
 
@@ -323,10 +339,108 @@ const totalImages = journalImages.length + standaloneImages.length;
   });
   setGalleryOrder(new URLSearchParams(location.search).get('order') === 'oldest' ? 'oldest' : 'newest', false);
 
+  // ── 图像查看器：按图片长宽比自适应 + 缩放滑块 + 拖拽平移 + 加载原图 ──
+  let currentSrc = '';
+  let originalUrl = '';
+  let showingOriginal = false;
+  let zoom = 1;
+  let tx = 0;
+  let ty = 0;
+
+  function applyTransform() {
+    if (!viewerImage) return;
+    viewerImage.style.transform = `translate(${tx}px, ${ty}px) scale(${zoom})`;
+    viewerMedia?.classList.toggle('can-pan', zoom > 1.001);
+  }
+
+  function resetView() {
+    zoom = 1;
+    tx = 0;
+    ty = 0;
+    if (zoomSlider) zoomSlider.value = '100';
+    if (zoomLabel) zoomLabel.textContent = '100%';
+    applyTransform();
+  }
+
+  // 图片加载完成后，把预览区尺寸设为图片等比适应视口的尺寸（横图/竖图均自然）
+  function fitDialog() {
+    if (!viewerMedia || !viewerImage) return;
+    const naturalW = viewerImage.naturalWidth || 0;
+    const naturalH = viewerImage.naturalHeight || 0;
+    if (!naturalW || !naturalH) return;
+    const maxW = Math.min(window.innerWidth * 0.9, 1600);
+    const maxH = window.innerHeight * 0.72;
+    const scale = Math.min(1, maxW / naturalW, maxH / naturalH);
+    const w = Math.max(280, Math.round(naturalW * scale));
+    const h = Math.max(200, Math.round(naturalH * scale));
+    viewerMedia.style.width = `${w}px`;
+    viewerMedia.style.height = `${h}px`;
+    resetView();
+  }
+
+  viewerImage?.addEventListener('load', fitDialog);
+
+  zoomSlider?.addEventListener('input', () => {
+    zoom = Number(zoomSlider.value) / 100;
+    if (zoomLabel) zoomLabel.textContent = `${Math.round(zoom * 100)}%`;
+    applyTransform();
+  });
+
+  zoomReset?.addEventListener('click', resetView);
+
+  // 拖拽平移（仅在放大后可用）
+  let dragging = false;
+  let dragStartX = 0;
+  let dragStartY = 0;
+  let dragOriginTx = 0;
+  let dragOriginTy = 0;
+  viewerMedia?.addEventListener('pointerdown', (event) => {
+    if (zoom <= 1.001) return;
+    dragging = true;
+    dragStartX = event.clientX;
+    dragStartY = event.clientY;
+    dragOriginTx = tx;
+    dragOriginTy = ty;
+    viewerMedia.setPointerCapture(event.pointerId);
+    viewerMedia.classList.add('is-dragging');
+  });
+  viewerMedia?.addEventListener('pointermove', (event) => {
+    if (!dragging) return;
+    tx = dragOriginTx + (event.clientX - dragStartX);
+    ty = dragOriginTy + (event.clientY - dragStartY);
+    applyTransform();
+  });
+  viewerMedia?.addEventListener('pointerup', () => {
+    dragging = false;
+    viewerMedia.classList.remove('is-dragging');
+  });
+  viewerMedia?.addEventListener('pointercancel', () => {
+    dragging = false;
+    viewerMedia.classList.remove('is-dragging');
+  });
+
+  // 加载原图 / 切回压缩图（仅独立收藏有原图）
+  viewerOriginalBtn?.addEventListener('click', () => {
+    if (!originalUrl || !viewerImage) return;
+    if (showingOriginal) {
+      viewerImage.src = currentSrc;
+      viewerOriginalBtn.textContent = '加载原图';
+    } else {
+      viewerImage.src = originalUrl;
+      viewerOriginalBtn.textContent = '已显示原图';
+    }
+    showingOriginal = !showingOriginal;
+  });
+
+  viewer?.addEventListener('close', resetView);
+
   document.querySelectorAll<HTMLButtonElement>('[data-gallery-open]').forEach((button) => {
     button.addEventListener('click', () => {
       if (!viewer || !viewerImage || !viewerTitle || !viewerCaption || !viewerSource) return;
-      viewerImage.src = button.dataset.gallerySrc || '';
+      currentSrc = button.dataset.gallerySrc || '';
+      originalUrl = button.dataset.galleryOriginal || '';
+      showingOriginal = false;
+      viewerImage.src = currentSrc;
       viewerImage.alt = button.dataset.galleryAlt || '';
       viewerTitle.textContent = button.dataset.galleryTitle || '';
       viewerCaption.textContent = button.dataset.galleryCaption || '';
@@ -334,7 +448,12 @@ const totalImages = journalImages.length + standaloneImages.length;
       viewerSource.hidden = !source;
       viewerSource.href = source || '#';
       viewerSource.textContent = button.dataset.gallerySourceTitle ? `阅览《${button.dataset.gallerySourceTitle}》 ↗` : '查看来源 ↗';
+      if (viewerOriginalBtn) {
+        viewerOriginalBtn.hidden = !originalUrl;
+        viewerOriginalBtn.textContent = '加载原图';
+      }
       viewer.showModal();
+      fitDialog();
     });
   });
 
