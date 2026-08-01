@@ -3,7 +3,6 @@ import { getCollection } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import ArchiveSeal from '../components/ArchiveSeal.astro';
 import standaloneGallery from '../data/gallery.json';
-import { optimizeImageUrl } from '../plugins/optimize-images.mjs';
 
 interface GalleryImage {
   id: string;
@@ -51,8 +50,7 @@ const posts = (await getCollection('blog', ({ data }) => !data.draft))
     || b.id.localeCompare(a.id));
 
 const markdownImage = /!\[([^\]]*)\]\(([^)\s]+)(?:\s+["'][^"']*["'])?\)/g;
-const journalImages: GalleryImage[] = await Promise.all(
-  posts.flatMap((post) => {
+const journalImages: GalleryImage[] = posts.flatMap((post) => {
     const body = post.body ?? '';
     return [...body.matchAll(markdownImage)].map((match, index) => {
       const src = match[2];
@@ -68,15 +66,12 @@ const journalImages: GalleryImage[] = await Promise.all(
         sourceTitle: post.data.title,
       };
     });
-  }).map(async (img) => ({ ...img, thumb: await optimizeImageUrl(img.src) })),
-);
+  }).map((img) => ({ ...img, thumb: img.src }));
 
-const standaloneImages: GalleryImage[] = await Promise.all(
-  sortNewestFirst(standaloneGallery as GalleryImage[]).map(async (img) => ({
+const standaloneImages: GalleryImage[] = sortNewestFirst(standaloneGallery as GalleryImage[]).map((img) => ({
     ...img,
-    thumb: await optimizeImageUrl(img.src),
-  })),
-);
+    thumb: img.src,
+  }));
 assignDaySequence(journalImages);
 assignDaySequence(standaloneImages);
 const totalImages = journalImages.length + standaloneImages.length;

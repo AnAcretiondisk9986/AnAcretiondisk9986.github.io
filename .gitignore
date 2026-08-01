@@ -7,5 +7,3 @@ src/content/blog/.obsidian/
 .DS_Store
 *.log
 .reasonix/
-# 构建时生成的文章图片压缩产物（WebP），不入库
-public/image/opt/

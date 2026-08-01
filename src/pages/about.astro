@@ -2,10 +2,9 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import ArchiveSeal from '../components/ArchiveSeal.astro';
 import about from '../data/about.json';
-import { optimizeImageUrl } from '../plugins/optimize-images.mjs';
 
-// 头像与文章图片走同一套压缩管线（构建时转 WebP，非生产构建返回原图）
-const avatarSrc = about.avatar ? await optimizeImageUrl(about.avatar) : '';
+// 头像已是图片仓库的 jsDelivr 外链，直接引用
+const avatarSrc = about.avatar ?? '';
 
 // 把文本中的 http(s) 链接转换为可点击 <a>。
 // 先转义再替换，防 HTML/属性注入；仅识别 http/https，其余原样输出。
