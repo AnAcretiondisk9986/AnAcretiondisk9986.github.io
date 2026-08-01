@@ -813,7 +813,7 @@
             <input id="fImportReferer" placeholder="防盗链 Referer（可选）" style="width:140px" title="如 Pixiv 需填 https://www.pixiv.net/" />
           </div>
           <div class="form-row">
-            <div class="form-group" style="flex:2"><label>图像地址 (src) *</label><input id="fSrc" value="${escAttr(item.src||'')}" placeholder="/image/example.jpg"/></div>
+            <div class="form-group" style="flex:2"><label>图像地址 (src) *</label><input id="fSrc" value="${escAttr(item.src||'')}" placeholder="https://cdn.jsdelivr.net/gh/…@main/image/example.webp"/></div>
             <div class="form-group" style="flex:1"><label>日期</label><input id="fGalleryDate" type="date" value="${item.date||''}"/></div>
             <div class="form-group" style="flex:1"><label>同日序号</label><input id="fGalleryDayIndex" type="number" min="1" value="${item.dayIndex||''}" placeholder="自动" title="同一天内的顺序，1 = 当天最早；留空自动推导"/></div>
           </div>
@@ -849,7 +849,7 @@
             <input id="fImportReferer" placeholder="防盗链 Referer（可选）" style="width:140px" title="如 Pixiv 需填 https://www.pixiv.net/" />
           </div>
           <div class="form-row">
-            <div class="form-group" style="flex:2"><label>图像地址 (src) *</label><input id="fSrc" value="" placeholder="/image/example.jpg" autofocus/></div>
+            <div class="form-group" style="flex:2"><label>图像地址 (src) *</label><input id="fSrc" value="" placeholder="https://cdn.jsdelivr.net/gh/…@main/image/example.webp" autofocus/></div>
             <div class="form-group" style="flex:1"><label>日期</label><input id="fGalleryDate" type="date" value="${today}"/></div>
             <div class="form-group" style="flex:1"><label>同日序号</label><input id="fGalleryDayIndex" type="number" min="1" value="" placeholder="自动" title="同一天内的顺序，1 = 当天最早；留空自动推导"/></div>
           </div>
@@ -1019,7 +1019,7 @@
               <input id="fImportReferer" placeholder="防盗链 Referer（可选）" style="width:140px" title="如 Pixiv 需填 https://www.pixiv.net/" />
             </div>
             <div class="form-row" style="margin-top:6px">
-              <div class="form-group" style="flex:1"><label>头像地址 (src)</label><input id="fAvatar" value="${escAttr(data.avatar || '')}" placeholder="/image/avatar.jpg" oninput="refreshAvatarPreview()" /></div>
+              <div class="form-group" style="flex:1"><label>头像地址 (src)</label><input id="fAvatar" value="${escAttr(data.avatar || '')}" placeholder="https://cdn.jsdelivr.net/gh/…@main/image/avatar.webp" oninput="refreshAvatarPreview()" /></div>
               <div class="form-group" style="flex:1"><label>预览</label>
                 <div style="display:flex;gap:10px;align-items:center;min-height:52px">
                   <img id="avatarPreview" src="${escAttr(data.avatar || '')}" alt="头像预览" style="width:52px;height:52px;object-fit:cover;border:1px solid #2a2a30;border-radius:2px;display:${data.avatar ? 'block' : 'none'}" onerror="this.style.display='none'" />

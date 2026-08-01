@@ -9,7 +9,7 @@ tags:
 draft: false
 ---
 
-![img (2).jpg](/image/img--2-_1785475469058.jpg)
-![img (3).jpg](/image/img--3-_1785475473397.jpg)
-![img (4).jpg](/image/img--4-_1785475477648.jpg)
-![img (1).jpg](/image/img--1-_1785475479715.jpg)
+![img (2).jpg](https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/img--2-_1785475469058.webp)
+![img (3).jpg](https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/img--3-_1785475473397.webp)
+![img (4).jpg](https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/img--4-_1785475477648.webp)
+![img (1).jpg](https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/img--1-_1785475479715.webp)

@@ -48,7 +48,7 @@ draft: false
 - 这就是落地服务器
 
 他们都是59.43，所以同属于一个ASN自治域，即 `AS4809` ,其他也是同理，即一个ASN自治域旗下包含了许多的线路
-![image.png](/image/image_1785595948781.png)
+![image.png](https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/image_1785595948781.webp)
 线路虽然由不同运营商承建，但三网用户可互相使用线路，不过本家的线路必然更好
 ---
 ## VPS选购

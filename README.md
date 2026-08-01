@@ -1,9 +1,19 @@
 # Acretiondisk Blog — 更新日志
 
 > 使用 Astro 构建的个人博客，部署到 GitHub Pages（`https://anacretiondisk9986.github.io/`）。
-> 当前版本：**1.4.0**（2026-08-02）
+> 当前版本：**1.5.0**（2026-08-02）
 
 ---
+
+## 1.5.0（2026-08-02）
+
+### 🖼 图片迁移至独立图床仓库（blog-images + jsDelivr CDN）
+
+- 新建独立公开仓库 `AnAcretiondisk9986/blog-images` 专门存储图片，博客仓库不再保留 `public/image/`：31 张原图 41MB 压缩为 WebP 后仅 2.9MB 出库，仓库瘦身、clone 更快。
+- 文章 / 头像 / 画廊图片引用全部改为 jsDelivr CDN 外链（`https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/*.webp`），境内访问走 jsDelivr 国内节点，速度优于 github.io，且图片不再占用 Pages 带宽。
+- 管理面板图片上传 / URL 导入改造：图片自动写入本地 `../blog-images/image/`，png/jpg/jpeg 转 WebP（quality 78、超 1920px 缩放）后 git 推送图片仓库，返回 jsDelivr 外链；「内容推送」不再包含图片（图片在各自上传时已单独推送）。
+- 迁移脚本保留于 `scripts/migrate-images.mjs`、`scripts/replace-image-refs.mjs` 供复用；构建期压缩插件 `src/plugins/optimize-images.mjs` 保留作兼容（外链图不再经过它）。
+- 注意：上传/推送图片仓库走 SSH（HTTPS 直连 GitHub 会被重置）；jsDelivr 首次访问从 GitHub 拉取后缓存，更新同名文件需访问 `https://purge.jsdelivr.net` 强制刷新。
 
 ## 1.4.0（2026-08-02）
 

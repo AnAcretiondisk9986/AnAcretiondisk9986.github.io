@@ -1,0 +1,2 @@
+[permissions]
+allow = ["Bash=cd \"C:\\\\Users\\\\AnAcretiondisk\\\\Documents\\\\个人博客\" && node admin-server.mjs &\nsleep 2 && curl -s http://localhost:4322/api/posts | head -200"]

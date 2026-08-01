@@ -1,14 +1,18 @@
 import express from 'express';
 import multer from 'multer';
+import sharp from 'sharp';
 import { readdir, readFile, writeFile, unlink, mkdir, access } from 'node:fs/promises';
 import { exec } from 'node:child_process';
-import { join, dirname, extname, resolve } from 'node:path';
+import { join, dirname, extname, basename, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import matter from 'gray-matter';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const BLOG_DIR = resolve(__dirname, 'src', 'content', 'blog');
-const IMAGE_DIR = resolve(__dirname, 'public', 'image');
+// 图片仓库：与博客仓库平级的 blog-images，图片上传后经 jsDelivr CDN 外链引用
+const IMG_REPO_DIR = resolve(__dirname, '..', 'blog-images');
+const IMAGE_DIR = resolve(IMG_REPO_DIR, 'image');
+const IMG_BASE_URL = 'https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/';
 const GALLERY_JSON = resolve(__dirname, 'src', 'data', 'gallery.json');
 const ABOUT_JSON = resolve(__dirname, 'src', 'data', 'about.json');
 const PORT = 4322;
@@ -287,9 +291,53 @@ app.route('/api/posts/:slug')
     }
   });
 
+// 把已写入 IMAGE_DIR 的图片文件转成 WebP（png/jpg/jpeg），返回最终文件名；其余格式原样保留
+async function saveImageFile(filePath) {
+  const ext = extname(filePath).toLowerCase();
+  if (!['.png', '.jpg', '.jpeg'].includes(ext)) return basename(filePath);
+  const base = filePath.slice(0, -ext.length);
+  const outPath = `${base}.webp`;
+  await sharp(filePath).webp({ quality: 78 }).toFile(outPath);
+  await unlink(filePath);
+  return `${basename(outPath)}`;
+}
+
+// 推送图片仓库（有变更才推），失败时给出友好错误
+async function pushImageRepo() {
+  const run = (cmd) => new Promise((resolve, reject) => {
+    exec(cmd, { cwd: IMG_REPO_DIR, timeout: 60000 }, (err, stdout, stderr) => {
+      if (err) reject(new Error(stderr || err.message));
+      else resolve(stdout.trim());
+    });
+  });
+
+  await run('git add -A');
+  let hasChanges = false;
+  try {
+    await run('git diff --cached --quiet');
+  } catch {
+    hasChanges = true;
+  }
+  if (!hasChanges) return { pushed: false };
+
+  await run('git commit -m "通过管理面板更新图片"');
+  try {
+    await run('git push origin main');
+    return { pushed: true };
+  } catch (pushErr) {
+    const msg = pushErr.message || '';
+    const err = new Error(msg.includes('Connection') || msg.includes('reset')
+      ? '图片已保存到本地图片仓库，但推送 GitHub 失败（网络问题），稍后可再次推送'
+      : '图片已保存到本地图片仓库，但推送 GitHub 失败，请检查网络后重试');
+    err.status = 500;
+    err.detail = msg;
+    throw err;
+  }
+}
+
 // Image upload
 app.post('/api/upload', (req, res, next) => {
-  upload.single('file')(req, res, err => {
+  upload.single('file')(req, res, async (err) => {
     if (err) {
       console.error('Upload Error:', err.message);
       if (err.message && err.message.includes('仅支持')) {
@@ -298,7 +346,14 @@ app.post('/api/upload', (req, res, next) => {
       return res.status(500).json({ error: '上传失败' });
     }
     if (!req.file) return res.status(400).json({ error: '未选择文件' });
-    res.status(201).json({ success: true, url: `/image/${req.file.filename}` });
+    try {
+      const filename = await saveImageFile(req.file.path);
+      const push = await pushImageRepo();
+      res.status(201).json({ success: true, url: `${IMG_BASE_URL}${encodeURIComponent(filename)}`, pushed: push.pushed });
+    } catch (e) {
+      console.error('Upload Error:', e.message);
+      res.status(e.status || 500).json({ error: e.message, detail: e.detail });
+    }
   });
 });
 
@@ -362,9 +417,12 @@ app.post('/api/import-url', async (req, res) => {
     const filename = `${safeName}_${Date.now()}${finalExt}`;
 
     await mkdir(IMAGE_DIR, { recursive: true });
-    await writeFile(join(IMAGE_DIR, filename), buffer);
+    const filePath = join(IMAGE_DIR, filename);
+    await writeFile(filePath, buffer);
+    const savedName = await saveImageFile(filePath);
+    const push = await pushImageRepo();
 
-    res.status(201).json({ success: true, url: `/image/${filename}` });
+    res.status(201).json({ success: true, url: `${IMG_BASE_URL}${encodeURIComponent(savedName)}`, pushed: push.pushed });
   } catch (err) {
     if (err.name === 'AbortError' || err.name === 'TimeoutError') {
       return res.status(504).json({ error: '下载超时（30 秒）' });
@@ -419,13 +477,20 @@ async function pushGitChanges({ stageCmd, commitMsg }) {
   }
 }
 
-// 内容推送：仅文章 / 图片 / 画廊数据
+// 内容推送：仅文章 / 画廊数据（图片已在上传时推送到图片仓库）
 app.post('/api/push', async (_req, res) => {
   try {
     const result = await pushGitChanges({
-      stageCmd: 'git add src/content/blog/ public/image/ src/data/gallery.json src/data/about.json',
+      stageCmd: 'git add src/content/blog/ src/data/gallery.json src/data/about.json',
       commitMsg: '通过管理面板更新博客',
     });
+    // 顺带把图片仓库未推送的变更（如上次推送失败遗留）也推掉，不影响博客推送结果
+    try {
+      const imgPush = await pushImageRepo();
+      if (imgPush.pushed) result.imageRepoPushed = true;
+    } catch (imgErr) {
+      result.imageRepoWarning = imgErr.message;
+    }
     res.json(result);
   } catch (err) {
     console.error('Push Error:', err.message);

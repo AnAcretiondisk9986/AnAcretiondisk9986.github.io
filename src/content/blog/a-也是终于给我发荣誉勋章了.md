@@ -10,7 +10,7 @@ tags:
 draft: false
 ---
 
-![01ddc65c80c8af869074736f7e64a98c.png](/image/01ddc65c80c8af869074736f7e64a98c_1785544744966.png)
+![01ddc65c80c8af869074736f7e64a98c.png](https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/01ddc65c80c8af869074736f7e64a98c_1785544744966.webp)
 
 # A畜依旧稳定发力，不过我也算最晚一批被封号的用户了
 反正现在已经会用中转站接入OpenAI的API了，我说白了你A家模型除了稍有领先之外这价格真是恐怖得没边了，而且我也不是重度编程用户没必要就吃着你这Fable 5用。
