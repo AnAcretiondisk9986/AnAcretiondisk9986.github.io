@@ -3,7 +3,28 @@
   "eyebrow": "DOSSIER OF THE KEEPER",
   "title": "编目者档案",
   "subtitle": "关于记录这些文字的人，以及这个网站为何存在。",
-  "identity": [],
+  "identity": [
+    {
+      "label": "记录名",
+      "value": "Acretiondisk"
+    },
+    {
+      "label": "身份",
+      "value": "中国大陆本科生"
+    },
+    {
+      "label": "常驻领域",
+      "value": "医学与计算机"
+    },
+    {
+      "label": "兴趣索引",
+      "value": "音乐 / 动画 / 艺术"
+    },
+    {
+      "label": "档案状态",
+      "value": "持续生长"
+    }
+  ],
   "lead": "你好，这里是 Acretiondisk。",
   "paragraphs": [
     "这是我的个人博客网站，用于记录我的想法和一些成果",
@@ -12,5 +33,26 @@
   "quoteLabel": "编目原则",
   "quoteText": "“忠实记录此刻所见，也允许未来的自己重新修订。”",
   "interestsTitle": "我的关联网站",
-  "interests": []
+  "interests": [
+    {
+      "index": "01",
+      "name": "临床医学",
+      "note": "生命、疾病与人的经验"
+    },
+    {
+      "index": "02",
+      "name": "计算机",
+      "note": "系统、软件与创造工具"
+    },
+    {
+      "index": "03",
+      "name": "艺术观察",
+      "note": "音乐、动画与视觉文化"
+    },
+    {
+      "index": "03",
+      "name": "虚位以待",
+      "note": "......"
+    }
+  ]
 }

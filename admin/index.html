@@ -958,10 +958,11 @@
     }
 
     async function saveAbout() {
-      const collect = (selector, fields) =>
+      // fieldMap: [提交键名, 行内输入框类名]
+      const collect = (selector, fieldMap) =>
         [...document.querySelectorAll(selector)].map(row => {
           const out = {};
-          fields.forEach(f => { out[f] = row.querySelector('.' + f)?.value?.trim() || ''; });
+          fieldMap.forEach(([key, cls]) => { out[key] = row.querySelector('.' + cls)?.value?.trim() || ''; });
           return out;
         }).filter(it => Object.values(it).some(v => v !== ''));
 
@@ -970,13 +971,13 @@
         eyebrow: $('#fEyebrow')?.value?.trim() || '',
         title: $('#fAboutTitle')?.value?.trim() || '',
         subtitle: $('#fSubtitle')?.value?.trim() || '',
-        identity: collect('#aboutIdentityRows .about-identity-row', ['label', 'value']),
+        identity: collect('#aboutIdentityRows .about-identity-row', [['label', 'ai-label'], ['value', 'ai-value']]),
         lead: $('#fLead')?.value?.trim() || '',
         paragraphs: ($('#fParagraphs')?.value || '').split('\n').map(s => s.trim()).filter(Boolean),
         quoteLabel: $('#fQuoteLabel')?.value?.trim() || '',
         quoteText: $('#fQuoteText')?.value?.trim() || '',
         interestsTitle: $('#fInterestsTitle')?.value?.trim() || '',
-        interests: collect('#aboutInterestsRows .about-interest-row', ['index', 'name', 'note']),
+        interests: collect('#aboutInterestsRows .about-interest-row', [['index', 'ai-index'], ['name', 'ai-name'], ['note', 'ai-note']]),
       };
 
       try {
