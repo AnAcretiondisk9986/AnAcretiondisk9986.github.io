@@ -2,6 +2,10 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import ArchiveSeal from '../components/ArchiveSeal.astro';
 import about from '../data/about.json';
+import { optimizeImageUrl } from '../plugins/optimize-images.mjs';
+
+// 头像与文章图片走同一套压缩管线（构建时转 WebP，非生产构建返回原图）
+const avatarSrc = about.avatar ? await optimizeImageUrl(about.avatar) : '';
 ---
 
 <BaseLayout title={about.title || '关于'} description={about.subtitle || '关于 Acretiondisk。'}>
@@ -17,9 +21,9 @@ import about from '../data/about.json';
 
     <div class="dossier-grid">
       <section class="portrait-record">
-        <div class:list={['portrait-placeholder', about.avatar ? 'has-avatar' : '']} aria-label="Acretiondisk 个人标记">
-          {about.avatar
-            ? <img src={about.avatar} alt="Acretiondisk 头像" loading="lazy" />
+        <div class:list={['portrait-placeholder', avatarSrc ? 'has-avatar' : '']} aria-label="Acretiondisk 个人标记">
+          {avatarSrc
+            ? <img src={avatarSrc} alt="Acretiondisk 头像" loading="lazy" />
             : (<><ArchiveSeal /><span>ACR</span></>)}
         </div>
         <dl class="identity-table">
