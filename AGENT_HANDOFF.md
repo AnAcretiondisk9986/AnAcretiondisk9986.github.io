@@ -2,7 +2,7 @@
 
 > 本文件已在用户授权下公开于 GitHub 仓库。每位 Agent 完成工作后在此记录变更。
 
-最后更新：2026-07-31（日内索引号）
+最后更新：2026-08-01（关于页纳入管理）
 
 ---
 
@@ -58,6 +58,17 @@ origin/main: d21ff97 已推送（970e9e1..d21ff97）
 ---
 
 ## 变更日志
+
+### 2026-08-01（关于页纳入管理）
+
+**📄 「关于」页全部文本与头像纳入管理系统编辑**
+
+- **文件**：`src/data/about.json`（新增）、`src/pages/about.astro`、`src/styles/global.css`、`admin-server.mjs`、`admin/index.html`
+- 关于页内容从硬编码改为数据源 `src/data/about.json`（沿用画廊 `gallery.json` 模式）：眉题 / 大标题 / 副标题 / 身份档案表（动态行）/ 开头段 / 正文段落（多行）/ 引用标签与内容 / 兴趣列表标题与条目（动态行）全部可编辑；字段缺失时页面有默认兜底。
+- 原先的书本标记区域（`ArchiveSeal` + ACR）改为可编辑头像：`about.avatar` 有值时显示全幅 `img`（`object-fit: cover`，`.has-avatar` 隐藏网格装饰层、保留外框作相框），为空时回退书本标记。
+- 管理面板新增「关于」模式：头像拖放/点击/URL 导入上传（复用 `/api/upload`）带实时预览，身份表与兴趣条目支持「＋ 添加」与逐行删除；`Ctrl+S` 保存。
+- 后端新增 `/api/about` GET/PUT（数组字段以 JSON 字符串传输，`parseJsonArray` 解析；清洗后与旧数据 merge 保证结构完整）；「推送」的 `git add` 加入 `src/data/about.json`，头像文件本身在 `public/image/` 已覆盖。
+- 验证：`node --check` 通过；node fetch 实测 GET/PUT/再 GET 全链路 UTF-8 中文完好（curl 在 Windows 会转 GBK，不可用）；`npm run build` 15 页成功，`dist/about/index.html` 分别实测有头像（`has-avatar` + `<img>`）与无头像（书本标记回退）两种渲染。
 
 ### 2026-07-31（编辑实时预览）
 

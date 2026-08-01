@@ -10,6 +10,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const BLOG_DIR = resolve(__dirname, 'src', 'content', 'blog');
 const IMAGE_DIR = resolve(__dirname, 'public', 'image');
 const GALLERY_JSON = resolve(__dirname, 'src', 'data', 'gallery.json');
+const ABOUT_JSON = resolve(__dirname, 'src', 'data', 'about.json');
 const PORT = 4322;
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || 'acr-admin';
 
@@ -422,7 +423,7 @@ async function pushGitChanges({ stageCmd, commitMsg }) {
 app.post('/api/push', async (_req, res) => {
   try {
     const result = await pushGitChanges({
-      stageCmd: 'git add src/content/blog/ public/image/ src/data/gallery.json',
+      stageCmd: 'git add src/content/blog/ public/image/ src/data/gallery.json src/data/about.json',
       commitMsg: '通过管理面板更新博客',
     });
     res.json(result);
@@ -558,6 +559,90 @@ app.route('/api/gallery/:id')
       res.json({ success: true });
     } catch (err) {
       console.error('Gallery API Error:', err.message);
+      res.status(500).json({ error: '服务器内部错误' });
+    }
+  });
+
+// ── About page API ──
+
+function cleanAboutStr(v, max = 5000) {
+  return String(v ?? '').trim().slice(0, max);
+}
+
+// 身份表 / 兴趣列表条目清洗
+function cleanAboutItems(arr, fields) {
+  if (!Array.isArray(arr)) return [];
+  return arr
+    .slice(0, 30)
+    .map(it => {
+      const out = {};
+      fields.forEach(f => { out[f] = cleanAboutStr(it?.[f]); });
+      return out;
+    })
+    .filter(it => Object.values(it).some(v => v !== ''));
+}
+
+// Read about.json (fallback to default empty structure)
+async function readAbout() {
+  try {
+    const raw = await readFile(ABOUT_JSON, 'utf-8');
+    return JSON.parse(raw);
+  } catch {
+    return {};
+  }
+}
+
+// urlencoded body 中数组以 JSON 字符串传输，统一解析
+function parseJsonArray(v) {
+  if (Array.isArray(v)) return v;
+  if (typeof v === 'string' && v.trim()) {
+    try {
+      const arr = JSON.parse(v);
+      return Array.isArray(arr) ? arr : null;
+    } catch { /* fallthrough */ }
+  }
+  return null;
+}
+
+app.route('/api/about')
+  .get(async (_req, res) => {
+    try {
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.json(await readAbout());
+    } catch (err) {
+      console.error('About API Error:', err.message);
+      res.status(500).json({ error: '服务器内部错误' });
+    }
+  })
+  .put(upload.none(), async (req, res) => {
+    try {
+      const prev = await readAbout();
+      const body = req.body || {};
+      const identityArr = parseJsonArray(body.identity);
+      const interestsArr = parseJsonArray(body.interests);
+      const paragraphsArr = parseJsonArray(body.paragraphs);
+      // 字符串字段：未提交（undefined/null）时保留旧值；提交空串则清空（如移除头像）
+      const strField = (v, prevVal, max) => (v == null ? (prevVal || '') : cleanAboutStr(v, max));
+      const next = {
+        avatar: strField(body.avatar, prev.avatar || '', 1000),
+        eyebrow: strField(body.eyebrow, prev.eyebrow || ''),
+        title: strField(body.title, prev.title || ''),
+        subtitle: strField(body.subtitle, prev.subtitle || ''),
+        identity: identityArr ? cleanAboutItems(identityArr, ['label', 'value']) : (prev.identity || []),
+        lead: strField(body.lead, prev.lead || ''),
+        paragraphs: paragraphsArr
+          ? paragraphsArr.slice(0, 30).map(s => cleanAboutStr(s)).filter(Boolean)
+          : (prev.paragraphs || []),
+        quoteLabel: strField(body.quoteLabel, prev.quoteLabel || ''),
+        quoteText: strField(body.quoteText, prev.quoteText || ''),
+        interestsTitle: strField(body.interestsTitle, prev.interestsTitle || ''),
+        interests: interestsArr ? cleanAboutItems(interestsArr, ['index', 'name', 'note']) : (prev.interests || []),
+      };
+      await writeFile(ABOUT_JSON, JSON.stringify(next, null, 2) + '\n', 'utf-8');
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.json({ success: true, about: next });
+    } catch (err) {
+      console.error('About API Error:', err.message);
       res.status(500).json({ error: '服务器内部错误' });
     }
   });

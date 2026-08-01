@@ -1,57 +1,57 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import ArchiveSeal from '../components/ArchiveSeal.astro';
+import about from '../data/about.json';
 ---
 
-<BaseLayout title="关于" description="关于 Acretiondisk。">
+<BaseLayout title={about.title || '关于'} description={about.subtitle || '关于 Acretiondisk。'}>
   <article class="dossier">
     <header class="dossier-header">
       <div>
-        <p class="eyebrow">DOSSIER OF THE KEEPER</p>
-        <h1>编目者档案</h1>
-        <p>关于记录这些文字的人，以及这个网站为何存在。</p>
+        <p class="eyebrow">{about.eyebrow}</p>
+        <h1>{about.title}</h1>
+        <p>{about.subtitle}</p>
       </div>
       <ArchiveSeal class="dossier-seal" />
     </header>
 
     <div class="dossier-grid">
       <section class="portrait-record">
-        <div class="portrait-placeholder" aria-label="Acretiondisk 个人标记">
-          <ArchiveSeal />
-          <span>ACR</span>
+        <div class:list={['portrait-placeholder', about.avatar ? 'has-avatar' : '']} aria-label="Acretiondisk 个人标记">
+          {about.avatar
+            ? <img src={about.avatar} alt="Acretiondisk 头像" loading="lazy" />
+            : (<><ArchiveSeal /><span>ACR</span></>)}
         </div>
         <dl class="identity-table">
-          <div><dt>记录名</dt><dd>Acretiondisk</dd></div>
-          <div><dt>身份</dt><dd>中国大陆本科生</dd></div>
-          <div><dt>常驻领域</dt><dd>医学与计算机</dd></div>
-          <div><dt>兴趣索引</dt><dd>音乐 / 动画 / 艺术</dd></div>
-          <div><dt>档案状态</dt><dd>持续生长</dd></div>
+          {
+            (about.identity || []).map(item => (
+              <div><dt>{item.label}</dt><dd>{item.value}</dd></div>
+            ))
+          }
         </dl>
       </section>
 
       <section class="dossier-copy">
-        <p class="lead-paragraph">
-          你好，我是 Acretiondisk。
-        </p>
-        <p>
-          这是我的个人博客网站，用于记录我的想法和一些成果
-        </p>
-        <p>
-          它不是一份完成的履历，而是一册不断增补的个人行记，用来收藏学习笔记、项目记录、作品与仍未得到答案的问题。
-        </p>
+        {about.lead && <p class="lead-paragraph">{about.lead}</p>}
+        {
+          (about.paragraphs || []).map(text => (
+            <p>{text}</p>
+          ))
+        }
 
         <blockquote>
-          <span>编目原则</span>
-          “忠实记录此刻所见，也允许未来的自己重新修订。”
+          <span>{about.quoteLabel}</span>
+          {about.quoteText}
         </blockquote>
 
         <div class="interest-index">
-          <h2>研究与兴趣索引</h2>
+          <h2>{about.interestsTitle}</h2>
           <ol>
-            <li><span>01</span><b>临床医学</b><small>生命、疾病与人的经验</small></li>
-            <li><span>02</span><b>计算机</b><small>系统、软件与创造工具</small></li>
-            <li><span>03</span><b>艺术观察</b><small>音乐、动画与视觉文化</small></li>
-            <li><span>03</span><b>虚位以待</b><small>......</small></li>
+            {
+              (about.interests || []).map(item => (
+                <li><span>{item.index}</span><b>{item.name}</b><small>{item.note}</small></li>
+              ))
+            }
           </ol>
         </div>
       </section>
