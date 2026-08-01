@@ -11,7 +11,6 @@ tags:
 draft: false
 ---
 
-
 <iframe src="https://www.youtube.com/embed/5LM3jtVVs40?si=tvQOyisxrjf7xhhG" title="嵌入式视频播放器" loading="lazy" allowfullscreen referrerpolicy="no-referrer-when-downgrade"></iframe>
 
 # 原理
@@ -38,7 +37,7 @@ draft: false
 ## 本质和原理
 本质是一台海外的电脑
 
-线路越好速度和延迟越稳
+线路越好速度和延迟越稳。
 
 ### ASN自治域
 例如跨越上海到洛杉矶的两台服务器分别为
@@ -97,5 +96,3 @@ bash <(curl -Ls https://Check.Place) -I
 3. 硬件配置（只搭接点可忽略）
 4. 厂商口碑，对知名度较低小厂进行背调
 #### 对安全性极致追求的（涉敏感内容灰黑产的）可以选择此项技术来进行节点搭建，一般用户直接采用现成的服务即可
-
-
