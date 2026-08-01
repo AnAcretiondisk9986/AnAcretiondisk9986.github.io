@@ -36,23 +36,23 @@
   "interests": [
     {
       "index": "01",
-      "name": "临床医学",
-      "note": "生命、疾病与人的经验"
+      "name": "Github",
+      "note": "https://github.com/AnAcretiondisk9986"
     },
     {
       "index": "02",
-      "name": "计算机",
-      "note": "系统、软件与创造工具"
+      "name": "Bilibili",
+      "note": "https://space.bilibili.com/383096665?spm_id_from=333.1007.0.0"
     },
     {
       "index": "03",
-      "name": "艺术观察",
-      "note": "音乐、动画与视觉文化"
+      "name": "X(Twitter)",
+      "note": "https://x.com/Acretiondisk_"
     },
     {
-      "index": "03",
-      "name": "虚位以待",
-      "note": "......"
+      "index": "04",
+      "name": "Pixiv",
+      "note": "https://www.pixiv.net/users/51488954"
     }
   ]
 }
