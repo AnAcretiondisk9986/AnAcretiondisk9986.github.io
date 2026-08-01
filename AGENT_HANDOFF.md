@@ -2,7 +2,7 @@
 
 > 本文件已在用户授权下公开于 GitHub 仓库。每位 Agent 完成工作后在此记录变更。
 
-最后更新：2026-08-01（关于页纳入管理）
+最后更新：2026-08-01（关于页保存清空修复）
 
 ---
 
@@ -69,6 +69,13 @@ origin/main: d21ff97 已推送（970e9e1..d21ff97）
 - 管理面板新增「关于」模式：头像拖放/点击/URL 导入上传（复用 `/api/upload`）带实时预览，身份表与兴趣条目支持「＋ 添加」与逐行删除；`Ctrl+S` 保存。
 - 后端新增 `/api/about` GET/PUT（数组字段以 JSON 字符串传输，`parseJsonArray` 解析；清洗后与旧数据 merge 保证结构完整）；「推送」的 `git add` 加入 `src/data/about.json`，头像文件本身在 `public/image/` 已覆盖。
 - 验证：`node --check` 通过；node fetch 实测 GET/PUT/再 GET 全链路 UTF-8 中文完好（curl 在 Windows 会转 GBK，不可用）；`npm run build` 15 页成功，`dist/about/index.html` 分别实测有头像（`has-avatar` + `<img>`）与无头像（书本标记回退）两种渲染。
+
+**🐛 修复（v1.3.1）：关于页保存时身份表与兴趣列表被静默清空**
+
+- 根因：`saveAbout()` 的 `collect` 用 `.label`/`.value`/`.index`/`.name`/`.note` 选择器，但行输入框类名是 `ai-*` 前缀，匹配不到 → 整表清空。用户全量推送提交 `cea2633` 中 `identity: []`、`interests: []` 即此 bug 所致。
+- 修复：collect 改为「提交键名 → 类名」映射（`[['label','ai-label'],...]`），主仓库 `6f191d7`、模板 `9e3ada1` 同步修复；新增回归测试 `/tmp/collect-test.mjs`（vm 执行 `aboutRowTemplate` 源码 + 类名匹配模拟，验证渲染→收集闭环）。
+- 数据恢复：`src/data/about.json` 从 `3225a93` 恢复 identity（5 行）/ interests（4 行），保留用户修改（avatar、lead、interestsTitle）；线上 `/about/` 实测恢复。
+- 提醒：管理面板需重启加载修复后的 `admin/index.html`；旧版面板在修复前保存会再次清空表格。
 
 **🚀 发布 v1.3.0（双仓库 + Release）**
 
