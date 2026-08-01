@@ -2,6 +2,13 @@
 
 > 本文件已在用户授权下公开于 GitHub 仓库。每位 Agent 完成工作后在此记录变更。
 
+**🖼 头像自适应 + 压缩（v1.3.2）**
+
+- `global.css`：`.portrait-placeholder.has-avatar` 去掉固定 4:5 比例与网格底纹，`img` 改为按原图比例完整显示（`max-width:100%; max-height:540px; object-fit:contain`），不再 cover 裁切；无头像时原样回退。
+- `about.astro`（主仓库 + 模板）：头像 URL 走 `optimizeImageUrl()` 与文章图同一压缩管线（sharp WebP q78、>1920px 等比缩放）。实测 2500² 的 2.1MB JPEG → 164KB WebP；产物在 `public/image/opt/`（gitignore，Actions 构建时重新生成）。
+- 提交：主仓库 `8c0311b`、模板 `fc63ca5`。
+- 用户反馈背景：线上兴趣表并非空——`cea2633` 部署后兴趣被清空，`6f191d7` 已恢复并部署，用户看到的空表是浏览器缓存；需强制刷新。面板内编辑兴趣条目需重启管理面板（旧面板保存会再次清空）。
+
 最后更新：2026-08-01（关于页保存清空修复）
 
 ---
