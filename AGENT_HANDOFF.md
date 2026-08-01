@@ -2,6 +2,13 @@
 
 > 本文件已在用户授权下公开于 GitHub 仓库。每位 Agent 完成工作后在此记录变更。
 
+**🔤 文章页标题字号调小（静默推送，无 Release）**
+
+- `src/styles/global.css`（主仓库 + 模板）：文章页大标题 `.article-header h1` 字号由 `clamp(2.8rem, 6.5vw, 5.5rem)`（最大约 88px）改为 `2rem`，与正文一级标题（`.prose h1` 默认 2em）同大；`max-width: 640px` 断点内的覆盖值同步由 `clamp(2.45rem, 14vw, 4rem)` 改为 `2rem`。
+- 打印样式（`@media print`，25pt）为独立设计的 A4 档案版式，未改动。
+- 验证：`npm run build` 通过；本地 dev 实测文章页标题与正文 `#` 一级标题字号一致。
+- 提交：本次为静默推送，不打 tag、不发 Release（commit hash 见 `git log`）。
+
 **🖼 头像自适应 + 压缩（v1.3.2）**
 
 - `global.css`：`.portrait-placeholder.has-avatar` 去掉固定 4:5 比例与网格底纹，`img` 改为按原图比例完整显示（`max-width:100%; max-height:540px; object-fit:contain`），不再 cover 裁切；无头像时原样回退。
@@ -18,7 +25,7 @@
 - 安全加固：预览只提取「闭合完整」的 iframe（未闭合回退为文本显示，不吞正文）；重建标签丢弃 `on*` 事件属性、src 限 http(s)；`mdInline` 捕获组排除 `\u0000` 占位符防止属性注入；`buildVideoEmbed` 对粘贴的 iframe 同样校验协议白名单；重建 iframe 补 `title` 无障碍属性。
 - 验证：27 项函数单测全过（含 XSS、未闭合 iframe、属性注入、连续多 iframe 用例）；`npm run build` 16 页成功；临时文章端到端构建产物含完整 iframe；管理面板冒烟测试 /admin 与 /api/posts 均 200。
 
-最后更新：2026-08-02（文章内嵌视频功能）
+最后更新：2026-08-01（文章页标题字号调小）
 
 ---
 

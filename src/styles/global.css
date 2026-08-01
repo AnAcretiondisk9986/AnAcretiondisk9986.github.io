@@ -1007,7 +1007,7 @@ main {
 .article-header h1 {
   margin-bottom: 24px;
   font-family: var(--serif);
-  font-size: clamp(2.8rem, 6.5vw, 5.5rem);
+  font-size: 2rem; /* 与正文一级标题（.prose h1）同大，原为 clamp(2.8rem, 6.5vw, 5.5rem) */
   font-weight: 500;
   letter-spacing: -0.065em;
   line-height: 1.08;
@@ -2895,7 +2895,7 @@ main {
   }
 
   .article-header h1 {
-    font-size: clamp(2.45rem, 14vw, 4rem);
+    font-size: 2rem;
   }
 
   .dossier-seal {
