@@ -2,6 +2,15 @@
 
 > 本文件已在用户授权下公开于 GitHub 仓库。每位 Agent 完成工作后在此记录变更。
 
+**🖼 图志页升级：文章图集视图、随文图像分页、独立收藏随机广告牌（v1.7.0）**
+
+- `src/pages/gallery.astro`（主仓库）：随文图像面板新增 `时间线 / 文章图集` 视图切换条（`data-gallery-view`）。时间线视图按每页 9 张分页（`renderJournalPage`，分页器 `data-gallery-pager`，首末页按钮 disabled，FOLIO 编号跨页全局连续）；图集视图由 frontmatter 按 `sourceUrl` 分组（`journalGroups`）预渲染，朋友圈式版式——组头大标题 + 日期/张数 + 阅览全文链接，组内小缩略图按钮（复用 `data-gallery-open` 数据属性直接打开查看器）。
+- 排序联动：`setGalleryOrder` 重置 `journalPage = 1` 后依次 `renderJournalPage()` + `reorderAlbums()`（图集组按与卡片相同的比较器重排并重编 FOLIO）。
+- 独立收藏面板顶部新增广告牌（`buildBillboard`）：`define:vars` 注入 `standalonePool`，每次加载 Fisher–Yates 洗牌随机抽 5 张构建 scroll-snap 横向滚动条带；每张图高度固定、宽度按自身长宽比自适应；左右箭头、指示点（`getBoundingClientRect` 差值定位，图片 load 后刷新）、触摸滑动、自动轮播 4.2s；悬停/聚焦/面板隐藏（`selectGalleryTab` 联动 `pauseBillboard`/`resumeBillboard`）/`prefers-reduced-motion` 时暂停；点击打开查看器（含原图切换）。
+- `src/styles/global.css`（主仓库）：新增 `.gallery-view-bar`、`.gallery-pager`、`.gallery-albums/.gallery-album/.gallery-album-thumb`、`.gallery-billboard` 全套样式与 640px 响应式适配。
+- 验证：`npm run build` 18 页成功；dist 产物确认 8 个图集分组、24 个缩略图、standalonePool 注入；内置 review 审查 3 项修复（翻页 disabled、隐藏面板轮播暂停、dots 定位解耦）后二次复查通过。
+- 提交：`9fa9f35`（功能），本次 `docs` 提交 + tag `v1.7.0` + GitHub Release。模板仓库未同步（自 v1.4.0 起模板停止跟进主仓库架构，README 历史条目中「模板同步发布」说法与实际不符，本次不再沿用）。
+
 **💬 文章底部新增评论功能（Waline 同一后端，地区不可达时优雅降级）**
 
 - `src/components/PostComments.astro`（新增，主仓库 + 模板）：文章页底部评论组件，复用留言页同一套 Waline 服务（`https://comment-sys-ashen.vercel.app`）与 B 站评论区视觉（独立 `pc-*` 类名，样式内联于组件，互不干扰）；`path` 取 `location.pathname`，按文章 URL 隔离评论。
