@@ -2,6 +2,16 @@
 
 > 本文件已在用户授权下公开于 GitHub 仓库。每位 Agent 完成工作后在此记录变更。
 
+**🔄 管理面板新增 Git 同步：启动自动比对 + 手动拉取（v2.1.0）**
+
+- `admin-server.mjs`（主仓库）：新增 `syncFromRemote()` 核心函数与 `POST /api/pull` 路由，`app.listen` 回调中调用 `autoSyncOnStart()` 实现启动时自动同步。
+- 同步策略（安全护栏）：① `git fetch origin` → ② 用 `git rev-list --count` 计算本地/远端的 ahead、behind → ③ 均为 0 时判定「无差异，忽略」；④ ahead>0（本地有未推送提交 / 分叉）跳过并提示先「全量推送」；⑤ 远端领先且工作区干净时 `git merge --ff-only origin/<branch>` 快进拉取；⑥ 工作区有未提交更改（如刚保存未推送的文章）跳过，避免覆盖。
+- 启动自动比对不阻塞面板启动，网络失败仅提示（稍后可手动拉取）；`PORT` 现支持环境变量覆盖（默认仍 4322，与 `ADMIN_TOKEN` 同款风格）。
+- `admin/index.html`（主仓库）：侧边栏新增「⇩ 拉取」按钮（`pullFromRemote()`，位于「推送」左侧），拉取成功后自动刷新当前文章/画廊列表；tip-bar 新增「⇩ 拉取=同步远端最新内容」提示。
+- 验证（Windows 实测，双端 git 命令跨平台）：`node --check` 通过；`PORT=4323` 启动真实服务器三场景全过——① 本地=远端 → 日志「本地与远端一致，无需同步」；② 远端领先+工作区干净 → `/api/pull` 返回 `status:"pulled"` 并快进拉取 macOS 适配提交 `1464bd0`（HEAD 与 origin/main 归零差异）；③ 远端领先+工作区脏 → 返回 `status:"skipped", reason:"dirty"` 不覆盖工作区；无 token 请求 401。stash/pop 往返验证改动无损。
+- 本次拉取到用户已在 macOS 推送的 `1464bd0 feat: macOS 适配 (v2.0.0-macOS)`（含 `.command` 启动器与 `.githooks/pre-commit` 跨平台修复），与本次同步功能配合，Windows / macOS 双端行为一致。
+- 模板仓库未同步（自 v1.4.0 起模板停止跟进主仓库架构，沿用既有约定）。
+
 **🐛 修复广告牌切换跳过一张（v1.7.2b）**
 
 - 症状：广告牌切换时偶发"从第 3 张直接跳到第 5 张、跳过第 4 张"——一次手势切了两张。

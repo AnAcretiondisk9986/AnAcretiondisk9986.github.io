@@ -136,6 +136,7 @@
     <div class="sidebar-toolbar">
       <button class="btn primary" id="btnNew">＋ 新建</button>
       <button class="btn" id="btnRefresh">↻ 刷新</button>
+      <button class="btn" id="btnPull" style="border-color:#3a4080;color:#8090c0" title="从远端拉取最新内容（Git pull）">⇩ 拉取</button>
       <button class="btn" id="btnPush" style="border-color:#3a6040;color:#80c080" title="推送文章/图片/画廊数据">⬆ 推送</button>
       <button class="btn" id="btnPushFull" style="border-color:#806040;color:#c0a080" title="推送全部改动（含页面代码等），排除 reasonix.toml">⬆ 全量推送</button>
       <button class="btn" id="btnSite" style="border-color:#3a4060;color:#80a0c0" title="打开博客网站">🌐</button>
@@ -154,6 +155,7 @@
       <span>💡 粘贴图片自动上传</span>
       <span>▶ 正文工具栏可插入 B站 / YouTube 视频</span>
       <span>⚡ Ctrl+S 保存</span>
+      <span>⇩ 拉取=同步远端最新内容</span>
       <span>⬆ 推送=内容 / 全量推送=含代码</span>
     </div>
     <div id="editorContainer"><div class="empty-state">← 从左侧列表选择文章，或点击「新建」</div></div>
@@ -770,6 +772,7 @@
     $('#btnRefresh').onclick = () => currentMode === 'gallery' ? loadGallery() : currentMode === 'about' ? loadAbout() : currentMode === 'guestbook' ? loadGuestbookComments() : loadPosts();
     $('#btnSave').onclick = () => currentMode === 'gallery' ? saveGalleryItem() : currentMode === 'about' ? saveAbout() : savePost();
     $('#btnDelete').onclick = () => currentMode === 'gallery' ? (currentGalleryId && deleteGalleryItem(currentGalleryId)) : (currentSlug && deletePost(currentSlug));
+    $('#btnPull').onclick = pullFromRemote;
     $('#btnPush').onclick = pushToGithub;
     $('#btnPushFull').onclick = pushToGithubFull;
     $('#btnSite').onclick = () => window.open('https://anacretiondisk9986.github.io/', '_blank');
@@ -925,6 +928,30 @@
     }
 
     // ═══════════════════════════════════════
+
+    async function pullFromRemote() {
+      const btn = $('#btnPull');
+      btn.textContent = '⏳ 拉取中...';
+      btn.disabled = true;
+      try {
+        const res = await apiFetch('/api/pull', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+          toast(data.message || '拉取完成');
+          // 内容已更新：刷新当前列表，使远端新增/修改的文章或画廊可见
+          if (data.status === 'pulled') {
+            if (currentMode === 'gallery') loadGallery();
+            else if (currentMode === 'posts') loadPosts();
+          }
+        } else {
+          toast('拉取失败: ' + (data.error || data.detail || '未知错误'));
+        }
+      } catch (e) {
+        toast('拉取失败: ' + e.message);
+      }
+      btn.textContent = '⇩ 拉取';
+      btn.disabled = false;
+    }
 
     async function pushToGithub() {
       const btn = $('#btnPush');

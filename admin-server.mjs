@@ -16,7 +16,7 @@ const ORIGINAL_DIR = resolve(IMAGE_DIR, 'original');
 const IMG_BASE_URL = 'https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/';
 const GALLERY_JSON = resolve(__dirname, 'src', 'data', 'gallery.json');
 const ABOUT_JSON = resolve(__dirname, 'src', 'data', 'about.json');
-const PORT = 4322;
+const PORT = parseInt(process.env.PORT, 10) || 4322;
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || 'acr-admin';
 
 // ── Auth middleware ──
@@ -536,6 +536,94 @@ app.post('/api/push-full', async (_req, res) => {
   }
 });
 
+// ── Git sync（拉取远端内容）──
+// 安全同步策略：仅当「远端领先、本地无未推送提交、工作区干净」可快进时才拉取；
+// 其余情况（本地领先 / 分叉 / 工作区有未提交更改）跳过并给出原因，避免覆盖未推送内容或制造冲突。
+// 返回 { status: 'up-to-date' | 'pulled' | 'skipped', message, ahead, behind, ... }
+async function syncFromRemote() {
+  const run = (cmd) => new Promise((resolve, reject) => {
+    exec(cmd, { cwd: __dirname, timeout: 60000 }, (err, stdout, stderr) => {
+      if (err) reject(new Error(stderr || err.message));
+      else resolve(stdout.trim());
+    });
+  });
+
+  // 1. 拉取远端引用，网络问题（连接失败/超时）时直接抛出
+  await run('git fetch origin');
+
+  // 2. 计算本地与远端的领先 / 落后提交数
+  const branch = await run('git rev-parse --abbrev-ref HEAD');
+  const remoteBranch = `origin/${branch}`;
+  const behind = parseInt(await run(`git rev-list --count HEAD..${remoteBranch}`), 10) || 0;
+  const ahead = parseInt(await run(`git rev-list --count ${remoteBranch}..HEAD`), 10) || 0;
+  const result = { ahead, behind };
+
+  // 3. 无差异：忽略
+  if (behind === 0 && ahead === 0) {
+    result.status = 'up-to-date';
+    result.message = '本地与远端一致，无需同步';
+    return result;
+  }
+
+  // 4. 本地领先（含分叉）：不自动拉取，避免覆盖未推送内容
+  if (ahead > 0) {
+    result.status = 'skipped';
+    result.reason = 'local-ahead';
+    result.message = behind > 0
+      ? `本地与远端已分叉：本地领先 ${ahead} 个提交、远端领先 ${behind} 个提交，请先在管理面板「全量推送」或手动处理`
+      : `本地领先远端 ${ahead} 个提交（有未推送内容），无需拉取`;
+    return result;
+  }
+
+  // 5. 远端领先且本地无未推送提交：检查工作区后快进合并
+  const dirty = (await run('git status --porcelain')) !== '';
+  if (dirty) {
+    result.status = 'skipped';
+    result.reason = 'dirty';
+    result.message = `远端领先 ${behind} 个提交，但本地有未提交的更改（可能尚未推送），已跳过拉取以避免覆盖`;
+    return result;
+  }
+
+  const mergeOut = await run(`git merge --ff-only ${remoteBranch}`);
+  result.status = 'pulled';
+  result.message = `已从远端拉取 ${behind} 个提交并完成同步`;
+  result.detail = mergeOut;
+  return result;
+}
+
+// 手动拉取远端内容（管理面板按钮触发）
+app.post('/api/pull', async (_req, res) => {
+  try {
+    const result = await syncFromRemote();
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.json({ success: true, ...result });
+  } catch (err) {
+    console.error('Pull Error:', err.message);
+    res.status(500).json({
+      error: /Connection|Could not connect|reset|timed out/i.test(err.message)
+        ? '无法连接远端（网络问题），请稍后重试'
+        : '拉取失败，请稍后重试',
+      detail: err.message,
+    });
+  }
+});
+
+// 启动时自动比对：有版本差异则自动拉取同步，无差异则忽略（不阻塞面板启动）
+async function autoSyncOnStart() {
+  try {
+    const r = await syncFromRemote();
+    if (r.status === 'up-to-date') {
+      console.log('   [自动同步] 本地与远端一致，无需同步');
+    } else if (r.status === 'pulled') {
+      console.log(`   [自动同步] 已自动拉取远端更新：${r.message}`);
+    } else {
+      console.log(`   [自动同步] 已跳过（${r.reason}）：${r.message}`);
+    }
+  } catch (err) {
+    console.log(`   [自动同步] 跳过：无法连接远端（${err.message}），稍后可在管理面板手动「拉取」`);
+  }
+}
+
 // ── Gallery API ──
 
 // Helper: read/write gallery.json
@@ -760,4 +848,7 @@ app.listen(PORT, '127.0.0.1', () => {
   exec(cmd, (err) => {
     if (err) console.log('   请手动打开浏览器访问上述地址');
   });
+
+  // 启动时自动比对本地与远端版本：有差异自动拉取同步，无差异忽略（不阻塞面板）
+  autoSyncOnStart();
 });
