@@ -732,14 +732,15 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
     const FOCUS_SCALE = 1.2;
     const SIDE_SCALE = 0.82;
 
-    // 焦点图居中放大,两侧弱化;间距按焦点/相邻图实际宽度动态计算(图片长宽比自适应)
+    // 焦点图居中放大,两侧弱化;间距按焦点/全局最宽图实际宽度动态计算(图片长宽比自适应)
     const layoutSlides = () => {
       // offsetWidth 为不含 transform 的布局宽度(焦点图 1.2x 缩放后仍取原始宽度)
       const widths = slides.map((slide) => slide.offsetWidth || 240);
       const focusW = widths[active] || 240;
-      const leftW = widths[(active - 1 + count) % count] || focusW;
-      const rightW = widths[(active + 1) % count] || focusW;
-      const step = Math.max(leftW, rightW) * SIDE_SCALE / 2 + focusW * FOCUS_SCALE / 2 + GAP;
+      const maxW = Math.max(...widths);
+      // 步长为相邻 slide 的中心距,须同时满足:① 任意两个候播图相邻不重叠(各缩 0.82 后仍占满 maxW*0.82);
+      // ② 焦点图与候播图相邻不重叠(焦点 1.2x 半宽 + 最宽候播图 0.82x 半宽)
+      const step = Math.max(maxW * SIDE_SCALE, focusW * FOCUS_SCALE / 2 + maxW * SIDE_SCALE / 2) + GAP;
       slides.forEach((slide, i) => {
         let d = i - active;
         if (d > count / 2) d -= count;
