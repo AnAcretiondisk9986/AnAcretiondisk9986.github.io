@@ -732,41 +732,63 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
     const FOCUS_SCALE = 1.2;
     const SIDE_SCALE = 0.82;
 
-    // 焦点图居中放大,两侧弱化;间距逐对自适应——相邻两图中心距 = 各自缩放后半宽之和 + GAP,
-    // 宽图与宽图之间自然更远,窄图之间紧凑,既不重叠也无多余空隙(图片长宽比自适应)
-    const layoutSlides = () => {
-      // offsetWidth 为不含 transform 的布局宽度(焦点图 1.2x 缩放后仍取原始宽度)
+    // 线性轨道:每张图静态定位,切换时整个轨道平移,最后一张播完直接瞬移切回第一张
+    const centers: number[] = [];
+    const layoutTrack = () => {
       const widths = slides.map((slide) => slide.offsetWidth || 240);
-      const half = (i: number) => (i === active ? widths[i] * FOCUS_SCALE : widths[i] * SIDE_SCALE) / 2;
-      const offsets = new Array<number>(count);
-      offsets[active] = 0;
-      // 焦点右侧:沿环形依次累加(prev 为更靠近焦点的一张)
+      centers.length = 0;
+      let x = (widths[0] || 240) / 2;
+      centers.push(x);
       for (let i = 1; i < count; i++) {
-        const cur = (active + i) % count;
-        const prev = (cur - 1 + count) % count;
-        offsets[cur] = offsets[prev] + half(prev) + half(cur) + GAP;
+        const a = widths[i - 1] || 240;
+        const b = widths[i] || 240;
+        // 相邻间距按「任一张成为焦点(1.2x)都不侵入邻居」预留:max(w)×1.2/2 + min(w)×0.82/2 + GAP
+        x += Math.max(a, b) * FOCUS_SCALE / 2 + Math.min(a, b) * SIDE_SCALE / 2 + GAP;
+        centers.push(x);
       }
-      // 焦点左侧:沿环形依次累减(next 为更靠近焦点的一张)
-      for (let i = 1; i < count; i++) {
-        const cur = ((active - i) % count + count) % count;
-        const next = (cur + 1) % count;
-        offsets[cur] = offsets[next] - (half(cur) + half(next) + GAP);
-      }
+      slides.forEach((slide, i) => { slide.style.left = `${centers[i]}px`; });
+      applyTrack();
+    };
+
+    // 轨道平移:active 图中心对齐视口中心
+    const applyTrack = () => {
+      const cx = centers[active] ?? 0;
+      track.style.transform = `translateX(${viewport.clientWidth / 2 - cx}px)`;
+    };
+
+    // 焦点样式:active 放大置顶,其余弱化(位置不变,只随轨道平移)
+    const applyActive = () => {
       slides.forEach((slide, i) => {
-        const dist = Math.min((i - active + count) % count, (active - i + count) % count);
-        const scale = i === active ? FOCUS_SCALE : SIDE_SCALE;
-        slide.style.transform = `translate(calc(${offsets[i]}px - 50%), -50%) scale(${scale})`;
-        slide.style.opacity = i === active ? '1' : '0.42';
-        slide.style.zIndex = String(10 - dist);
-        slide.classList.toggle('is-active', i === active);
+        const isActive = i === active;
+        slide.classList.toggle('is-active', isActive);
+        slide.style.transform = `translate(-50%, -50%) scale(${isActive ? FOCUS_SCALE : SIDE_SCALE})`;
+        slide.style.opacity = isActive ? '1' : '0.42';
+        slide.style.zIndex = isActive ? '10' : '1';
       });
       updateDots();
     };
 
-    const goTo = (next: number) => {
-      active = (next + count) % count;
-      layoutSlides();
+    // 正常步进用轨道过渡;末→首 / 首→末 / 指示点远跳均为瞬移(关过渡→设置→下一帧恢复)
+    const setTransitions = (on: boolean) => {
+      track.style.transition = on ? '' : 'none';
+      slides.forEach((slide) => { slide.style.transition = on ? '' : 'none'; });
     };
+
+    const goTo = (next: number) => {
+      let target = next;
+      if (target < 0) target = count - 1;
+      if (target > count - 1) target = 0;
+      const jump = Math.abs(target - active) > 1;
+      if (jump) {
+        setTransitions(false);
+        void track.offsetWidth; // 强制 reflow,使 transition:none 立即生效
+      }
+      active = target;
+      applyTrack();
+      applyActive();
+      if (jump) requestAnimationFrame(() => setTransitions(true));
+    };
+    // 自动轮播:线性前进,最后一张播完切回第一张
     billboardGoNext = () => goTo(active + 1);
 
     // 指示点
@@ -786,9 +808,12 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
       });
     };
 
-    // 图片宽度变化(懒加载头部到达即定比例/解码完成)便重新布局——仅靠 load 事件会在完整下载前留下旧间距
-    const slideObserver = new ResizeObserver(layoutSlides);
+    // 图片宽度变化(懒加载头部到达即定比例/解码完成)便重新排轨道——仅靠 load 事件会在完整下载前留下旧间距
+    const slideObserver = new ResizeObserver(layoutTrack);
     slides.forEach((slide) => slideObserver.observe(slide));
+    // 视口尺寸变化(面板隐藏时宽度为 0、窗口缩放)时重新对齐平移量
+    const viewportObserver = new ResizeObserver(applyTrack);
+    viewportObserver.observe(viewport);
 
     prevBtn.addEventListener('click', () => goTo(active - 1));
     nextBtn.addEventListener('click', () => goTo(active + 1));
@@ -823,7 +848,8 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
       });
     });
 
-    layoutSlides();
+    layoutTrack();
+    applyActive();
 
     // 自动轮播:悬停 / 聚焦时暂停,面板不可见时暂停(见 selectGalleryTab)
     billboard.addEventListener('mouseenter', pauseBillboard);

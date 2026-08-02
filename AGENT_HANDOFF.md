@@ -2,6 +2,15 @@
 
 > 本文件已在用户授权下公开于 GitHub 仓库。每位 Agent 完成工作后在此记录变更。
 
+**🎠 广告牌改为线性轨道轮播（v2.2.3）**
+
+- 取消环形设定（用户要求）：`buildBillboard` 重写——每张 slide 静态定位 `left: centers[i]`（间距逐对自适应：`max(w)×1.2/2 + min(w)×0.82/2 + GAP`），切换时整个轨道 `translateX` 平移（560ms），焦点图对齐视口中心；不再按 `active` 重排每张图位置（不再是环状滚筒）。
+- 末→首瞬移：`goTo` 中 `|target-active|>1`（末→首 / 首→末 / 指示点远跳）先 `setTransitions(false)` + 强制 reflow 再设置，`requestAnimationFrame` 恢复过渡；自动轮播线性前进 `goTo(active+1)`，最后一张播完直接切回第一张。
+- `ResizeObserver`：slide 宽度变化（图片头部到达/解码）→ `layoutTrack` 重排；viewport 尺寸变化（面板隐藏时宽 0、窗口缩放）→ `applyTrack` 重新对齐。
+- CSS：`.gallery-billboard-track` 增加 `transition: transform 560ms cubic-bezier(0.22,0.9,0.3,1)` 与 `will-change`。
+- 验证：`npm run build` 19 页成功；headless Chrome 实测——焦点对齐偏差 0、空隙恒 18px、线性定位单调；末→首 `transition:'none'` 瞬移、100ms 稳定、首张精确对齐；构造 900/300px 与真实图片均无重叠；自动轮播逐张前进正常。
+- 发布：提交已推送，tag `v2.2.3` + GitHub Release（README 更新日志新增 2.2.3 条目，模板仓库未同步，沿用既有约定）。
+
 **🎠 广告牌轮播间距逐对自适应布局（v2.2.2）**
 
 - 背景：v2.2.1 用「全局最宽图 × 0.82」统一所有 slide 间距，消除重叠但窄图间空隙过大、布局松散（用户反馈）。
