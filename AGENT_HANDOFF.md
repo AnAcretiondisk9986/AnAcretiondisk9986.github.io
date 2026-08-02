@@ -2,6 +2,15 @@
 
 > 本文件已在用户授权下公开于 GitHub 仓库。每位 Agent 完成工作后在此记录变更。
 
+**💬 文章底部新增评论功能（Waline 同一后端，地区不可达时优雅降级）**
+
+- `src/components/PostComments.astro`（新增，主仓库 + 模板）：文章页底部评论组件，复用留言页同一套 Waline 服务（`https://comment-sys-ashen.vercel.app`）与 B 站评论区视觉（独立 `pc-*` 类名，样式内联于组件，互不干扰）；`path` 取 `location.pathname`，按文章 URL 隔离评论。
+- `src/pages/blog/[...id].astro`（主仓库 + 模板）：`article-endmark`（FINIS）之后、`</article>` 前引入 `<PostComments />`。
+- **地区降级**：按用户要求不迁就大陆网络——fetch 带 8 秒 AbortController 超时，加载/提交失败一律显示「当前地区暂不支持评论」提示（附技术细节小字）；评论失败不影响正文阅读。
+- 功能与留言页一致：300 字上限、昵称记忆（localStorage 与留言页共用键）、字母头像哈希取色、IP 属地标签、相对时间、`#N 楼`、分页加载更多、内容净化（剥离媒体/事件属性）；保留 `?server=` 覆盖参数便于本地 mock 联调。
+- 打印样式：`@media print` 隐藏评论区，导出 PDF 不受影响。
+- 验证：`npm run build` 19 页成功；headless Chrome + mock-waline 端到端三用例全过——列表加载（empty 状态）、发布评论后列表刷新含新评论、不可达服务显示「当前地区暂不支持评论」。
+
 **🔗 关于页链接可跳转（静默推送，无 Release）**
 
 - `src/pages/about.astro`（主仓库 + 模板）：新增通用 `linkify()` 函数——先做 HTML 转义（`& < > "`）再按 RFC 3986 URL 字符集识别 `http(s)://` 链接，转成 `<a target="_blank" rel="noopener noreferrer">`；仅识别 http/https（`javascript:` 等协议原样输出），尾部成对标点自动剥离。所有经管理面板可编辑的文本字段统一走此函数：身份表 `value`、开头段 `lead`、正文段落 `paragraphs`、引用 `quoteText`、关联网站 `note`——后续管理面板往任意字段粘贴链接都会自动可跳转。
@@ -33,7 +42,7 @@
 - 安全加固：预览只提取「闭合完整」的 iframe（未闭合回退为文本显示，不吞正文）；重建标签丢弃 `on*` 事件属性、src 限 http(s)；`mdInline` 捕获组排除 `\u0000` 占位符防止属性注入；`buildVideoEmbed` 对粘贴的 iframe 同样校验协议白名单；重建 iframe 补 `title` 无障碍属性。
 - 验证：27 项函数单测全过（含 XSS、未闭合 iframe、属性注入、连续多 iframe 用例）；`npm run build` 16 页成功；临时文章端到端构建产物含完整 iframe；管理面板冒烟测试 /admin 与 /api/posts 均 200。
 
-最后更新：2026-08-01（关于页链接可跳转）
+最后更新：2026-08-02（文章底部评论）
 
 ---
 

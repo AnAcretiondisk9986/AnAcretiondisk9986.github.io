@@ -1,6 +1,7 @@
 ---
 import { getCollection, render, type CollectionEntry } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import PostComments from '../../components/PostComments.astro';
 
 export async function getStaticPaths() {
   const posts = await getCollection('blog', ({ data }) => !data.draft);
@@ -82,6 +83,8 @@ const printUrl = JSON.stringify(
         <span>FINIS</span>
         <p>本条目至此结束</p>
       </footer>
+
+      <PostComments />
     </article>
   </div>
 </BaseLayout>
