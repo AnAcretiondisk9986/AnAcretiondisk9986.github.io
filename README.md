@@ -1,7 +1,33 @@
 # Acretiondisk Blog — 更新日志
 
 > 使用 Astro 构建的个人博客，部署到 GitHub Pages（`https://anacretiondisk9986.github.io/`）。
-> 当前版本：**2.2.3**（2026-08-02）
+> 当前版本：**2.3.1**（2026-08-02）
+
+---
+
+## 2.3.1（2026-08-02）
+
+### 🐛 修复：词云一片纯白 + 文章页左侧边栏滚动截断
+
+- **纯白根因 1：color 传数组不被 wordcloud2.js 支持**——组件把主题色板数组直接赋给 `fillStyle`，浏览器忽略无效值，导致整幅词云一个字都画不出来（最小复现对比：数组 0 像素 / 字符串 19241 像素）。修复为传**函数**，每个词绘制时从主题色板随机取色，亮/暗主题自动适配。
+- **纯白根因 2：canvas 被强制涂白**——wordcloud2.js 默认 `backgroundColor: '#fff'` 会把 canvas 整块涂成纯白，暗色主题下浅色词在白底上不可见。改为 `transparent`，露出 `.wordcloud-box` 的主题底色。
+- **边栏滚动截断**：文章页左侧边栏是 `sticky` 定位，内容（含词云）超过视口高度时底部被截断、滚轮滚不到；修复为 `max-height: calc(100vh - 60px)` + `overflow-y: auto`，边栏超高时内部滚动。
+- **防御性修复**：wordcloud2.js 的 `weightFactor` 包装改为 IIFE 立即捕获值，避免压缩器变量合并导致运行期闭包读到脏值。
+- 新增 `scripts/wc-test-page.mjs` 词云调试测试页生成脚本（暗色主题 + 像素统计，headless 验证用）。
+- 验证：headless Edge 实测暗色主题下 19412 像素文字正常绘制；目录页 / 文章页亮色截图正常；`npm run build` 19 页通过。
+
+---
+
+## 2.3.0（2026-08-02）
+
+### ☁️ 新增词云：目录页全站关键词索引 + 文章页单篇关键词
+
+- **目录页（`/blog/`）新增「INDEX VERBORUM / 关键词索引」**：构建时统计全站文章正文词频，Canvas 渲染 80 个关键词的词云；点击任意词跳转 Google 站内搜索（`site:域名 词`），hover 显示词频；颜色跟随亮/暗主题切换、窗口缩放自动重排（防抖 200ms）。
+- **文章页左侧边栏新增「本篇关键词」**：按单篇文章正文生成紧凑词云（≤24 词、字号 8–24px），只展示 + hover 词频、不绑定跳转；移动端（≤860px）自动占满整行。
+- **中文分词零依赖**：用 Node 内置 `Intl.Segmenter` 分词 + 内置停用词表，正文先剥离代码块 / 行内代码 / 链接 / URL / HTML（否则英文 token 会淹没中文主题词）；词频做对数缩放映射字号，标题加权 2 次。
+- **渲染用 wordcloud2.js**：官方源码 vendored 到 `src/vendor/wordcloud2.js`（MIT），UMD 导出改为 `globalThis` + ESM 默认导出以适配 Vite 打包（原 UMD 在 Astro 内联脚本场景下无法静态分析）。
+- 数据链路：`src/lib/wordcloud.ts`（构建时统计）→ `src/components/WordCloud.astro`（渲染组件，`compact` 属性切换两种形态）；文章发布后重新 `npm run build` 词云自动更新。
+- 验证：`npm run build` 19 页通过；headless Edge 实测目录页 80 词、文章页 24 词均正常渲染。
 
 ---
 
@@ -292,6 +318,13 @@
 - 公共布局：`src/layouts/BaseLayout.astro`
 - 全局样式：`src/styles/global.css`
 - 图片等静态资源：`public/`
+
+### 词云维护
+
+- 数据与参数：`src/lib/wordcloud.ts` 顶部——`MAX_WORDS`（词数上限）、`MIN_COUNT`（最低词频）、`MIN/MAX_SIZE`（字号范围）、`STOPWORDS`（停用词表，新增高频噪声词直接往里加）。
+- 渲染组件：`src/components/WordCloud.astro`——`rotateRatio`（旋转比例）、字号映射（`compact` 模式 8–24px）；已接入目录页（全站词云）与文章页侧栏（单篇词云），新页面接入只需传 `<WordCloud words={...} />`。
+- 词云数据在构建时统计，新增 / 修改文章后需重新 `npm run build`（dev 模式自动）。
+- 调试：`node scripts/wc-test-page.mjs` 生成暗色主题测试页（含像素统计），配合 headless 浏览器截图验证。
 
 ### 常用命令
 
