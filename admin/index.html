@@ -397,6 +397,10 @@
           if (currentMode === 'gallery') {
             const srcInput = $('#fSrc');
             if (srcInput) { srcInput.value = data.url; srcInput.focus(); }
+            const originalInput = $('#fOriginal');
+            if (originalInput && !originalInput.value.trim() && data.originalUrl) {
+              originalInput.value = data.originalUrl;
+            }
           } else if (currentMode === 'about') {
             const avatarInput = $('#fAvatar');
             if (avatarInput) { avatarInput.value = data.url; avatarInput.focus(); refreshAvatarPreview(); }
@@ -492,6 +496,14 @@
         if (currentMode === 'gallery') {
           const srcInput = $('#fSrc');
           if (srcInput) { srcInput.value = data.url; srcInput.focus(); }
+          const titleInput = $('#fGalleryTitle');
+          if (titleInput && !titleInput.value.trim()) {
+            titleInput.value = file.name.replace(/\.[^.]+$/, '');
+          }
+          const originalInput = $('#fOriginal');
+          if (originalInput && !originalInput.value.trim() && data.originalUrl) {
+            originalInput.value = data.originalUrl;
+          }
           toast('已上传: ' + data.url);
         } else if (currentMode === 'about') {
           const avatarInput = $('#fAvatar');
@@ -822,6 +834,7 @@
             <div class="form-group" style="flex:1"><label>替代文本 (alt)</label><input id="fAlt" value="${escAttr(item.alt||'')}" placeholder="屏幕阅读器描述"/></div>
           </div>
           <div class="form-group"><label>说明文字 (caption)</label><input id="fCaption" value="${escAttr(item.caption||'')}" placeholder="显示在图像下方的简短说明"/></div>
+          <div class="form-group"><label>原图地址 (original)</label><input id="fOriginal" value="${escAttr(item.original||'')}" placeholder="上传自动填入；留空则画廊无「加载原图」按钮"/></div>
           <div class="form-row">
             <div class="form-group"><label>来源链接 (sourceUrl)</label><input id="fSourceUrl" value="${escAttr(item.sourceUrl||'')}" placeholder="https://..."/></div>
             <div class="form-group"><label>来源标题 (sourceTitle)</label><input id="fSourceTitle" value="${escAttr(item.sourceTitle||'')}" placeholder="来源名称"/></div>
@@ -858,6 +871,7 @@
             <div class="form-group" style="flex:1"><label>替代文本 (alt)</label><input id="fAlt" value="" placeholder="屏幕阅读器描述"/></div>
           </div>
           <div class="form-group"><label>说明文字 (caption)</label><input id="fCaption" value="" placeholder="显示在图像下方的简短说明"/></div>
+          <div class="form-group"><label>原图地址 (original)</label><input id="fOriginal" value="" placeholder="上传自动填入；留空则画廊无「加载原图」按钮"/></div>
           <div class="form-row">
             <div class="form-group"><label>来源链接 (sourceUrl)</label><input id="fSourceUrl" value="" placeholder="https://..."/></div>
             <div class="form-group"><label>来源标题 (sourceTitle)</label><input id="fSourceTitle" value="" placeholder="来源名称"/></div>
@@ -879,6 +893,7 @@
       formData.set('alt', $('#fAlt')?.value || '');
       formData.set('title', title);
       formData.set('caption', $('#fCaption')?.value || '');
+      formData.set('original', $('#fOriginal')?.value || '');
       formData.set('date', $('#fGalleryDate')?.value || '');
       formData.set('dayIndex', $('#fGalleryDayIndex')?.value || '');
       formData.set('sourceUrl', $('#fSourceUrl')?.value || '');

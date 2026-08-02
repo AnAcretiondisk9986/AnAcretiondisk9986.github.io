@@ -1,7 +1,7 @@
 import express from 'express';
 import multer from 'multer';
 import sharp from 'sharp';
-import { readdir, readFile, writeFile, unlink, mkdir, access } from 'node:fs/promises';
+import { readdir, readFile, writeFile, unlink, mkdir, access, copyFile } from 'node:fs/promises';
 import { exec } from 'node:child_process';
 import { join, dirname, extname, basename, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -12,6 +12,7 @@ const BLOG_DIR = resolve(__dirname, 'src', 'content', 'blog');
 // 图片仓库：与博客仓库平级的 blog-images，图片上传后经 jsDelivr CDN 外链引用
 const IMG_REPO_DIR = resolve(__dirname, '..', 'blog-images');
 const IMAGE_DIR = resolve(IMG_REPO_DIR, 'image');
+const ORIGINAL_DIR = resolve(IMAGE_DIR, 'original');
 const IMG_BASE_URL = 'https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/';
 const GALLERY_JSON = resolve(__dirname, 'src', 'data', 'gallery.json');
 const ABOUT_JSON = resolve(__dirname, 'src', 'data', 'about.json');
@@ -302,6 +303,17 @@ async function saveImageFile(filePath) {
   return `${basename(outPath)}`;
 }
 
+// 归档原图到 image/original/（仅转码格式 png/jpg/jpeg 才有归档必要；gif/svg/webp 原样保留，主图即原图）。
+// 返回归档后的文件名（不含目录），或 null 表示无需归档。
+async function archiveOriginal(filePath, name) {
+  const ext = extname(filePath).toLowerCase();
+  if (!['.png', '.jpg', '.jpeg'].includes(ext)) return null;
+  await mkdir(ORIGINAL_DIR, { recursive: true });
+  const dest = join(ORIGINAL_DIR, name);
+  await copyFile(filePath, dest);
+  return name;
+}
+
 // 推送图片仓库（有变更才推），失败时给出友好错误
 async function pushImageRepo() {
   const run = (cmd) => new Promise((resolve, reject) => {
@@ -347,9 +359,15 @@ app.post('/api/upload', (req, res, next) => {
     }
     if (!req.file) return res.status(400).json({ error: '未选择文件' });
     try {
+      const origName = await archiveOriginal(req.file.path, basename(req.file.path));
       const filename = await saveImageFile(req.file.path);
       const push = await pushImageRepo();
-      res.status(201).json({ success: true, url: `${IMG_BASE_URL}${encodeURIComponent(filename)}`, pushed: push.pushed });
+      res.status(201).json({
+        success: true,
+        url: `${IMG_BASE_URL}${encodeURIComponent(filename)}`,
+        originalUrl: origName ? `${IMG_BASE_URL}original/${encodeURIComponent(origName)}` : '',
+        pushed: push.pushed,
+      });
     } catch (e) {
       console.error('Upload Error:', e.message);
       res.status(e.status || 500).json({ error: e.message, detail: e.detail });
@@ -419,10 +437,16 @@ app.post('/api/import-url', async (req, res) => {
     await mkdir(IMAGE_DIR, { recursive: true });
     const filePath = join(IMAGE_DIR, filename);
     await writeFile(filePath, buffer);
+    const origName = await archiveOriginal(filePath, filename);
     const savedName = await saveImageFile(filePath);
     const push = await pushImageRepo();
 
-    res.status(201).json({ success: true, url: `${IMG_BASE_URL}${encodeURIComponent(savedName)}`, pushed: push.pushed });
+    res.status(201).json({
+      success: true,
+      url: `${IMG_BASE_URL}${encodeURIComponent(savedName)}`,
+      originalUrl: origName ? `${IMG_BASE_URL}original/${encodeURIComponent(origName)}` : '',
+      pushed: push.pushed,
+    });
   } catch (err) {
     if (err.name === 'AbortError' || err.name === 'TimeoutError') {
       return res.status(504).json({ error: '下载超时（30 秒）' });
@@ -541,7 +565,7 @@ app.route('/api/gallery')
   })
   .post(upload.none(), async (req, res) => {
     try {
-      const { src, alt, title, caption, date, dayIndex, sourceUrl, sourceTitle } = req.body;
+      const { src, alt, title, caption, date, dayIndex, sourceUrl, sourceTitle, original } = req.body;
       if (!src || !title) {
         return res.status(400).json({ error: 'src 和 title 为必填字段' });
       }
@@ -560,6 +584,7 @@ app.route('/api/gallery')
       };
       if (sourceUrl) item.sourceUrl = sourceUrl.trim();
       if (sourceTitle) item.sourceTitle = sourceTitle.trim();
+      if (original) item.original = original.trim();
       items.unshift(item);
       await writeGallery(items);
       res.status(201).json({ success: true, item });
@@ -588,7 +613,7 @@ app.route('/api/gallery/:id')
       const idx = items.findIndex(i => i.id === req.params.id);
       if (idx === -1) return res.status(404).json({ error: '图像不存在' });
 
-      const { src, alt, title, caption, date, dayIndex, sourceUrl, sourceTitle } = req.body;
+      const { src, alt, title, caption, date, dayIndex, sourceUrl, sourceTitle, original } = req.body;
       if (!src || !title) {
         return res.status(400).json({ error: 'src 和 title 为必填字段' });
       }
@@ -606,6 +631,7 @@ app.route('/api/gallery/:id')
         dayIndex: di ?? nextGalleryDayIndex(others, finalDate),
         sourceUrl: (sourceUrl || '').trim() || undefined,
         sourceTitle: (sourceTitle || '').trim() || undefined,
+        original: (original || '').trim() || undefined,
       };
       await writeGallery(items);
       res.json({ success: true, item: items[idx] });
