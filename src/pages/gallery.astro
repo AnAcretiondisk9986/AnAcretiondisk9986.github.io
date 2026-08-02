@@ -63,6 +63,9 @@ const journalImages: GalleryImage[] = posts.flatMap((post) => {
         title: post.data.title,
         caption: match[1] || fileName,
         date: post.data.pubDate.toISOString().slice(0, 10),
+        // 继承文章的同日索引号：保证 assignDaySequence 按 dayIndex 分配日内序号，
+        // 使同日随文图片/图集在「从新至旧」下按文章发表顺序排列
+        dayIndex: post.data.dayIndex ?? 0,
         sourceUrl: `/blog/${post.id}/`,
         sourceTitle: post.data.title,
       };
@@ -150,19 +153,19 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
       <div class="gallery-view-bar">
         <div class="gallery-view-label">
           <span>VIEW MODE</span>
-          <strong data-gallery-view-status>时间线</strong>
+          <strong data-gallery-view-status>文章图集</strong>
         </div>
         <div class="gallery-view-switch" role="group" aria-label="随文图像展示方式">
-          <button type="button" data-gallery-view="timeline" aria-pressed="true">
+          <button type="button" data-gallery-view="timeline" aria-pressed="false">
             <span aria-hidden="true">▤</span>时间线
           </button>
-          <button type="button" data-gallery-view="albums" aria-pressed="false">
+          <button type="button" data-gallery-view="albums" aria-pressed="true">
             <span aria-hidden="true">▦</span>文章图集
           </button>
         </div>
       </div>
       {journalImages.length > 0 ? (
-        <div class="gallery-masonry gallery-masonry--journal" data-gallery-masonry>
+        <div class="gallery-masonry gallery-masonry--journal" data-gallery-masonry hidden>
           {journalImages.map((image, index) => (
             <article class="gallery-card" data-gallery-card data-gallery-date={image.date} data-gallery-day-sequence={image.daySequence ?? 0} data-gallery-position={index}>
               <button
@@ -195,12 +198,12 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
             </article>
           ))}
         </div>
-        <nav class="gallery-pager" data-gallery-pager aria-label="随文图像翻页">
+        <nav class="gallery-pager" data-gallery-pager aria-label="随文图像翻页" hidden>
           <button type="button" data-gallery-page="prev" aria-label="上一页">←</button>
           <span class="gallery-pager-status"><b data-gallery-page-current>01</b> / <b data-gallery-page-total>01</b></span>
           <button type="button" data-gallery-page="next" aria-label="下一页">→</button>
         </nav>
-        <div class="gallery-albums" data-gallery-albums hidden>
+        <div class="gallery-albums" data-gallery-albums>
           {journalGroups.map((group, groupIndex) => {
             const lead = group.images[0];
             return (
@@ -386,7 +389,7 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
   const JOURNAL_PAGE_SIZE = 9;
   const INDEPENDENT_PAGE_SIZE = 9;
   let currentOrder: GalleryOrder = 'newest';
-  let journalView: 'timeline' | 'albums' = 'timeline';
+  let journalView: 'timeline' | 'albums' = 'albums';
   let journalPage = 1;
   let independentPage = 1;
 
@@ -467,7 +470,7 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
   viewButtons.forEach((button) => {
     button.addEventListener('click', () => setJournalView(button.dataset.galleryView === 'albums' ? 'albums' : 'timeline'));
   });
-  setJournalView('timeline');
+  setJournalView('albums');
 
   document.querySelector<HTMLButtonElement>('[data-gallery-page="prev"]')?.addEventListener('click', () => {
     journalPage -= 1;
