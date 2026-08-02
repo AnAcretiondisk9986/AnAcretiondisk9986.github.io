@@ -732,24 +732,33 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
     const FOCUS_SCALE = 1.2;
     const SIDE_SCALE = 0.82;
 
-    // 焦点图居中放大,两侧弱化;间距按焦点/全局最宽图实际宽度动态计算(图片长宽比自适应)
+    // 焦点图居中放大,两侧弱化;间距逐对自适应——相邻两图中心距 = 各自缩放后半宽之和 + GAP,
+    // 宽图与宽图之间自然更远,窄图之间紧凑,既不重叠也无多余空隙(图片长宽比自适应)
     const layoutSlides = () => {
       // offsetWidth 为不含 transform 的布局宽度(焦点图 1.2x 缩放后仍取原始宽度)
       const widths = slides.map((slide) => slide.offsetWidth || 240);
-      const focusW = widths[active] || 240;
-      const maxW = Math.max(...widths);
-      // 步长为相邻 slide 的中心距,须同时满足:① 任意两个候播图相邻不重叠(各缩 0.82 后仍占满 maxW*0.82);
-      // ② 焦点图与候播图相邻不重叠(焦点 1.2x 半宽 + 最宽候播图 0.82x 半宽)
-      const step = Math.max(maxW * SIDE_SCALE, focusW * FOCUS_SCALE / 2 + maxW * SIDE_SCALE / 2) + GAP;
+      const half = (i: number) => (i === active ? widths[i] * FOCUS_SCALE : widths[i] * SIDE_SCALE) / 2;
+      const offsets = new Array<number>(count);
+      offsets[active] = 0;
+      // 焦点右侧:沿环形依次累加(prev 为更靠近焦点的一张)
+      for (let i = 1; i < count; i++) {
+        const cur = (active + i) % count;
+        const prev = (cur - 1 + count) % count;
+        offsets[cur] = offsets[prev] + half(prev) + half(cur) + GAP;
+      }
+      // 焦点左侧:沿环形依次累减(next 为更靠近焦点的一张)
+      for (let i = 1; i < count; i++) {
+        const cur = ((active - i) % count + count) % count;
+        const next = (cur + 1) % count;
+        offsets[cur] = offsets[next] - (half(cur) + half(next) + GAP);
+      }
       slides.forEach((slide, i) => {
-        let d = i - active;
-        if (d > count / 2) d -= count;
-        if (d < -count / 2) d += count;
-        const scale = d === 0 ? FOCUS_SCALE : SIDE_SCALE;
-        slide.style.transform = `translate(calc(${d * step}px - 50%), -50%) scale(${scale})`;
-        slide.style.opacity = d === 0 ? '1' : '0.42';
-        slide.style.zIndex = String(10 - Math.abs(d));
-        slide.classList.toggle('is-active', d === 0);
+        const dist = Math.min((i - active + count) % count, (active - i + count) % count);
+        const scale = i === active ? FOCUS_SCALE : SIDE_SCALE;
+        slide.style.transform = `translate(calc(${offsets[i]}px - 50%), -50%) scale(${scale})`;
+        slide.style.opacity = i === active ? '1' : '0.42';
+        slide.style.zIndex = String(10 - dist);
+        slide.classList.toggle('is-active', i === active);
       });
       updateDots();
     };
@@ -777,8 +786,9 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
       });
     };
 
-    // 图片懒加载完成后宽度确定,重新布局
-    track.querySelectorAll('img').forEach((img) => img.addEventListener('load', layoutSlides));
+    // 图片宽度变化(懒加载头部到达即定比例/解码完成)便重新布局——仅靠 load 事件会在完整下载前留下旧间距
+    const slideObserver = new ResizeObserver(layoutSlides);
+    slides.forEach((slide) => slideObserver.observe(slide));
 
     prevBtn.addEventListener('click', () => goTo(active - 1));
     nextBtn.addEventListener('click', () => goTo(active + 1));
