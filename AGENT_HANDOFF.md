@@ -2,6 +2,13 @@
 
 > 本文件已在用户授权下公开于 GitHub 仓库。每位 Agent 完成工作后在此记录变更。
 
+**🐛 修复 v1.7.2 广告牌切换跳过一张（pointerup 轻扫与 click 双重触发）**
+
+- 症状：广告牌切换时偶发"从第 3 张直接跳到第 5 张、跳过第 4 张"——一次手势切了两张。
+- 根因：`viewport` 上的 `pointerup` 轻扫监听（位移 >48px 即 `goTo(active±1)`）与 slide 的 `click` 监听（`goTo(i)`/打开查看器）叠加——鼠标点击带轻微位移（>48px）或触摸轻扫时，一次操作同时触发 pointerup 切换 + 浏览器合成 click 切换，两次 `goTo` 累计跳两张。
+- 修复：轻扫仅对非鼠标指针（`event.pointerType !== 'mouse'`）启用——鼠标点击完全交给 `click` 只切一次；触摸/触控笔轻扫触发后置 `swipeLock` 标记，`click` 回调检测到该标记则吞掉合成 click（`pointerdown` 时重置）。
+- 验证：`npm run build` 18 页成功；headless Chrome 虚拟时间采样确认自动轮播逐张（21s 采样 active 回到 0,即 5 次切换恰一轮）；`pointerType` 逻辑已进 bundle。
+
 **🎠 独立收藏广告牌改焦点轮播 + 画廊图片圆角（v1.7.2）**
 
 - `src/pages/gallery.astro`（主仓库）：广告牌从 scroll-snap 横向滚动改为**焦点轮播**——当前放映图居中放大 `scale(1.2)`（透明度 1、z-index 10），两侧图 `scale(0.82)` + `opacity 0.42` 弱化显示，`transform/opacity/filter` 560ms cubic-bezier 过渡动画；间距按焦点/相邻图布局宽度动态计算（`offsetWidth`,图片长宽比仍自适应,竖图横图均不裁切）。

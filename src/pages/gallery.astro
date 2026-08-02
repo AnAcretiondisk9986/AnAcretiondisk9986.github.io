@@ -740,22 +740,34 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
     prevBtn.addEventListener('click', () => goTo(active - 1));
     nextBtn.addEventListener('click', () => goTo(active + 1));
 
+    // 触摸/触控笔左右轻扫切换(鼠标点击不参与,避免与 click 双重触发导致一次跳两张)
+    let touchStartX = 0;
+    let isTouchPointer = false;
+    let swipeLock = false;
+    viewport.addEventListener('pointerdown', (event) => {
+      touchStartX = event.clientX;
+      isTouchPointer = event.pointerType !== 'mouse';
+      swipeLock = false;
+    });
+    viewport.addEventListener('pointerup', (event) => {
+      if (!isTouchPointer) return; // 鼠标点击交给 slide 的 click 处理,只切一次
+      const dx = event.clientX - touchStartX;
+      if (Math.abs(dx) > 48) {
+        swipeLock = true; // 轻扫已切换,拦截随后的合成 click
+        goTo(active + (dx < 0 ? 1 : -1));
+      }
+    });
+
     // 点击:焦点图打开查看器,两侧弱化图切换为焦点
     slides.forEach((slide, i) => {
       slide.addEventListener('click', () => {
+        if (swipeLock) {
+          swipeLock = false;
+          return;
+        }
         if (i === active) openGalleryViewer(slide);
         else goTo(i);
       });
-    });
-
-    // 触摸左右轻扫切换
-    let touchStartX = 0;
-    viewport.addEventListener('pointerdown', (event) => {
-      touchStartX = event.clientX;
-    });
-    viewport.addEventListener('pointerup', (event) => {
-      const dx = event.clientX - touchStartX;
-      if (Math.abs(dx) > 48) goTo(active + (dx < 0 ? 1 : -1));
     });
 
     layoutSlides();
