@@ -2,6 +2,8 @@
 import { getCollection, render, type CollectionEntry } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import PostComments from '../../components/PostComments.astro';
+import WordCloud from '../../components/WordCloud.astro';
+import { buildWordCloud } from '../../lib/wordcloud';
 
 export async function getStaticPaths() {
   const posts = await getCollection('blog', ({ data }) => !data.draft);
@@ -27,6 +29,12 @@ interface Props {
 
 const { post, folioCode } = Astro.props;
 const { Content } = await render(post);
+
+// 单篇正文词频统计:词云只反映这篇文章的关键词
+const articleWords = buildWordCloud(
+  [{ title: post.data.title, body: post.body ?? '' }],
+  { maxWords: 24, minCount: 2 },
+);
 const printFolio = JSON.stringify(`FOLIO ${folioCode}`);
 const printUrl = JSON.stringify(
   `${Astro.site?.origin ?? ''}${Astro.url.pathname}`.replace(/\/$/, ''),
@@ -50,6 +58,7 @@ const printUrl = JSON.stringify(
           <dd><span id="busuanzi_value_page_pv">—</span></dd>
         </div>
       </dl>
+      <WordCloud words={articleWords} compact title="本篇关键词" />
       <p class="margin-note">原始观察记录。文字与观点会随认知更新而修订。</p>
     </aside>
 

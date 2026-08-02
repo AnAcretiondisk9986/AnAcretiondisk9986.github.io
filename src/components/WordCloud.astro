@@ -1,0 +1,235 @@
+---
+import type { WordCloudWord } from '../lib/wordcloud';
+
+interface Props {
+  words: WordCloudWord[];
+  /** 词云区块标题,默认 "关键词索引" */
+  title?: string;
+  /** 紧凑模式:用于文章页窄边栏,小字号、无大标题、不绑定点击跳转 */
+  compact?: boolean;
+}
+
+const { words, title = '关键词索引', compact = false } = Astro.props;
+const siteBase = Astro.site?.toString() ?? '';
+---
+
+{compact ? (
+  <section class="wordcloud-compact">
+    <h3 class="wordcloud-compact-title">{title}</h3>
+    {words.length === 0 ? (
+      <p class="wordcloud-empty">本篇暂无高频关键词。</p>
+    ) : (
+      <div class="wordcloud-box" data-wordcloud-box data-compact>
+        <canvas
+          data-wordcloud
+          data-words={JSON.stringify(words)}
+          data-site={siteBase}
+          aria-label={`词云:${title}`}
+        ></canvas>
+        <div class="wordcloud-tip" data-wordcloud-tip hidden></div>
+      </div>
+    )}
+  </section>
+) : (
+  <section class="wordcloud-section">
+  <div class="section-heading codex-heading">
+    <div>
+      <p class="eyebrow">INDEX VERBORUM</p>
+      <h2>{title}</h2>
+    </div>
+    <div class="heading-note">
+      <span>{words.length} 个关键词 · 点击词语搜索站内相关内容</span>
+    </div>
+  </div>
+  {words.length === 0 ? (
+    <p class="wordcloud-empty">词库仍在积累中,暂无足够的高频关键词。</p>
+  ) : (
+    <div class="wordcloud-box" data-wordcloud-box>
+      <canvas
+        data-wordcloud
+        data-words={JSON.stringify(words)}
+        data-site={siteBase}
+        aria-label="词云:博客正文高频关键词"
+      ></canvas>
+      <div class="wordcloud-tip" data-wordcloud-tip hidden></div>
+    </div>
+  )}
+  </section>
+)}
+
+<style>
+  .wordcloud-compact {
+    margin-top: 42px;
+  }
+  .wordcloud-compact-title {
+    margin: 0 0 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--rule-strong);
+    font-family: var(--serif);
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    color: var(--ink-soft);
+  }
+  .wordcloud-compact .wordcloud-box {
+    padding: 0.5rem;
+  }
+  .wordcloud-compact .wordcloud-empty {
+    padding: 1rem;
+    font-size: 0.78rem;
+  }
+  @media (max-width: 860px) {
+    /* 移动端边栏变两列 grid(860px 断点),词云占满整行 */
+    .wordcloud-compact {
+      grid-column: 1 / -1;
+      margin-top: 6px;
+    }
+  }
+  .wordcloud-section {
+    margin: 2.5rem 0 3rem;
+  }
+  .wordcloud-box {
+    position: relative;
+    background: var(--paper-light);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    padding: 0.75rem;
+    overflow: hidden;
+  }
+  .wordcloud-empty {
+    padding: 2rem;
+    text-align: center;
+    color: var(--ink-faint);
+    font: 0.9rem/1.6 var(--serif);
+    border: 1px dashed var(--rule);
+    border-radius: 6px;
+  }
+  canvas[data-wordcloud] {
+    display: block;
+    width: 100%;
+    height: auto;
+    cursor: pointer;
+  }
+  .wordcloud-tip {
+    position: absolute;
+    pointer-events: none;
+    background: var(--ink);
+    color: var(--paper);
+    font: 0.8rem/1.4 var(--sans);
+    letter-spacing: 0.04em;
+    padding: 0.3em 0.7em;
+    border-radius: 3px;
+    white-space: nowrap;
+    transform: translate(-50%, -120%);
+    opacity: 0.95;
+    z-index: 5;
+  }
+  .wordcloud-tip b {
+    color: var(--gold-light);
+    font-weight: 600;
+  }
+</style>
+
+<script>
+  import WordCloud from '../vendor/wordcloud2.js';
+
+  const box = document.querySelector<HTMLElement>('[data-wordcloud-box]');
+  const canvas = document.querySelector<HTMLCanvasElement>('[data-wordcloud]');
+  const tip = document.querySelector<HTMLElement>('[data-wordcloud-tip]');
+
+  if (!box || !canvas || !tip) {
+    // 空态(词库不足)时不渲染 canvas,优雅跳过
+    console.warn('[WordCloud] 词云画布缺失,跳过渲染');
+  } else {
+    const words: { text: string; count: number; weight: number }[] = JSON.parse(
+      canvas.dataset.words ?? '[]',
+    );
+    const siteBase = canvas.dataset.site ?? '';
+    const compact = box.hasAttribute('data-compact');
+
+  const FONT =
+    '"Noto Serif SC", "Source Han Serif SC", "Songti SC", SimSun, Georgia, serif';
+  const COLOR_VARS = ['--ink', '--ink-soft', '--red', '--gold', '--gold-light'];
+
+  if (!WordCloud.isSupported) {
+    box.hidden = true;
+  } else {
+    let resizeTimer: number | undefined;
+
+    function palette(): string[] {
+      const cs = getComputedStyle(document.documentElement);
+      return COLOR_VARS.map((v) => cs.getPropertyValue(v).trim() || '#5f574a');
+    }
+
+    function render() {
+      const dpr = window.devicePixelRatio || 1;
+      const w = Math.max(box.clientWidth - 24, 140); // 减去 box 内边距
+      // 紧凑模式接近方形(高度封顶 280px,避免移动端满宽时过高),普通模式扁宽
+      const ratio = compact ? 1.1 : 0.38;
+      const cap = compact ? 280 : Infinity;
+      const h = Math.max(Math.round(Math.min(w * ratio, cap)), compact ? 180 : 240);
+      canvas.width = Math.round(w * dpr);
+      canvas.height = Math.round(h * dpr);
+      canvas.style.width = `${w}px`;
+      canvas.style.height = `${h}px`;
+
+      // 紧凑模式把权重从 14–72 线性映射到 8–24,适配窄边栏
+      const list = words.map((w) => [
+        w.text,
+        compact ? Math.round(8 + ((w.weight - 14) * 16) / 58) : w.weight,
+      ]);
+
+      WordCloud(canvas, {
+        list,
+        gridSize: 8,
+        weightFactor: 1,
+        fontFamily: FONT,
+        color: palette(),
+        rotateRatio: compact ? 0 : 0.25, // 紧凑模式全部横排,更易读
+        shuffle: false, // 按权重从中心向外铺
+        minSize: compact ? 8 : 12,
+        drawOutOfBound: false,
+        hover: (item: [string, number] | null, _dim: unknown, evt: MouseEvent) => {
+          if (item?.[0]) {
+            const entry = words.find((w) => w.text === item[0]);
+            tip.textContent = '';
+            const b = document.createElement('b');
+            b.textContent = String(entry?.count ?? item[1]);
+            tip.append(item[0], ' · 出现 ', b, ' 次');
+            tip.style.left = `${evt.clientX - box.getBoundingClientRect().left}px`;
+            tip.style.top = `${evt.clientY - box.getBoundingClientRect().top}px`;
+            tip.hidden = false;
+          } else {
+            tip.hidden = true;
+          }
+        },
+        click: compact
+          ? undefined // 单篇词云仅作展示,不绑定跳转
+          : (item: [string, number] | null) => {
+              const word = item?.[0];
+              if (!word) return;
+              const q = `site:${siteBase.replace(/^https?:\/\//, '')} ${word}`;
+              window.open(
+                `https://www.google.com/search?q=${encodeURIComponent(q)}`,
+                '_blank',
+                'noopener',
+              );
+            },
+      });
+    }
+
+    render();
+
+    window.addEventListener('resize', () => {
+      window.clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(render, 200);
+    });
+
+    // 主题切换时重绘,让颜色跟随亮/暗色变量
+    new MutationObserver(() => render()).observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme'],
+    });
+  }
+  }
+</script>

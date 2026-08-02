@@ -2,6 +2,8 @@
 import { getCollection } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ArchiveSeal from '../../components/ArchiveSeal.astro';
+import WordCloud from '../../components/WordCloud.astro';
+import { buildWordCloud } from '../../lib/wordcloud';
 
 const posts = (await getCollection('blog', ({ data }) => !data.draft))
   .sort((a, b) =>
@@ -15,6 +17,11 @@ for (const post of posts) {
   dayCounts.set(key, (dayCounts.get(key) ?? 0) + 1);
 }
 const dayKeyOf = (post: (typeof posts)[number]) => post.data.pubDate.toISOString().slice(0, 10);
+
+// 全站正文词频统计,生成词云数据
+const cloudWords = buildWordCloud(
+  posts.map((p) => ({ title: p.data.title, body: p.body ?? '' })),
+);
 ---
 
 <BaseLayout title="文章" description="Acretiondisk 的全部文章。">
@@ -33,6 +40,8 @@ const dayKeyOf = (post: (typeof posts)[number]) => post.data.pubDate.toISOString
       </dl>
     </div>
   </header>
+
+  <WordCloud words={cloudWords} />
 
   <div class="gallery-order-bar" aria-label="文章展示顺序">
     <div class="gallery-order-label">
