@@ -155,13 +155,16 @@ const siteBase = Astro.site?.toString() ?? '';
     box.hidden = true;
   } else {
     let resizeTimer: number | undefined;
+    // 布局迭代序号:新一轮布局开始时递增,旧迭代检测到序号变化即放弃
+    let layoutSeq = 0;
 
     function palette(): string[] {
       const cs = getComputedStyle(document.documentElement);
       return COLOR_VARS.map((v) => cs.getPropertyValue(v).trim() || '#5f574a');
     }
 
-    function render() {
+    /** 依据容器尺寸设置画布物理尺寸(含 DPR) */
+    function setCanvasSize() {
       const dpr = window.devicePixelRatio || 1;
       const w = Math.max(box.clientWidth - 24, 140); // 减去 box 内边距
       // 紧凑模式接近方形(高度封顶 280px,避免移动端满宽时过高),普通模式扁宽
@@ -172,32 +175,59 @@ const siteBase = Astro.site?.toString() ?? '';
       canvas.height = Math.round(h * dpr);
       canvas.style.width = `${w}px`;
       canvas.style.height = `${h}px`;
+    }
 
-      // 紧凑模式把权重从 14–72 线性映射到 8–24,适配窄边栏
-      const list = words.map((w) => [
-        w.text,
-        compact ? Math.round(8 + ((w.weight - 14) * 16) / 58) : w.weight,
-      ]);
+    /** 基础权重:紧凑模式把 14–72 映射到 8–24,普通模式直接用词频映射 */
+    function baseWeight(w: { text: string; weight: number }): number {
+      return compact ? Math.round(8 + ((w.weight - 14) * 16) / 58) : w.weight;
+    }
 
-      WordCloud(canvas, {
-        list,
-        gridSize: 8,
-        weightFactor: 1,
-        // 背景必须透明:默认 #fff 会把 canvas 涂成纯白,
-        // 暗色主题下浅色词在白底上不可见(表现为"一片纯白")。
-        // 透明后露出 .wordcloud-box 的 --paper-light,随主题自适应。
-        backgroundColor: 'transparent',
-        fontFamily: FONT,
-        // wordcloud2.js 不支持数组 color(fillStyle 无效则整图不画)。
-        // 用函数从主题色板随机取色,随亮/暗主题自适应。
-        color: () => {
-          const colors = palette();
-          return colors[Math.floor(Math.random() * colors.length)];
-        },
-        rotateRatio: compact ? 0 : 0.25, // 紧凑模式全部横排,更易读
-        shuffle: false, // 按权重从中心向外铺
-        minSize: compact ? 8 : 12,
-        drawOutOfBound: false,
+    /** 绘制一轮,返回被丢弃(放不下)的词数与绘制词数。
+     *  wordcloud2.js 是异步绘制,通过 wordclouddrawn / wordcloudstop 事件收集结果。 */
+    function drawOnce(scale: number): Promise<{ dropped: number; drawn: number }> {
+      return new Promise((resolve) => {
+        let dropped = 0;
+        let drawn = 0;
+        let settled = false;
+        const onDrawn = (e: Event) => {
+          drawn++;
+          if ((e as CustomEvent<{ drawn: boolean }>).detail?.drawn === false) dropped++;
+        };
+        const finish = () => {
+          if (settled) return;
+          settled = true;
+          canvas.removeEventListener('wordclouddrawn', onDrawn);
+          canvas.removeEventListener('wordcloudstop', finish);
+          resolve({ dropped, drawn });
+        };
+        canvas.addEventListener('wordclouddrawn', onDrawn);
+        canvas.addEventListener('wordcloudstop', finish);
+        // 超时兜底:极端情况下 stop 事件未触发时不挂起
+        window.setTimeout(finish, 4000);
+
+        WordCloud(canvas, {
+          list: words.map((w) => [
+            w.text,
+            Math.max(baseWeight(w) * scale, compact ? 6 : 8),
+          ]),
+          gridSize: 8,
+          weightFactor: 1,
+          // 背景必须透明:默认 #fff 会把 canvas 涂成纯白,
+          // 暗色主题下浅色词在白底上不可见(表现为"一片纯白")。
+          // 透明后露出 .wordcloud-box 的 --paper-light,随主题自适应。
+          backgroundColor: 'transparent',
+          fontFamily: FONT,
+          // wordcloud2.js 不支持数组 color(fillStyle 无效则整图不画)。
+          // 用函数从主题色板随机取色,随亮/暗主题自适应。
+          color: () => {
+            const colors = palette();
+            return colors[Math.floor(Math.random() * colors.length)];
+          },
+          rotateRatio: compact ? 0 : 0.25, // 紧凑模式全部横排,更易读
+          shuffle: false, // 按权重从中心向外铺
+          // 缩小迭代时小词不能被 minSize 提前跳过,否则收敛判断失真
+          minSize: compact ? 6 : 8,
+          drawOutOfBound: false,
         hover: (item: [string, number] | null, _dim: unknown, evt: MouseEvent) => {
           if (item?.[0]) {
             const entry = words.find((w) => w.text === item[0]);
@@ -225,14 +255,62 @@ const siteBase = Astro.site?.toString() ?? '';
               );
             },
       });
+    });
+    }
+
+    /** 自适应布局:迭代字号缩放,让词云尽量填满画布。
+     *  有词放不下就整体缩小,全部放下后尝试放大,直到刚好放不下回退一档。 */
+    async function fitAndDraw() {
+      const runId = ++layoutSeq;
+      let scale = 1;
+      let r = await drawOnce(scale);
+      if (runId !== layoutSeq) return;
+
+      // 阶段 1:确保所有词放下(缩小)
+      let success = { scale, dropped: r.dropped, drawn: r.drawn };
+      while (r.dropped > 0 && scale > 0.55) {
+        scale *= 0.85;
+        r = await drawOnce(scale);
+        if (runId !== layoutSeq) return;
+        if (r.dropped === 0) {
+          success = { scale, dropped: 0, drawn: r.drawn };
+          break;
+        }
+      }
+
+      // 阶段 2:全部放下则放大填满,失败(出现丢弃)即回退到最近一次全放下
+      if (success.dropped === 0) {
+        let lastScale = success.scale;
+        let bestScale = success.scale;
+        for (let i = 0; i < 6; i++) {
+          const next = lastScale * 1.1;
+          if (next > 2.2) break;
+          lastScale = next;
+          r = await drawOnce(next);
+          if (runId !== layoutSeq) return;
+          if (r.dropped === 0) bestScale = next;
+          else break;
+        }
+        if (bestScale !== lastScale) {
+          // 当前画布是放大失败的布局,重画回最佳尺寸
+          await drawOnce(bestScale);
+        }
+      }
+    }
+
+    function render() {
+      setCanvasSize();
+      void fitAndDraw();
     }
 
     render();
 
-    window.addEventListener('resize', () => {
+    // 用 ResizeObserver 精确跟随容器尺寸(窗口缩放、侧边栏列宽变化都覆盖)
+    const ro = new ResizeObserver(() => {
       window.clearTimeout(resizeTimer);
       resizeTimer = window.setTimeout(render, 200);
     });
+    ro.observe(box);
 
     // 主题切换时重绘,让颜色跟随亮/暗色变量
     new MutationObserver(() => render()).observe(document.documentElement, {

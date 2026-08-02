@@ -923,6 +923,11 @@ main {
   /* 边栏内容(含词云)超过视口时内部滚动,避免 sticky 截断底部 */
   max-height: calc(100vh - 60px);
   overflow-y: auto;
+  /* 隐藏滚动条(保留滚动功能):Firefox + WebKit */
+  scrollbar-width: none;
+}
+.article-margin::-webkit-scrollbar {
+  display: none;
 }
 
 .back-link {
