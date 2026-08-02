@@ -2,6 +2,14 @@
 
 > 本文件已在用户授权下公开于 GitHub 仓库。每位 Agent 完成工作后在此记录变更。
 
+**🎠 独立收藏广告牌改焦点轮播 + 画廊图片圆角（未发 Release）**
+
+- `src/pages/gallery.astro`（主仓库）：广告牌从 scroll-snap 横向滚动改为**焦点轮播**——当前放映图居中放大 `scale(1.2)`（透明度 1、z-index 10），两侧图 `scale(0.82)` + `opacity 0.42` 弱化显示，`transform/opacity/filter` 560ms cubic-bezier 过渡动画；间距按焦点/相邻图布局宽度动态计算（`offsetWidth`,图片长宽比仍自适应,竖图横图均不裁切）。
+- 交互：自动轮播 3.8s（悬停/聚焦/面板隐藏/`prefers-reduced-motion` 时暂停,`billboardGoNext` 注入 `resumeBillboard`）；点击两侧弱化图切换为焦点、点击焦点图打开大图查看器（查看器打开逻辑抽取为 `openGalleryViewer(button)` 供卡片/缩略图/广告牌共用,批量绑定改为 `[data-gallery-open]:not(.gallery-billboard-slide)`）；左右箭头、指示点跳转、触摸左右轻扫（>48px）切换保留。
+- 关键细节：布局宽度必须用 `offsetWidth`（`getBoundingClientRect` 含 transform 缩放值会算错间距）；slide 绝对定位 `left:50%` + `translate(calc(±step - 50%), -50%) scale(...)` 保证缩放不干扰平移量；slide 高度 `calc(100%/1.2)` 使焦点图 1.2x 后恰好占满画布。
+- `src/styles/global.css`（主仓库）：`.gallery-image-button`、`.gallery-album-thumb` 加 `border-radius: 8px`，`.gallery-billboard-slide` 加 `border-radius: 10px`（轻微圆角,`overflow:hidden` 生效）。
+- 验证：`npm run build` 18 页成功；headless Chrome 实测——焦点 slide `scale(1.2)/opacity 1/z-index 10`、两侧 `scale(0.82)/opacity 0.42`、5 张 slide 中 is-active 唯一；`#independent` 下 12s 虚拟时间自动轮播从第 1 张切至第 4 张（dots `false,false,false,true`）；CSS bundle 三处圆角与 transition 均存在。
+
 **🐛 修复 v1.7.0 画廊全部按钮失效（define:vars 内联导致 TS 语法残留）**
 
 - 症状：`/gallery/` 页面脚本整体不执行——视图切换、排序、分页、广告牌、查看器全部按钮无响应，仅保持服务端渲染的默认状态。

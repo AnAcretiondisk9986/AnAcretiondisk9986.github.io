@@ -1845,6 +1845,7 @@ main {
   padding: 0;
   overflow: hidden;
   border: 1px solid var(--rule-strong);
+  border-radius: 8px;
   color: inherit;
   background: var(--paper-deep);
   cursor: zoom-in;
@@ -1913,36 +1914,42 @@ main {
 }
 
 .gallery-billboard-viewport {
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  scrollbar-width: none;
+  position: relative;
+  overflow: hidden;
   outline: none;
 }
 
-.gallery-billboard-viewport::-webkit-scrollbar {
-  display: none;
-}
-
 .gallery-billboard-track {
-  display: flex;
-  gap: 12px;
+  position: relative;
   height: min(38vh, 360px);
   min-height: 240px;
 }
 
 .gallery-billboard-slide {
-  position: relative;
-  flex: 0 0 auto;
-  align-self: stretch;
-  height: 100%;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  height: calc(100% / 1.2); /* 焦点图 scale 1.2x 后恰好占满画布高度 */
   margin: 0;
   padding: 0;
   overflow: hidden;
   border: 1px solid var(--rule-strong);
+  border-radius: 10px;
   color: inherit;
   background: var(--paper-deep);
-  scroll-snap-align: start;
+  opacity: 0.42;
+  cursor: pointer;
+  filter: saturate(0.78) contrast(0.95) brightness(0.9);
+  transform: translate(-50%, -50%) scale(0.82);
+  transform-origin: center center;
+  transition: transform 560ms cubic-bezier(0.22, 0.9, 0.3, 1), opacity 560ms ease, filter 560ms ease;
+  will-change: transform;
+}
+
+.gallery-billboard-slide.is-active {
+  opacity: 1;
   cursor: zoom-in;
+  filter: saturate(1) contrast(1) brightness(1);
 }
 
 .gallery-billboard-slide img {
@@ -1954,7 +1961,7 @@ main {
   transition: filter 300ms ease;
 }
 
-.gallery-billboard-slide:hover img {
+.gallery-billboard-slide.is-active img {
   filter: saturate(1) contrast(1);
 }
 
@@ -2042,6 +2049,7 @@ main {
   overflow: hidden;
   border: 0;
   border-bottom: 1px solid var(--rule-strong);
+  border-radius: 8px;
   color: inherit;
   background: var(--paper-deep);
   cursor: zoom-in;

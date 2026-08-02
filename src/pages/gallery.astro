@@ -621,10 +621,11 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
 
   viewer?.addEventListener('close', resetView);
 
-  // ── 独立收藏广告牌:每次加载随机抽取 5 张,横向滚动,长宽比自适应 ──
+  // ── 独立收藏广告牌:焦点轮播(当前图 1.2x 居中放大,两侧弱化,自动播放动画) ──
   let billboardTimer: number | undefined;
   let billboardViewport: HTMLElement | null = null;
   let billboardReduced = false;
+  let billboardGoNext: (() => void) | null = null;
 
   function pauseBillboard() {
     if (billboardTimer !== undefined) window.clearInterval(billboardTimer);
@@ -633,16 +634,11 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
 
   function resumeBillboard() {
     pauseBillboard();
-    if (!billboard || !billboardViewport) return;
+    if (!billboard || !billboardViewport || !billboardGoNext) return;
     if (billboard.closest('[data-gallery-panel]')?.hidden) return;
     if (billboard.matches(':hover')) return;
     if (billboardReduced) return;
-    billboardTimer = window.setInterval(() => {
-      const viewport = billboardViewport!;
-      const max = viewport.scrollWidth - viewport.clientWidth;
-      if (viewport.scrollLeft >= max - 4) viewport.scrollTo({ left: 0, behavior: 'smooth' });
-      else viewport.scrollBy({ left: viewport.clientWidth * 0.9, behavior: 'smooth' });
-    }, 4200);
+    billboardTimer = window.setInterval(() => billboardGoNext?.(), 3800);
   }
 
   function buildBillboard() {
@@ -687,39 +683,82 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
       track.append(slide);
     }
 
+    const slides = [...track.children] as HTMLButtonElement[];
+    const count = slides.length;
+    let active = 0;
+    const GAP = 18;
+    const FOCUS_SCALE = 1.2;
+    const SIDE_SCALE = 0.82;
+
+    // 焦点图居中放大,两侧弱化;间距按焦点/相邻图实际宽度动态计算(图片长宽比自适应)
+    const layoutSlides = () => {
+      // offsetWidth 为不含 transform 的布局宽度(焦点图 1.2x 缩放后仍取原始宽度)
+      const widths = slides.map((slide) => slide.offsetWidth || 240);
+      const focusW = widths[active] || 240;
+      const leftW = widths[(active - 1 + count) % count] || focusW;
+      const rightW = widths[(active + 1) % count] || focusW;
+      const step = Math.max(leftW, rightW) * SIDE_SCALE / 2 + focusW * FOCUS_SCALE / 2 + GAP;
+      slides.forEach((slide, i) => {
+        let d = i - active;
+        if (d > count / 2) d -= count;
+        if (d < -count / 2) d += count;
+        const scale = d === 0 ? FOCUS_SCALE : SIDE_SCALE;
+        slide.style.transform = `translate(calc(${d * step}px - 50%), -50%) scale(${scale})`;
+        slide.style.opacity = d === 0 ? '1' : '0.42';
+        slide.style.zIndex = String(10 - Math.abs(d));
+        slide.classList.toggle('is-active', d === 0);
+      });
+      updateDots();
+    };
+
+    const goTo = (next: number) => {
+      active = (next + count) % count;
+      layoutSlides();
+    };
+    billboardGoNext = () => goTo(active + 1);
+
     // 指示点
+    const dotButtons: HTMLButtonElement[] = [];
     selected.forEach((_, index) => {
       const dot = document.createElement('button');
       dot.type = 'button';
       dot.setAttribute('aria-label', `第 ${index + 1} 张`);
-      dot.setAttribute('aria-current', String(index === 0));
-      dot.addEventListener('click', () => {
-        const target = track.children[index] as HTMLElement;
-        // 用相对 track 的位置计算滚动偏移,与 CSS 定位解耦,懒加载未完成时也正确
-        const delta = target.getBoundingClientRect().left - track.getBoundingClientRect().left;
-        viewport.scrollTo({ left: viewport.scrollLeft + delta, behavior: 'smooth' });
-      });
+      dot.addEventListener('click', () => goTo(index));
       dots.append(dot);
+      dotButtons.push(dot);
     });
 
-    const dotCount = dots.children.length;
     const updateDots = () => {
-      const max = viewport.scrollWidth - viewport.clientWidth;
-      const progress = max > 0 ? viewport.scrollLeft / max : 0;
-      const active = Math.min(dotCount - 1, Math.max(0, Math.round(progress * (dotCount - 1))));
-      [...dots.children].forEach((dot, index) => {
+      dotButtons.forEach((dot, index) => {
         dot.setAttribute('aria-current', String(index === active));
       });
     };
-    viewport.addEventListener('scroll', updateDots, { passive: true });
-    // 图片懒加载完成后 scrollWidth 变化,刷新指示点
-    track.querySelectorAll('img').forEach((img) => img.addEventListener('load', updateDots));
-    updateDots();
 
-    const scrollByView = (dir: 1 | -1) =>
-      viewport.scrollBy({ left: dir * viewport.clientWidth * 0.9, behavior: 'smooth' });
-    prevBtn.addEventListener('click', () => scrollByView(-1));
-    nextBtn.addEventListener('click', () => scrollByView(1));
+    // 图片懒加载完成后宽度确定,重新布局
+    track.querySelectorAll('img').forEach((img) => img.addEventListener('load', layoutSlides));
+
+    prevBtn.addEventListener('click', () => goTo(active - 1));
+    nextBtn.addEventListener('click', () => goTo(active + 1));
+
+    // 点击:焦点图打开查看器,两侧弱化图切换为焦点
+    slides.forEach((slide, i) => {
+      slide.addEventListener('click', () => {
+        if (i === active) openGalleryViewer(slide);
+        else goTo(i);
+      });
+    });
+
+    // 触摸左右轻扫切换
+    let touchStartX = 0;
+    viewport.addEventListener('pointerdown', (event) => {
+      touchStartX = event.clientX;
+    });
+    viewport.addEventListener('pointerup', (event) => {
+      const dx = event.clientX - touchStartX;
+      if (Math.abs(dx) > 48) goTo(active + (dx < 0 ? 1 : -1));
+    });
+
+    layoutSlides();
 
     // 自动轮播:悬停 / 聚焦时暂停,面板不可见时暂停(见 selectGalleryTab)
     billboard.addEventListener('mouseenter', pauseBillboard);
@@ -730,27 +769,30 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
   }
   buildBillboard();
 
-  document.querySelectorAll<HTMLButtonElement>('[data-gallery-open]').forEach((button) => {
-    button.addEventListener('click', () => {
-      if (!viewer || !viewerImage || !viewerTitle || !viewerCaption || !viewerSource) return;
-      currentSrc = button.dataset.gallerySrc || '';
-      originalUrl = button.dataset.galleryOriginal || '';
-      showingOriginal = false;
-      viewerImage.src = currentSrc;
-      viewerImage.alt = button.dataset.galleryAlt || '';
-      viewerTitle.textContent = button.dataset.galleryTitle || '';
-      viewerCaption.textContent = button.dataset.galleryCaption || '';
-      const source = button.dataset.gallerySource || '';
-      viewerSource.hidden = !source;
-      viewerSource.href = source || '#';
-      viewerSource.textContent = button.dataset.gallerySourceTitle ? `阅览《${button.dataset.gallerySourceTitle}》 ↗` : '查看来源 ↗';
-      if (viewerOriginalBtn) {
-        viewerOriginalBtn.hidden = !originalUrl;
-        viewerOriginalBtn.textContent = '加载原图';
-      }
-      viewer.showModal();
-      fitDialog();
-    });
+  // 打开大图查看器(静态卡片与广告牌共用)
+  function openGalleryViewer(button: HTMLButtonElement) {
+    if (!viewer || !viewerImage || !viewerTitle || !viewerCaption || !viewerSource) return;
+    currentSrc = button.dataset.gallerySrc || '';
+    originalUrl = button.dataset.galleryOriginal || '';
+    showingOriginal = false;
+    viewerImage.src = currentSrc;
+    viewerImage.alt = button.dataset.galleryAlt || '';
+    viewerTitle.textContent = button.dataset.galleryTitle || '';
+    viewerCaption.textContent = button.dataset.galleryCaption || '';
+    const source = button.dataset.gallerySource || '';
+    viewerSource.hidden = !source;
+    viewerSource.href = source || '#';
+    viewerSource.textContent = button.dataset.gallerySourceTitle ? `阅览《${button.dataset.gallerySourceTitle}》 ↗` : '查看来源 ↗';
+    if (viewerOriginalBtn) {
+      viewerOriginalBtn.hidden = !originalUrl;
+      viewerOriginalBtn.textContent = '加载原图';
+    }
+    viewer.showModal();
+    fitDialog();
+  }
+
+  document.querySelectorAll<HTMLButtonElement>('[data-gallery-open]:not(.gallery-billboard-slide)').forEach((button) => {
+    button.addEventListener('click', () => openGalleryViewer(button));
   });
 
   document.querySelector<HTMLButtonElement>('[data-gallery-close]')?.addEventListener('click', () => viewer?.close());
