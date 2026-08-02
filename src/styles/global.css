@@ -804,7 +804,7 @@ main {
   min-height: 190px;
   padding: 27px 16px;
   border-bottom: 1px solid var(--rule);
-  transition: background 180ms ease;
+  transition: background 180ms ease, transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .catalog-entry:last-child {
@@ -2834,40 +2834,41 @@ main {
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .js .codex-hero h1,
-  .js .hero-copy,
-  .js .hero-actions,
-  .js .hero-plate-panel,
-  .js .archive-section,
-  .js .catalog-header,
-  .js .catalog-list,
-  .js .gallery-header,
-  .js .gallery-tabs,
-  .js .gallery-panel,
-  .js .guestbook-header,
-  .js .guestbook-compose,
-  .js .guestbook-section,
-  .js .dossier > *,
-  .js .article-shell {
+  /* 支持 View Transitions 时由路由过渡动画负责进入,不再预隐藏元素 */
+  html:not(.vt).js .codex-hero h1,
+  html:not(.vt).js .hero-copy,
+  html:not(.vt).js .hero-actions,
+  html:not(.vt).js .hero-plate-panel,
+  html:not(.vt).js .archive-section,
+  html:not(.vt).js .catalog-header,
+  html:not(.vt).js .catalog-list,
+  html:not(.vt).js .gallery-header,
+  html:not(.vt).js .gallery-tabs,
+  html:not(.vt).js .gallery-panel,
+  html:not(.vt).js .guestbook-header,
+  html:not(.vt).js .guestbook-compose,
+  html:not(.vt).js .guestbook-section,
+  html:not(.vt).js .dossier > *,
+  html:not(.vt).js .article-shell {
     opacity: 0;
     transform: translateY(18px);
   }
 
-  .is-ready .codex-hero h1,
-  .is-ready .hero-copy,
-  .is-ready .hero-actions,
-  .is-ready .hero-plate-panel,
-  .is-ready .archive-section,
-  .is-ready .catalog-header,
-  .is-ready .catalog-list,
-  .is-ready .gallery-header,
-  .is-ready .gallery-tabs,
-  .is-ready .gallery-panel,
-  .is-ready .guestbook-header,
-  .is-ready .guestbook-compose,
-  .is-ready .guestbook-section,
-  .is-ready .dossier > *,
-  .is-ready .article-shell {
+  html:not(.vt).is-ready .codex-hero h1,
+  html:not(.vt).is-ready .hero-copy,
+  html:not(.vt).is-ready .hero-actions,
+  html:not(.vt).is-ready .hero-plate-panel,
+  html:not(.vt).is-ready .archive-section,
+  html:not(.vt).is-ready .catalog-header,
+  html:not(.vt).is-ready .catalog-list,
+  html:not(.vt).is-ready .gallery-header,
+  html:not(.vt).is-ready .gallery-tabs,
+  html:not(.vt).is-ready .gallery-panel,
+  html:not(.vt).is-ready .guestbook-header,
+  html:not(.vt).is-ready .guestbook-compose,
+  html:not(.vt).is-ready .guestbook-section,
+  html:not(.vt).is-ready .dossier > *,
+  html:not(.vt).is-ready .article-shell {
     opacity: 1;
     transform: none;
     transition: opacity 650ms ease, transform 650ms ease;
@@ -2898,6 +2899,64 @@ main {
 
   @keyframes orbit-drift-reverse {
     to { transform: rotate(-360deg); }
+  }
+
+  /* —— 切换衔接动画 —— */
+
+  /* 路由切换 / 主题切换:旧页快速淡出,新页干脆淡入上移 */
+  ::view-transition-old(root) {
+    animation: vt-out 140ms ease both;
+  }
+
+  ::view-transition-new(root) {
+    animation: vt-in 280ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+
+  @keyframes vt-out {
+    to { opacity: 0; }
+  }
+
+  @keyframes vt-in {
+    from { opacity: 0; transform: translateY(10px); }
+  }
+
+  /* 通用「轻盈升起」进入动画(画廊面板/视图切换、分页翻页) */
+  .gallery-panel.is-switching,
+  .gallery-masonry.is-switching,
+  .gallery-albums.is-switching,
+  .gallery-card.is-entering {
+    animation: rise-in 280ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+
+  @keyframes rise-in {
+    from { opacity: 0; transform: translateY(10px); }
+  }
+
+  /* 查看器打开:整体淡入微升,遮罩淡入 */
+  .gallery-viewer[open] {
+    animation: viewer-in 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .gallery-viewer[open]::backdrop {
+    animation: fade-in 240ms ease;
+  }
+
+  @keyframes viewer-in {
+    from { opacity: 0; transform: scale(0.985) translateY(8px); }
+  }
+
+  @keyframes fade-in {
+    from { opacity: 0; }
+  }
+
+  /* 排序重排时的平滑位移(FLIP 由脚本写入内联 transform) */
+  .archive-entry {
+    transition: background 200ms ease, padding 200ms ease, transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .gallery-card,
+  .gallery-album {
+    transition: transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
   }
 }
 

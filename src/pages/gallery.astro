@@ -356,6 +356,18 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
 
 <script>
   // 独立收藏数据池(由上方 JSON 标签注入,避免 define:vars 内联导致 TS 语法残留)
+  import { captureFlip, playFlip } from '../scripts/reorder-anim';
+
+  // 让容器内当前可见的卡片播放一次「轻盈升起」进入动画(翻页时使用)
+  const animateCardsEntering = (container: HTMLElement | null) => {
+    if (!container || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const visible = [...container.querySelectorAll<HTMLElement>('[data-gallery-card]')]
+      .filter((card) => !card.classList.contains('is-off-page'));
+    if (!visible.length) return;
+    visible.forEach((card) => card.classList.remove('is-entering'));
+    void container.offsetWidth; // 强制 reflow,重触发动画
+    visible.forEach((card) => card.classList.add('is-entering'));
+  };
   const standalonePool = JSON.parse(document.querySelector<HTMLElement>('#gallery-pool')?.textContent || '[]') as GalleryImage[];
   const tabs = [...document.querySelectorAll<HTMLButtonElement>('[data-gallery-tab]')];
   const panels = [...document.querySelectorAll<HTMLElement>('[data-gallery-panel]')];
@@ -435,6 +447,7 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
   function reorderAlbums() {
     if (!albumsContainer) return;
     const albums = [...albumsContainer.querySelectorAll<HTMLElement>('[data-gallery-album]')];
+    const frames = captureFlip(albumsContainer);
     albums.sort((a, b) => {
       const aTime = Date.parse(a.dataset.galleryDate || '');
       const bTime = Date.parse(b.dataset.galleryDate || '');
@@ -449,6 +462,7 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
       return currentOrder === 'newest' ? positionDelta : -positionDelta;
     });
     albumsContainer.append(...albums);
+    playFlip(albumsContainer, frames);
     albums.forEach((album, index) => {
       const label = album.querySelector<HTMLElement>('[data-gallery-sequence]');
       if (label) label.textContent = `${label.dataset.gallerySequencePrefix || ''}${String(index + 1).padStart(2, '0')}`;
@@ -456,7 +470,7 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
   }
 
   // 时间线 / 文章图集 视图切换
-  function setJournalView(view: 'timeline' | 'albums') {
+  function setJournalView(view: 'timeline' | 'albums', animate = true) {
     journalView = view;
     viewButtons.forEach((button) => {
       button.setAttribute('aria-pressed', String(button.dataset.galleryView === view));
@@ -465,29 +479,41 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
     if (journalMasonry) journalMasonry.hidden = view !== 'timeline';
     if (albumsContainer) albumsContainer.hidden = view !== 'albums';
     renderJournalPage();
+    if (animate) {
+      const shown = view === 'timeline' ? journalMasonry : albumsContainer;
+      if (shown) {
+        shown.classList.remove('is-switching');
+        void shown.offsetWidth;
+        shown.classList.add('is-switching');
+      }
+    }
   }
 
   viewButtons.forEach((button) => {
     button.addEventListener('click', () => setJournalView(button.dataset.galleryView === 'albums' ? 'albums' : 'timeline'));
   });
-  setJournalView('albums');
+  setJournalView('albums', false);
 
   document.querySelector<HTMLButtonElement>('[data-gallery-page="prev"]')?.addEventListener('click', () => {
     journalPage -= 1;
     renderJournalPage();
+    animateCardsEntering(journalMasonry);
   });
   document.querySelector<HTMLButtonElement>('[data-gallery-page="next"]')?.addEventListener('click', () => {
     journalPage += 1;
     renderJournalPage();
+    animateCardsEntering(journalMasonry);
   });
 
   document.querySelector<HTMLButtonElement>('[data-independent-page="prev"]')?.addEventListener('click', () => {
     independentPage -= 1;
     renderIndependentPage();
+    animateCardsEntering(independentMasonry);
   });
   document.querySelector<HTMLButtonElement>('[data-independent-page="next"]')?.addEventListener('click', () => {
     independentPage += 1;
     renderIndependentPage();
+    animateCardsEntering(independentMasonry);
   });
 
   function setGalleryOrder(order: GalleryOrder, updateUrl = true) {
@@ -499,6 +525,7 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
 
     document.querySelectorAll<HTMLElement>('.gallery-masonry').forEach((gallery) => {
       const cards = [...gallery.querySelectorAll<HTMLElement>('[data-gallery-card]')];
+      const frames = captureFlip(gallery);
       cards.sort((a, b) => {
         const aTime = Date.parse(a.dataset.galleryDate || '');
         const bTime = Date.parse(b.dataset.galleryDate || '');
@@ -513,6 +540,7 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
         return order === 'newest' ? positionDelta : -positionDelta;
       });
       gallery.append(...cards);
+      playFlip(gallery, frames);
       cards.forEach((card, index) => {
         const sequence = String(index + 1).padStart(2, '0');
         const stamp = card.querySelector<HTMLElement>('.gallery-image-stamp');
@@ -545,7 +573,13 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
       tab.tabIndex = active ? 0 : -1;
     });
     panels.forEach((panel) => {
+      const active = panel.dataset.galleryPanel === name;
       panel.hidden = panel.dataset.galleryPanel !== name;
+      if (active) {
+        panel.classList.remove('is-switching');
+        void panel.offsetWidth;
+        panel.classList.add('is-switching');
+      }
     });
     // 广告牌轮播仅在独立收藏面板可见时运行
     if (name === 'independent') resumeBillboard();

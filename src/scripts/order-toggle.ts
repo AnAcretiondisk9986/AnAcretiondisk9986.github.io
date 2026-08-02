@@ -1,3 +1,5 @@
+import { captureFlip, playFlip } from './reorder-anim';
+
 // 通用「从新至旧 / 从旧至新」客户端排序（主页 / 卷册目录页共用）
 // 约定：排序条按钮 [data-order-sort="newest|oldest"]、状态 [data-order-status]、
 //      列表容器 [data-order-list]、条目 [data-order-card]（带 data-order-date /
@@ -20,6 +22,7 @@ export function initOrderToggle() {
     if (orderText) orderText.textContent = order === 'newest' ? '由新至旧' : '由旧至新';
 
     const cards = [...list.querySelectorAll<HTMLElement>('[data-order-card]')];
+    const frames = captureFlip(list);
     cards.sort((a, b) => {
       const aTime = Date.parse(a.dataset.orderDate || '');
       const bTime = Date.parse(b.dataset.orderDate || '');
@@ -31,6 +34,7 @@ export function initOrderToggle() {
       return order === 'newest' ? positionDelta : -positionDelta;
     });
     list.append(...cards);
+    playFlip(list, frames);
     cards.forEach((card, index) => {
       const seq = card.querySelector<HTMLElement>('[data-order-sequence]');
       if (seq) seq.textContent = String(index + 1).padStart(Number(seq.dataset.orderPad || '2'), '0');

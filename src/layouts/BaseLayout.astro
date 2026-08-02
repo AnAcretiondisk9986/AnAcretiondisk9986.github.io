@@ -1,5 +1,6 @@
 ---
 import '../styles/global.css';
+import { ClientRouter } from 'astro:transitions';
 import ArchiveSeal from '../components/ArchiveSeal.astro';
 
 interface Props {
@@ -36,9 +37,15 @@ const navigation = [
       const savedTheme = localStorage.getItem('theme');
       const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
       document.documentElement.dataset.theme = savedTheme ?? (systemDark ? 'dark' : 'light');
+      // js = 允许脚本驱动的进入动画;vt = 支持 View Transitions(避免与路由过渡动画叠加)
+      document.documentElement.classList.add('js');
+      if (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        document.documentElement.classList.add('vt');
+      }
     </script>
   </head>
   <body>
+    <ClientRouter />
     <div class="paper-grain" aria-hidden="true"></div>
     <div class="site-shell">
       <aside class="edge-note edge-note--left" aria-hidden="true">
@@ -108,8 +115,16 @@ const navigation = [
       const button = document.querySelector<HTMLButtonElement>('.theme-toggle');
       button?.addEventListener('click', () => {
         const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
-        document.documentElement.dataset.theme = next;
-        localStorage.setItem('theme', next);
+        const apply = () => {
+          document.documentElement.dataset.theme = next;
+          localStorage.setItem('theme', next);
+        };
+        // 支持 View Transitions 时以交叉淡化衔接明暗主题切换
+        if (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          document.startViewTransition(apply);
+        } else {
+          apply();
+        }
       });
 
       requestAnimationFrame(() => document.documentElement.classList.add('is-ready'));
