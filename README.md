@@ -1,9 +1,17 @@
 # Acretiondisk Blog — 更新日志
 
 > 使用 Astro 构建的个人博客，部署到 GitHub Pages（`https://anacretiondisk9986.github.io/`）。
-> 当前版本：**1.7.0**（2026-08-02）
+> 当前版本：**1.7.1**（2026-08-02）
 
 ---
+
+## 1.7.1（2026-08-02）
+
+### 🐛 修复：图志页全部交互失效（1.7.0 回归）
+
+- 症状：`/gallery/` 页面脚本整体不执行——视图切换、排序、分页、广告牌、大图查看器全部按钮无响应，仅保持服务端渲染的默认状态。
+- 根因：1.7.0 使用 `<script define:vars>` 注入独立收藏数据，该指令使 Astro 将脚本原样内联输出且**跳过 TypeScript 转译**（构建不报错，因为 Astro 不校验内联脚本语法），产物残留 `querySelector<HTMLButtonElement>` 等类型语法，浏览器解析 `SyntaxError` 导致整个画廊脚本中断。
+- 修复：改用独立 JSON 数据标签（`<script type="application/json" id="gallery-pool">`）注入数据，脚本恢复正常打包转译；headless Chrome 实测分页（24 张分 3 页）、广告牌（随机 5 张 + 指示点）、视图切换均正常。
 
 ## 1.7.0（2026-08-02）
 

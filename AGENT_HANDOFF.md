@@ -9,6 +9,7 @@
 - 修复：去掉 `define:vars`，改为独立数据标签 `<script type="application/json" id="gallery-pool" set:html={JSON.stringify(standaloneImages).replace(/</g, '\\u003c')}>` 注入数据，打包脚本内 `JSON.parse(...textContent)` 读取——脚本恢复正常打包/转译流程。
 - **教训：凡含 TS 类型注解的 Astro `<script>` 禁用 `define:vars`**（它只适用于无类型的 `is:inline` 脚本）；注入数据一律走 JSON 标签。
 - 验证：`node --check` 通过；模拟浏览器环境执行 bundle 无顶层抛错；headless Chrome 实测——分页器可见（24 张分 3 页、15 张 `is-off-page`）、广告牌 5 张 slide + 5 指示点、视图切换按钮状态正确。
+- 发布：提交 `2ab12bc` 已推送，tag `v1.7.1` + GitHub Release（补丁版本，README 更新日志新增 1.7.1 条目）。
 
 **🖼 图志页升级：文章图集视图、随文图像分页、独立收藏随机广告牌（v1.7.0）**
 
