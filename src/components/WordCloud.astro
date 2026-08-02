@@ -183,8 +183,17 @@ const siteBase = Astro.site?.toString() ?? '';
         list,
         gridSize: 8,
         weightFactor: 1,
+        // 背景必须透明:默认 #fff 会把 canvas 涂成纯白,
+        // 暗色主题下浅色词在白底上不可见(表现为"一片纯白")。
+        // 透明后露出 .wordcloud-box 的 --paper-light,随主题自适应。
+        backgroundColor: 'transparent',
         fontFamily: FONT,
-        color: palette(),
+        // wordcloud2.js 不支持数组 color(fillStyle 无效则整图不画)。
+        // 用函数从主题色板随机取色,随亮/暗主题自适应。
+        color: () => {
+          const colors = palette();
+          return colors[Math.floor(Math.random() * colors.length)];
+        },
         rotateRatio: compact ? 0 : 0.25, // 紧凑模式全部横排,更易读
         shuffle: false, // 按权重从中心向外铺
         minSize: compact ? 8 : 12,

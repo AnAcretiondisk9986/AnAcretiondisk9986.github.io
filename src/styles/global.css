@@ -920,6 +920,9 @@ main {
   position: sticky;
   top: 30px;
   padding-top: 3px;
+  /* 边栏内容(含词云)超过视口时内部滚动,避免 sticky 截断底部 */
+  max-height: calc(100vh - 60px);
+  overflow-y: auto;
 }
 
 .back-link {

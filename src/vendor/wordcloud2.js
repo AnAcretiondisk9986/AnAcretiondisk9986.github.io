@@ -242,10 +242,14 @@ if (!window.clearImmediate) {
 
     /* Convert weightFactor into a function */
     if (typeof settings.weightFactor !== 'function') {
-      var factor = settings.weightFactor
-      settings.weightFactor = function weightFactor (pt) {
-        return pt * factor // in px
-      }
+      // 用 IIFE 立即捕获 factor 值:直接闭包引用 var factor 会被压缩器
+      // 与其他同名变量合并覆盖(实测 Terser 把 fctx 与 factor 压缩为同名变量,
+      // 运行期读到 canvas context,导致 fontSize 为 NaN、绘制中断)。
+      settings.weightFactor = (function (factor) {
+        return function weightFactor (pt) {
+          return pt * factor // in px
+        }
+      })(settings.weightFactor)
     }
 
     /* Convert shape into a function */
