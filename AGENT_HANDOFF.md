@@ -2,6 +2,14 @@
 
 > 本文件已在用户授权下公开于 GitHub 仓库。每位 Agent 完成工作后在此记录变更。
 
+**🐛 修复 v1.7.0 画廊全部按钮失效（define:vars 内联导致 TS 语法残留）**
+
+- 症状：`/gallery/` 页面脚本整体不执行——视图切换、排序、分页、广告牌、查看器全部按钮无响应，仅保持服务端渲染的默认状态。
+- 根因：`<script define:vars={{ ... }}>` 会让 Astro 把脚本**原样内联输出、不做 TS 转译**（构建仍通过，因为 Astro 不校验内联脚本语法），产物中出现 `querySelector<HTMLButtonElement>`、`type GalleryOrder` 等 TypeScript 语法 → 浏览器 SyntaxError → 整个脚本中断。
+- 修复：去掉 `define:vars`，改为独立数据标签 `<script type="application/json" id="gallery-pool" set:html={JSON.stringify(standaloneImages).replace(/</g, '\\u003c')}>` 注入数据，打包脚本内 `JSON.parse(...textContent)` 读取——脚本恢复正常打包/转译流程。
+- **教训：凡含 TS 类型注解的 Astro `<script>` 禁用 `define:vars`**（它只适用于无类型的 `is:inline` 脚本）；注入数据一律走 JSON 标签。
+- 验证：`node --check` 通过；模拟浏览器环境执行 bundle 无顶层抛错；headless Chrome 实测——分页器可见（24 张分 3 页、15 张 `is-off-page`）、广告牌 5 张 slide + 5 指示点、视图切换按钮状态正确。
+
 **🖼 图志页升级：文章图集视图、随文图像分页、独立收藏随机广告牌（v1.7.0）**
 
 - `src/pages/gallery.astro`（主仓库）：随文图像面板新增 `时间线 / 文章图集` 视图切换条（`data-gallery-view`）。时间线视图按每页 9 张分页（`renderJournalPage`，分页器 `data-gallery-pager`，首末页按钮 disabled，FOLIO 编号跨页全局连续）；图集视图由 frontmatter 按 `sourceUrl` 分组（`journalGroups`）预渲染，朋友圈式版式——组头大标题 + 日期/张数 + 阅览全文链接，组内小缩略图按钮（复用 `data-gallery-open` 数据属性直接打开查看器）。

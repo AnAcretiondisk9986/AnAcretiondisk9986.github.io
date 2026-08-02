@@ -344,7 +344,11 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
   </div>
 </dialog>
 
-<script define:vars={{ standalonePool: standaloneImages }}>
+<script type="application/json" id="gallery-pool" set:html={JSON.stringify(standaloneImages).replace(/</g, '\\u003c')}></script>
+
+<script>
+  // 独立收藏数据池(由上方 JSON 标签注入,避免 define:vars 内联导致 TS 语法残留)
+  const standalonePool = JSON.parse(document.querySelector<HTMLElement>('#gallery-pool')?.textContent || '[]') as GalleryImage[];
   const tabs = [...document.querySelectorAll<HTMLButtonElement>('[data-gallery-tab]')];
   const panels = [...document.querySelectorAll<HTMLElement>('[data-gallery-panel]')];
   const viewer = document.querySelector<HTMLDialogElement>('#gallery-viewer');
