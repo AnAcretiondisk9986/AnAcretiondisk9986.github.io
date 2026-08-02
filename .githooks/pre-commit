@@ -1,7 +1,7 @@
 #!/bin/sh
 
 echo "Running Astro production build before commit..."
-ASTRO_TELEMETRY_DISABLED=1 npm.cmd run build
+ASTRO_TELEMETRY_DISABLED=1 npm run build
 build_status=$?
 
 if [ "$build_status" -ne 0 ]; then

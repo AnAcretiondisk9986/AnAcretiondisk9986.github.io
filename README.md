@@ -1,7 +1,21 @@
 # Acretiondisk Blog — 更新日志
 
 > 使用 Astro 构建的个人博客，部署到 GitHub Pages（`https://anacretiondisk9986.github.io/`）。
-> 当前版本：**1.7.2b**（2026-08-02）
+> 当前版本：**2.0.0-macOS**（2026-08-02）
+
+---
+
+## 2.0.0-macOS（2026-08-02）
+
+### 🍎 macOS 适配：双端一致运行，开箱即用
+
+- **新增 macOS 双击启动器**（与 Windows `启动管理面板.bat` 等价）：仓库根目录新增 `启动博客管理面板.command`（管理后台）与 `启动博客预览.command`（本地预览），macOS 下双击即可运行，自动进入仓库目录并启动服务；终端 `Ctrl+C` 停止。
+- **修复 `.githooks/pre-commit` 的 Windows 专属命令**：构建保护脚本由 `npm.cmd run build` 改为跨平台的 `npm run build`，此前 macOS/Linux 上提交会因找不到 `npm.cmd` 直接失败，现已双端可用。
+- **macOS 运行方式**（与 Windows 逻辑完全一致，仅启动入口不同）：
+  - 管理面板：`npm run admin` → `http://localhost:4322/admin`（或双击 `启动博客管理面板.command`）
+  - 本地预览：`npm run dev` → `http://localhost:4321`（或双击 `启动博客预览.command`）
+  - 部署不变：`git push origin main` 自动触发 GitHub Actions 构建并发布到 GitHub Pages
+- **前置要求**：macOS 上安装 Node.js ≥ 20 与 Git 即可，无任何 Windows 专属依赖；管理面板上传的图片、Obsidian 写作、Waline 留言等功能与 Windows 端行为一致。
 
 ---
 
@@ -183,7 +197,7 @@
 - 独立 Express 管理服务器（`npm run admin` → `http://localhost:4322/admin`），纯 HTML/CSS/JS 前端，暗色主题，Ctrl+S 保存。
 - 完整文章 CRUD API、图片上传（拖放/粘贴/点击 → `public/image/`，MIME 白名单 + 20MB 限制）、一键推送。
 - 安全加固：`x-admin-token` 认证（默认 `acr-admin`，环境变量 `ADMIN_TOKEN` 可覆盖）、路径穿越防护、YAML 转义、错误信息脱敏、绑定 127.0.0.1。
-- Git 远程切换为 SSH（ED25519，走 22 端口）；双击 `启动管理面板.bat` 一键启动 + 自动打开浏览器。
+- Git 远程切换为 SSH（ED25519，走 22 端口）；Windows 双击 `启动管理面板.bat`、macOS 双击 `启动博客管理面板.command` 一键启动 + 自动打开浏览器。
 
 ### 🐛 修复
 
@@ -209,7 +223,7 @@
 
 ### 管理面板
 
-`npm run admin` → `http://localhost:4322/admin`（或双击 `启动管理面板.bat`）
+`npm run admin` → `http://localhost:4322/admin`（Windows 双击 `启动管理面板.bat`，macOS 双击 `启动博客管理面板.command`）
 
 ### 留言页
 
