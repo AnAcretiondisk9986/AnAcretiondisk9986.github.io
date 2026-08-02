@@ -2,6 +2,14 @@
 
 > 本文件已在用户授权下公开于 GitHub 仓库。每位 Agent 完成工作后在此记录变更。
 
+**🎠 图志页：广告牌全量轮播 + 独立收藏分页（v2.2.0）**
+
+- `src/pages/gallery.astro`（主仓库）：`buildBillboard()` 移除 `pool.slice(0, 5)` 抽取限制，Fisher–Yates 洗牌后全量渲染全部独立收藏（当前 22 张）；头部文案改为 `BILLBOARD / FULL COLLECTION` + 「轮播全部 N 张独立收藏」。
+- 独立收藏面板新增每页 9 张分页：面板底部 `data-independent-pager` 翻页器（与随文图像同款样式），`renderIndependentPage()`（`INDEPENDENT_PAGE_SIZE = 9`，`is-off-page` 隐藏、页码/禁用态/无图时隐藏），排序切换后重置回第 1 页，INDEPENDENT 编号跨页全局连续。
+- `src/styles/global.css`：`.gallery-masonry--independent` 底部留白 44px 与随文图像对齐；`.gallery-billboard-dots` 加 `flex-wrap: wrap` 容纳全量指示点。
+- 验证：`npm run build` 19 页成功、bundle 无 `slice(0,5)` 残留；headless Chrome 实测——广告牌 22 张 slide 全量渲染、自动轮播正常；独立收藏 22 张分 3 页（9/9/4）翻页与首末页禁用态正确、排序后重置第 1 页；随文图像原有分页（27 张 01/03）未受影响。
+- 发布：提交 `4549326` 已推送，tag `v2.2.0` + GitHub Release（README 更新日志新增 2.2.0 条目，模板仓库未同步，沿用既有约定）。
+
 **🔄 管理面板新增 Git 同步：启动自动比对 + 手动拉取（v2.1.0）**
 
 - `admin-server.mjs`（主仓库）：新增 `syncFromRemote()` 核心函数与 `POST /api/pull` 路由，`app.listen` 回调中调用 `autoSyncOnStart()` 实现启动时自动同步。
