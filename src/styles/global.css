@@ -1728,7 +1728,8 @@ main {
 }
 
 /* 随文图像:分页(每页 9 张) */
-.gallery-masonry--journal {
+.gallery-masonry--journal,
+.gallery-masonry--independent {
   padding-bottom: 44px;
 }
 
@@ -2001,6 +2002,7 @@ main {
 
 .gallery-billboard-dots {
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
   gap: 10px;
   padding-top: 14px;

@@ -252,8 +252,8 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
       {standaloneImages.length > 0 && (
         <div class="gallery-billboard" data-gallery-billboard>
           <div class="gallery-billboard-head">
-            <span>BILLBOARD / RANDOM 5</span>
-            <span data-billboard-caption>每次加载从 {standaloneImages.length} 张中随机抽取 5 张</span>
+            <span>BILLBOARD / FULL COLLECTION</span>
+            <span data-billboard-caption>轮播全部 {standaloneImages.length} 张独立收藏</span>
           </div>
           <div class="gallery-billboard-stage">
             <button class="gallery-billboard-arrow" type="button" data-billboard-prev aria-label="上一张">←</button>
@@ -270,7 +270,7 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
         <span>{standaloneImages.length} ITEMS / CURATED</span>
       </div>
       {standaloneImages.length > 0 ? (
-        <div class="gallery-masonry gallery-masonry--independent">
+        <div class="gallery-masonry gallery-masonry--independent" data-independent-masonry>
           {standaloneImages.map((image, index) => (
             <article class="gallery-card" data-gallery-card data-gallery-date={image.date || ''} data-gallery-day-sequence={image.daySequence ?? 0} data-gallery-position={index}>
               <button
@@ -305,6 +305,11 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
             </article>
           ))}
         </div>
+        <nav class="gallery-pager" data-independent-pager aria-label="独立收藏翻页">
+          <button type="button" data-independent-page="prev" aria-label="上一页">←</button>
+          <span class="gallery-pager-status"><b data-independent-page-current>01</b> / <b data-independent-page-total>01</b></span>
+          <button type="button" data-independent-page="next" aria-label="下一页">→</button>
+        </nav>
       ) : (
         <div class="gallery-empty gallery-empty--independent">
           <ArchiveSeal />
@@ -371,13 +376,19 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
   const pagerCurrent = document.querySelector<HTMLElement>('[data-gallery-page-current]');
   const pagerTotal = document.querySelector<HTMLElement>('[data-gallery-page-total]');
   const billboard = document.querySelector<HTMLElement>('[data-gallery-billboard]');
+  const independentMasonry = document.querySelector<HTMLElement>('[data-independent-masonry]');
+  const independentPager = document.querySelector<HTMLElement>('[data-independent-pager]');
+  const independentPagerCurrent = document.querySelector<HTMLElement>('[data-independent-page-current]');
+  const independentPagerTotal = document.querySelector<HTMLElement>('[data-independent-page-total]');
 
   type GalleryOrder = 'newest' | 'oldest';
 
   const JOURNAL_PAGE_SIZE = 9;
+  const INDEPENDENT_PAGE_SIZE = 9;
   let currentOrder: GalleryOrder = 'newest';
   let journalView: 'timeline' | 'albums' = 'timeline';
   let journalPage = 1;
+  let independentPage = 1;
 
   // 随文图像时间线视图:按每页 9 张分页显示(编号保持全局连续)
   function renderJournalPage() {
@@ -396,6 +407,25 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
     if (prevBtn) prevBtn.disabled = journalPage <= 1;
     if (nextBtn) nextBtn.disabled = journalPage >= total;
     pager.hidden = journalView !== 'timeline' || cards.length <= JOURNAL_PAGE_SIZE;
+  }
+
+  // 独立收藏:每页 9 张分页显示(编号保持全局连续)
+  function renderIndependentPage() {
+    if (!independentMasonry || !independentPager) return;
+    const cards = [...independentMasonry.querySelectorAll<HTMLElement>('[data-gallery-card]')];
+    const total = Math.max(1, Math.ceil(cards.length / INDEPENDENT_PAGE_SIZE));
+    independentPage = Math.min(Math.max(1, independentPage), total);
+    cards.forEach((card, index) => {
+      const onPage = Math.floor(index / INDEPENDENT_PAGE_SIZE) === independentPage - 1;
+      card.classList.toggle('is-off-page', !onPage);
+    });
+    if (independentPagerCurrent) independentPagerCurrent.textContent = String(independentPage).padStart(2, '0');
+    if (independentPagerTotal) independentPagerTotal.textContent = String(total).padStart(2, '0');
+    const prevBtn = independentPager.querySelector<HTMLButtonElement>('[data-independent-page="prev"]');
+    const nextBtn = independentPager.querySelector<HTMLButtonElement>('[data-independent-page="next"]');
+    if (prevBtn) prevBtn.disabled = independentPage <= 1;
+    if (nextBtn) nextBtn.disabled = independentPage >= total;
+    independentPager.hidden = cards.length <= INDEPENDENT_PAGE_SIZE;
   }
 
   // 文章图集视图:按当前排序重排分组
@@ -448,6 +478,15 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
     renderJournalPage();
   });
 
+  document.querySelector<HTMLButtonElement>('[data-independent-page="prev"]')?.addEventListener('click', () => {
+    independentPage -= 1;
+    renderIndependentPage();
+  });
+  document.querySelector<HTMLButtonElement>('[data-independent-page="next"]')?.addEventListener('click', () => {
+    independentPage += 1;
+    renderIndependentPage();
+  });
+
   function setGalleryOrder(order: GalleryOrder, updateUrl = true) {
     currentOrder = order;
     sortButtons.forEach((button) => {
@@ -490,6 +529,9 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
     // 随文图像:刷新分页显示与图集排序
     journalPage = 1;
     renderJournalPage();
+    // 独立收藏:刷新分页显示
+    independentPage = 1;
+    renderIndependentPage();
     reorderAlbums();
   }
 
@@ -652,13 +694,13 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
     billboardViewport = viewport;
     billboardReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    // Fisher–Yates 洗牌后取 5 张
+    // Fisher–Yates 洗牌,全部独立收藏参与轮播
     const pool = [...standalonePool];
     for (let i = pool.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [pool[i], pool[j]] = [pool[j], pool[i]];
     }
-    const selected = pool.slice(0, 5);
+    const selected = [...pool];
 
     for (const image of selected) {
       const slide = document.createElement('button');
