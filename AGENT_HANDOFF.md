@@ -2,6 +2,15 @@
 
 > 本文件已在用户授权下公开于 GitHub 仓库。每位 Agent 完成工作后在此记录变更。
 
+**🐛 修复图志页初始化 TDZ 崩溃（v3.0.2）**
+
+- 症状（用户报告"切换到图志后变成白昼、无法再更改昼夜模式"）：排查发现图志页脚本在 `astro:page-load` 回调里抛 `ReferenceError: Cannot access 'billboardTimer' before initialization`（TDZ），初始化中断——排序/视图切换/tab/查看器/轮播全部失效。该 bug 自 v2.2.0（广告牌引入）起一直存在，与昼夜按钮无关（按钮为独立内联脚本，实测正常）。
+- 根因：脚本内 `selectGalleryTab(location.hash...)` 初始调用位于 `let billboardTimer`（及其后全部 `let`）声明之前，调用链 `selectGalleryTab → pauseBillboard → 读取 billboardTimer` 触发 TDZ。
+- 修复（`src/pages/gallery.astro`）：初始调用移至脚本末尾（全部声明之后），附注释说明该约束；其余脚本不受影响。
+- 排查过程：本地/线上黑盒全路径测试（VT 导航、后退/前进、刷新、reduced-motion、无 VT fallback、文章页/留言页进入）均无法复现"按钮失效"，最终通过 CDP 抓控制台异常定位到 TDZ；同时确认 `dispatchEvent` 监听器异常不影响其他监听器、按钮脚本（`is:inline data-astro-rerun` + IIFE）独立绑定不受牵连。
+- 验证：`npm run build` 19 页成功；headless Chrome 图志页功能全检（排序/视图/tab/22 张轮播/查看器）无 JS 错误；`scripts/verify-vt-theme.mjs` 回归 6 项全部通过（脚本端口 9223→9224）。
+- 发布：提交已推送，tag `v3.0.2` + GitHub Release；模板仓库已同步。
+
 **🐛 修复除首页外昼夜模式切换按钮失效（v3.0.1）**
 
 - 症状：通过 View Transitions 导航进入的任何页面（卷册/图志/关于/留言/文章页），昼夜按钮点击无反应；导航后页面丢失已保存主题（`data-theme` 被 swap 移除且初始化脚本不重跑）。

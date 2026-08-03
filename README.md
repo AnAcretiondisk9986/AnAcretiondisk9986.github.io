@@ -1,7 +1,17 @@
 # Acretiondisk Blog — 更新日志
 
 > 使用 Astro 构建的个人博客，部署到 GitHub Pages（`https://anacretiondisk9986.github.io/`）。
-> 当前版本：**3.0.1**（2026-08-03）
+> 当前版本：**3.0.2**（2026-08-03）
+
+---
+
+## 3.0.2（2026-08-03）
+
+### 🐛 修复：图志页初始化崩溃，画廊交互全部失效
+
+- **根因**：`gallery.astro` 脚本中 `selectGalleryTab` 的初始调用（默认视图设置）位于 `let billboardTimer` 声明**之前**——调用链 `selectGalleryTab → pauseBillboard → 访问 billboardTimer` 抛 `ReferenceError: Cannot access 'billboardTimer' before initialization`（TDZ），整个脚本初始化中断。该 bug 自 v2.2.0（广告牌引入时）起一直存在：排序/视图切换/tab/查看器/轮播全部失效。
+- **修复**：初始调用移至脚本末尾（所有 `let`/`const` 声明之后），并附注释说明约束。
+- 验证：`npm run build` 19 页成功；headless Chrome 图志页功能全检——排序、视图切换、tab 切换、22 张轮播 slide、查看器打开均正常，控制台无 JS 错误；VT 导航主题回归 6 项全部通过。
 
 ---
 
