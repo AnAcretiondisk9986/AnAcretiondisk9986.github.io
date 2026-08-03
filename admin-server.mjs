@@ -1043,6 +1043,7 @@ app.route('/api/frontend')
 app.use(express.static(join(__dirname, 'public')));
 
 // Admin panel
+app.use('/admin', express.static(join(__dirname, 'admin')));
 app.get('/admin', (_req, res) => {
   res.sendFile(join(__dirname, 'admin', 'index.html'));
 });
