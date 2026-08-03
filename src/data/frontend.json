@@ -18,9 +18,9 @@
   "stillAccent": "#c44136",
   "fluidPrimary": "#1f6955",
   "fluidSecondary": "#db5d4f",
-  "stillGlassOpacity": 0.84,
-  "fluidGlassOpacity": 0.8,
-  "heroOverlayOpacity": 0.34,
-  "glassBlur": 20,
+  "stillGlassOpacity": 0.72,
+  "fluidGlassOpacity": 0.72,
+  "heroOverlayOpacity": 0.25,
+  "glassBlur": 14,
   "cardRadius": 8
 }
