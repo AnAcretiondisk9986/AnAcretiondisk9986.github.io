@@ -87,6 +87,12 @@
     .post-cover-actions{display:flex;justify-content:flex-end;gap:7px}
     /* Markdown 实时预览 */
     .editor-toolbar{display:flex;justify-content:space-between;align-items:center;gap:8px}
+    .editor-fmtbar{display:flex;flex-wrap:wrap;align-items:center;gap:4px;padding:6px 8px;border:1px solid #2a2a30;border-radius:6px;background:#141418;margin-bottom:8px}
+    .editor-fmtbar .btn{padding:2px 8px;font-size:12px;line-height:1.7;min-width:0}
+    .fmt-sep{width:1px;height:18px;background:#2a2a30;margin:0 4px}
+    .fmt-colors{display:flex;align-items:center;gap:4px}
+    .fmt-colors .fmt-color{font-weight:700}
+    .fmt-colors input[type=color]{width:28px;height:26px;padding:1px;border:1px solid #2a2a30;border-radius:4px;background:none;cursor:pointer}
     .editor-wrap{min-height:300px}
     .view-switch{display:flex}
     .view-switch button{padding:3px 10px;border:1px solid #3a3a40;background:#1a1a1e;color:#6a6a70;cursor:pointer;font-size:10px;letter-spacing:1px;transition:background-color 150ms ease,color 150ms ease,border-color 150ms ease}
@@ -357,6 +363,35 @@
                 <button data-view="preview">预览</button>
               </div>
             </div>
+            <div class="editor-fmtbar" id="fmtBar">
+              <button class="btn small" data-fmt="bold" title="加粗"><b>B</b></button>
+              <button class="btn small" data-fmt="italic" title="斜体"><i>I</i></button>
+              <button class="btn small" data-fmt="strike" title="删除线"><s>S</s></button>
+              <button class="btn small" data-fmt="underline" title="下划线"><u>U</u></button>
+              <button class="btn small" data-fmt="highlight" title="高亮">H</button>
+              <span class="fmt-sep"></span>
+              <button class="btn small" data-fmt="h2" title="二级标题">H2</button>
+              <button class="btn small" data-fmt="quote" title="引用">❝</button>
+              <button class="btn small" data-fmt="link" title="链接">🔗</button>
+              <button class="btn small" data-fmt="image" title="图片">🖼</button>
+              <button class="btn small" data-fmt="ul" title="无序列表">• 列表</button>
+              <button class="btn small" data-fmt="ol" title="有序列表">1. 列表</button>
+              <button class="btn small" data-fmt="hr" title="分割线">——</button>
+              <button class="btn small" data-fmt="code" title="代码块">&lt;/&gt;</button>
+              <span class="fmt-sep"></span>
+              <button class="btn small" data-fmt="align-left" title="居左">⇤</button>
+              <button class="btn small" data-fmt="align-center" title="居中">⇔</button>
+              <button class="btn small" data-fmt="align-right" title="居右">⇥</button>
+              <span class="fmt-sep"></span>
+              <span class="fmt-colors">
+                <button class="btn small fmt-color" data-fmt="color" data-color="#c06050" title="红色" style="color:#e07a68">A</button>
+                <button class="btn small fmt-color" data-fmt="color" data-color="#b99c60" title="金色" style="color:#d9b96e">A</button>
+                <button class="btn small fmt-color" data-fmt="color" data-color="#5a8f5a" title="绿色" style="color:#7fc07f">A</button>
+                <button class="btn small fmt-color" data-fmt="color" data-color="#5a7fa0" title="蓝色" style="color:#7fa8cc">A</button>
+                <button class="btn small fmt-color" data-fmt="color" data-color="#8a8a90" title="灰色" style="color:#a8a8b0">A</button>
+                <input type="color" id="fmtColorPick" title="自定义颜色" />
+              </span>
+            </div>
             <div class="editor-body split" id="editorBody">
               <textarea class="content-area" id="fContent">${esc(post.content||'')}</textarea>
               <div class="markdown-preview" id="fPreview"></div>
@@ -368,6 +403,7 @@
       setupPostCover();
       setupVideoInsert();
       setupMusicInsert();
+      setupFmtToolbar();
       // Focus title for new posts
       if(!post.title) $('#fTitle')?.focus();
     }
@@ -412,6 +448,35 @@
                 <button data-view="preview">预览</button>
               </div>
             </div>
+            <div class="editor-fmtbar" id="fmtBar">
+              <button class="btn small" data-fmt="bold" title="加粗"><b>B</b></button>
+              <button class="btn small" data-fmt="italic" title="斜体"><i>I</i></button>
+              <button class="btn small" data-fmt="strike" title="删除线"><s>S</s></button>
+              <button class="btn small" data-fmt="underline" title="下划线"><u>U</u></button>
+              <button class="btn small" data-fmt="highlight" title="高亮">H</button>
+              <span class="fmt-sep"></span>
+              <button class="btn small" data-fmt="h2" title="二级标题">H2</button>
+              <button class="btn small" data-fmt="quote" title="引用">❝</button>
+              <button class="btn small" data-fmt="link" title="链接">🔗</button>
+              <button class="btn small" data-fmt="image" title="图片">🖼</button>
+              <button class="btn small" data-fmt="ul" title="无序列表">• 列表</button>
+              <button class="btn small" data-fmt="ol" title="有序列表">1. 列表</button>
+              <button class="btn small" data-fmt="hr" title="分割线">——</button>
+              <button class="btn small" data-fmt="code" title="代码块">&lt;/&gt;</button>
+              <span class="fmt-sep"></span>
+              <button class="btn small" data-fmt="align-left" title="居左">⇤</button>
+              <button class="btn small" data-fmt="align-center" title="居中">⇔</button>
+              <button class="btn small" data-fmt="align-right" title="居右">⇥</button>
+              <span class="fmt-sep"></span>
+              <span class="fmt-colors">
+                <button class="btn small fmt-color" data-fmt="color" data-color="#c06050" title="红色" style="color:#e07a68">A</button>
+                <button class="btn small fmt-color" data-fmt="color" data-color="#b99c60" title="金色" style="color:#d9b96e">A</button>
+                <button class="btn small fmt-color" data-fmt="color" data-color="#5a8f5a" title="绿色" style="color:#7fc07f">A</button>
+                <button class="btn small fmt-color" data-fmt="color" data-color="#5a7fa0" title="蓝色" style="color:#7fa8cc">A</button>
+                <button class="btn small fmt-color" data-fmt="color" data-color="#8a8a90" title="灰色" style="color:#a8a8b0">A</button>
+                <input type="color" id="fmtColorPick" title="自定义颜色" />
+              </span>
+            </div>
             <div class="editor-body split" id="editorBody">
               <textarea class="content-area" id="fContent"></textarea>
               <div class="markdown-preview" id="fPreview"></div>
@@ -423,6 +488,7 @@
       setupPostCover();
       setupVideoInsert();
       setupMusicInsert();
+      setupFmtToolbar();
       renderList();
       $('#fTitle')?.focus();
     }
@@ -748,8 +814,7 @@
         .catch(()=>{st.className='music-probe bad';st.textContent='⚠ 探测失败：网络错误'});
     }
     // 对话框事件（静态 HTML，初始化时绑定一次）
-    function bindMusicModal(){
-      const modal=$('#musicModal'); if(!modal) return;
+    function bindMusicModal(){      const modal=$('#musicModal'); if(!modal) return;
       $('#btnMusicCancel').onclick=()=>{modal.style.display='none'};
       modal.addEventListener('click',e=>{if(e.target===modal)modal.style.display='none'});
       $('#btnMusicInsert').onclick=()=>{
@@ -829,6 +894,69 @@
           toast('上传失败：编辑器未就绪');
         }
       }catch(e){toast('上传失败：'+e.message)}
+    }
+
+    /* ── 正文格式化工具栏（Markdown 语法 / 内联 HTML 片段） ── */
+    function setupFmtToolbar(){
+      const bar=$('#fmtBar'); if(!bar) return;
+      const getTa=()=>$('#fContent');
+      // 选中文字包裹 before/after（无选区时插入占位文本）
+      const wrap=(before,after,placeholder)=>{
+        const t=getTa(); if(!t) return;
+        const s=t.selectionStart, e=t.selectionEnd;
+        const sel=t.value.slice(s,e)||placeholder;
+        t.value=t.value.slice(0,s)+before+sel+after+t.value.slice(e);
+        const p=s+before.length;
+        t.focus(); t.setSelectionRange(p,p+sel.length);
+      };
+      // 行首插入前缀（标题 / 引用 / 列表）
+      const linePrefix=(prefix)=>{
+        const t=getTa(); if(!t) return;
+        const s=t.selectionStart;
+        const ls=t.value.lastIndexOf('\n',s-1)+1;
+        t.value=t.value.slice(0,ls)+prefix+t.value.slice(ls);
+        t.focus(); t.setSelectionRange(s+prefix.length,s+prefix.length);
+      };
+      // 对齐：把选中块（整行/整段）包成 <div style="text-align:…">；重复点击替换而非嵌套
+      const applyAlign=(align)=>{
+        const t=getTa(); if(!t) return;
+        const s=t.selectionStart, e=t.selectionEnd;
+        const ls=t.value.lastIndexOf('\n',s-1)+1;
+        let le=t.value.indexOf('\n',e); if(le===-1) le=t.value.length;
+        let block=t.value.slice(ls,le)||'内容';
+        const outer=block.match(/^<div[^>]*>([\s\S]*)<\/div>$/);
+        if(outer) block=outer[1];
+        const tag='<div style="text-align: '+align+'">'+block+'</div>';
+        t.value=t.value.slice(0,ls)+tag+t.value.slice(le);
+        t.focus(); t.setSelectionRange(ls,ls+tag.length);
+      };
+      bar.querySelectorAll('[data-fmt]').forEach(btn=>{
+        btn.onclick=()=>{
+          const f=btn.dataset.fmt;
+          switch(f){
+            case 'bold': wrap('**','**','加粗文字'); break;
+            case 'italic': wrap('*','*','斜体文字'); break;
+            case 'strike': wrap('~~','~~','删除线文字'); break;
+            case 'underline': wrap('<u>','</u>','下划线文字'); break;
+            case 'highlight': wrap('<mark>','</mark>','高亮文字'); break;
+            case 'h2': linePrefix('## '); break;
+            case 'quote': linePrefix('> '); break;
+            case 'link': wrap('[','](https://)','链接文字'); break;
+            case 'image': wrap('![','](https://)','图片说明'); break;
+            case 'ul': linePrefix('- '); break;
+            case 'ol': linePrefix('1. '); break;
+            case 'hr': { const t=getTa(); if(t){const s=t.selectionStart;t.value=t.value.slice(0,s)+'\n---\n'+t.value.slice(t.selectionEnd);t.focus();} break; }
+            case 'code': wrap('\n```\n','\n```\n','代码'); break;
+            case 'color': wrap('<span style="color: '+btn.dataset.color+'">','</span>','彩色文字'); break;
+            case 'align-left': applyAlign('left'); break;
+            case 'align-center': applyAlign('center'); break;
+            case 'align-right': applyAlign('right'); break;
+          }
+          refreshPreview();
+        };
+      });
+      const pick=$('#fmtColorPick');
+      if(pick) pick.oninput=()=>{wrap('<span style="color: '+pick.value+'">','</span>','彩色文字');refreshPreview()};
     }
 
     async function uploadImage(file, target = 'content') {
@@ -962,6 +1090,8 @@
         if(km){html+='\u0000K'+km[1]+'\u0000\n';i++;continue}
         const mm=t.match(/^\u0000M(\d+)\u0000$/);
         if(mm){html+='\u0000M'+mm[1]+'\u0000\n';i++;continue}
+        const htm=t.match(/^\u0000H(\d+)\u0000$/);
+        if(htm){html+='\u0000H'+htm[1]+'\u0000\n';i++;continue}
         const hm=t.match(/^(#{1,6})\s+(.*)$/);
         if(hm){html+='<h'+hm[1].length+'>'+mdInline(hm[2])+'</h'+hm[1].length+'>\n';i++;continue}
         if(/^(-{3,}|\*{3,}|_{3,})\s*$/.test(t)){html+='<hr>\n';i++;continue}
@@ -1030,9 +1160,32 @@
         rest=rest.slice(close+6);
       }
       text=head+rest;
+      // 提取白名单行内/块级 HTML 标签（变色/下划线/高亮/对齐等），预览原样渲染；
+      // 内容含 script/iframe/on* 等危险模式时拒绝提取，回退文本显示
+      const htmlTags=[];
+      rest=text; head='';
+      while(true){
+        const open=rest.search(/<(span|div|u|mark|center|b|i|strong|em|s|del|sub|sup)\b[^>]*>/i);
+        if(open===-1) break;
+        const nm=(rest.slice(open+1).match(/^([a-z]+)/i)||[])[1];
+        if(!nm){head+=rest.slice(0,open+1);rest=rest.slice(open+1);continue}
+        const name=nm.toLowerCase();
+        const close=rest.toLowerCase().indexOf('</'+name+'>',open);
+        if(close===-1){head+=rest.slice(0,open+1);rest=rest.slice(open+1);continue}
+        const end=close+name.length+3;
+        const block=rest.slice(open,end);
+        if(/<\s*(script|iframe|object|embed|style|link|meta|form|svg)[\s>]/i.test(block)||/\son\w+\s*=/i.test(block)){
+          head+=rest.slice(0,open+1);rest=rest.slice(open+1);continue;
+        }
+        htmlTags.push(block);
+        head+=rest.slice(0,open)+'\u0000H'+(htmlTags.length-1)+'\u0000';
+        rest=rest.slice(end);
+      }
+      text=head+rest;
       let html=mdParse(mdEscapeText(text));
       html=html.replace(/\u0000V(\d+)\u0000/g,(m,i)=>videoEmbedHtml(videos[+i]));
       html=html.replace(/\u0000M(\d+)\u0000/g,(m,i)=>musicEmbedPreview(songs[+i]));
+      html=html.replace(/\u0000H(\d+)\u0000/g,(m,i)=>htmlTagPreview(htmlTags[+i]));
       html=html.replace(/\u0000K(\d+)\u0000/g,(m,i)=>{
         const b=blocks[+i];
         return '<pre><code'+(b.lang?' class="language-'+mdAttr(b.lang)+'"':'')+'>'+mdEscapeText(b.code).replace(/\n$/,'')+'</code></pre>';
@@ -1046,9 +1199,18 @@
       if(!src||!/^(https?:)?\/\//i.test(src)) return '<p style="color:#c06050;font-size:12px">⚠ iframe 缺少有效 src，未渲染</p>';
       return '<div class="video-embed"><iframe src="'+mdAttr(src)+'" title="嵌入式视频播放器" loading="lazy" allowfullscreen referrerpolicy="no-referrer-when-downgrade"></iframe></div>';
     }
+    // 白名单 HTML 标签预览：仅保留 style 属性重建（丢弃 on* 等事件属性），内部内容原样输出
+    function htmlTagPreview(tag){
+      const m=tag.match(/^<([a-z]+)\b([^>]*)>/i);
+      if(!m) return tag;
+      const name=m[1].toLowerCase();
+      const style=(m[2].match(/\bstyle\s*=\s*["']([^"']*)["']/i)||[])[1]||'';
+      const inner=tag.slice(tag.indexOf('>')+1, tag.length-(name.length+3));
+      return '<'+name+(style?' style="'+mdAttr(style)+'"':'')+'>'+inner+'</'+name+'>';
+    }
+
     // 从 song-player 占位提取字段，渲染为面板内可直接试听的预览（原生 audio）
-    function musicEmbedPreview(block){
-      const src=musicAttr(block,'src');
+    function musicEmbedPreview(block){      const src=musicAttr(block,'src');
       if(!src||!/^(https?:)?\/\//i.test(src)) return '<p style="color:#c06050;font-size:12px">⚠ song-player 缺少有效 src，未渲染</p>';
       const title=musicDecode(musicAttr(block,'title'))||'未命名曲目';
       const artist=musicDecode(musicAttr(block,'artist'));

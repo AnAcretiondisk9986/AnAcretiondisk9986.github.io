@@ -1277,6 +1277,18 @@ main {
   height: 66px;
 }
 
+/* 文章内高亮（<mark>，编辑器工具栏「H」插入）：柔和底色，明暗主题自动适配 */
+.prose mark {
+  padding: 0 0.22em;
+  border-radius: 2px;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--gold-light) 42%, transparent);
+}
+
+/* 文章内下划线/删除线等内联 HTML（编辑器工具栏插入）保持浏览器默认语义样式 */
+.prose u { text-decoration: underline; }
+.prose s { text-decoration: line-through; }
+
 /* 文章内嵌音乐播放条：Markdown 中写 <div class="song-player" data-src="…">，前端脚本增强为播放条 */
 .song-player {
   display: flex;

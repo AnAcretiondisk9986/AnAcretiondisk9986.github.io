@@ -13,6 +13,7 @@
 - **网易云 iframe 容器适配**：`.prose iframe[src*="music.163.com"]` 按 `src` 的 `height=` 参数还原高度（`height=66` → 66px，其余 90px）、宽 `max-width:330px` 居中，不再被 16:9 撑出空白；面板预览 `.video-embed iframe` 同步适配。
 - 验证：`npm run build` 22 页成功；隔离仓库端到端——带 ID3v2.3 标签 + APIC 封面（UTF-16 中文）的 mp3 上传解析出「メランコリック / ヤマネマヒ / cover.webp」，无标签文件返回空字段，`/api/audio-probe` 对网易云歌 ok=true（audio/mpeg 2.9MB）、对 example.com ok=false（text/html）；两份 admin `new Function` 语法通过；模板 `node --check` 通过。
 - 模板 `blog-template` 已同步（song-player.ts / global.css / admin / admin-server + music-metadata）；模板封面存 `public/image/`、coverUrl 为本地 `/image/` 路径，无 jsDelivr。
+- **正文格式化工具栏**（`setupFmtToolbar` / `#fmtBar`）：加粗 `**`、斜体 `*`、删除线 `~~`、下划线 `<u>`、高亮 `<mark>`、H2/引用/链接/图片/列表/分割线/代码块；色板 5 色 + `<input type="color">` 调色盘 → 选中文字包 `<span style="color:…">`；对齐 → 包 `<div style="text-align:…">`（重复点击剥掉旧 div 替换，不嵌套）。预览 `mdRenderVideo` 新增 `\u0000H` 白名单标签提取（span/div/u/mark/center/b/i/strong/em/s/del/sub/sup），仅保留 style 属性重建、含 script/iframe/on* 的块拒绝提取回退文本；`mdParse` 补 `\u0000H` 整行透传。线上 `.prose mark` 高亮用 `color-mix(var(--gold-light) 42%)` 适配明暗。**注意**：白名单提取必须在 song-player(`\u0000M`)之后，否则会误吞 song-player 的 div。
 - 发布：v3.4.0 功能已推送（`376ab3e`），本迭代改动**未推送**（待用户确认）。
 
 
