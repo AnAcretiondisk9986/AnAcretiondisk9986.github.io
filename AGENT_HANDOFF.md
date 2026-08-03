@@ -2,7 +2,20 @@
 
 > 本文件已在用户授权下公开于 GitHub 仓库。每位 Agent 完成工作后在此记录变更。
 
-**♪ 文章内嵌音乐播放条（自托管音频直链，mp3 / flac；v3.4.0）**
+**♪ 文章内嵌音乐播放条（自托管音频直链 + 网易云歌曲适配；v3.4.0）**
+
+**迭代 2（用户反馈驱动）：**
+- **网易云歌曲页链接自动适配**：`song-player` 的 `data-src` 支持 `music.163.com/song?id=…`——`resolveAudioSrc()` 自动映射到官方外链直链端点 `https://music.163.com/song/media/outer/url?id=<id>.mp3`（实测可用：302 → `m*.music.126.net` 的 audio/mpeg）；无版权 / 下架歌曲 404 时错误提示区分网易云来源。**注意**：该端点 302 重定向且带时效签名，不可作为永久直链依赖；面板生成器只接受 `song?id=` 形式的网易云链接，其他网易云页面拒绝。
+- **播放器 UI 重设计**：封面 56px、标题 / 歌手完整换行显示（去掉 nowrap 截断，`overflow-wrap: anywhere`）、新增**音量滑块 + 静音按钮**（`audio.volume` 控制，静音记忆上次音量）、卡片渐变背景 + 阴影；移动端换行。
+- **后端元数据解析**：`admin-server.mjs` 新增 `extractAudioMeta()`（music-metadata `parseFile`）——上传音频时解析歌名 / 歌手 / 内嵌封面（封面经 sharp 转 WebP ≤600px 存 `image/` 目录，与音频同一次 push）；解析失败返回空字段不阻断上传。新依赖：`music-metadata@^11`（主站 + 模板均安装）。
+- **外链可播性探测**：新增 `GET /api/audio-probe?url=`（HEAD 优先，失败则 GET `Range: bytes=0-2047` 校验 Content-Type 与音频魔数 ID3/fLaC/OggS/RIFF/ftyp；网易云歌曲页先映射外链端点再探测）；面板「♪ 音乐」对话框输入防抖 400ms 自动探测，显示「✓ 可播放 · audio/mpeg · N KB」或失败警告（`.music-probe` 三态样式）。
+- **拖拽 / 粘贴 / 选择上传音频**：编辑区拖放与 Ctrl+V 支持 `audio/*`（优先音频，其次图片），`uploadAudioTrack()` 上传 + 解析 → 解析成功直接插入播放条到光标处；失败弹 musicModal 预填直链让用户补全。对话框「⬆ 上传音频」同样回填解析结果。
+- **网易云 iframe 容器适配**：`.prose iframe[src*="music.163.com"]` 按 `src` 的 `height=` 参数还原高度（`height=66` → 66px，其余 90px）、宽 `max-width:330px` 居中，不再被 16:9 撑出空白；面板预览 `.video-embed iframe` 同步适配。
+- 验证：`npm run build` 22 页成功；隔离仓库端到端——带 ID3v2.3 标签 + APIC 封面（UTF-16 中文）的 mp3 上传解析出「メランコリック / ヤマネマヒ / cover.webp」，无标签文件返回空字段，`/api/audio-probe` 对网易云歌 ok=true（audio/mpeg 2.9MB）、对 example.com ok=false（text/html）；两份 admin `new Function` 语法通过；模板 `node --check` 通过。
+- 模板 `blog-template` 已同步（song-player.ts / global.css / admin / admin-server + music-metadata）；模板封面存 `public/image/`、coverUrl 为本地 `/image/` 路径，无 jsDelivr。
+- 发布：v3.4.0 功能已推送（`376ab3e`），本迭代改动**未推送**（待用户确认）。
+
+
 
 - 占位语法：`<div class="song-player" data-src="…" data-title="…" data-artist="…" data-cover="…"><a href="…">♪ 播放音频</a></div>`——satteri 原样保留；`data-src` 必填且限 http(s)，占位内文本为无 JS 降级链接（渲染时替换）。
 - `src/scripts/song-player.ts`（新增）：扫描 `.prose .song-player[data-src]` 增强为播放条（封面 / 标题 / 艺术家 / 播放暂停 / 进度拖动 / 时间）；共享 Audio 单实例、同页互斥播放；标题等文本一律 `textContent` 写入防注入；`initSongPlayers` 幂等（`is-enhanced` 类检测）；导出 `stopSongPlayback()`。

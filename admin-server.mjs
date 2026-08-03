@@ -6,6 +6,7 @@ import { exec } from 'node:child_process';
 import { join, dirname, extname, basename, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import matter from 'gray-matter';
+import { parseFile as parseAudioMeta } from 'music-metadata';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const BLOG_DIR = resolve(__dirname, 'src', 'content', 'blog');
@@ -323,6 +324,30 @@ async function archiveOriginal(filePath, name) {
   return name;
 }
 
+// 解析音频元数据（歌名 / 歌手 / 封面）：解析失败返回空字段，不阻断上传
+async function extractAudioMeta(filePath) {
+  try {
+    const { common } = await parseAudioMeta(filePath, { duration: false });
+    const out = { title: '', artist: '', coverUrl: '' };
+    if (common.title) out.title = String(common.title).trim().slice(0, 120);
+    if (common.artist) out.artist = String(common.artist).trim().slice(0, 120);
+    const pic = Array.isArray(common.picture) ? common.picture[0] : null;
+    if (pic && pic.data && pic.data.length > 0) {
+      // 封面转 WebP 存到图片仓库 image/ 目录（与图片同仓库，随同一次 push 推送）
+      const coverName = `${Date.now()}_cover.webp`;
+      await mkdir(IMAGE_DIR, { recursive: true });
+      await sharp(pic.data)
+        .resize({ width: 600, withoutEnlargement: true })
+        .webp({ quality: 80 })
+        .toFile(join(IMAGE_DIR, coverName));
+      out.coverUrl = `${IMG_BASE_URL}${coverName}`;
+    }
+    return out;
+  } catch {
+    return { title: '', artist: '', coverUrl: '' };
+  }
+}
+
 // 推送图片仓库（有变更才推），失败时给出友好错误
 async function pushImageRepo() {
   const run = (cmd) => new Promise((resolve, reject) => {
@@ -369,10 +394,14 @@ app.post('/api/upload', (req, res, next) => {
     if (!req.file) return res.status(400).json({ error: '未选择文件' });
     try {
       const isAudio = String(req.file.mimetype).startsWith('audio/');
-      let filename, origName = null;
+      let filename, origName = null, title = '', artist = '', coverUrl = '';
       if (isAudio) {
-        // 音频：原样保留（不做转码），落库到 audio/ 目录
+        // 音频：原样保留（不做转码），落库到 audio/ 目录，并尝试解析歌名 / 歌手 / 封面
         filename = basename(req.file.path);
+        const meta = await extractAudioMeta(req.file.path);
+        title = meta.title;
+        artist = meta.artist;
+        coverUrl = meta.coverUrl;
       } else {
         origName = await archiveOriginal(req.file.path, basename(req.file.path));
         filename = await saveImageFile(req.file.path);
@@ -384,12 +413,60 @@ app.post('/api/upload', (req, res, next) => {
         url: `${base}${encodeURIComponent(filename)}`,
         originalUrl: origName ? `${IMG_BASE_URL}original/${encodeURIComponent(origName)}` : '',
         pushed: push.pushed,
+        title,
+        artist,
+        coverUrl,
       });
     } catch (e) {
       console.error('Upload Error:', e.message);
       res.status(e.status || 500).json({ error: e.message, detail: e.detail });
     }
   });
+});
+
+// 探测音频外链是否可播放（HEAD 优先，不可用则 GET Range 前 2KB 校验 Content-Type / 音频魔数）
+// 网易云歌曲页链接自动映射到官方外链直链端点再探测
+app.get('/api/audio-probe', async (req, res) => {
+  try {
+    const raw = String(req.query.url || '').trim();
+    if (!raw) return res.status(400).json({ error: '缺少 url 参数' });
+    let parsed;
+    try {
+      parsed = new URL(raw);
+      if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('bad proto');
+    } catch {
+      return res.status(400).json({ error: '无效的 URL（仅支持 http/https）' });
+    }
+    const idMatch = raw.match(/music\.163\.com\/song[?/]id=(\d+)/i);
+    const probeUrl = idMatch ? `https://music.163.com/song/media/outer/url?id=${idMatch[1]}.mp3` : raw;
+    const headers = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' };
+    let ok = false, contentType = '', size = 0, note = '';
+    // 1) HEAD 探测
+    try {
+      const r = await fetch(probeUrl, { method: 'HEAD', redirect: 'follow', signal: AbortSignal.timeout(15000), headers });
+      contentType = r.headers.get('content-type') || '';
+      size = Number(r.headers.get('content-length')) || 0;
+      ok = r.ok && (contentType.startsWith('audio/') || contentType.includes('mpeg') || contentType.includes('octet-stream'));
+      if (ok && idMatch) note = '网易云歌曲：经官方外链直链播放';
+    } catch { /* HEAD 不可用，走 GET Range */ }
+    // 2) GET Range 前 2KB，按 Content-Type 与音频魔数兜底
+    if (!ok) {
+      try {
+        const r = await fetch(probeUrl, { redirect: 'follow', signal: AbortSignal.timeout(15000), headers: { ...headers, Range: 'bytes=0-2047' } });
+        contentType = r.headers.get('content-type') || '';
+        size = Number(r.headers.get('content-length')) || 0;
+        ok = r.status === 206 || r.ok;
+        if (ok && !contentType.startsWith('audio/')) {
+          const head = Buffer.from(await r.arrayBuffer()).subarray(0, 12).toString('latin1');
+          ok = head.startsWith('ID3') || head.startsWith('fLaC') || head.startsWith('OggS')
+            || head.startsWith('RIFF') || head.startsWith('ftyp') || head.startsWith('\u0000\u0000\u0000');
+        }
+      } catch { ok = false; }
+    }
+    res.json({ ok, url: probeUrl, contentType: contentType.split(';')[0].trim(), size, note });
+  } catch (e) {
+    res.status(500).json({ error: '探测失败', detail: e.message });
+  }
 });
 
 // URL import (download external image to local)

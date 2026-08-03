@@ -1264,27 +1264,41 @@ main {
   background: var(--paper-deep);
 }
 
+/* 网易云外链播放器是固定高度窄条（非 16:9 视频）：按 src 里的 height 参数还原高度，居中显示，避免被撑出大片空白 */
+.prose iframe[src*="music.163.com"] {
+  width: 100%;
+  max-width: 330px;
+  height: 90px;
+  aspect-ratio: auto;
+  margin-inline: auto;
+}
+
+.prose iframe[src*="music.163.com"][src*="height=66"] {
+  height: 66px;
+}
+
 /* 文章内嵌音乐播放条：Markdown 中写 <div class="song-player" data-src="…">，前端脚本增强为播放条 */
 .song-player {
   display: flex;
   align-items: center;
   gap: 14px;
   margin-block: 2em;
-  padding: 12px 14px;
+  padding: 14px 16px;
   border: 1px solid var(--rule-strong);
-  border-radius: 4px;
-  background: color-mix(in srgb, var(--paper-deep) 55%, transparent);
+  border-radius: 6px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--paper-light) 85%, transparent), color-mix(in srgb, var(--paper-deep) 70%, transparent));
+  box-shadow: 0 2px 10px var(--shadow);
 }
 
 .song-player__cover {
   flex: none;
   display: grid;
   place-items: center;
-  width: 52px;
-  height: 52px;
+  width: 56px;
+  height: 56px;
   overflow: hidden;
   border: 1px solid var(--rule);
-  border-radius: 3px;
+  border-radius: 4px;
   background: linear-gradient(135deg, var(--paper-light), var(--paper-deep));
   color: var(--gold);
 }
@@ -1299,33 +1313,31 @@ main {
 }
 
 .song-player__cover svg {
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   fill: currentColor;
 }
 
 .song-player__info {
-  flex: 1 1 auto;
-  min-width: 0;
+  flex: 1 1 140px;
+  min-width: 120px;
+  overflow-wrap: anywhere;
 }
 
 .song-player__title {
-  overflow: hidden;
   color: var(--ink);
   font-family: var(--serif);
-  font-size: 0.98rem;
+  font-size: 1rem;
   font-weight: 700;
   letter-spacing: 0.02em;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.45;
 }
 
 .song-player__artist {
-  overflow: hidden;
+  margin-top: 2px;
   color: var(--ink-faint);
-  font-size: 0.78rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: 0.82rem;
+  line-height: 1.4;
 }
 
 .song-player__artist:empty {
@@ -1333,25 +1345,25 @@ main {
 }
 
 .song-player__controls {
-  flex: 1 1 240px;
+  flex: 1 1 300px;
   display: flex;
   align-items: center;
-  gap: 12px;
-  min-width: 200px;
+  gap: 10px;
+  min-width: 220px;
 }
 
 .song-player__toggle {
   flex: none;
   display: grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
   padding: 0;
   border: 1px solid var(--rule-strong);
   border-radius: 50%;
   color: var(--red);
   background: var(--paper-light);
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   line-height: 1;
   cursor: pointer;
   transition: transform 180ms cubic-bezier(0.23, 1, 0.32, 1), background-color 180ms ease, color 180ms ease;
@@ -1372,12 +1384,12 @@ main {
   flex: 1 1 auto;
   display: grid;
   gap: 4px;
-  min-width: 0;
+  min-width: 120px;
 }
 
 .song-player__progress {
   width: 100%;
-  height: 14px;
+  height: 16px;
   margin: 0;
   accent-color: var(--red);
   cursor: pointer;
@@ -1390,6 +1402,37 @@ main {
   font-variant-numeric: tabular-nums;
 }
 
+/* 音量：图标按钮（点击静音 / 恢复）+ 滑块 */
+.song-player__volume {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.song-player__volume-toggle {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink-soft);
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 180ms ease;
+}
+
+.song-player__volume-toggle:hover {
+  color: var(--red);
+}
+
+.song-player__volume-slider {
+  width: 64px;
+  height: 14px;
+  margin: 0;
+  accent-color: var(--gold);
+  cursor: pointer;
+}
+
 .song-player__err {
   display: block;
   width: 100%;
@@ -1397,12 +1440,15 @@ main {
   font-size: 0.8rem;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 700px) {
   .song-player {
     flex-wrap: wrap;
   }
   .song-player__controls {
     flex-basis: 100%;
+  }
+  .song-player__volume-slider {
+    width: 56px;
   }
 }
 
@@ -1411,6 +1457,7 @@ main {
     display: none;
   }
 }
+
 
 .prose pre {
   overflow-x: auto;

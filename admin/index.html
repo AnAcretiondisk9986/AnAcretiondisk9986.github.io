@@ -111,12 +111,18 @@
     /* 视频嵌入预览 */
     .markdown-preview .video-embed{margin:10px 0}
     .markdown-preview .video-embed iframe{width:100%;aspect-ratio:16/9;height:auto;border:1px solid #2a2a30;background:#101014;border-radius:2px;display:block}
+    .markdown-preview .video-embed iframe[src*="music.163.com"]{width:330px;max-width:100%;aspect-ratio:auto;height:90px;margin-inline:auto}
+    .markdown-preview .video-embed iframe[src*="music.163.com"][src*="height=66"]{height:66px}
     .markdown-preview .music-embed{margin:10px 0;padding:10px 12px;border:1px solid #2a2a30;border-radius:6px;background:#16161a}
     .markdown-preview .music-embed-meta{font-size:12px;color:#c8b080;margin-bottom:8px;word-break:break-all}
     .markdown-preview .music-embed audio{display:block;width:100%;height:36px}
     .music-fields{display:grid;gap:6px;margin-top:8px}
     .music-upload-row{display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap}
     .music-upload-tip{font-size:11px;color:#6a6a70}
+    .music-probe{font-size:11px;margin-top:6px;padding:4px 8px;border-radius:4px;line-height:1.5}
+    .music-probe.ok{color:#7cc47c;background:rgba(60,120,60,.15)}
+    .music-probe.bad{color:#e08a80;background:rgba(160,60,50,.15)}
+    .music-probe.idle{color:#8a8a90;background:rgba(120,120,130,.12)}
     /* 插入视频对话框 */
     .video-modal-mask{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:1000;display:flex;align-items:center;justify-content:center}
     .video-modal{width:560px;max-width:92vw;background:#1a1a1e;border:1px solid #3a3a40;box-shadow:0 8px 40px rgba(0,0,0,.5);padding:18px 20px;display:flex;flex-direction:column;gap:12px;border-radius:2px}
@@ -217,7 +223,8 @@
   <div class="video-modal-mask" id="musicModal" style="display:none">
     <div class="video-modal">
       <h3>♪ 插入音乐播放条</h3>
-      <input id="fMusicSrc" placeholder="音频直链，如 https://cdn.jsdelivr.net/gh/用户名/blog-images@main/audio/xxx.mp3" />
+      <input id="fMusicSrc" placeholder="音频直链 / 网易云歌曲页链接，如 https://cdn.jsdelivr.net/gh/用户名/blog-images@main/audio/xxx.mp3" />
+      <div id="musicProbe" class="music-probe" hidden></div>
       <div class="music-fields">
         <input id="fMusicTitle" placeholder="歌名（可选）" />
         <input id="fMusicArtist" placeholder="歌手（可选）" />
@@ -528,7 +535,7 @@
       area.onclick = ()=>{postUploadTarget='content';fileInput.click()};
       area.ondragover = e=>{e.preventDefault();area.classList.add('dragover')};
       area.ondragleave = ()=>area.classList.remove('dragover');
-      area.ondrop = async e=>{e.preventDefault();area.classList.remove('dragover');const f=e.dataTransfer.files[0];if(f)await uploadImage(f,'content')};
+      area.ondrop = async e=>{e.preventDefault();area.classList.remove('dragover');const f=e.dataTransfer.files[0];if(!f)return;if(f.type.startsWith('audio/')){await uploadAudioTrack(f)}else{await uploadImage(f,'content')}};
 
       const coverArea = $('#btnCoverUpload');
       if (coverArea) {
@@ -541,7 +548,7 @@
       fileInput.onchange = async ()=>{
         const f=fileInput.files[0];
         const target=postUploadTarget;
-        if(f){await uploadImage(f,target);fileInput.value=''}
+        if(f){if(f.type.startsWith('audio/')){await uploadAudioTrack(f)}else{await uploadImage(f,target)}fileInput.value=''}
         postUploadTarget='content';
       };
 
@@ -582,12 +589,16 @@
         btnImport.textContent = '导入'; btnImport.disabled = false;
       };
 
-      // Paste image support
+      // Paste image / audio support
       document.onpaste = async e => {
-        const item = e.clipboardData?.items?.[0];
-        if(item && item.type.startsWith('image/')) {
+        const items = e.clipboardData?.items ? [...e.clipboardData.items] : [];
+        const audioItem = items.find(i=>i.type.startsWith('audio/'));
+        const imgItem = items.find(i=>i.type.startsWith('image/'));
+        const item = audioItem || imgItem;
+        if(item) {
           e.preventDefault();
-          await uploadImage(item.getAsFile(),'content');
+          if(audioItem){ await uploadAudioTrack(audioItem.getAsFile()); }
+          else { await uploadImage(imgItem.getAsFile(),'content'); }
         }
       };
     }
@@ -681,9 +692,14 @@
         if(!src||!/^(https?:)?\/\//i.test(src)) return {error:'song-player 代码中缺少有效 src（须为 http(s)）'};
         return musicEmbedHtml(src,musicAttr(s,'title')||title,musicAttr(s,'artist')||artist,musicAttr(s,'cover')||cover);
       }
-      // 2) 音频直链
-      if(/^(https?:)?\/\//i.test(s)) return musicEmbedHtml(s,title,artist,cover);
-      return {error:'无法识别：请粘贴音频直链（http(s)），或 song-player 占位代码'};
+      // 2) 音频直链 / 网易云歌曲页链接
+      if(/^(https?:)?\/\//i.test(s)){
+        if(/music\.163\.com/i.test(s) && !/music\.163\.com\/song[?/]id=/i.test(s)){
+          return {error:'无法识别该网易云链接：请粘贴歌曲页链接（music.163.com/song?id=…）自动适配，或使用「▶ 视频」插入官方外链播放器'};
+        }
+        return musicEmbedHtml(s,title,artist,cover);
+      }
+      return {error:'无法识别：请粘贴音频直链（http(s)）或网易云歌曲页链接'};
     }
     // 文章编辑器的「♪ 音乐」按钮 → 打开对话框
     function setupMusicInsert(){
@@ -691,9 +707,32 @@
       btn.onclick=()=>{
         const modal=$('#musicModal'); if(!modal) return;
         ['fMusicSrc','fMusicTitle','fMusicArtist','fMusicCover'].forEach(id=>{const el=$('#'+id);if(el) el.value=''});
+        const st=$('#musicProbe'); if(st) st.hidden=true;
         modal.style.display='flex';
         $('#fMusicSrc')?.focus();
       };
+    }
+    // 外链可播性探测：输入防抖后调 /api/audio-probe，结果展示在对话框内
+    let musicProbeTimer=null;
+    function probeAudioLink(){
+      const srcEl=$('#fMusicSrc'), st=$('#musicProbe');
+      if(!srcEl||!st) return;
+      const v=srcEl.value.trim();
+      if(!v){st.hidden=true;return}
+      if(!/^(https?:)?\/\//i.test(v)){st.hidden=false;st.className='music-probe bad';st.textContent='⚠ 请输入 http(s) 链接';return}
+      st.hidden=false;st.className='music-probe idle';st.textContent='⏳ 探测中…';
+      apiFetch('/api/audio-probe?url='+encodeURIComponent(v))
+        .then(r=>r.json())
+        .then(d=>{
+          if(d.ok){
+            st.className='music-probe ok';
+            st.textContent='✓ 可播放'+(d.note?'（'+d.note+'）':'')+(d.contentType?' · '+d.contentType:'')+(d.size?' · '+Math.round(d.size/1024)+'KB':'');
+          }else{
+            st.className='music-probe bad';
+            st.textContent='⚠ 探测失败：该链接可能不是可播放的音频直链'+(d.error?'（'+d.error+'）':'');
+          }
+        })
+        .catch(()=>{st.className='music-probe bad';st.textContent='⚠ 探测失败：网络错误'});
     }
     // 对话框事件（静态 HTML，初始化时绑定一次）
     function bindMusicModal(){
@@ -714,7 +753,8 @@
         toast('已插入音乐播放条');
       };
       $('#fMusicSrc').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('#btnMusicInsert').click()}});
-      // 音频上传：选择文件后经 /api/upload 落库到仓库 audio/ 目录，成功后回填直链
+      $('#fMusicSrc').addEventListener('input',()=>{clearTimeout(musicProbeTimer);musicProbeTimer=setTimeout(probeAudioLink,400)});
+      // 音频上传：选择文件后经 /api/upload 落库并解析元数据，回填直链与歌名/歌手/封面
       const musicFile=$('#fMusicFile'), musicUploadBtn=$('#btnMusicUpload');
       if(musicFile&&musicUploadBtn){
         musicUploadBtn.onclick=()=>musicFile.click();
@@ -723,7 +763,7 @@
           musicFile.value='';
           if(!f) return;
           if(!f.type.startsWith('audio/')){toast('仅支持音频文件');return}
-          toast('上传中…');
+          toast('上传并解析中…');
           const fd=new FormData(); fd.set('file',f);
           try{
             const res=await apiFetch('/api/upload',{method:'POST',body:fd});
@@ -731,10 +771,51 @@
             if(!res.ok){toast(data.error||'上传失败');return}
             const srcEl=$('#fMusicSrc');
             if(srcEl) srcEl.value=data.url;
-            toast('已上传，直链已填入');
+            const tEl=$('#fMusicTitle'), aEl=$('#fMusicArtist'), cEl=$('#fMusicCover');
+            if(data.title){ if(tEl) tEl.value=data.title; if(aEl) aEl.value=data.artist||''; if(cEl) cEl.value=data.coverUrl||''; }
+            else { if(tEl) tEl.value=''; if(aEl) aEl.value=''; if(cEl) cEl.value=data.coverUrl||''; }
+            toast(data.title?'已上传并解析歌曲信息':'已上传，未能解析歌曲信息，请手动填写');
+            probeAudioLink();
           }catch(e){toast('上传失败：'+e.message)}
         });
       }
+    }
+
+    // 音频上传（拖拽 / 粘贴 / 文件选择）：上传 + 解析元数据；解析成功直接插入播放条，失败弹窗补全
+    async function uploadAudioTrack(file){
+      if(!file) return;
+      if(!file.type.startsWith('audio/')){toast('仅支持音频文件');return}
+      toast('上传并解析中…');
+      const fd=new FormData(); fd.set('file',file);
+      try{
+        const res=await apiFetch('/api/upload',{method:'POST',body:fd});
+        const data=await res.json();
+        if(data.error){toast(data.error);return}
+        if(data.title){
+          const r=musicEmbedHtml(data.url,data.title,data.artist||'',data.coverUrl||'');
+          if(!r.error){
+            const ta=$('#fContent');
+            if(ta){const s=ta.selectionStart;ta.value=ta.value.substring(0,s)+'\n'+r.html+'\n'+ta.value.substring(ta.selectionEnd);ta.focus()}
+            refreshPreview();
+            toast('已插入播放条（'+data.title+'）');
+            return;
+          }
+        }
+        // 未能解析元数据：打开对话框预填直链，让用户补全歌名等信息
+        const modal=$('#musicModal');
+        if(modal){
+          const srcEl=$('#fMusicSrc'); if(srcEl) srcEl.value=data.url;
+          const tEl=$('#fMusicTitle'); if(tEl) tEl.value=data.title||'';
+          const aEl=$('#fMusicArtist'); if(aEl) aEl.value=data.artist||'';
+          const cEl=$('#fMusicCover'); if(cEl) cEl.value=data.coverUrl||'';
+          const st=$('#musicProbe'); if(st) st.hidden=true;
+          modal.style.display='flex';
+          $('#fMusicTitle')?.focus();
+          toast('未能解析歌曲信息，请手动填写');
+        }else{
+          toast('上传失败：编辑器未就绪');
+        }
+      }catch(e){toast('上传失败：'+e.message)}
     }
 
     async function uploadImage(file, target = 'content') {
