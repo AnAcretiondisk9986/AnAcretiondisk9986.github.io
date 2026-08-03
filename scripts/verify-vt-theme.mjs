@@ -1,5 +1,5 @@
 // VT 导航后昼夜按钮与主题保持的实测脚本
-const CDP_HTTP = 'http://127.0.0.1:9223';
+const CDP_HTTP = 'http://127.0.0.1:9224';
 
 async function newTab(url) {
   const res = await fetch(`${CDP_HTTP}/json/new?${encodeURIComponent(url)}`, { method: 'PUT' });
