@@ -739,11 +739,35 @@
   backdrop-filter: blur(var(--liquid-blur)) saturate(130%);
 }
 
+/* 中间层容器(上下均有相邻容器,非页面最上/最下)去掉圆角,保持连续面板感 */
+:root[data-visual-theme='still'] :is(.gallery-order-bar, .gallery-view-bar, .gallery-tabs, .gallery-panel, .article-shell, .dossier, .appearance-selector),
+:root[data-visual-theme='fluid'] :is(.gallery-order-bar, .gallery-view-bar, .gallery-tabs, .gallery-panel, .article-shell, .dossier, .appearance-selector) {
+  border-radius: 0;
+}
+
+/* 页头大标题(ThemeCopy)与小标题在子容器中水平居中;mark 标记区(seal + dl)整体居中 */
+:root[data-visual-theme='still'] :is(.catalog-title, .gallery-header-copy, .guestbook-header-copy, .dossier-header > div),
+:root[data-visual-theme='fluid'] :is(.catalog-title, .gallery-header-copy, .guestbook-header-copy, .dossier-header > div) {
+  align-items: center;
+  text-align: center;
+}
+
+:root[data-visual-theme='still'] :is(.catalog-title > p:last-child, .dossier-header > div > p:last-child),
+:root[data-visual-theme='fluid'] :is(.catalog-title > p:last-child, .dossier-header > div > p:last-child) {
+  margin-inline: auto;
+}
+
+:root[data-visual-theme='still'] :is(.catalog-mark, .gallery-header-mark, .guestbook-header-mark),
+:root[data-visual-theme='fluid'] :is(.catalog-mark, .gallery-header-mark, .guestbook-header-mark) {
+  justify-items: center;
+  align-items: center;
+  text-align: center;
+}
+
 :root[data-visual-theme='still'] :is(.gallery-sort button, .gallery-view-switch button, .catalog-view-switch button, .gallery-tab, .appearance-selector button),
 :root[data-visual-theme='fluid'] :is(.gallery-sort button, .gallery-view-switch button, .catalog-view-switch button, .gallery-tab, .appearance-selector button) {
   border-radius: 6px;
-  font-family: var(--sans);
-  letter-spacing: 0;
+  font-family: var(--sans);  letter-spacing: 0;
 }
 
 :root[data-visual-theme='still'] :is(.gallery-sort button[aria-pressed='true'], .gallery-view-switch button[aria-pressed='true'], .catalog-view-switch button[aria-pressed='true'], .gallery-tab[aria-selected='true'], .appearance-selector button[aria-pressed='true']),
