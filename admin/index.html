@@ -129,6 +129,9 @@
     .music-fields{display:grid;gap:6px;margin-top:8px}
     .music-upload-row{display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap}
     .music-upload-tip{font-size:11px;color:#6a6a70}
+    .imgsize-row{display:flex;align-items:center;gap:8px;margin-top:8px}
+    .imgsize-row input[type=number]{flex:1;min-width:0;padding:8px 10px;border:1px solid #3a3a40;border-radius:4px;background:#1a1a1e;color:#d4d0c8;font-size:13px}
+    .imgsize-row select{padding:8px 10px;border:1px solid #3a3a40;border-radius:4px;background:#1a1a1e;color:#d4d0c8;font-size:13px}
     .music-probe{font-size:11px;margin-top:6px;padding:4px 8px;border-radius:4px;line-height:1.5}
     .music-probe.ok{color:#7cc47c;background:rgba(60,120,60,.15)}
     .music-probe.bad{color:#e08a80;background:rgba(160,60,50,.15)}
@@ -225,6 +228,30 @@
       <div class="video-actions">
         <button class="btn" id="btnVideoCancel">取消</button>
         <button class="btn primary" id="btnVideoInsert">插入</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 图片尺寸对话框 -->
+  <div class="video-modal-mask" id="imgSizeModal" style="display:none">
+    <div class="video-modal">
+      <h3>⛶ 设置图片尺寸</h3>
+      <input id="fImgSizeSrc" placeholder="图片 URL（自动提取光标处图片，可修改）" />
+      <div class="imgsize-row">
+        <input id="fImgSizeVal" type="number" min="1" max="2000" value="60" />
+        <select id="fImgSizeUnit">
+          <option value="%">%</option>
+          <option value="px">px</option>
+        </select>
+        <button class="btn small" id="btnImgSizeClear" title="清空宽度=按原图显示">原图</button>
+      </div>
+      <div class="video-hint">
+        生成 &lt;img src="…" style="width: 60%"&gt; 替换光标处的图片语法；留空宽度则按原图显示（不限制）。<br />
+        线上渲染宽度按文章内容宽度计算；也可直接手动修改 Markdown 源码。
+      </div>
+      <div class="video-actions">
+        <button class="btn" id="btnImgSizeCancel">取消</button>
+        <button class="btn primary" id="btnImgSizeInsert">应用</button>
       </div>
     </div>
   </div>
@@ -379,6 +406,7 @@
               <button class="btn small" data-fmt="quote" title="引用">❝</button>
               <button class="btn small" data-fmt="link" title="链接">🔗</button>
               <button class="btn small" data-fmt="image" title="图片">🖼</button>
+              <button class="btn small" id="btnInsertImgSize" title="设置图片宽度">⛶ 图宽</button>
               <button class="btn small" data-fmt="ul" title="无序列表">• 列表</button>
               <button class="btn small" data-fmt="ol" title="有序列表">1. 列表</button>
               <button class="btn small" data-fmt="hr" title="分割线">——</button>
@@ -413,6 +441,7 @@
       setupVideoInsert();
       setupMusicInsert();
       setupFmtToolbar();
+      setupImgSize();
       // Focus title for new posts
       if(!post.title) $('#fTitle')?.focus();
     }
@@ -468,6 +497,7 @@
               <button class="btn small" data-fmt="quote" title="引用">❝</button>
               <button class="btn small" data-fmt="link" title="链接">🔗</button>
               <button class="btn small" data-fmt="image" title="图片">🖼</button>
+              <button class="btn small" id="btnInsertImgSize" title="设置图片宽度">⛶ 图宽</button>
               <button class="btn small" data-fmt="ul" title="无序列表">• 列表</button>
               <button class="btn small" data-fmt="ol" title="有序列表">1. 列表</button>
               <button class="btn small" data-fmt="hr" title="分割线">——</button>
@@ -502,6 +532,7 @@
       setupVideoInsert();
       setupMusicInsert();
       setupFmtToolbar();
+      setupImgSize();
       renderList();
       $('#fTitle')?.focus();
     }
@@ -975,6 +1006,69 @@
       if(pick) pick.oninput=()=>{wrap('<span style="color: '+pick.value+'">','</span>','彩色文字');refreshPreview()};
     }
 
+    /* ── 图片尺寸：从光标处提取图片并设置显示宽度（生成 <img style="width:…"> 替换） ── */
+    // 在光标所在行找 ![alt](url) 完整匹配，返回 {start,end,alt,src} 或 null
+    function extractImageAtCaret(text,pos){
+      const ls=text.lastIndexOf('\n',pos-1)+1;
+      let le=text.indexOf('\n',pos); if(le===-1) le=text.length;
+      const line=text.slice(ls,le);
+      const re=/!\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g;
+      let m,best=null,bestDist=Infinity;
+      while((m=re.exec(line))){
+        const d=Math.abs(ls+m.index+2-pos);
+        if(d<bestDist){bestDist=d;best={start:ls+m.index,end:ls+m.index+m[0].length,alt:m[1],src:m[2]}}
+      }
+      return best;
+    }
+    function setupImgSize(){
+      const btn=$('#btnInsertImgSize'); if(!btn) return;
+      btn.onclick=()=>{
+        const modal=$('#imgSizeModal'); if(!modal) return;
+        const ta=$('#fContent');
+        let src='';
+        if(ta){const im=extractImageAtCaret(ta.value,ta.selectionStart);if(im)src=im.src}
+        const sEl=$('#fImgSizeSrc'); if(sEl) sEl.value=src||'';
+        const vEl=$('#fImgSizeVal'); if(vEl) vEl.value=60;
+        const uEl=$('#fImgSizeUnit'); if(uEl) uEl.value='%';
+        modal.style.display='flex';
+        (src?$('#fImgSizeVal'):sEl)?.focus();
+      };
+    }
+    function bindImgSizeModal(){
+      const modal=$('#imgSizeModal'); if(!modal) return;
+      $('#btnImgSizeCancel').onclick=()=>{modal.style.display='none'};
+      modal.addEventListener('click',e=>{if(e.target===modal)modal.style.display='none'});
+      $('#btnImgSizeClear').onclick=()=>{const v=$('#fImgSizeVal');if(v)v.value=''};
+      $('#btnImgSizeInsert').onclick=()=>{
+        const src=($('#fImgSizeSrc')?.value||'').trim();
+        const val=($('#fImgSizeVal')?.value||'').trim();
+        const unit=$('#fImgSizeUnit')?.value==='px'?'px':'%';
+        if(!src){toast('请输入图片 URL');return}
+        if(!/^(https?:)?\/\//i.test(src)){toast('图片 URL 必须是 http(s) 链接');return}
+        let img='<img src="'+mdAttr(src)+'" alt="图片"';
+        if(val){
+          const n=parseFloat(val);
+          if(Number.isFinite(n)&&n>0) img+=' style="width:'+n+unit+'"';
+        }
+        img+=' />';
+        const ta=$('#fContent');
+        if(ta){
+          const s=ta.selectionStart,e=ta.selectionEnd;
+          let start=s,end=e;
+          if(s===e){ // 无选区：光标在图片语法上则整体替换该图片，否则插入光标处
+            const im=extractImageAtCaret(ta.value,s);
+            if(im){start=im.start;end=im.end}
+          }
+          ta.value=ta.value.slice(0,start)+img+ta.value.slice(end);
+          ta.focus(); ta.setSelectionRange(start,start+img.length);
+        }
+        modal.style.display='none';
+        refreshPreview();
+        toast('已设置图片尺寸');
+      };
+      $('#fImgSizeSrc').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('#btnImgSizeInsert').click()}});
+    }
+
     async function uploadImage(file, target = 'content') {
       if(!file||!file.type.startsWith('image/')){toast('仅支持图片');return}
       toast('上传中…');
@@ -1181,14 +1275,22 @@
       const htmlTags=[];
       rest=text; head='';
       while(true){
-        const open=rest.search(/<(span|div|u|mark|center|b|i|strong|em|s|del|sub|sup)\b[^>]*>/i);
+        const open=rest.search(/<(span|div|u|mark|center|b|i|strong|em|s|del|sub|sup|img)\b[^>]*>/i);
         if(open===-1) break;
         const nm=(rest.slice(open+1).match(/^([a-z]+)/i)||[])[1];
         if(!nm){head+=rest.slice(0,open+1);rest=rest.slice(open+1);continue}
         const name=nm.toLowerCase();
-        const close=rest.toLowerCase().indexOf('</'+name+'>',open);
-        if(close===-1){head+=rest.slice(0,open+1);rest=rest.slice(open+1);continue}
-        const end=close+name.length+3;
+        let close,end;
+        if(name==='img'){
+          // 自闭合标签：闭合点就是标签自身的 >
+          close=rest.indexOf('>',open);
+          if(close===-1){head+=rest.slice(0,open+1);rest=rest.slice(open+1);continue}
+          end=close+1;
+        }else{
+          close=rest.toLowerCase().indexOf('</'+name+'>',open);
+          if(close===-1){head+=rest.slice(0,open+1);rest=rest.slice(open+1);continue}
+          end=close+name.length+3;
+        }
         const block=rest.slice(open,end);
         if(/<\s*(script|iframe|object|embed|style|link|meta|form|svg)[\s>]/i.test(block)||/\son\w+\s*=/i.test(block)){
           head+=rest.slice(0,open+1);rest=rest.slice(open+1);continue;
@@ -1215,11 +1317,25 @@
       if(!src||!/^(https?:)?\/\//i.test(src)) return '<p style="color:#c06050;font-size:12px">⚠ iframe 缺少有效 src，未渲染</p>';
       return '<div class="video-embed"><iframe src="'+mdAttr(src)+'" title="嵌入式视频播放器" loading="lazy" allowfullscreen referrerpolicy="no-referrer-when-downgrade"></iframe></div>';
     }
-    // 白名单 HTML 标签预览：仅保留 style 属性重建（丢弃 on* 等事件属性），内部内容原样输出
+    // 白名单 HTML 标签预览：仅保留白名单属性重建（丢弃 on* 等事件属性），内部内容原样输出
     function htmlTagPreview(tag){
       const m=tag.match(/^<([a-z]+)\b([^>]*)>/i);
       if(!m) return tag;
       const name=m[1].toLowerCase();
+      if(name==='img'){
+        // 自闭合图片：保留 src/style/alt/width/height/loading，丢弃其余属性
+        const attr=(k)=>(m[2].match(new RegExp('\\b'+k+'\\s*=\\s*["\']([^"\']*)["\']','i'))||[])[1]||'';
+        let out='<img';
+        const src=attr('src');
+        if(src) out+=' src="'+mdAttr(src)+'"';
+        const alt=attr('alt');
+        if(alt) out+=' alt="'+mdAttr(alt)+'"';
+        for(const k of ['style','width','height','loading']){
+          const v=attr(k);
+          if(v) out+=' '+k+'="'+mdAttr(v)+'"';
+        }
+        return out+' />';
+      }
       const style=(m[2].match(/\bstyle\s*=\s*["']([^"']*)["']/i)||[])[1]||'';
       const inner=tag.slice(tag.indexOf('>')+1, tag.length-(name.length+3));
       return '<'+name+(style?' style="'+mdAttr(style)+'"':'')+'>'+inner+'</'+name+'>';
@@ -1366,6 +1482,7 @@
 
     bindVideoModal();
     bindMusicModal();
+    bindImgSizeModal();
     loadPosts();
 
     // ── 模式切换 ──
