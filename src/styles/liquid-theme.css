@@ -593,6 +593,17 @@
   border-color: var(--liquid-rule);
 }
 
+/* 页头玻璃容器:标题文字在玻璃底上,避免直接压在模糊背景上造成阅读困难(与下方组件同款) */
+:root[data-visual-theme='still'] :is(.catalog-header, .gallery-header, .guestbook-header, .dossier-header),
+:root[data-visual-theme='fluid'] :is(.catalog-header, .gallery-header, .guestbook-header, .dossier-header) {
+  border: 1px solid var(--liquid-highlight);
+  border-radius: var(--liquid-radius);
+  background: var(--liquid-surface);
+  box-shadow: var(--liquid-edge), 0 10px 28px rgba(20, 37, 32, 0.08);
+  -webkit-backdrop-filter: blur(var(--liquid-blur)) saturate(130%);
+  backdrop-filter: blur(var(--liquid-blur)) saturate(130%);
+}
+
 :root[data-visual-theme='still'] :is(.section-heading h2, .catalog-title h1, .gallery-header h1, .guestbook-header h1, .dossier-header h1),
 :root[data-visual-theme='fluid'] :is(.section-heading h2, .catalog-title h1, .gallery-header h1, .guestbook-header h1, .dossier-header h1) {
   font-family: var(--liquid-art-font);
