@@ -640,10 +640,6 @@
     font-family: var(--sans);
   }
 
-  :root[data-visual-theme='minimal'] .catalog-index small {
-    display: none;
-  }
-
   :root[data-visual-theme='minimal'] .tag-list {
     gap: 10px;
   }

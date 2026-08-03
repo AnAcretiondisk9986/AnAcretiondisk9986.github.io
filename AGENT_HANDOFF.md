@@ -2,6 +2,16 @@
 
 > 本文件已在用户授权下公开于 GitHub 仓库。每位 Agent 完成工作后在此记录变更。
 
+**🔢 文章列表：序号纯数字 + 标题自适应字号（首页 / 卷册目录，v3.2.1）**
+
+- `src/components/PostCatalog.astro`：序号下方「文章 / FOLIO」小字删除，序号统一为纯 `01 / 02 / 03`（四种视觉主题一致）。
+- `src/scripts/catalog-layout.ts`：新增 `fitTitles()` 标题自适应字号——重置内联字号后按 computed line-height × `-webkit-line-clamp` 行数算出固定标题区高度（同布局下所有条目标题容器大小统一）；标题溢出时按 0.25px 步进微调字号直至完整展示，下限为基准字号的 55%（不低于 12px），极端情况由 line-clamp 兜底截断；**简介不参与自适应**，保持原截断。触发时机：初始化 / VT 导航、布局切换（cards ↔ rows）、窗口 resize（防抖 120ms）、`document.fonts.ready`（字体加载完成前用 fallback 度量可能误缩，字体就绪后自动纠正）。
+- `src/styles/global.css`：删除 `.catalog-index small` 三处样式；`.catalog-content h2` 增加 `overflow-wrap: break-word` 防长词横向溢出。
+- `src/styles/minimal-theme.css`：删除 `.catalog-index small { display:none }` 覆盖（元素已移除）。
+- 新增回归脚本 `scripts/verify-catalog-title.mjs`（CDP 9224 + static-server 8766，与 verify-vt-theme 同套路）。
+- 验证：`npm run build` 20 页成功；验证脚本 24/24 全过——两种布局 × 桌面 1440 / 窄屏 390 的序号格式与无小字、真实标题全部完整展示（仅需微调的字号变化）、注入超长标题后字号微调且完整展示、标题区容器高度统一、窄屏无横向溢出；**已知边界**：390px 横栏布局内容列仅约 130px 宽，3 条极端长标题触达 12px 下限仍截断属物理极限（手机窄栏 + 固定两行 + 字号下限）。
+- 发布：提交已推送，tag `v3.2.1` + GitHub Release（README 更新日志新增 3.2.1 条目，模板仓库未同步，沿用既有约定）。
+
 **💧 v3.2.0：Liquid Glass 主题、前端定制、文章双版式与导航修复**
 
 - 视觉主题扩展为「静澈 / 流形 / 留白 / 行迹」四套，默认「静澈」；`src/styles/liquid-theme.css` 负责两套 Liquid Glass 设计，使用受控透明度、背景模糊、清晰描边和圆角卡片，并完整适配明暗、减弱动态、减弱透明度与高对比度偏好。

@@ -865,13 +865,6 @@ main {
   line-height: 1;
 }
 
-.catalog-index small {
-  margin-top: 7px;
-  color: var(--ink-faint);
-  font-size: 0.55rem;
-  letter-spacing: 0.17em;
-}
-
 .catalog-cover {
   grid-area: cover;
   position: relative;
@@ -910,6 +903,7 @@ main {
   font-size: clamp(1.55rem, 3vw, 2.5rem);
   font-weight: 500;
   letter-spacing: -0.04em;
+  overflow-wrap: break-word;
 }
 
 .catalog-list .catalog-content h2,
@@ -1021,10 +1015,6 @@ main {
 
 .catalog-list[data-catalog-layout='cards'] .catalog-index span {
   font-size: 1.45rem;
-}
-
-.catalog-list[data-catalog-layout='cards'] .catalog-index small {
-  margin-top: 0;
 }
 
 .catalog-list[data-catalog-layout='cards'] .catalog-entry time {
@@ -3265,10 +3255,6 @@ main {
     display: flex;
     align-items: baseline;
     gap: 7px;
-  }
-
-  .catalog-list[data-catalog-layout='rows'] .catalog-index small {
-    margin-top: 0;
   }
 
   .catalog-list[data-catalog-layout='cards'] {

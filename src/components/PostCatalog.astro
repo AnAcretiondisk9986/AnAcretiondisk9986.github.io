@@ -59,7 +59,6 @@ const covers = new Map(posts.map((post) => [
         <article class="catalog-entry" data-order-card data-order-date={dayKey} data-order-day-index={post.data.dayIndex ?? 0} data-order-position={index}>
           <div class="catalog-index">
             <span data-order-sequence data-order-pad="2">{String(index + 1).padStart(2, '0')}</span>
-            <small><ThemeCopy minimal="文章" trace="FOLIO" /></small>
           </div>
           <figure class="catalog-cover" data-empty={cover ? undefined : ''}>
             {cover && <img src={cover} alt="" loading={index < 3 ? 'eager' : 'lazy'} decoding="async" />}
