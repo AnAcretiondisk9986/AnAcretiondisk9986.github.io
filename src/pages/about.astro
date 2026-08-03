@@ -1,7 +1,6 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import ArchiveSeal from '../components/ArchiveSeal.astro';
-import PageHeroMedia from '../components/PageHeroMedia.astro';
 import ThemeCopy from '../components/ThemeCopy.astro';
 import about from '../data/about.json';
 
@@ -33,7 +32,6 @@ function linkify(text = '') {
 <BaseLayout title={about.title || '关于'} description={about.subtitle || '关于 Acretiondisk。'}>
   <article class="dossier">
     <header class="dossier-header">
-      <PageHeroMedia />
       <div>
         <p class="eyebrow">{about.eyebrow}</p>
         <h1>{about.title}</h1>

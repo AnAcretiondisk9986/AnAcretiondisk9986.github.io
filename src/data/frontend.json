@@ -21,6 +21,6 @@
   "stillGlassOpacity": 0.72,
   "fluidGlassOpacity": 0.72,
   "heroOverlayOpacity": 0.49,
-  "glassBlur": 13,
+  "glassBlur": 12,
   "cardRadius": 8
 }
