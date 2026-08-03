@@ -46,6 +46,14 @@ function linkify(text = '') {
         <h2 id="appearance-heading"><ThemeCopy minimal="外观" trace="界面主题" /></h2>
       </div>
       <div class="appearance-selector" role="group" aria-label="界面主题">
+        <button type="button" data-visual-theme-option="still" aria-pressed="false">
+          <span class="appearance-swatch appearance-swatch--still" aria-hidden="true"></span>
+          <span>静澈</span>
+        </button>
+        <button type="button" data-visual-theme-option="fluid" aria-pressed="false">
+          <span class="appearance-swatch appearance-swatch--fluid" aria-hidden="true"></span>
+          <span>流形</span>
+        </button>
         <button type="button" data-visual-theme-option="minimal" aria-pressed="false">
           <span class="appearance-swatch appearance-swatch--minimal" aria-hidden="true"></span>
           <span>留白</span>
@@ -103,7 +111,7 @@ function linkify(text = '') {
 </BaseLayout>
 
 <script>
-  type VisualTheme = 'minimal' | 'trace';
+  type VisualTheme = 'still' | 'fluid' | 'minimal' | 'trace';
 
   const initializedThemeButtons = new WeakSet<HTMLButtonElement>();
 
@@ -116,17 +124,21 @@ function linkify(text = '') {
       buttons.forEach((button) => {
         button.setAttribute('aria-pressed', String(button.dataset.visualThemeOption === theme));
       });
-      if (status) status.textContent = `已切换为${theme === 'minimal' ? '留白' : '行迹'}主题`;
+      const names: Record<VisualTheme, string> = { still: '静澈', fluid: '流形', minimal: '留白', trace: '行迹' };
+      if (status) status.textContent = `已切换为${names[theme]}主题`;
     };
 
-    const current = document.documentElement.dataset.visualTheme === 'trace' ? 'trace' : 'minimal';
+    const allowed: VisualTheme[] = ['still', 'fluid', 'minimal', 'trace'];
+    const currentValue = document.documentElement.dataset.visualTheme as VisualTheme;
+    const current = allowed.includes(currentValue) ? currentValue : 'still';
     sync(current);
 
     buttons.forEach((button) => {
       if (initializedThemeButtons.has(button)) return;
       initializedThemeButtons.add(button);
       button.addEventListener('click', () => {
-        const theme: VisualTheme = button.dataset.visualThemeOption === 'trace' ? 'trace' : 'minimal';
+        const option = button.dataset.visualThemeOption as VisualTheme;
+        const theme: VisualTheme = allowed.includes(option) ? option : 'still';
         if (document.documentElement.dataset.visualTheme === theme) return;
 
         const apply = () => {

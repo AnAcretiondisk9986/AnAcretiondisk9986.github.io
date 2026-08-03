@@ -2,8 +2,10 @@
 import { getCollection } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import ArchiveSeal from '../components/ArchiveSeal.astro';
+import PostCatalog from '../components/PostCatalog.astro';
 import SpecimenPlate from '../components/SpecimenPlate.astro';
 import ThemeCopy from '../components/ThemeCopy.astro';
+import frontend from '../data/frontend.json';
 
 const posts = (await getCollection('blog', ({ data }) => !data.draft))
   .sort((a, b) =>
@@ -11,35 +13,38 @@ const posts = (await getCollection('blog', ({ data }) => !data.draft))
     || (b.data.dayIndex ?? 0) - (a.data.dayIndex ?? 0)
     || b.id.localeCompare(a.id));
 
-const dayCounts = new Map<string, number>();
-for (const post of posts) {
-  const key = post.data.pubDate.toISOString().slice(0, 10);
-  dayCounts.set(key, (dayCounts.get(key) ?? 0) + 1);
-}
-const dayKeyOf = (post: (typeof posts)[number]) => post.data.pubDate.toISOString().slice(0, 10);
 ---
 
 <BaseLayout>
   <section class="codex-hero">
+    <div class="liquid-hero-media">
+      <img class="liquid-hero-image liquid-hero-image--still" src={frontend.stillHeroImage} alt={frontend.stillHeroAlt} style={`object-position:${frontend.stillImagePosition}`} fetchpriority="high" />
+      <img class="liquid-hero-image liquid-hero-image--fluid" src={frontend.fluidHeroImage} alt={frontend.fluidHeroAlt} style={`object-position:${frontend.fluidImagePosition}`} fetchpriority="high" />
+      <span class="liquid-hero-scrim"></span>
+    </div>
     <div class="hero-copy-panel">
       <div class="folio-kicker">
         <span>PERSONAL ARCHIVE</span>
         <span>VOL. I · MMXXVI</span>
       </div>
 
-      <p class="eyebrow"><ThemeCopy minimal="个人博客" trace="一份仍在书写的私人行记" /></p>
-      <h1>
+      <p class="eyebrow legacy-hero-copy"><ThemeCopy minimal="个人博客" trace="一份仍在书写的私人行记" /></p>
+      <p class="eyebrow liquid-hero-copy">{frontend.heroEyebrow}</p>
+      <h1 class="legacy-hero-copy">
         <ThemeCopy minimal="Acretiondisk">
           <Fragment slot="trace"><span>在生活之中，</span><em>留存我的观察。</em></Fragment>
         </ThemeCopy>
       </h1>
-      <p class="hero-copy">
+      <h1 class="liquid-hero-copy liquid-hero-title"><span>{frontend.heroTitleLine1}</span><em>{frontend.heroTitleLine2}</em></h1>
+      <p class="hero-copy legacy-hero-copy">
         <ThemeCopy minimal="记录想法、作品与生活。" trace="记录我个人生活中的想法与成果。" />
       </p>
+      <p class="hero-copy liquid-hero-copy">{frontend.heroDescription}</p>
 
       <div class="hero-actions">
-        <a class="primary-link" href="/blog/">
-          <span><ThemeCopy minimal="浏览文章" trace="展开卷册" /></span>
+        <a class="primary-link" href={frontend.primaryCtaHref || '/blog/'}>
+          <span class="legacy-hero-copy"><ThemeCopy minimal="浏览文章" trace="展开卷册" /></span>
+          <span class="liquid-hero-copy">{frontend.primaryCtaLabel}</span>
           <span aria-hidden="true">→</span>
         </a>
         <a class="text-link" href="/about/"><ThemeCopy minimal="了解我" trace="阅览编目者档案" /></a>
@@ -70,43 +75,7 @@ const dayKeyOf = (post: (typeof posts)[number]) => post.data.pubDate.toISOString
       </div>
     </div>
 
-    <div class="gallery-order-bar" aria-label="文章展示顺序">
-      <div class="gallery-order-label">
-        <span>DISPLAY ORDER</span>
-        <strong data-order-status>从新至旧</strong>
-      </div>
-      <div class="gallery-sort" role="group" aria-label="文章展示顺序">
-        <button type="button" data-order-sort="newest" aria-pressed="true">
-          <span aria-hidden="true">↓</span>从新至旧
-        </button>
-        <button type="button" data-order-sort="oldest" aria-pressed="false">
-          <span aria-hidden="true">↑</span>从旧至新
-        </button>
-      </div>
-    </div>
-
-    <div class="archive-list" data-order-list>
-      {posts.map((post, index) => (
-        <article class="archive-entry" data-order-card data-order-date={post.data.pubDate.toISOString().slice(0, 10)} data-order-day-index={post.data.dayIndex ?? 0} data-order-position={index}>
-          <div class="entry-number">
-            <span><ThemeCopy minimal="文章" trace="FOLIO" /></span>
-            <b data-order-sequence data-order-pad="3">{String(index + 1).padStart(3, '0')}</b>
-          </div>
-          <div class="entry-main">
-            <div class="entry-register">
-              <time datetime={post.data.pubDate.toISOString()}>
-                {post.data.pubDate.toLocaleDateString('zh-CN')}
-                {dayCounts.get(dayKeyOf(post))! > 1 && ` · #${String(post.data.dayIndex ?? 0).padStart(2, '0')}`}
-              </time>
-              <span>{post.data.tags.join(' · ') || '未分类记录'}</span>
-            </div>
-            <h3><a href={`/blog/${post.id}/`}>{post.data.title}</a></h3>
-            <p>{post.data.description}</p>
-          </div>
-          <a class="entry-arrow" href={`/blog/${post.id}/`} aria-label={`阅读《${post.data.title}》`}>↗</a>
-        </article>
-      ))}
-    </div>
+    <PostCatalog posts={posts} />
   </section>
 
   <section class="index-coda">
@@ -115,9 +84,3 @@ const dayKeyOf = (post: (typeof posts)[number]) => post.data.pubDate.toISOString
     <p>FINIS PAGINAE · INITIUM SEQUENTIS</p>
   </section>
 </BaseLayout>
-
-<script>
-  import { initOrderToggle } from '../scripts/order-toggle';
-  // astro:page-load 在整页加载与每次 VT 导航后触发;打包脚本只执行一次,靠事件驱动每次导航重新初始化
-  document.addEventListener('astro:page-load', () => initOrderToggle());
-</script>

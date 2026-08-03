@@ -2,6 +2,18 @@
 
 > 本文件已在用户授权下公开于 GitHub 仓库。每位 Agent 完成工作后在此记录变更。
 
+**💧 v3.2.0：Liquid Glass 主题、前端定制、文章双版式与导航修复**
+
+- 视觉主题扩展为「静澈 / 流形 / 留白 / 行迹」四套，默认「静澈」；`src/styles/liquid-theme.css` 负责两套 Liquid Glass 设计，使用受控透明度、背景模糊、清晰描边和圆角卡片，并完整适配明暗、减弱动态、减弱透明度与高对比度偏好。
+- 新增 `src/data/frontend.json` 作为前端定制数据源；管理面板新增「前端定制」模式与 `/api/frontend` GET/PUT，可编辑默认主题、站点信息、首页文案与 CTA、静澈/流形背景图、图片焦点与替代文字、Noto Serif / Noto Sans 风格、主题色、玻璃不透明度、遮罩、模糊和圆角。配置已纳入后台 `git add` 推送范围。
+- 文章 schema 新增可选 `cover`；管理面板支持文章封面上传、URL、预览和清除。新增 `src/lib/post-cover.ts`，横栏封面按「frontmatter 自定义封面 → 正文首图 → 空」解析，代码块与行内代码中的伪图片会被忽略。
+- 新增共享 `src/components/PostCatalog.astro` 与 `src/scripts/catalog-layout.ts`：首页和 `/blog/` 共用卡片/横栏切换与排序；横栏有封面、卡片无封面，长标题/简介截断，固定高度，版式存入 `localStorage('blog-layout')`。
+- 全站信息边界改为 `--content-width: min(80vw, var(--max-width))`；相册、照片卡片文字区、留言发表/评论、关于页档案卡、文章卡片增加四边留白。桌面端 Liquid 容器 22px，窄屏 18px；照片元信息左右 18px。
+- 动效按 Emil Kowalski / Apple 风格原则收敛：进入位移与时长降低，交互反馈采用短时、可打断缓动，图片 hover 不再长时间漂移；系统减弱动态时取消非必要位移。
+- `BaseLayout.astro` 在 `astro:before-swap` 把已保存主题写入新文档，并在 `astro:after-swap` / `astro:page-load` 再同步，修复视觉主题在五个主页面间 VT 导航时恢复「行迹」、刷新才恢复的问题；监听器使用全局幂等标记避免重复注册。
+- 发布范围：不包含 `blog-template` 子仓库的本地未提交内容、`scripts/verify-vt-theme.mjs` 的本机 CDP 端口修改和未跟踪的构建产物 `gal.js`。
+- 验证：`npm.cmd run build` 生成 20 页；`git diff --check` 通过；浏览器实测「流形」依次导航 `/`、`/blog/`、`/gallery/`、`/about/`、`/guestbook/` 与刷新均保持主题。桌面及 355px 实际视口无横向溢出，五项导航完整，卡片/横栏与照片、留言、关于容器内边距通过计算样式和截图检查。
+
 **✍️ 双主题固定文案适配 + 顶栏标签修复**
 
 - 新增 `src/components/ThemeCopy.astro`：静态文案同时由 SSR 输出「留白 / 行迹」两份，CSS 按 `data-visual-theme` 只显示当前主题版本；留白使用直接、现代中文，行迹延续卷册、入藏、编目叙事，切换即时且当前文案进入无障碍树。

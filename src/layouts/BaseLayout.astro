@@ -1,9 +1,11 @@
 ---
 import '../styles/global.css';
 import '../styles/minimal-theme.css';
+import '../styles/liquid-theme.css';
 import { ClientRouter } from 'astro:transitions';
 import ArchiveSeal from '../components/ArchiveSeal.astro';
 import ThemeCopy from '../components/ThemeCopy.astro';
+import frontend from '../data/frontend.json';
 
 interface Props {
   title?: string;
@@ -15,7 +17,32 @@ const {
   description = '记录技术、医学、艺术与生活。',
 } = Astro.props;
 
-const pageTitle = title === 'Acretiondisk' ? title : `${title} · Acretiondisk`;
+const siteName = frontend.siteName || 'Acretiondisk';
+const siteTagline = frontend.siteTagline || '记录想法与生活';
+const visualThemes = ['still', 'fluid', 'minimal', 'trace'];
+const defaultVisualTheme = visualThemes.includes(frontend.defaultVisualTheme)
+  ? frontend.defaultVisualTheme
+  : 'still';
+const displayFonts = {
+  'noto-serif': '"Noto Serif SC", "Source Han Serif SC", "Songti SC", STSong, SimSun, serif',
+  'noto-sans': '"Noto Sans SC", "Source Han Sans SC", "Microsoft YaHei", system-ui, sans-serif',
+  kaiti: 'STKaiti, KaiTi, "Kaiti SC", serif',
+  songti: '"Songti SC", STSong, SimSun, serif',
+  sans: 'Inter, "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif',
+};
+const displayFont = displayFonts[frontend.displayFont as keyof typeof displayFonts] || displayFonts['noto-serif'];
+const frontendStyle = [
+  `--liquid-still-accent:${frontend.stillAccent}`,
+  `--liquid-fluid-primary:${frontend.fluidPrimary}`,
+  `--liquid-fluid-secondary:${frontend.fluidSecondary}`,
+  `--liquid-still-surface:rgba(247,250,249,${frontend.stillGlassOpacity})`,
+  `--liquid-fluid-surface:rgba(240,247,242,${frontend.fluidGlassOpacity})`,
+  `--liquid-overlay:${frontend.heroOverlayOpacity}`,
+  `--liquid-blur:${frontend.glassBlur}px`,
+  `--liquid-radius:${frontend.cardRadius}px`,
+  `--liquid-art-font:${displayFont}`,
+].join(';');
+const pageTitle = title === 'Acretiondisk' ? siteName : `${title} · ${siteName}`;
 const pathname = Astro.url.pathname;
 const navigation = [
   { href: '/', minimal: '首页', trace: '首页', index: 'I' },
@@ -27,7 +54,7 @@ const navigation = [
 ---
 
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" style={frontendStyle}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width" />
@@ -36,17 +63,39 @@ const navigation = [
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>{pageTitle}</title>
     <!-- data-astro-rerun:View Transitions 导航后需重新执行,恢复 data-theme/js/vt(swap 会移除 <html> 属性);IIFE 包裹防止重复执行时顶层 const 重复声明 -->
-    <script is:inline data-astro-rerun>
+    <script is:inline data-astro-rerun define:vars={{ defaultVisualTheme }}>
       (() => {
-        const savedTheme = localStorage.getItem('theme');
-        const savedVisualTheme = localStorage.getItem('visual-theme');
-        const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        document.documentElement.dataset.theme = savedTheme ?? (systemDark ? 'dark' : 'light');
-        document.documentElement.dataset.visualTheme = savedVisualTheme === 'trace' ? 'trace' : 'minimal';
-        // js = 允许脚本驱动的进入动画;vt = 支持 View Transitions(避免与路由过渡动画叠加)
-        document.documentElement.classList.add('js');
-        if (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
-          document.documentElement.classList.add('vt');
+        const allowedVisualThemes = ['still', 'fluid', 'minimal', 'trace'];
+        const syncStoredAppearance = (root) => {
+          const savedTheme = localStorage.getItem('theme');
+          const savedVisualTheme = localStorage.getItem('visual-theme');
+          const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          root.dataset.theme = savedTheme ?? (systemDark ? 'dark' : 'light');
+          root.dataset.visualTheme = allowedVisualThemes.includes(savedVisualTheme)
+            ? savedVisualTheme
+            : defaultVisualTheme;
+          // js = 允许脚本驱动的进入动画;vt = 支持 View Transitions(避免与路由过渡动画叠加)
+          root.classList.add('js');
+          if (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            root.classList.add('vt');
+          }
+        };
+
+        syncStoredAppearance(document.documentElement);
+
+        if (!window.__acrAppearanceSyncBound) {
+          window.__acrAppearanceSyncBound = true;
+          document.addEventListener('astro:before-swap', (event) => {
+            if (event.newDocument?.documentElement) {
+              syncStoredAppearance(event.newDocument.documentElement);
+            }
+          });
+          document.addEventListener('astro:after-swap', () => {
+            syncStoredAppearance(document.documentElement);
+          });
+          document.addEventListener('astro:page-load', () => {
+            syncStoredAppearance(document.documentElement);
+          });
         }
       })();
     </script>
@@ -71,11 +120,11 @@ const navigation = [
         </div>
 
         <div class="header-main">
-          <a class="site-name" href="/" aria-label="Acretiondisk 首页">
+          <a class="site-name" href="/" aria-label={`${siteName} 首页`}>
             <ArchiveSeal class="site-seal" />
             <span>
-              <b>Acretiondisk</b>
-              <small><ThemeCopy minimal="记录想法与生活" trace="一人之观察与行记" /></small>
+              <b>{siteName}</b>
+              <small>{siteTagline}</small>
             </span>
           </a>
 
@@ -105,14 +154,14 @@ const navigation = [
 
       <footer class="site-footer">
         <div class="footer-mark">
-          <ArchiveSeal class="footer-seal" label="Acretiondisk" />
+          <ArchiveSeal class="footer-seal" label={siteName} />
           <p>
-            <strong><ThemeCopy minimal="个人博客 · 持续更新" trace="私人典藏 · 持续编目" /></strong>
-            <span><ThemeCopy minimal="记录想法、作品与日常。" trace="以文字保存观察，以设计标记时间。" /></span>
+            <strong>{siteName} · <ThemeCopy minimal="持续更新" trace="持续编目" /></strong>
+            <span>{siteTagline}</span>
           </p>
         </div>
         <div class="footer-meta">
-          <span>© {new Date().getFullYear()} ACRETIONDISK</span>
+          <span>© {new Date().getFullYear()} {siteName.toUpperCase()}</span>
           <a href="https://github.com/AnAcretiondisk9986">GITHUB ↗</a>
         </div>
       </footer>

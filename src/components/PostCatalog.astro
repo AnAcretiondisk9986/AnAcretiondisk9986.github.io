@@ -1,0 +1,100 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import ThemeCopy from './ThemeCopy.astro';
+import { firstImageFromBody } from '../lib/post-cover';
+
+interface Props {
+  posts: CollectionEntry<'blog'>[];
+}
+
+const { posts } = Astro.props;
+const dayCounts = new Map<string, number>();
+
+for (const post of posts) {
+  const key = post.data.pubDate.toISOString().slice(0, 10);
+  dayCounts.set(key, (dayCounts.get(key) ?? 0) + 1);
+}
+
+const covers = new Map(posts.map((post) => [
+  post.id,
+  post.data.cover?.trim() || firstImageFromBody(post.body ?? ''),
+]));
+---
+
+<div class="catalog-collection">
+  <div class="gallery-order-bar catalog-toolbar" aria-label="文章显示设置">
+    <div class="gallery-order-label">
+      <span>DISPLAY</span>
+      <strong><span data-order-status>从新至旧</span><span aria-hidden="true"> / </span><span data-catalog-view-status>横栏</span></strong>
+    </div>
+    <div class="catalog-toolbar-actions">
+      <div class="gallery-sort" role="group" aria-label="文章展示顺序">
+        <button type="button" data-order-sort="newest" aria-pressed="true">
+          <span aria-hidden="true">↓</span>从新至旧
+        </button>
+        <button type="button" data-order-sort="oldest" aria-pressed="false">
+          <span aria-hidden="true">↑</span>从旧至新
+        </button>
+      </div>
+      <div class="catalog-view-switch" role="group" aria-label="文章版式">
+        <button type="button" data-catalog-view="cards" aria-pressed="false" title="卡片式">
+          <span aria-hidden="true">▦</span>卡片
+        </button>
+        <button type="button" data-catalog-view="rows" aria-pressed="true" title="横栏式">
+          <span aria-hidden="true">☷</span>横栏
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="catalog-rule" data-catalog-rule aria-hidden="true">
+    <span>INDEX</span><span>IMAGO</span><span>TITULUS</span><span>DATE</span><span></span>
+  </div>
+
+  <div class="catalog-list" data-catalog-list data-catalog-layout="rows" data-order-list>
+    {posts.map((post, index) => {
+      const cover = covers.get(post.id) ?? '';
+      const dayKey = post.data.pubDate.toISOString().slice(0, 10);
+      return (
+        <article class="catalog-entry" data-order-card data-order-date={dayKey} data-order-day-index={post.data.dayIndex ?? 0} data-order-position={index}>
+          <div class="catalog-index">
+            <span data-order-sequence data-order-pad="2">{String(index + 1).padStart(2, '0')}</span>
+            <small><ThemeCopy minimal="文章" trace="FOLIO" /></small>
+          </div>
+          <figure class="catalog-cover" data-empty={cover ? undefined : ''}>
+            {cover && <img src={cover} alt="" loading={index < 3 ? 'eager' : 'lazy'} decoding="async" />}
+          </figure>
+          <div class="catalog-content">
+            <h2><a href={`/blog/${post.id}/`}>{post.data.title}</a></h2>
+            <p>{post.data.description}</p>
+            {post.data.tags.length > 0 && (
+              <ul class="tag-list" aria-label="标签">
+                {post.data.tags.map((tag) => <li>{tag}</li>)}
+              </ul>
+            )}
+          </div>
+          <time datetime={post.data.pubDate.toISOString()}>
+            <span>{post.data.pubDate.getFullYear()}</span>
+            <b>{String(post.data.pubDate.getMonth() + 1).padStart(2, '0')}.{String(post.data.pubDate.getDate()).padStart(2, '0')}</b>
+            {dayCounts.get(dayKey)! > 1 && (
+              <span class="catalog-day-index">DAY {String(post.data.dayIndex ?? 0).padStart(2, '0')}</span>
+            )}
+          </time>
+          <a class="catalog-open" href={`/blog/${post.id}/`} aria-label={`阅读《${post.data.title}》`}><ThemeCopy minimal="阅读" trace="打开记录" /> ↗</a>
+        </article>
+      );
+    })}
+  </div>
+</div>
+
+<script>
+  import { initCatalogLayout } from '../scripts/catalog-layout';
+  import { initOrderToggle } from '../scripts/order-toggle';
+
+  initCatalogLayout();
+  initOrderToggle();
+  document.addEventListener('astro:page-load', () => {
+    initCatalogLayout();
+    initOrderToggle();
+  });
+</script>

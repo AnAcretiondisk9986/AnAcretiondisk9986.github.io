@@ -2,6 +2,7 @@
 import { getCollection } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ArchiveSeal from '../../components/ArchiveSeal.astro';
+import PostCatalog from '../../components/PostCatalog.astro';
 import WordCloud from '../../components/WordCloud.astro';
 import ThemeCopy from '../../components/ThemeCopy.astro';
 import { buildWordCloud } from '../../lib/wordcloud';
@@ -11,13 +12,6 @@ const posts = (await getCollection('blog', ({ data }) => !data.draft))
     b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
     || (b.data.dayIndex ?? 0) - (a.data.dayIndex ?? 0)
     || b.id.localeCompare(a.id));
-
-const dayCounts = new Map<string, number>();
-for (const post of posts) {
-  const key = post.data.pubDate.toISOString().slice(0, 10);
-  dayCounts.set(key, (dayCounts.get(key) ?? 0) + 1);
-}
-const dayKeyOf = (post: (typeof posts)[number]) => post.data.pubDate.toISOString().slice(0, 10);
 
 // 全站正文词频统计,生成词云数据
 const cloudWords = buildWordCloud(
@@ -44,61 +38,10 @@ const cloudWords = buildWordCloud(
 
   <WordCloud words={cloudWords} title="关键词" traceTitle="关键词索引" />
 
-  <div class="gallery-order-bar" aria-label="文章展示顺序">
-    <div class="gallery-order-label">
-      <span>DISPLAY ORDER</span>
-      <strong data-order-status>从新至旧</strong>
-    </div>
-    <div class="gallery-sort" role="group" aria-label="文章展示顺序">
-      <button type="button" data-order-sort="newest" aria-pressed="true">
-        <span aria-hidden="true">↓</span>从新至旧
-      </button>
-      <button type="button" data-order-sort="oldest" aria-pressed="false">
-        <span aria-hidden="true">↑</span>从旧至新
-      </button>
-    </div>
-  </div>
-
-  <div class="catalog-rule" aria-hidden="true">
-    <span>INDEX</span><span>TITULUS</span><span>CLASSIS</span><span>DATE</span>
-  </div>
-
-  <div class="catalog-list" data-order-list>
-    {posts.map((post, index) => (
-      <article class="catalog-entry" data-order-card data-order-date={post.data.pubDate.toISOString().slice(0, 10)} data-order-day-index={post.data.dayIndex ?? 0} data-order-position={index}>
-        <div class="catalog-index">
-          <span data-order-sequence data-order-pad="2">{String(index + 1).padStart(2, '0')}</span>
-          <small><ThemeCopy minimal="文章" trace="FOLIO" /></small>
-        </div>
-        <div class="catalog-content">
-          <h2><a href={`/blog/${post.id}/`}>{post.data.title}</a></h2>
-          <p>{post.data.description}</p>
-          {post.data.tags.length > 0 && (
-            <ul class="tag-list" aria-label="标签">
-              {post.data.tags.map((tag) => <li>{tag}</li>)}
-            </ul>
-          )}
-        </div>
-        <time datetime={post.data.pubDate.toISOString()}>
-          <span>{post.data.pubDate.getFullYear()}</span>
-          <b>{String(post.data.pubDate.getMonth() + 1).padStart(2, '0')}.{String(post.data.pubDate.getDate()).padStart(2, '0')}</b>
-          {dayCounts.get(dayKeyOf(post))! > 1 && (
-            <span class="catalog-day-index">DAY {String(post.data.dayIndex ?? 0).padStart(2, '0')}</span>
-          )}
-        </time>
-        <a class="catalog-open" href={`/blog/${post.id}/`} aria-label={`阅读《${post.data.title}》`}><ThemeCopy minimal="阅读" trace="打开记录" /> ↗</a>
-      </article>
-    ))}
-  </div>
+  <PostCatalog posts={posts} />
 
   <footer class="catalog-footer">
     <span><ThemeCopy minimal="所有文章均由我本人记录" trace="所有条目均由编目者亲自记录" /></span>
     <span>ACR / CATALOGUS / {new Date().getFullYear()}</span>
   </footer>
 </BaseLayout>
-
-<script>
-  import { initOrderToggle } from '../../scripts/order-toggle';
-  // astro:page-load 在整页加载与每次 VT 导航后触发;打包脚本只执行一次,靠事件驱动每次导航重新初始化
-  document.addEventListener('astro:page-load', () => initOrderToggle());
-</script>

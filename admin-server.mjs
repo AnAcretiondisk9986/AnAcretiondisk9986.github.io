@@ -16,6 +16,7 @@ const ORIGINAL_DIR = resolve(IMAGE_DIR, 'original');
 const IMG_BASE_URL = 'https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/';
 const GALLERY_JSON = resolve(__dirname, 'src', 'data', 'gallery.json');
 const ABOUT_JSON = resolve(__dirname, 'src', 'data', 'about.json');
+const FRONTEND_JSON = resolve(__dirname, 'src', 'data', 'frontend.json');
 const PORT = parseInt(process.env.PORT, 10) || 4322;
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || 'acr-admin';
 
@@ -81,6 +82,7 @@ async function readPosts() {
       slug,
       title: data.title || slug,
       description: data.description || '',
+      cover: data.cover || '',
       pubDate: safeDate(data.pubDate),
       tags: data.tags || [],
       draft: data.draft ?? false,
@@ -155,7 +157,7 @@ app.route('/api/posts')
   })
   .post(upload.none(), async (req, res) => {
     try {
-      const { title, description, pubDate, dayIndex, tags, content, draft } = req.body;
+      const { title, description, cover, pubDate, dayIndex, tags, content, draft } = req.body;
       const candidate = (req.body.slug
         || (title || '').toLowerCase().replace(/[^a-z0-9\u4e00-\u9fff]+/g, '-').replace(/^-|-$/g, '')
         || 'untitled');
@@ -174,6 +176,7 @@ app.route('/api/posts')
         `pubDate: ${yamlStr(finalPubDate)}`,
         `dayIndex: ${di ?? nextDayIndex(allPosts, finalPubDate)}`,
       ];
+      if (cover?.trim()) fm.push(`cover: ${yamlStr(cover.trim())}`);
       if (tagArray.length) {
         fm.push('tags:');
         tagArray.forEach(t => fm.push(`  - ${yamlStr(t)}`));
@@ -205,6 +208,7 @@ app.route('/api/posts/:slug')
         slug: checked.slug,
         title: data.title || '',
         description: data.description || '',
+        cover: data.cover || '',
         pubDate: safeDate(data.pubDate),
         dayIndex: data.dayIndex || undefined,
         tags: data.tags || [],
@@ -222,7 +226,7 @@ app.route('/api/posts/:slug')
       const oldChecked = validateSlug(req.params.slug);
       if (!oldChecked) return res.status(400).json({ error: '无效的 Slug' });
 
-      const { title, description, pubDate, dayIndex, tags, content, draft, slug: newSlug } = req.body;
+      const { title, description, cover, pubDate, dayIndex, tags, content, draft, slug: newSlug } = req.body;
       const finalSlug = newSlug || req.params.slug;
       const newChecked = validateSlug(finalSlug);
       if (!newChecked) return res.status(400).json({ error: '新 Slug 包含无效字符或路径非法' });
@@ -240,6 +244,7 @@ app.route('/api/posts/:slug')
         `pubDate: ${yamlStr(finalPubDate)}`,
         `dayIndex: ${di ?? nextDayIndex(others, finalPubDate)}`,
       ];
+      if (cover?.trim()) fm.push(`cover: ${yamlStr(cover.trim())}`);
       if (tagArray.length) {
         fm.push('tags:');
         tagArray.forEach(t => fm.push(`  - ${yamlStr(t)}`));
@@ -505,7 +510,7 @@ async function pushGitChanges({ stageCmd, commitMsg }) {
 app.post('/api/push', async (_req, res) => {
   try {
     const result = await pushGitChanges({
-      stageCmd: 'git add src/content/blog/ src/data/gallery.json src/data/about.json',
+      stageCmd: 'git add src/content/blog/ src/data/gallery.json src/data/about.json src/data/frontend.json',
       commitMsg: '通过管理面板更新博客',
     });
     // 顺带把图片仓库未推送的变更（如上次推送失败遗留）也推掉，不影响博客推送结果
@@ -826,6 +831,110 @@ app.route('/api/about')
     }
   });
 
+// ── Frontend customization API ──
+
+const FRONTEND_DEFAULTS = {
+  defaultVisualTheme: 'still',
+  siteName: 'Acretiondisk',
+  siteTagline: '记录想法与生活',
+  heroEyebrow: 'PERSONAL ARCHIVE · 2026',
+  heroTitleLine1: '在生活之中，',
+  heroTitleLine2: '留存我的观察。',
+  heroDescription: '医学、技术、艺术，以及日常生活里值得记住的片刻。',
+  primaryCtaLabel: '浏览文章',
+  primaryCtaHref: '/blog/',
+  stillHeroImage: 'https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/_DSC0217_1785663966034.webp',
+  stillHeroAlt: '云南夏日山野',
+  stillImagePosition: 'center',
+  fluidHeroImage: 'https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/a42a4e50333f93636b6bf41305ddfe88_1785630055301.webp',
+  fluidHeroAlt: '清晨跑步时拍下的城市风景',
+  fluidImagePosition: 'center',
+  displayFont: 'noto-serif',
+  stillAccent: '#c44136',
+  fluidPrimary: '#1f6955',
+  fluidSecondary: '#db5d4f',
+  stillGlassOpacity: 0.84,
+  fluidGlassOpacity: 0.8,
+  heroOverlayOpacity: 0.34,
+  glassBlur: 20,
+  cardRadius: 8,
+};
+
+const VISUAL_THEMES = new Set(['still', 'fluid', 'minimal', 'trace']);
+const IMAGE_POSITIONS = new Set(['center', 'center top', 'center bottom', 'left center', 'right center']);
+const DISPLAY_FONTS = new Set(['noto-serif', 'noto-sans', 'kaiti', 'songti', 'sans']);
+const HEX_COLOR_RE = /^#[0-9a-f]{6}$/i;
+
+async function readFrontend() {
+  try {
+    const raw = await readFile(FRONTEND_JSON, 'utf-8');
+    return { ...FRONTEND_DEFAULTS, ...JSON.parse(raw) };
+  } catch {
+    return { ...FRONTEND_DEFAULTS };
+  }
+}
+
+function cleanFrontendNumber(value, fallback, min, max) {
+  if (value == null || value === '') return fallback;
+  const number = Number(value);
+  if (!Number.isFinite(number)) return fallback;
+  return Math.min(max, Math.max(min, number));
+}
+
+app.route('/api/frontend')
+  .get(async (_req, res) => {
+    try {
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.json(await readFrontend());
+    } catch (err) {
+      console.error('Frontend API Error:', err.message);
+      res.status(500).json({ error: '服务器内部错误' });
+    }
+  })
+  .put(upload.none(), async (req, res) => {
+    try {
+      const prev = await readFrontend();
+      const body = req.body || {};
+      const strField = (key, max = 1000) => body[key] == null
+        ? prev[key]
+        : cleanAboutStr(body[key], max);
+      const enumField = (key, values) => values.has(body[key]) ? body[key] : prev[key];
+      const colorField = (key) => HEX_COLOR_RE.test(body[key] || '') ? body[key].toLowerCase() : prev[key];
+      const next = {
+        defaultVisualTheme: enumField('defaultVisualTheme', VISUAL_THEMES),
+        siteName: strField('siteName', 80),
+        siteTagline: strField('siteTagline', 120),
+        heroEyebrow: strField('heroEyebrow', 120),
+        heroTitleLine1: strField('heroTitleLine1', 80),
+        heroTitleLine2: strField('heroTitleLine2', 80),
+        heroDescription: strField('heroDescription', 300),
+        primaryCtaLabel: strField('primaryCtaLabel', 40),
+        primaryCtaHref: strField('primaryCtaHref', 1000),
+        stillHeroImage: strField('stillHeroImage', 2000),
+        stillHeroAlt: strField('stillHeroAlt', 200),
+        stillImagePosition: enumField('stillImagePosition', IMAGE_POSITIONS),
+        fluidHeroImage: strField('fluidHeroImage', 2000),
+        fluidHeroAlt: strField('fluidHeroAlt', 200),
+        fluidImagePosition: enumField('fluidImagePosition', IMAGE_POSITIONS),
+        displayFont: enumField('displayFont', DISPLAY_FONTS),
+        stillAccent: colorField('stillAccent'),
+        fluidPrimary: colorField('fluidPrimary'),
+        fluidSecondary: colorField('fluidSecondary'),
+        stillGlassOpacity: cleanFrontendNumber(body.stillGlassOpacity, prev.stillGlassOpacity, 0.72, 0.96),
+        fluidGlassOpacity: cleanFrontendNumber(body.fluidGlassOpacity, prev.fluidGlassOpacity, 0.72, 0.96),
+        heroOverlayOpacity: cleanFrontendNumber(body.heroOverlayOpacity, prev.heroOverlayOpacity, 0.18, 0.62),
+        glassBlur: cleanFrontendNumber(body.glassBlur, prev.glassBlur, 10, 32),
+        cardRadius: cleanFrontendNumber(body.cardRadius, prev.cardRadius, 2, 8),
+      };
+      await writeFile(FRONTEND_JSON, JSON.stringify(next, null, 2) + '\n', 'utf-8');
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.json({ success: true, frontend: next });
+    } catch (err) {
+      console.error('Frontend API Error:', err.message);
+      res.status(500).json({ error: '服务器内部错误' });
+    }
+  });
+
 // Static files from public/
 app.use(express.static(join(__dirname, 'public')));
 
@@ -839,15 +948,16 @@ app.listen(PORT, '127.0.0.1', () => {
   console.log(`\n📚 博客管理面板已启动: ${url}\n`);
   console.log(`   仅限本地使用 — 请勿暴露到公网\n`);
 
-  // Auto-open browser
-  const cmd = process.platform === 'win32'
-    ? `start "" "${url}"`
-    : process.platform === 'darwin'
-      ? `open "${url}"`
-      : `xdg-open "${url}"`;
-  exec(cmd, (err) => {
-    if (err) console.log('   请手动打开浏览器访问上述地址');
-  });
+  if (process.env.ADMIN_NO_OPEN !== '1') {
+    const cmd = process.platform === 'win32'
+      ? `start "" "${url}"`
+      : process.platform === 'darwin'
+        ? `open "${url}"`
+        : `xdg-open "${url}"`;
+    exec(cmd, (err) => {
+      if (err) console.log('   请手动打开浏览器访问上述地址');
+    });
+  }
 
   // 启动时自动比对本地与远端版本：有差异自动拉取同步，无差异忽略（不阻塞面板）
   autoSyncOnStart();
