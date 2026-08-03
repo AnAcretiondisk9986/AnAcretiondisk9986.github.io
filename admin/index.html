@@ -106,6 +106,7 @@
     .source-line-mark{position:absolute;left:0;right:18px;z-index:1;pointer-events:none;background:rgba(200,176,128,.22);border-radius:2px;opacity:0;transition:opacity 100ms ease}
     .source-line-mark.show{opacity:1}
     .markdown-preview .line-flash{background:rgba(200,176,128,.28);border-radius:2px}
+    .markdown-preview hr.line-flash{outline:2px solid rgba(200,176,128,.45);outline-offset:2px}
     .editor-body .markdown-preview{flex:1 1 0;min-width:0;overflow-y:auto;background:#151518;border:1px solid #2a2a30;border-left:none;padding:14px 16px;font-size:13px;line-height:1.7;border-radius:0 2px 2px 0;outline:none}
     .editor-body .markdown-preview:focus{box-shadow:inset 0 0 0 1px #5a5020}
     .editor-divider{flex:none;width:6px;cursor:col-resize;background:#1a1a1e;border-left:1px solid #2a2a30;border-right:1px solid #2a2a30;transition:background-color 150ms ease}
@@ -1213,13 +1214,13 @@
           i++;continue;
         }
         const vm=t.match(/^\u0000V(\d+)\u0000$/);
-        if(vm){html+='\u0000V'+vm[1]+'\u0000\n';i++;continue}
+        if(vm){html+='<div data-line="'+(startLine+i+1)+'">\u0000V'+vm[1]+'\u0000</div>\n';i++;continue}
         const km=t.match(/^\u0000K(\d+)\u0000$/);
-        if(km){html+='\u0000K'+km[1]+'\u0000\n';i++;continue}
+        if(km){html+='<div data-line="'+(startLine+i+1)+'">\u0000K'+km[1]+'\u0000</div>\n';i++;continue}
         const mm=t.match(/^\u0000M(\d+)\u0000$/);
-        if(mm){html+='\u0000M'+mm[1]+'\u0000\n';i++;continue}
+        if(mm){html+='<div data-line="'+(startLine+i+1)+'">\u0000M'+mm[1]+'\u0000</div>\n';i++;continue}
         const htm=t.match(/^\u0000H(\d+)\u0000$/);
-        if(htm){html+='\u0000H'+htm[1]+'\u0000\n';i++;continue}
+        if(htm){html+='<div data-line="'+(startLine+i+1)+'">\u0000H'+htm[1]+'\u0000</div>\n';i++;continue}
         const hm=t.match(/^(#{1,6})\s+(.*)$/);
         if(hm){html+='<h'+hm[1].length+' data-line="'+(startLine+i+1)+'">'+mdInline(hm[2])+'</h'+hm[1].length+'>\n';i++;continue}
         if(/^(-{3,}|\*{3,}|_{3,})\s*$/.test(t)){html+='<hr data-line="'+(startLine+i+1)+'">\n';i++;continue}
@@ -1251,7 +1252,7 @@
         const paraStart=i;const para=[t];i++;
         while(i<lines.length&&lines[i].trim()!==''){
           const nt=lines[i];
-          if(/^(#{1,6}\s|>|\u0000B\d+\u0000$|[-*+]\s|\d+[.)]\s|\|)/.test(nt)||/^(-{3,}|\*{3,}|_{3,})\s*$/.test(nt.trim()))break;
+          if(/^(#{1,6}\s|>|\u0000B\d+\u0000$|\u0000[VKMH]\d+\u0000$|[-*+]\s|\d+[.)]\s|\|)/.test(nt)||/^(-{3,}|\*{3,}|_{3,})\s*$/.test(nt.trim()))break;
           para.push(nt.trim());i++;
         }
         html+='<p data-line="'+(startLine+paraStart+1)+'">'+mdInline(para.join('\n'))+'</p>\n';
@@ -1265,6 +1266,7 @@
       let text=String(src||'');
       text=text.replace(/```(\w*)\n?([\s\S]*?)```/g,(m,lang,code)=>{blocks.push({lang,code});return '\u0000K'+(blocks.length-1)+'\u0000'});
       // 仅提取「闭合完整」的 iframe 块；未闭合的保持原样按文本转义显示，避免吞掉后续正文
+      // 注意：占位符后补回被提取块占用的行数（\n 重复），保证后续 data-line 行号不错位
       let rest=text, head='';
       while(true){
         const open=rest.search(/<iframe[\s>]/i);
@@ -1272,7 +1274,8 @@
         const close=rest.toLowerCase().indexOf('</iframe>',open);
         if(close===-1) break;
         videos.push(rest.slice(open,close+9));
-        head+=rest.slice(0,open)+'\u0000V'+(videos.length-1)+'\u0000';
+        const nl=(rest.slice(open,close+9).match(/\n/g)||[]).length;
+        head+=rest.slice(0,open)+'\u0000V'+(videos.length-1)+'\u0000'+'\n'.repeat(nl);
         rest=rest.slice(close+9);
       }
       text=head+rest;
@@ -1285,7 +1288,8 @@
         const close=rest.toLowerCase().indexOf('</div>',open);
         if(close===-1) break;
         songs.push(rest.slice(open,close+6));
-        head+=rest.slice(0,open)+'\u0000M'+(songs.length-1)+'\u0000';
+        const nl=(rest.slice(open,close+6).match(/\n/g)||[]).length;
+        head+=rest.slice(0,open)+'\u0000M'+(songs.length-1)+'\u0000'+'\n'.repeat(nl);
         rest=rest.slice(close+6);
       }
       text=head+rest;
@@ -1315,7 +1319,8 @@
           head+=rest.slice(0,open+1);rest=rest.slice(open+1);continue;
         }
         htmlTags.push(block);
-        head+=rest.slice(0,open)+'\u0000H'+(htmlTags.length-1)+'\u0000';
+        const nl=(block.match(/\n/g)||[]).length;
+        head+=rest.slice(0,open)+'\u0000H'+(htmlTags.length-1)+'\u0000'+'\n'.repeat(nl);
         rest=rest.slice(end);
       }
       text=head+rest;
@@ -1402,7 +1407,7 @@
 
     /* ── 渲染区可编辑：预览(contenteditable)改动经 turndown 转回 Markdown 写回源码区 ──
        同步时不重渲染预览，避免打断预览区编辑光标；源码区再次编辑时才重渲染覆盖预览 */
-    let previewEditing=false, mdSyncTimer=null;
+    let previewEditing=false, mdSyncTimer=null, taSyncing=false;
     function setupEditablePreview(){
       const pv=$('#fPreview'), ta=$('#fContent');
       if(!pv||!ta) return;
@@ -1421,6 +1426,9 @@
       const pv=$('#fPreview'), ta=$('#fContent');
       if(!pv||!ta||!pv.isConnected) return;
       try{
+        // 转 Markdown 前清理定位辅助（data-line / 临时高亮），避免污染源码
+        pv.querySelectorAll('[data-line]').forEach(el=>el.removeAttribute('data-line'));
+        pv.querySelectorAll('.line-flash').forEach(el=>el.classList.remove('line-flash'));
         if(!window.__mdTurndown){
           const td=new TurndownService({headingStyle:'atx',bulletListMarker:'-',codeBlockStyle:'fenced',hr:'---'});
           // keep:无 Markdown 等价物、须保留原 HTML 的标签(变色/居中/下划线/高亮/iframe/删除线等)
@@ -1477,12 +1485,13 @@
         const {lineH,padTop}=metrics();
         ta.scrollTop=Math.max(0,(line-1)*lineH+padTop-ta.clientHeight/2);
       };
-      // 预览滚动到对应元素水平居中（scrollIntoView 触发 scroll 事件，用标志防回环）
+      // 预览滚动到对应元素水平居中（手动计算，避免 scrollIntoView 连带滚动外层页面；pvSyncing 防回环）
       const alignPreviewToLine=(line)=>{
         const el=nearestEl(line);
         if(!el) return;
         pvSyncing=true;
-        el.scrollIntoView({block:'center'});
+        const rel=el.getBoundingClientRect().top-pv.getBoundingClientRect().top;
+        pv.scrollTop=pv.scrollTop+rel-pv.clientHeight/2+el.offsetHeight/2;
         requestAnimationFrame(()=>{pvSyncing=false});
       };
       // 点击渲染区 → 源码对应行高亮 + 对齐
@@ -1495,18 +1504,22 @@
           flashSourceLine(line);
         }
       });
-      // 点击/按键源码 → 预览对应行高亮 + 对齐
+      // 点击/按键源码 → 预览对应行高亮 + 对齐（300ms 内抑制随后的比例滚动跟随，避免覆盖居中结果）
+      let suppressScrollSync=0;
       const onSrcActive=()=>{
         const line=caretLine();
+        suppressScrollSync=Date.now()+300;
         alignPreviewToLine(line);
         flashPreviewLine(line);
       };
       ta.addEventListener('click',onSrcActive);
       ta.addEventListener('keyup',onSrcActive);
-      // 滚动跟随（比例映射）
+      // 滚动跟随（比例映射）：源码滚动 → 预览按可视顶部行比例滚动；预览滚动 → 源码按比例滚动
       const syncSrcToPv=()=>{
+        const {lineH}=metrics();
+        const line=Math.floor(ta.scrollTop/lineH)+1;
         const total=(ta.value.match(/\n/g)||[]).length+1;
-        const ratio=Math.min(1,caretLine()/Math.max(1,total));
+        const ratio=Math.min(1,line/Math.max(1,total));
         pvSyncing=true;
         pv.scrollTop=ratio*(pv.scrollHeight-pv.clientHeight);
         requestAnimationFrame(()=>{pvSyncing=false});
@@ -1514,9 +1527,12 @@
       const syncPvToSrc=()=>{
         const max=pv.scrollHeight-pv.clientHeight;
         const ratio=max>0?pv.scrollTop/max:0;
+        taSyncing=true;
         ta.scrollTop=ratio*(ta.scrollHeight-ta.clientHeight);
+        requestAnimationFrame(()=>{taSyncing=false});
       };
-      let st=null;
+      let t=null,st=null;
+      ta.addEventListener('scroll',()=>{if(taSyncing||Date.now()<suppressScrollSync)return;clearTimeout(t);t=setTimeout(syncSrcToPv,60)});
       pv.addEventListener('scroll',()=>{if(pvSyncing)return;clearTimeout(st);st=setTimeout(syncPvToSrc,80)});
     }
 
