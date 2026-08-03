@@ -343,7 +343,9 @@ async function extractAudioMeta(filePath) {
       out.coverUrl = `${IMG_BASE_URL}${coverName}`;
     }
     return out;
-  } catch {
+  } catch (e) {
+    // 解析失败不阻断上传；打印原因便于排查（如非标准编码标签）
+    console.error('Audio meta parse failed:', filePath, e.message);
     return { title: '', artist: '', coverUrl: '' };
   }
 }
