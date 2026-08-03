@@ -348,35 +348,21 @@
     rgba(7, 22, 17, var(--liquid-overlay));
 }
 
-/* 页头背景:非首页各页页头(catalog/gallery/dossier/guestbook)与首页 hero 共用同一背景图
-   (同一 frontend.json 数据源,改图全站同步);仅 Liquid 主题显示;
-   scrim 遮罩较强(0.58 / 暗色 0.74)保证页头深色标题在背景图上的可读性 */
-.page-hero-media {
+/* 全站背景:非首页页面与首页 hero 共用同一背景图(同一 frontend.json 数据源,改图全站同步);
+   fixed + z-index:-1 置于纸纹层之下(纸张颗粒感保留),仅 Liquid 主题显示,首页由 hero 自备背景故隐藏 */
+.page-bg {
   display: none;
 }
 
-:root[data-visual-theme='still'] .page-hero-media,
-:root[data-visual-theme='fluid'] .page-hero-media {
-  position: absolute;
-  z-index: 0;
+:root[data-visual-theme='still'] body:not(.is-home) .page-bg,
+:root[data-visual-theme='fluid'] body:not(.is-home) .page-bg {
+  position: fixed;
+  z-index: -1;
   inset: 0;
   display: block;
 }
 
-:root[data-visual-theme='still'] .catalog-header,
-:root[data-visual-theme='fluid'] .catalog-header,
-:root[data-visual-theme='still'] .gallery-header,
-:root[data-visual-theme='fluid'] .gallery-header,
-:root[data-visual-theme='still'] .guestbook-header,
-:root[data-visual-theme='fluid'] .guestbook-header,
-:root[data-visual-theme='still'] .dossier-header,
-:root[data-visual-theme='fluid'] .dossier-header {
-  position: relative;
-  overflow: hidden;
-}
-
-:root[data-visual-theme='still'] .page-hero-image,
-:root[data-visual-theme='fluid'] .page-hero-image {
+.page-bg-image {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -384,38 +370,21 @@
   object-fit: cover;
 }
 
-:root[data-visual-theme='still'] .page-hero-image--fluid,
-:root[data-visual-theme='fluid'] .page-hero-image--still {
+:root[data-visual-theme='still'] .page-bg-image--fluid,
+:root[data-visual-theme='fluid'] .page-bg-image--still {
   display: none;
 }
 
-.page-hero-scrim {
+.page-bg-scrim {
   position: absolute;
   inset: 0;
-  background: rgba(4, 12, 10, 0.58);
+  background: rgba(4, 12, 10, var(--liquid-overlay));
 }
 
-:root[data-theme='dark'] .page-hero-scrim {
-  background: rgba(4, 12, 10, 0.74);
-}
-
-:root[data-visual-theme='fluid'] .page-hero-scrim {
+:root[data-visual-theme='fluid'] .page-bg-scrim {
   background:
-    linear-gradient(90deg, rgba(7, 22, 17, 0.66), rgba(7, 22, 17, 0.4)),
-    rgba(7, 22, 17, 0.55);
-}
-
-:root[data-theme='dark']:root[data-visual-theme='fluid'] .page-hero-scrim {
-  background:
-    linear-gradient(90deg, rgba(7, 22, 17, 0.8), rgba(7, 22, 17, 0.55)),
-    rgba(7, 22, 17, 0.72);
-}
-
-/* 页头内容置于背景层之上 */
-:root[data-visual-theme='still'] :is(.catalog-header, .gallery-header, .guestbook-header, .dossier-header) > :not(.page-hero-media),
-:root[data-visual-theme='fluid'] :is(.catalog-header, .gallery-header, .guestbook-header, .dossier-header) > :not(.page-hero-media) {
-  position: relative;
-  z-index: 1;
+    linear-gradient(90deg, rgba(7, 22, 17, calc(var(--liquid-overlay) + 0.09)), rgba(7, 22, 17, calc(var(--liquid-overlay) * 0.62))),
+    rgba(7, 22, 17, var(--liquid-overlay));
 }
 
 :root[data-visual-theme='still'] .hero-copy-panel,
