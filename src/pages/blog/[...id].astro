@@ -2,6 +2,7 @@
 import { getCollection, render, type CollectionEntry } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import PostComments from '../../components/PostComments.astro';
+import ThemeCopy from '../../components/ThemeCopy.astro';
 import WordCloud from '../../components/WordCloud.astro';
 import { buildWordCloud } from '../../lib/wordcloud';
 
@@ -44,29 +45,29 @@ const printUrl = JSON.stringify(
 <BaseLayout title={post.data.title} description={post.data.description}>
   <div class="article-shell">
     <aside class="article-margin">
-      <a class="back-link" href="/blog/">← 返回卷册目录</a>
+      <a class="back-link" href="/blog/">← <ThemeCopy minimal="返回文章" trace="返回卷册目录" /></a>
       <button class="print-action" type="button" onclick="window.print()">
         <span aria-hidden="true">⤓</span> 导出 PDF
       </button>
       <dl>
-        <div><dt>条目编号</dt><dd>{folioCode}</dd></div>
-        <div><dt>分类标签</dt><dd>{post.data.tags.join(' / ') || '未分类'}</dd></div>
-        <div><dt>记录者</dt><dd>Acretiondisk</dd></div>
-        <div><dt>状态</dt><dd>公开阅览</dd></div>
+        <div><dt><ThemeCopy minimal="文章编号" trace="条目编号" /></dt><dd>{folioCode}</dd></div>
+        <div><dt><ThemeCopy minimal="标签" trace="分类标签" /></dt><dd>{post.data.tags.join(' / ') || '未分类'}</dd></div>
+        <div><dt><ThemeCopy minimal="作者" trace="记录者" /></dt><dd>Acretiondisk</dd></div>
+        <div><dt>状态</dt><dd><ThemeCopy minimal="公开" trace="公开阅览" /></dd></div>
         <div id="busuanzi_container_page_pv" hidden>
-          <dt>阅览次数</dt>
+          <dt><ThemeCopy minimal="阅读次数" trace="阅览次数" /></dt>
           <dd><span id="busuanzi_value_page_pv">—</span></dd>
         </div>
       </dl>
-      <WordCloud words={articleWords} compact title="本篇关键词" />
-      <p class="margin-note">原始观察记录。文字与观点会随认知更新而修订。</p>
+      <WordCloud words={articleWords} compact title="关键词" traceTitle="本篇关键词" />
+      <p class="margin-note"><ThemeCopy minimal="文字与观点会随认知更新。" trace="原始观察记录。文字与观点会随认知更新而修订。" /></p>
     </aside>
 
     <article class="article">
       <header class="article-header">
         <div class="article-register">
-          <span>FOLIO {folioCode}</span>
-          <span>ARCHIVUM PERSONAE</span>
+          <span><ThemeCopy minimal={`ARTICLE ${folioCode}`} trace={`FOLIO ${folioCode}`} /></span>
+          <span><ThemeCopy minimal="ACRETIONDISK" trace="ARCHIVUM PERSONAE" /></span>
         </div>
         <h1>{post.data.title}</h1>
         <p class="article-deck">{post.data.description}</p>
@@ -89,8 +90,8 @@ const printUrl = JSON.stringify(
       </div>
 
       <footer class="article-endmark">
-        <span>FINIS</span>
-        <p>本条目至此结束</p>
+        <span><ThemeCopy minimal="读完了" trace="FINIS" /></span>
+        <p><ThemeCopy minimal="文章到这里结束" trace="本条目至此结束" /></p>
       </footer>
 
       <PostComments />

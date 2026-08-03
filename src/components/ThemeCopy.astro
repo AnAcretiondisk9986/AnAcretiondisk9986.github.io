@@ -1,0 +1,10 @@
+---
+interface Props {
+  minimal?: string;
+  trace?: string;
+}
+
+const { minimal = '', trace = '' } = Astro.props;
+---
+
+<span class="theme-copy" data-theme-copy><span data-theme-copy-minimal><slot name="minimal">{minimal}</slot></span><span data-theme-copy-trace><slot name="trace">{trace}</slot></span></span>

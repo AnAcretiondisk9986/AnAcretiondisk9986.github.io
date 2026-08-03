@@ -3,6 +3,7 @@ import { getCollection } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import ArchiveSeal from '../components/ArchiveSeal.astro';
 import SpecimenPlate from '../components/SpecimenPlate.astro';
+import ThemeCopy from '../components/ThemeCopy.astro';
 
 const posts = (await getCollection('blog', ({ data }) => !data.draft))
   .sort((a, b) =>
@@ -26,27 +27,28 @@ const dayKeyOf = (post: (typeof posts)[number]) => post.data.pubDate.toISOString
         <span>VOL. I · MMXXVI</span>
       </div>
 
-      <p class="eyebrow">一份仍在书写的私人行记</p>
+      <p class="eyebrow"><ThemeCopy minimal="个人博客" trace="一份仍在书写的私人行记" /></p>
       <h1>
-        <span>在生活之中，</span>
-        <em>留存我的观察。</em>
+        <ThemeCopy minimal="Acretiondisk">
+          <Fragment slot="trace"><span>在生活之中，</span><em>留存我的观察。</em></Fragment>
+        </ThemeCopy>
       </h1>
       <p class="hero-copy">
-        记录我个人生活中的想法与成果。
+        <ThemeCopy minimal="记录想法、作品与生活。" trace="记录我个人生活中的想法与成果。" />
       </p>
 
       <div class="hero-actions">
         <a class="primary-link" href="/blog/">
-          <span>展开卷册</span>
+          <span><ThemeCopy minimal="浏览文章" trace="展开卷册" /></span>
           <span aria-hidden="true">→</span>
         </a>
-        <a class="text-link" href="/about/">阅览编目者档案</a>
+        <a class="text-link" href="/about/"><ThemeCopy minimal="了解我" trace="阅览编目者档案" /></a>
       </div>
 
       <dl class="hero-register">
-        <div><dt>编目范围</dt><dd>医学 / 技术 / 艺术</dd></div>
-        <div><dt>记录状态</dt><dd>持续更新</dd></div>
-        <div><dt>馆藏编号</dt><dd>ACR—001</dd></div>
+        <div><dt><ThemeCopy minimal="内容" trace="编目范围" /></dt><dd>医学 / 技术 / 艺术</dd></div>
+        <div><dt><ThemeCopy minimal="状态" trace="记录状态" /></dt><dd>持续更新</dd></div>
+        <div><dt><ThemeCopy minimal="站点编号" trace="馆藏编号" /></dt><dd>ACR—001</dd></div>
       </dl>
     </div>
 
@@ -60,11 +62,11 @@ const dayKeyOf = (post: (typeof posts)[number]) => post.data.pubDate.toISOString
     <div class="section-heading codex-heading">
       <div>
         <p class="eyebrow">RECENT FOLIOS</p>
-        <h2>近期入藏</h2>
+        <h2><ThemeCopy minimal="最新文章" trace="近期入藏" /></h2>
       </div>
       <div class="heading-note">
-        <span>{String(posts.length).padStart(2, '0')} 件记录</span>
-        <a href="/blog/">完整目录 →</a>
+        <span>{String(posts.length).padStart(2, '0')} <ThemeCopy minimal="篇文章" trace="件记录" /></span>
+        <a href="/blog/"><ThemeCopy minimal="查看全部" trace="完整目录" /> →</a>
       </div>
     </div>
 
@@ -87,7 +89,7 @@ const dayKeyOf = (post: (typeof posts)[number]) => post.data.pubDate.toISOString
       {posts.map((post, index) => (
         <article class="archive-entry" data-order-card data-order-date={post.data.pubDate.toISOString().slice(0, 10)} data-order-day-index={post.data.dayIndex ?? 0} data-order-position={index}>
           <div class="entry-number">
-            <span>FOLIO</span>
+            <span><ThemeCopy minimal="文章" trace="FOLIO" /></span>
             <b data-order-sequence data-order-pad="3">{String(index + 1).padStart(3, '0')}</b>
           </div>
           <div class="entry-main">
@@ -109,7 +111,7 @@ const dayKeyOf = (post: (typeof posts)[number]) => post.data.pubDate.toISOString
 
   <section class="index-coda">
     <ArchiveSeal class="coda-seal" />
-    <blockquote>“记录并非为了留住一切，而是为了在时间中辨认自己。”</blockquote>
+    <blockquote><ThemeCopy minimal="“写下来，是为了更清楚地看见自己。”" trace="“记录并非为了留住一切，而是为了在时间中辨认自己。”" /></blockquote>
     <p>FINIS PAGINAE · INITIUM SEQUENTIS</p>
   </section>
 </BaseLayout>

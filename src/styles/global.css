@@ -248,7 +248,7 @@ main {
   cursor: pointer;
 }
 
-.site-header nav a span {
+.site-header nav a .nav-index {
   color: var(--red);
   font-family: var(--latin);
   font-size: 0.62rem;

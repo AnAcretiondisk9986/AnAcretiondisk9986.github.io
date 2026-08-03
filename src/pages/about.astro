@@ -1,6 +1,7 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import ArchiveSeal from '../components/ArchiveSeal.astro';
+import ThemeCopy from '../components/ThemeCopy.astro';
 import about from '../data/about.json';
 
 // 头像已是图片仓库的 jsDelivr 外链，直接引用
@@ -38,6 +39,24 @@ function linkify(text = '') {
       </div>
       <ArchiveSeal class="dossier-seal" />
     </header>
+
+    <section class="appearance-settings" aria-labelledby="appearance-heading">
+      <div class="appearance-heading">
+        <p class="eyebrow">APPEARANCE</p>
+        <h2 id="appearance-heading"><ThemeCopy minimal="外观" trace="界面主题" /></h2>
+      </div>
+      <div class="appearance-selector" role="group" aria-label="界面主题">
+        <button type="button" data-visual-theme-option="minimal" aria-pressed="false">
+          <span class="appearance-swatch appearance-swatch--minimal" aria-hidden="true"></span>
+          <span>留白</span>
+        </button>
+        <button type="button" data-visual-theme-option="trace" aria-pressed="false">
+          <span class="appearance-swatch appearance-swatch--trace" aria-hidden="true"></span>
+          <span>行迹</span>
+        </button>
+      </div>
+      <span class="sr-only" data-visual-theme-status aria-live="polite"></span>
+    </section>
 
     <div class="dossier-grid">
       <section class="portrait-record">
@@ -82,3 +101,48 @@ function linkify(text = '') {
     </div>
   </article>
 </BaseLayout>
+
+<script>
+  type VisualTheme = 'minimal' | 'trace';
+
+  const initializedThemeButtons = new WeakSet<HTMLButtonElement>();
+
+  function initVisualThemePicker() {
+    const buttons = [...document.querySelectorAll<HTMLButtonElement>('[data-visual-theme-option]')];
+    const status = document.querySelector<HTMLElement>('[data-visual-theme-status]');
+    if (buttons.length === 0) return;
+
+    const sync = (theme: VisualTheme) => {
+      buttons.forEach((button) => {
+        button.setAttribute('aria-pressed', String(button.dataset.visualThemeOption === theme));
+      });
+      if (status) status.textContent = `已切换为${theme === 'minimal' ? '留白' : '行迹'}主题`;
+    };
+
+    const current = document.documentElement.dataset.visualTheme === 'trace' ? 'trace' : 'minimal';
+    sync(current);
+
+    buttons.forEach((button) => {
+      if (initializedThemeButtons.has(button)) return;
+      initializedThemeButtons.add(button);
+      button.addEventListener('click', () => {
+        const theme: VisualTheme = button.dataset.visualThemeOption === 'trace' ? 'trace' : 'minimal';
+        if (document.documentElement.dataset.visualTheme === theme) return;
+
+        const apply = () => {
+          document.documentElement.dataset.visualTheme = theme;
+          localStorage.setItem('visual-theme', theme);
+          sync(theme);
+        };
+
+        if (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          document.startViewTransition(apply);
+        } else {
+          apply();
+        }
+      });
+    });
+  }
+
+  document.addEventListener('astro:page-load', initVisualThemePicker);
+</script>

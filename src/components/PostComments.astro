@@ -1,4 +1,6 @@
 ---
+import ThemeCopy from './ThemeCopy.astro';
+
 // 文章底部评论（Waline 评论服务，与留言页同一后端）。
 // path 取当前文章 URL；评论服务在部分网络环境（如大陆直连）不可达时，
 // 按用户要求直接显示「当前地区暂不支持」提示，不阻塞正文阅读。
@@ -6,7 +8,7 @@
 
 <section class="post-comments" aria-label="文章评论">
   <header class="pc-index-bar">
-    <span>COMMENTS IN THE MARGIN</span>
+    <span><ThemeCopy minimal="评论" trace="COMMENTS IN THE MARGIN" /></span>
     <span data-pc-count>— ITEMS</span>
   </header>
 
@@ -29,7 +31,7 @@
         data-pc-text
       ></textarea>
       <div class="pc-compose-bar">
-        <span class="pc-hint">仅文字 · 不能附加图片 · 发送后标注 IP 属地</span>
+        <span class="pc-hint"><ThemeCopy minimal="仅文字 · 最多 300 字 · 显示 IP 属地" trace="仅文字 · 不能附加图片 · 发送后标注 IP 属地" /></span>
         <span class="pc-count" data-pc-count-text>0 / 300</span>
         <button class="pc-submit" type="button" data-pc-submit>发送</button>
       </div>
@@ -48,6 +50,9 @@
   const STORAGE_NICK = 'guestbook-nick';
   const DEFAULT_SERVER = 'https://comment-sys-ashen.vercel.app';
 
+  const themeText = (minimal: string, trace: string) =>
+    document.documentElement.dataset.visualTheme === 'trace' ? trace : minimal;
+
   const PAGE_PATH = location.pathname;
 
   const avatarEl = document.querySelector<HTMLElement>('[data-pc-avatar]');
@@ -57,6 +62,10 @@
   const submitBtn = document.querySelector<HTMLButtonElement>('[data-pc-submit]');
   const listEl = document.querySelector<HTMLElement>('[data-pc-list]');
   const countEl = document.querySelector<HTMLElement>('[data-pc-count]');
+
+  if (nickInput) nickInput.placeholder = themeText('你的称呼（可选）', '你的称呼（可编辑，留空则为匿名访客）');
+  if (textarea) textarea.placeholder = themeText('写下评论…', '在条目边缘写下批注……');
+  if (submitBtn) submitBtn.textContent = themeText('发布', '发送');
 
   let serverURL = localStorage.getItem(STORAGE_SERVER) || DEFAULT_SERVER;
   const urlParam = new URLSearchParams(location.search).get('server');
@@ -189,15 +198,15 @@
     if (kind === 'loading') {
       const p = document.createElement('p');
       p.className = 'pc-status';
-      p.textContent = '正在翻查评论……';
+      p.textContent = themeText('正在加载评论…', '正在翻查评论……');
       listEl.append(p);
     } else if (kind === 'error') {
       const div = document.createElement('div');
       div.className = 'pc-error';
       const strong = document.createElement('strong');
-      strong.textContent = '当前地区暂不支持评论';
+      strong.textContent = themeText('当前网络暂不支持评论', '当前地区暂不支持评论');
       const p = document.createElement('p');
-      p.textContent = '无法连接评论服务，可能受网络环境限制。此处的讨论功能不受影响阅读本条目。';
+      p.textContent = themeText('无法连接评论服务，但不影响阅读文章。', '无法连接评论服务，可能受网络环境限制。此处的讨论功能不受影响阅读本条目。');
       div.append(strong, p);
       if (detail) {
         const code = document.createElement('code');
@@ -209,9 +218,9 @@
       const div = document.createElement('div');
       div.className = 'pc-empty';
       const strong = document.createElement('strong');
-      strong.textContent = '暂无评论';
+      strong.textContent = themeText('还没有评论', '暂无评论');
       const span = document.createElement('span');
-      span.textContent = '在条目边缘留下第一笔批注。';
+      span.textContent = themeText('欢迎留下第一条。', '在条目边缘留下第一笔批注。');
       div.append(strong, span);
       listEl.append(div);
     }
@@ -258,7 +267,7 @@
 
   function renderComments() {
     if (!listEl || !countEl) return;
-    countEl.textContent = `${String(totalCount).padStart(2, '0')} ITEMS`;
+    countEl.textContent = themeText(`${totalCount} 条`, `${String(totalCount).padStart(2, '0')} ITEMS`);
     if (loadedComments.length === 0) {
       setStatus('empty');
       return;
@@ -274,7 +283,7 @@
       const more = document.createElement('button');
       more.type = 'button';
       more.className = 'pc-more';
-      more.textContent = '加载更多评论';
+      more.textContent = themeText('加载更多', '继续翻查评论');
       more.addEventListener('click', () => {
         page += 1;
         loadComments(false);
@@ -298,7 +307,7 @@
     const nick = nickInput?.value.trim() || '匿名访客';
     const content = textarea?.value.trim() || '';
     if (!content) {
-      if (countText) countText.textContent = '还没有写下内容';
+      if (countText) countText.textContent = themeText('请输入评论', '还没有写下内容');
       textarea?.focus();
       return;
     }
@@ -307,7 +316,7 @@
       return;
     }
     submitBtn.disabled = true;
-    submitBtn.textContent = '发送中…';
+    submitBtn.textContent = themeText('发布中…', '发送中…');
     try {
       const res = await fetchWithTimeout(`${serverURL}/api/comment`, {
         method: 'POST',
@@ -332,7 +341,7 @@
       setStatus('error', detail);
     } finally {
       submitBtn.disabled = false;
-      submitBtn.textContent = '发送';
+      submitBtn.textContent = themeText('发布', '发送');
     }
   });
 

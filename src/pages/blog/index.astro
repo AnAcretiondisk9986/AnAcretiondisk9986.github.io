@@ -3,6 +3,7 @@ import { getCollection } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ArchiveSeal from '../../components/ArchiveSeal.astro';
 import WordCloud from '../../components/WordCloud.astro';
+import ThemeCopy from '../../components/ThemeCopy.astro';
 import { buildWordCloud } from '../../lib/wordcloud';
 
 const posts = (await getCollection('blog', ({ data }) => !data.draft))
@@ -28,20 +29,20 @@ const cloudWords = buildWordCloud(
   <header class="catalog-header">
     <div class="catalog-title">
       <p class="eyebrow">CATALOGUS SCRIPTORUM</p>
-      <h1>卷册目录</h1>
-      <p>技术、医学、艺术，以及生活里值得被编目的细节。</p>
+      <h1><ThemeCopy minimal="全部文章" trace="卷册目录" /></h1>
+      <p><ThemeCopy minimal="技术、医学、艺术，以及日常生活中的记录。" trace="技术、医学、艺术，以及生活里值得被编目的细节。" /></p>
     </div>
     <div class="catalog-mark">
       <ArchiveSeal />
       <dl>
-        <div><dt>馆藏总数</dt><dd>{String(posts.length).padStart(3, '0')}</dd></div>
-        <div><dt>卷册状态</dt><dd>开放编目</dd></div>
+        <div><dt><ThemeCopy minimal="文章总数" trace="馆藏总数" /></dt><dd>{String(posts.length).padStart(3, '0')}</dd></div>
+        <div><dt><ThemeCopy minimal="更新状态" trace="卷册状态" /></dt><dd><ThemeCopy minimal="持续更新" trace="开放编目" /></dd></div>
         <div><dt>排序规则</dt><dd data-order-text>由新至旧</dd></div>
       </dl>
     </div>
   </header>
 
-  <WordCloud words={cloudWords} />
+  <WordCloud words={cloudWords} title="关键词" traceTitle="关键词索引" />
 
   <div class="gallery-order-bar" aria-label="文章展示顺序">
     <div class="gallery-order-label">
@@ -67,7 +68,7 @@ const cloudWords = buildWordCloud(
       <article class="catalog-entry" data-order-card data-order-date={post.data.pubDate.toISOString().slice(0, 10)} data-order-day-index={post.data.dayIndex ?? 0} data-order-position={index}>
         <div class="catalog-index">
           <span data-order-sequence data-order-pad="2">{String(index + 1).padStart(2, '0')}</span>
-          <small>FOLIO</small>
+          <small><ThemeCopy minimal="文章" trace="FOLIO" /></small>
         </div>
         <div class="catalog-content">
           <h2><a href={`/blog/${post.id}/`}>{post.data.title}</a></h2>
@@ -85,13 +86,13 @@ const cloudWords = buildWordCloud(
             <span class="catalog-day-index">DAY {String(post.data.dayIndex ?? 0).padStart(2, '0')}</span>
           )}
         </time>
-        <a class="catalog-open" href={`/blog/${post.id}/`} aria-label={`打开《${post.data.title}》`}>打开<br />记录 ↗</a>
+        <a class="catalog-open" href={`/blog/${post.id}/`} aria-label={`阅读《${post.data.title}》`}><ThemeCopy minimal="阅读" trace="打开记录" /> ↗</a>
       </article>
     ))}
   </div>
 
   <footer class="catalog-footer">
-    <span>所有条目均由编目者亲自记录</span>
+    <span><ThemeCopy minimal="所有文章均由我本人记录" trace="所有条目均由编目者亲自记录" /></span>
     <span>ACR / CATALOGUS / {new Date().getFullYear()}</span>
   </footer>
 </BaseLayout>

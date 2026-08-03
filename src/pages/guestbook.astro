@@ -1,6 +1,7 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import ArchiveSeal from '../components/ArchiveSeal.astro';
+import ThemeCopy from '../components/ThemeCopy.astro';
 ---
 
 <BaseLayout title="留言" description="在 Acretiondisk 的卷末留下批注。">
@@ -12,14 +13,18 @@ import ArchiveSeal from '../components/ArchiveSeal.astro';
           <span>VOL. I · MMXXVI</span>
         </div>
         <p class="eyebrow">MARGINALIA OF THE CODEX</p>
-        <h1>卷末<br /><em>留言</em></h1>
-        <p class="guestbook-intro">在编目册的空白处，留下你的批注。仅文字，上限三百字，发送后展示 IP 属地。</p>
+        <h1>
+          <ThemeCopy minimal="留言">
+            <Fragment slot="trace">卷末<br /><em>留言</em></Fragment>
+          </ThemeCopy>
+        </h1>
+        <p class="guestbook-intro"><ThemeCopy minimal="写下想说的话。仅支持文字，最多 300 字，发布后显示 IP 属地。" trace="在编目册的空白处，留下你的批注。仅文字，上限三百字，发送后展示 IP 属地。" /></p>
       </div>
       <div class="guestbook-header-mark">
         <ArchiveSeal />
         <dl>
           <div><dt>留言总数</dt><dd data-guestbook-count>—</dd></div>
-          <div><dt>单条上限</dt><dd>300 字</dd></div>
+          <div><dt><ThemeCopy minimal="字数上限" trace="单条上限" /></dt><dd>300 字</dd></div>
           <div><dt>属地标注</dt><dd>省 / 国家</dd></div>
         </dl>
       </div>
@@ -44,7 +49,7 @@ import ArchiveSeal from '../components/ArchiveSeal.astro';
           data-guestbook-text
         ></textarea>
         <div class="guestbook-compose-bar">
-          <span class="guestbook-hint">仅文字 · 不能附加图片 · 发送后标注 IP 属地</span>
+          <span class="guestbook-hint"><ThemeCopy minimal="仅文字 · 最多 300 字 · 显示 IP 属地" trace="仅文字 · 不能附加图片 · 发送后标注 IP 属地" /></span>
           <span class="guestbook-count" data-guestbook-count-text>0 / 300</span>
           <button class="guestbook-submit" type="button" data-guestbook-submit>发送</button>
         </div>
@@ -53,14 +58,14 @@ import ArchiveSeal from '../components/ArchiveSeal.astro';
 
     <section class="guestbook-section" aria-label="留言列表">
       <div class="guestbook-index-bar">
-        <span>COMMENTS IN THE MARGIN</span>
+        <span><ThemeCopy minimal="全部留言" trace="COMMENTS IN THE MARGIN" /></span>
         <span data-guestbook-index>— ITEMS</span>
       </div>
       <div class="guestbook-list" data-guestbook-list></div>
     </section>
 
     <footer class="guestbook-footer">
-      <span>EPISTULAE / NOTED WITH IP REGION</span>
+      <span><ThemeCopy minimal="留言将显示 IP 属地" trace="EPISTULAE / NOTED WITH IP REGION" /></span>
       <span>{new Date().getFullYear()} · ACR—GUESTBOOK</span>
     </footer>
   </div>
@@ -75,6 +80,9 @@ import ArchiveSeal from '../components/ArchiveSeal.astro';
   const STORAGE_NICK = 'guestbook-nick';
   const DEFAULT_SERVER = 'https://comment-sys-ashen.vercel.app';
 
+  const themeText = (minimal: string, trace: string) =>
+    document.documentElement.dataset.visualTheme === 'trace' ? trace : minimal;
+
   const avatarEl = document.querySelector<HTMLElement>('[data-guestbook-avatar]');
   const nickInput = document.querySelector<HTMLInputElement>('[data-guestbook-nick]');
   const textarea = document.querySelector<HTMLTextAreaElement>('[data-guestbook-text]');
@@ -83,6 +91,10 @@ import ArchiveSeal from '../components/ArchiveSeal.astro';
   const listEl = document.querySelector<HTMLElement>('[data-guestbook-list]');
   const countEl = document.querySelector<HTMLElement>('[data-guestbook-count]');
   const indexEl = document.querySelector<HTMLElement>('[data-guestbook-index]');
+
+  if (nickInput) nickInput.placeholder = themeText('你的称呼（可选）', '你的称呼（可编辑，留空则为匿名访客）');
+  if (textarea) textarea.placeholder = themeText('写下留言…', '在页边写下批注……');
+  if (submitBtn) submitBtn.textContent = themeText('发布', '发送');
 
   let serverURL = localStorage.getItem(STORAGE_SERVER) || DEFAULT_SERVER;
   const urlParam = new URLSearchParams(location.search).get('server');
@@ -202,13 +214,13 @@ import ArchiveSeal from '../components/ArchiveSeal.astro';
     if (kind === 'loading') {
       const p = document.createElement('p');
       p.className = 'guestbook-status';
-      p.textContent = '正在翻查留言册……';
+      p.textContent = themeText('正在加载留言…', '正在翻查留言册……');
       listEl.append(p);
     } else if (kind === 'unconfigured') {
       const div = document.createElement('div');
       div.className = 'guestbook-unconfigured';
       const strong = document.createElement('strong');
-      strong.textContent = '留言服务尚未连接';
+      strong.textContent = themeText('留言服务未连接', '留言服务尚未连接');
       const p = document.createElement('p');
       p.textContent = '本地预览：在地址栏加 ?server=http://127.0.0.1:8765 后刷新页面（需先运行 node scripts/mock-waline.mjs）。线上请按 docs/WALINE_DEPLOY.md 部署 Waline 后配置。';
       const code = document.createElement('code');
@@ -218,15 +230,15 @@ import ArchiveSeal from '../components/ArchiveSeal.astro';
     } else if (kind === 'error') {
       const p = document.createElement('p');
       p.className = 'guestbook-status';
-      p.textContent = `留言加载失败：${detail}。可尝试用 ?server= 指定服务地址。`;
+      p.textContent = themeText(`加载失败：${detail}。`, `留言加载失败：${detail}。可尝试用 ?server= 指定服务地址。`);
       listEl.append(p);
     } else if (kind === 'empty') {
       const div = document.createElement('div');
       div.className = 'guestbook-empty';
       const strong = document.createElement('strong');
-      strong.textContent = '尚无留言';
+      strong.textContent = themeText('还没有留言', '尚无留言');
       const span = document.createElement('span');
-      span.textContent = '在编目册的空白处，留下第一笔批注。';
+      span.textContent = themeText('欢迎留下第一条。', '在编目册的空白处，留下第一笔批注。');
       div.append(strong, span);
       listEl.append(div);
     }
@@ -270,7 +282,7 @@ import ArchiveSeal from '../components/ArchiveSeal.astro';
   function renderComments() {
     if (!listEl || !countEl || !indexEl) return;
     countEl.textContent = String(totalCount);
-    indexEl.textContent = `${String(totalCount).padStart(2, '0')} ITEMS`;
+    indexEl.textContent = themeText(`${totalCount} 条留言`, `${String(totalCount).padStart(2, '0')} ITEMS`);
     if (loadedComments.length === 0) {
       setStatus('empty');
       return;
@@ -286,7 +298,7 @@ import ArchiveSeal from '../components/ArchiveSeal.astro';
       const more = document.createElement('button');
       more.type = 'button';
       more.className = 'guestbook-more';
-      more.textContent = '加载更多留言';
+      more.textContent = themeText('加载更多', '继续翻查留言');
       more.addEventListener('click', () => {
         page += 1;
         loadComments(false);
@@ -310,7 +322,7 @@ import ArchiveSeal from '../components/ArchiveSeal.astro';
     const nick = nickInput?.value.trim() || '匿名访客';
     const content = textarea?.value.trim() || '';
     if (!content) {
-      if (countText) countText.textContent = '还没有写下内容';
+      if (countText) countText.textContent = themeText('请输入留言', '还没有写下内容');
       textarea?.focus();
       return;
     }
@@ -319,7 +331,7 @@ import ArchiveSeal from '../components/ArchiveSeal.astro';
       return;
     }
     submitBtn.disabled = true;
-    submitBtn.textContent = '发送中…';
+    submitBtn.textContent = themeText('发布中…', '发送中…');
     try {
       const res = await fetch(`${serverURL}/api/comment`, {
         method: 'POST',
@@ -340,7 +352,7 @@ import ArchiveSeal from '../components/ArchiveSeal.astro';
       if (countText) countText.textContent = err instanceof Error ? `发送失败：${err.message}` : '发送失败';
     } finally {
       submitBtn.disabled = false;
-      submitBtn.textContent = '发送';
+      submitBtn.textContent = themeText('发布', '发送');
     }
   });
 

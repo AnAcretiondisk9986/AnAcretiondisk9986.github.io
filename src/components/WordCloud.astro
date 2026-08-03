@@ -1,23 +1,26 @@
 ---
 import type { WordCloudWord } from '../lib/wordcloud';
+import ThemeCopy from './ThemeCopy.astro';
 
 interface Props {
   words: WordCloudWord[];
   /** 词云区块标题,默认 "关键词索引" */
   title?: string;
+  /** 行迹主题标题,默认 "关键词索引" */
+  traceTitle?: string;
   /** 紧凑模式:用于文章页窄边栏,小字号、无大标题、不绑定点击跳转 */
   compact?: boolean;
 }
 
-const { words, title = '关键词索引', compact = false } = Astro.props;
+const { words, title = '关键词', traceTitle = '关键词索引', compact = false } = Astro.props;
 const siteBase = Astro.site?.toString() ?? '';
 ---
 
 {compact ? (
   <section class="wordcloud-compact">
-    <h3 class="wordcloud-compact-title">{title}</h3>
+    <h3 class="wordcloud-compact-title"><ThemeCopy minimal={title} trace={traceTitle} /></h3>
     {words.length === 0 ? (
-      <p class="wordcloud-empty">本篇暂无高频关键词。</p>
+      <p class="wordcloud-empty"><ThemeCopy minimal="暂无关键词。" trace="本篇暂无高频关键词。" /></p>
     ) : (
       <div class="wordcloud-box" data-wordcloud-box data-compact>
         <canvas
@@ -35,14 +38,14 @@ const siteBase = Astro.site?.toString() ?? '';
   <div class="section-heading codex-heading">
     <div>
       <p class="eyebrow">INDEX VERBORUM</p>
-      <h2>{title}</h2>
+      <h2><ThemeCopy minimal={title} trace={traceTitle} /></h2>
     </div>
     <div class="heading-note">
-      <span>{words.length} 个关键词 · 点击词语搜索站内相关内容</span>
+      <span><ThemeCopy minimal={`${words.length} 个关键词 · 点击搜索`} trace={`${words.length} 个关键词 · 点击词语搜索站内相关内容`} /></span>
     </div>
   </div>
   {words.length === 0 ? (
-    <p class="wordcloud-empty">词库仍在积累中,暂无足够的高频关键词。</p>
+    <p class="wordcloud-empty"><ThemeCopy minimal="暂无足够的关键词。" trace="词库仍在积累中,暂无足够的高频关键词。" /></p>
   ) : (
     <div class="wordcloud-box" data-wordcloud-box>
       <canvas
@@ -134,6 +137,9 @@ const siteBase = Astro.site?.toString() ?? '';
   import WordCloud from '../vendor/wordcloud2.js';
   document.addEventListener('astro:page-load', () => {
 
+  const themeText = (minimal: string, trace: string) =>
+    document.documentElement.dataset.visualTheme === 'trace' ? trace : minimal;
+
   // astro:page-load:整页加载与每次 VT 导航后触发,重新初始化(打包脚本只执行一次,事件驱动每次导航执行)
 
   const box = document.querySelector<HTMLElement>('[data-wordcloud-box]');
@@ -150,8 +156,6 @@ const siteBase = Astro.site?.toString() ?? '';
     const siteBase = canvas.dataset.site ?? '';
     const compact = box.hasAttribute('data-compact');
 
-  const FONT =
-    '"Noto Serif SC", "Source Han Serif SC", "Songti SC", SimSun, Georgia, serif';
   const COLOR_VARS = ['--ink', '--ink-soft', '--red', '--gold', '--gold-light'];
 
   if (!WordCloud.isSupported) {
@@ -164,6 +168,11 @@ const siteBase = Astro.site?.toString() ?? '';
     function palette(): string[] {
       const cs = getComputedStyle(document.documentElement);
       return COLOR_VARS.map((v) => cs.getPropertyValue(v).trim() || '#5f574a');
+    }
+
+    function fontFamily(): string {
+      return getComputedStyle(document.documentElement).getPropertyValue('--serif').trim()
+        || '"Noto Serif SC", "Source Han Serif SC", "Songti SC", SimSun, Georgia, serif';
     }
 
     /** 依据容器尺寸设置画布物理尺寸(含 DPR) */
@@ -219,7 +228,7 @@ const siteBase = Astro.site?.toString() ?? '';
           // 暗色主题下浅色词在白底上不可见(表现为"一片纯白")。
           // 透明后露出 .wordcloud-box 的 --paper-light,随主题自适应。
           backgroundColor: 'transparent',
-          fontFamily: FONT,
+          fontFamily: fontFamily(),
           // wordcloud2.js 不支持数组 color(fillStyle 无效则整图不画)。
           // 用函数从主题色板随机取色,随亮/暗主题自适应。
           color: () => {
@@ -237,7 +246,7 @@ const siteBase = Astro.site?.toString() ?? '';
             tip.textContent = '';
             const b = document.createElement('b');
             b.textContent = String(entry?.count ?? item[1]);
-            tip.append(item[0], ' · 出现 ', b, ' 次');
+            tip.append(item[0], themeText(' · ', ' · 出现 '), b, themeText(' 次', ' 次'));
             tip.style.left = `${evt.clientX - box.getBoundingClientRect().left}px`;
             tip.style.top = `${evt.clientY - box.getBoundingClientRect().top}px`;
             tip.hidden = false;
@@ -318,7 +327,7 @@ const siteBase = Astro.site?.toString() ?? '';
     // 主题切换时重绘,让颜色跟随亮/暗色变量
     new MutationObserver(() => render()).observe(document.documentElement, {
       attributes: true,
-      attributeFilter: ['data-theme'],
+      attributeFilter: ['data-theme', 'data-visual-theme'],
     });
   }
   }

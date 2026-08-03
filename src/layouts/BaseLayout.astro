@@ -1,7 +1,9 @@
 ---
 import '../styles/global.css';
+import '../styles/minimal-theme.css';
 import { ClientRouter } from 'astro:transitions';
 import ArchiveSeal from '../components/ArchiveSeal.astro';
+import ThemeCopy from '../components/ThemeCopy.astro';
 
 interface Props {
   title?: string;
@@ -16,11 +18,11 @@ const {
 const pageTitle = title === 'Acretiondisk' ? title : `${title} · Acretiondisk`;
 const pathname = Astro.url.pathname;
 const navigation = [
-  { href: '/', label: '首页', index: 'I' },
-  { href: '/blog/', label: '卷册', index: 'II' },
-  { href: '/gallery/', label: '图志', index: 'III' },
-  { href: '/about/', label: '关于', index: 'IV' },
-  { href: '/guestbook/', label: '留言', index: 'V' },
+  { href: '/', minimal: '首页', trace: '首页', index: 'I' },
+  { href: '/blog/', minimal: '文章', trace: '卷册', index: 'II' },
+  { href: '/gallery/', minimal: '照片', trace: '图志', index: 'III' },
+  { href: '/about/', minimal: '关于', trace: '关于', index: 'IV' },
+  { href: '/guestbook/', minimal: '留言', trace: '留言', index: 'V' },
 ];
 ---
 
@@ -37,8 +39,10 @@ const navigation = [
     <script is:inline data-astro-rerun>
       (() => {
         const savedTheme = localStorage.getItem('theme');
+        const savedVisualTheme = localStorage.getItem('visual-theme');
         const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
         document.documentElement.dataset.theme = savedTheme ?? (systemDark ? 'dark' : 'light');
+        document.documentElement.dataset.visualTheme = savedVisualTheme === 'trace' ? 'trace' : 'minimal';
         // js = 允许脚本驱动的进入动画;vt = 支持 View Transitions(避免与路由过渡动画叠加)
         document.documentElement.classList.add('js');
         if (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
@@ -71,7 +75,7 @@ const navigation = [
             <ArchiveSeal class="site-seal" />
             <span>
               <b>Acretiondisk</b>
-              <small>一人之观察与行记</small>
+              <small><ThemeCopy minimal="记录想法与生活" trace="一人之观察与行记" /></small>
             </span>
           </a>
 
@@ -82,13 +86,13 @@ const navigation = [
                 : pathname.startsWith(item.href);
               return (
                 <a href={item.href} aria-current={active ? 'page' : undefined}>
-                  <span>{item.index}</span>
-                  {item.label}
+                  <span class="nav-index">{item.index}</span>
+                  <ThemeCopy minimal={item.minimal} trace={item.trace} />
                 </a>
               );
             })}
             <button class="theme-toggle" type="button" aria-label="切换明暗主题">
-              <span aria-hidden="true">☼</span>
+              <span data-theme-icon aria-hidden="true">☀</span>
               <span class="theme-toggle__label">昼夜</span>
             </button>
           </nav>
@@ -103,8 +107,8 @@ const navigation = [
         <div class="footer-mark">
           <ArchiveSeal class="footer-seal" label="Acretiondisk" />
           <p>
-            <strong>私人典藏 · 持续编目</strong>
-            <span>以文字保存观察，以设计标记时间。</span>
+            <strong><ThemeCopy minimal="个人博客 · 持续更新" trace="私人典藏 · 持续编目" /></strong>
+            <span><ThemeCopy minimal="记录想法、作品与日常。" trace="以文字保存观察，以设计标记时间。" /></span>
           </p>
         </div>
         <div class="footer-meta">
@@ -118,11 +122,19 @@ const navigation = [
     <script is:inline data-astro-rerun>
       (() => {
         const button = document.querySelector('.theme-toggle');
+        const icon = button?.querySelector('[data-theme-icon]');
+        const syncThemeButton = () => {
+          const dark = document.documentElement.dataset.theme === 'dark';
+          if (icon) icon.textContent = dark ? '☾' : '☀';
+          button?.setAttribute('aria-label', dark ? '切换为浅色模式' : '切换为深色模式');
+        };
+        syncThemeButton();
         button?.addEventListener('click', () => {
           const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
           const apply = () => {
             document.documentElement.dataset.theme = next;
             localStorage.setItem('theme', next);
+            syncThemeButton();
           };
           // 支持 View Transitions 时以交叉淡化衔接明暗主题切换
           if (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches) {

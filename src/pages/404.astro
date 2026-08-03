@@ -1,13 +1,14 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import ThemeCopy from '../components/ThemeCopy.astro';
 ---
 
 <BaseLayout title="页面未找到">
   <section class="not-found">
     <div class="not-found-code">IV · 04</div>
-    <p class="eyebrow">FOLIO NON INVENTUM</p>
-    <h1>这一页未被收入卷册。</h1>
-    <p>它可能尚未写成，或已被移动到新的编目位置。</p>
+    <p class="eyebrow"><ThemeCopy minimal="404" trace="FOLIO NON INVENTUM" /></p>
+    <h1><ThemeCopy minimal="页面不存在。" trace="这一页未被收入卷册。" /></h1>
+    <p><ThemeCopy minimal="链接可能有误，或页面已经移动。" trace="它可能尚未写成，或已被移动到新的编目位置。" /></p>
     <a class="primary-link" href="/"><span>返回首页</span><span>→</span></a>
   </section>
 </BaseLayout>

@@ -2,6 +2,7 @@
 import { getCollection } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import ArchiveSeal from '../components/ArchiveSeal.astro';
+import ThemeCopy from '../components/ThemeCopy.astro';
 import standaloneGallery from '../data/gallery.json';
 
 interface GalleryImage {
@@ -95,7 +96,7 @@ journalImages.forEach((image, index) => {
 const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
 ---
 
-<BaseLayout title="图志" description="Acretiondisk 的图像档案。">
+<BaseLayout title="照片" description="Acretiondisk 的照片。">
   <div class="gallery-shell">
     <header class="gallery-header">
       <div class="gallery-header-copy">
@@ -104,15 +105,19 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
           <span>VOL. I · {String(totalImages).padStart(2, '0')} IMAGES</span>
         </div>
         <p class="eyebrow">CATALOGUS IMAGINUM</p>
-        <h1>图像<br /><em>档案</em></h1>
-        <p class="gallery-intro">从文字中显影的片段，以及尚未归入卷册的独立收藏。</p>
+        <h1>
+          <ThemeCopy minimal="照片">
+            <Fragment slot="trace">图像<br /><em>档案</em></Fragment>
+          </ThemeCopy>
+        </h1>
+        <p class="gallery-intro"><ThemeCopy minimal="文章中的图片，以及单独收藏的照片。" trace="从文字中显影的片段，以及尚未归入卷册的独立收藏。" /></p>
       </div>
       <div class="gallery-header-mark">
         <ArchiveSeal />
         <dl>
-          <div><dt>随文图像</dt><dd>{String(journalImages.length).padStart(2, '0')}</dd></div>
-          <div><dt>独立收藏</dt><dd>{String(standaloneImages.length).padStart(2, '0')}</dd></div>
-          <div><dt>档案状态</dt><dd>持续入藏</dd></div>
+          <div><dt><ThemeCopy minimal="文章图片" trace="随文图像" /></dt><dd>{String(journalImages.length).padStart(2, '0')}</dd></div>
+          <div><dt><ThemeCopy minimal="独立照片" trace="独立收藏" /></dt><dd>{String(standaloneImages.length).padStart(2, '0')}</dd></div>
+          <div><dt><ThemeCopy minimal="更新状态" trace="档案状态" /></dt><dd><ThemeCopy minimal="持续更新" trace="持续入藏" /></dd></div>
         </dl>
       </div>
     </header>
@@ -120,12 +125,12 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
     <div class="gallery-tabs" role="tablist" aria-label="图像档案视图">
       <button class="gallery-tab" type="button" role="tab" aria-selected="true" aria-controls="gallery-journal" id="tab-journal" data-gallery-tab="journal">
         <span class="gallery-tab-index">I</span>
-        <span>随文图像</span>
+        <span><ThemeCopy minimal="文章图片" trace="随文图像" /></span>
         <b>{String(journalImages.length).padStart(2, '0')}</b>
       </button>
       <button class="gallery-tab" type="button" role="tab" aria-selected="false" aria-controls="gallery-independent" id="tab-independent" data-gallery-tab="independent">
         <span class="gallery-tab-index">II</span>
-        <span>独立收藏</span>
+        <span><ThemeCopy minimal="独立照片" trace="独立收藏" /></span>
         <b>{String(standaloneImages.length).padStart(2, '0')}</b>
       </button>
     </div>
@@ -147,20 +152,20 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
 
     <section class="gallery-panel" id="gallery-journal" role="tabpanel" aria-labelledby="tab-journal" data-gallery-panel="journal">
       <div class="gallery-index-bar">
-        <span>IMAGES FOUND IN PUBLISHED FOLIOS</span>
-        <span>{journalImages.length} ITEMS / AUTO INDEXED</span>
+        <span><ThemeCopy minimal="来自文章的图片" trace="IMAGES FOUND IN PUBLISHED FOLIOS" /></span>
+        <span><ThemeCopy minimal={`${journalImages.length} 张 · 自动整理`} trace={`${journalImages.length} ITEMS / AUTO INDEXED`} /></span>
       </div>
       <div class="gallery-view-bar">
         <div class="gallery-view-label">
           <span>VIEW MODE</span>
-          <strong data-gallery-view-status>文章图集</strong>
+          <strong data-gallery-view-status><ThemeCopy minimal="按文章" trace="文章图集" /></strong>
         </div>
         <div class="gallery-view-switch" role="group" aria-label="随文图像展示方式">
           <button type="button" data-gallery-view="timeline" aria-pressed="false">
             <span aria-hidden="true">▤</span>时间线
           </button>
           <button type="button" data-gallery-view="albums" aria-pressed="true">
-            <span aria-hidden="true">▦</span>文章图集
+            <span aria-hidden="true">▦</span><ThemeCopy minimal="按文章" trace="文章图集" />
           </button>
         </div>
       </div>
@@ -190,10 +195,10 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
                   {image.daySequence && image.dayTotal && (
                     <span class="gallery-card-label" data-gallery-day>D.{String(image.daySequence).padStart(2, '0')}/{String(image.dayTotal).padStart(2, '0')}</span>
                   )}
-                  <span class="gallery-card-label" data-gallery-sequence data-gallery-sequence-prefix="FOLIO ">FOLIO {String(index + 1).padStart(2, '0')}</span>
+                  <span class="gallery-card-label" data-gallery-sequence data-gallery-sequence-minimal-prefix="图片 " data-gallery-sequence-trace-prefix="FOLIO "><ThemeCopy minimal={`图片 ${String(index + 1).padStart(2, '0')}`} trace={`FOLIO ${String(index + 1).padStart(2, '0')}`} /></span>
                 </div>
                 <h2>{image.caption}</h2>
-                <a href={image.sourceUrl}>阅览《{image.sourceTitle}》</a>
+                <a href={image.sourceUrl}><ThemeCopy minimal={`阅读《${image.sourceTitle}》`} trace={`阅览《${image.sourceTitle}》`} /></a>
               </div>
             </article>
           ))}
@@ -216,11 +221,11 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
               >
                 <header class="gallery-album-head">
                   <div>
-                    <span class="gallery-card-label" data-gallery-sequence data-gallery-sequence-prefix="FOLIO ">FOLIO {String(groupIndex + 1).padStart(2, '0')}</span>
+                    <span class="gallery-card-label" data-gallery-sequence data-gallery-sequence-minimal-prefix="文章 " data-gallery-sequence-trace-prefix="FOLIO "><ThemeCopy minimal={`文章 ${String(groupIndex + 1).padStart(2, '0')}`} trace={`FOLIO ${String(groupIndex + 1).padStart(2, '0')}`} /></span>
                     <span class="gallery-card-label">{lead.date} · {group.images.length} IMAGES</span>
                   </div>
                   <h2>{lead.sourceTitle}</h2>
-                  <a href={lead.sourceUrl}>阅览全文 ↗</a>
+                  <a href={lead.sourceUrl}><ThemeCopy minimal="阅读全文" trace="阅览全文" /> ↗</a>
                 </header>
                 <div class="gallery-album-grid">
                   {group.images.map((image, imageIndex) => (
@@ -247,7 +252,7 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
           })}
         </div>
       ) : (
-        <div class="gallery-empty"><strong>尚无随文图像</strong><span>等待新的图像进入公开卷册。</span></div>
+        <div class="gallery-empty"><strong><ThemeCopy minimal="还没有文章图片" trace="尚无随文图像" /></strong><span><ThemeCopy minimal="文章中的图片会自动显示在这里。" trace="等待新的图像进入公开卷册。" /></span></div>
       )}
     </section>
 
@@ -255,8 +260,8 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
       {standaloneImages.length > 0 && (
         <div class="gallery-billboard" data-gallery-billboard>
           <div class="gallery-billboard-head">
-            <span>BILLBOARD / FULL COLLECTION</span>
-            <span data-billboard-caption>轮播全部 {standaloneImages.length} 张独立收藏</span>
+            <span><ThemeCopy minimal="照片轮播" trace="BILLBOARD / FULL COLLECTION" /></span>
+            <span data-billboard-caption><ThemeCopy minimal={`共 ${standaloneImages.length} 张独立照片`} trace={`轮播全部 ${standaloneImages.length} 张独立收藏`} /></span>
           </div>
           <div class="gallery-billboard-stage">
             <button class="gallery-billboard-arrow" type="button" data-billboard-prev aria-label="上一张">←</button>
@@ -269,8 +274,8 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
         </div>
       )}
       <div class="gallery-index-bar">
-        <span>INDEPENDENT IMAGE COLLECTION</span>
-        <span>{standaloneImages.length} ITEMS / CURATED</span>
+        <span><ThemeCopy minimal="独立照片" trace="INDEPENDENT IMAGE COLLECTION" /></span>
+        <span><ThemeCopy minimal={`${standaloneImages.length} 张`} trace={`${standaloneImages.length} ITEMS / CURATED`} /></span>
       </div>
       {standaloneImages.length > 0 ? (
         <div class="gallery-masonry gallery-masonry--independent" data-independent-masonry>
@@ -299,7 +304,7 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
                   {image.daySequence && image.dayTotal && (
                     <span class="gallery-card-label" data-gallery-day>D.{String(image.daySequence).padStart(2, '0')}/{String(image.dayTotal).padStart(2, '0')}</span>
                   )}
-                  <span class="gallery-card-label" data-gallery-sequence data-gallery-sequence-prefix="INDEPENDENT / ">INDEPENDENT / {String(index + 1).padStart(2, '0')}</span>
+                  <span class="gallery-card-label" data-gallery-sequence data-gallery-sequence-minimal-prefix="照片 " data-gallery-sequence-trace-prefix="INDEPENDENT / "><ThemeCopy minimal={`照片 ${String(index + 1).padStart(2, '0')}`} trace={`INDEPENDENT / ${String(index + 1).padStart(2, '0')}`} /></span>
                 </div>
                 <h2>{image.title}</h2>
                 {image.caption && <p>{image.caption}</p>}
@@ -316,14 +321,14 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
       ) : (
         <div class="gallery-empty gallery-empty--independent">
           <ArchiveSeal />
-          <strong>独立收藏尚未入藏</strong>
-          <span>此处保留给未附着于文章的图像记录。</span>
+          <strong><ThemeCopy minimal="还没有独立照片" trace="独立收藏尚未入藏" /></strong>
+          <span><ThemeCopy minimal="单独收藏的照片会显示在这里。" trace="此处保留给未附着于文章的图像记录。" /></span>
         </div>
       )}
     </section>
 
     <footer class="gallery-footer">
-      <span>IMAGO / INDEXED WITH THE PUBLISHED ARCHIVE</span>
+      <span><ThemeCopy minimal="照片与文章同步整理" trace="IMAGO / INDEXED WITH THE PUBLISHED ARCHIVE" /></span>
       <span>{new Date().getFullYear()} · ACR—GALLERY</span>
     </footer>
   </div>
@@ -360,6 +365,9 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
   document.addEventListener('astro:page-load', () => {
 
   // astro:page-load:整页加载与每次 VT 导航后触发,重新初始化(打包脚本只执行一次,事件驱动每次导航执行)
+
+  const themeText = (minimal: string, trace: string) =>
+    document.documentElement.dataset.visualTheme === 'trace' ? trace : minimal;
 
   // 让容器内当前可见的卡片播放一次「轻盈升起」进入动画(翻页时使用)
   const animateCardsEntering = (container: HTMLElement | null) => {
@@ -400,6 +408,20 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
   const independentPagerTotal = document.querySelector<HTMLElement>('[data-independent-page-total]');
 
   type GalleryOrder = 'newest' | 'oldest';
+
+  function setSequenceText(label: HTMLElement | null, sequence: string) {
+    if (!label) return;
+    const minimal = `${label.dataset.gallerySequenceMinimalPrefix || ''}${sequence}`;
+    const trace = `${label.dataset.gallerySequenceTracePrefix || ''}${sequence}`;
+    const minimalCopy = label.querySelector<HTMLElement>('[data-theme-copy-minimal]');
+    const traceCopy = label.querySelector<HTMLElement>('[data-theme-copy-trace]');
+    if (minimalCopy && traceCopy) {
+      minimalCopy.textContent = minimal;
+      traceCopy.textContent = trace;
+    } else {
+      label.textContent = themeText(minimal, trace);
+    }
+  }
 
   const JOURNAL_PAGE_SIZE = 9;
   const INDEPENDENT_PAGE_SIZE = 9;
@@ -468,7 +490,7 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
     playFlip(albumsContainer, frames);
     albums.forEach((album, index) => {
       const label = album.querySelector<HTMLElement>('[data-gallery-sequence]');
-      if (label) label.textContent = `${label.dataset.gallerySequencePrefix || ''}${String(index + 1).padStart(2, '0')}`;
+      setSequenceText(label, String(index + 1).padStart(2, '0'));
     });
   }
 
@@ -478,7 +500,7 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
     viewButtons.forEach((button) => {
       button.setAttribute('aria-pressed', String(button.dataset.galleryView === view));
     });
-    if (viewStatus) viewStatus.textContent = view === 'timeline' ? '时间线' : '文章图集';
+    if (viewStatus) viewStatus.textContent = view === 'timeline' ? '时间线' : themeText('按文章', '文章图集');
     if (journalMasonry) journalMasonry.hidden = view !== 'timeline';
     if (albumsContainer) albumsContainer.hidden = view !== 'albums';
     renderJournalPage();
@@ -549,7 +571,7 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
         const stamp = card.querySelector<HTMLElement>('.gallery-image-stamp');
         const label = card.querySelector<HTMLElement>('[data-gallery-sequence]');
         if (stamp) stamp.textContent = sequence;
-        if (label) label.textContent = `${label.dataset.gallerySequencePrefix || ''}${sequence}`;
+        setSequenceText(label, sequence);
       });
     });
 
@@ -696,10 +718,10 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
     if (!originalUrl || !viewerImage) return;
     if (showingOriginal) {
       viewerImage.src = currentSrc;
-      viewerOriginalBtn.textContent = '加载原图';
+      viewerOriginalBtn.textContent = themeText('查看原图', '加载原图');
     } else {
       viewerImage.src = originalUrl;
-      viewerOriginalBtn.textContent = '已显示原图';
+      viewerOriginalBtn.textContent = themeText('显示压缩图', '切回压缩图');
     }
     showingOriginal = !showingOriginal;
   });
@@ -916,10 +938,12 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
     const source = button.dataset.gallerySource || '';
     viewerSource.hidden = !source;
     viewerSource.href = source || '#';
-    viewerSource.textContent = button.dataset.gallerySourceTitle ? `阅览《${button.dataset.gallerySourceTitle}》 ↗` : '查看来源 ↗';
+    viewerSource.textContent = button.dataset.gallerySourceTitle
+      ? `${themeText('阅读', '阅览')}《${button.dataset.gallerySourceTitle}》 ↗`
+      : '查看来源 ↗';
     if (viewerOriginalBtn) {
       viewerOriginalBtn.hidden = !originalUrl;
-      viewerOriginalBtn.textContent = '加载原图';
+      viewerOriginalBtn.textContent = themeText('查看原图', '加载原图');
     }
     viewer.showModal();
     fitDialog();
