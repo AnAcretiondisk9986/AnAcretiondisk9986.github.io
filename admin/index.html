@@ -101,7 +101,11 @@
     .view-switch button:hover{color:#9a9a9e}
     .view-switch button.active{background:#2a2818;border-color:#5a5020;color:#c8b080}
     .editor-body{flex:1;display:flex;height:min(72vh,860px);min-height:460px}
-    .editor-body textarea.content-area{flex:1 1 0;min-width:0;border-radius:2px 0 0 2px}
+    .source-wrap{position:relative;display:flex;flex:1 1 0;min-width:0}
+    .source-wrap textarea{flex:1;min-width:0;border-radius:2px 0 0 2px}
+    .source-line-mark{position:absolute;left:0;right:18px;z-index:1;pointer-events:none;background:rgba(200,176,128,.22);border-radius:2px;opacity:0;transition:opacity 100ms ease}
+    .source-line-mark.show{opacity:1}
+    .markdown-preview .line-flash{background:rgba(200,176,128,.28);border-radius:2px}
     .editor-body .markdown-preview{flex:1 1 0;min-width:0;overflow-y:auto;background:#151518;border:1px solid #2a2a30;border-left:none;padding:14px 16px;font-size:13px;line-height:1.7;border-radius:0 2px 2px 0;outline:none}
     .editor-body .markdown-preview:focus{box-shadow:inset 0 0 0 1px #5a5020}
     .editor-divider{flex:none;width:6px;cursor:col-resize;background:#1a1a1e;border-left:1px solid #2a2a30;border-right:1px solid #2a2a30;transition:background-color 150ms ease}
@@ -426,7 +430,10 @@
               </span>
             </div>
             <div class="editor-body split" id="editorBody">
+            <div class="source-wrap">
               <textarea class="content-area" id="fContent">${esc(post.content||'')}</textarea>
+              <div class="source-line-mark" id="sourceLineMark"></div>
+            </div>
               <div class="editor-divider" id="editorDivider" title="拖动调整分栏宽度"></div>
               <div class="markdown-preview" id="fPreview" contenteditable="true" spellcheck="false"></div>
             </div>
@@ -517,7 +524,10 @@
               </span>
             </div>
             <div class="editor-body split" id="editorBody">
+            <div class="source-wrap">
               <textarea class="content-area" id="fContent"></textarea>
+              <div class="source-line-mark" id="sourceLineMark"></div>
+            </div>
               <div class="editor-divider" id="editorDivider" title="拖动调整分栏宽度"></div>
               <div class="markdown-preview" id="fPreview" contenteditable="true" spellcheck="false"></div>
             </div>
@@ -977,6 +987,12 @@
         t.value=t.value.slice(0,ls)+tag+t.value.slice(le);
         t.focus(); t.setSelectionRange(ls,ls+tag.length);
       };
+      // 工具栏操作后恢复源码区滚动位置：focus/setSelectionRange 会把视口跳到光标处，用户不希望滑动
+      const restoreScroll=()=>{
+        const t=getTa(); if(!t) return;
+        const st=t.scrollTop;
+        requestAnimationFrame(()=>{t.scrollTop=st});
+      };
       bar.querySelectorAll('[data-fmt]').forEach(btn=>{
         btn.onclick=()=>{
           const f=btn.dataset.fmt;
@@ -999,11 +1015,12 @@
             case 'align-center': applyAlign('center'); break;
             case 'align-right': applyAlign('right'); break;
           }
+          restoreScroll();
           refreshPreview();
         };
       });
       const pick=$('#fmtColorPick');
-      if(pick) pick.oninput=()=>{wrap('<span style="color: '+pick.value+'">','</span>','彩色文字');refreshPreview()};
+      if(pick) pick.oninput=()=>{wrap('<span style="color: '+pick.value+'">','</span>','彩色文字');restoreScroll();refreshPreview()};
     }
 
     /* ── 图片尺寸：从光标处提取图片并设置显示宽度（生成 <img style="width:…"> 替换） ── */
@@ -1144,8 +1161,8 @@
       return text;
     }
     function mdParseRow(line){return line.trim().replace(/^\||\|$/g,'').split('|')}
-    // 列表解析（支持缩进嵌套），返回 {html, next}
-    function mdParseList(lines,i,indent,ordered){
+    // 列表解析（支持缩进嵌套），返回 {html, next}；startLine 用于行号标记
+    function mdParseList(lines,i,indent,ordered,startLine){
       const tag=ordered?'ol':'ul';
       const itemRe=ordered?/^(\s*)(\d+)[.)]\s+/:/^(\s*)[-*+]\s+/;
       let base=indent,opened=false,html='';
@@ -1153,10 +1170,10 @@
         const m=lines[i].match(itemRe);
         if(!m) break;
         const cur=m[1].length;
-        if(!opened){base=cur;opened=true;html+='<'+tag+'>'}
+        if(!opened){base=cur;opened=true;html+='<'+tag+' data-line="'+(startLine||i+1)+'">'}
         else if(cur<base) break;
         if(cur>base){
-          const sub=mdParseList(lines,i,cur,/^\s*\d+[.)]\s+/.test(lines[i]));
+          const sub=mdParseList(lines,i,cur,/^\s*\d+[.)]\s+/.test(lines[i]),i+1);
           html+=sub.html;i=sub.next;continue;
         }
         let body=lines[i].replace(itemRe,'').trim();
@@ -1167,7 +1184,7 @@
           const l=lines[i],cm=l.match(itemRe);
           if(cm){
             if(cm[1].length<=cur) break;
-            const s=mdParseList(lines,i,cm[1].length,/^\s*\d+[.)]\s+/.test(l));
+            const s=mdParseList(lines,i,cm[1].length,/^\s*\d+[.)]\s+/.test(l),i+1);
             sub+=s.html;i=s.next;continue;
           }
           if(l.trim()===''){i++;break}
@@ -1180,7 +1197,8 @@
       return {html,next:i};
     }
     // 块级解析（入参已转义；递归复用）
-    function mdParse(src){
+    function mdParse(src,startLine){
+      startLine=startLine||0;
       const blocks=[];
       src = src.replace(/```(\w*)\n?([\s\S]*?)```/g,(m,lang,code)=>{blocks.push({lang,code});return '\u0000B'+(blocks.length-1)+'\u0000'});
       const lines=src.split('\n');
@@ -1191,7 +1209,7 @@
         const bm=t.match(/^\u0000B(\d+)\u0000$/);
         if(bm){
           const b=blocks[+bm[1]];
-          html+='<pre><code'+(b.lang?' class="language-'+mdAttr(b.lang)+'"':'')+'>'+b.code.replace(/\n$/,'')+'</code></pre>\n';
+          html+='<pre data-line="'+(startLine+i+1)+'"><code'+(b.lang?' class="language-'+mdAttr(b.lang)+'"':'')+'>'+b.code.replace(/\n$/,'')+'</code></pre>\n';
           i++;continue;
         }
         const vm=t.match(/^\u0000V(\d+)\u0000$/);
@@ -1203,21 +1221,22 @@
         const htm=t.match(/^\u0000H(\d+)\u0000$/);
         if(htm){html+='\u0000H'+htm[1]+'\u0000\n';i++;continue}
         const hm=t.match(/^(#{1,6})\s+(.*)$/);
-        if(hm){html+='<h'+hm[1].length+'>'+mdInline(hm[2])+'</h'+hm[1].length+'>\n';i++;continue}
-        if(/^(-{3,}|\*{3,}|_{3,})\s*$/.test(t)){html+='<hr>\n';i++;continue}
+        if(hm){html+='<h'+hm[1].length+' data-line="'+(startLine+i+1)+'">'+mdInline(hm[2])+'</h'+hm[1].length+'>\n';i++;continue}
+        if(/^(-{3,}|\*{3,}|_{3,})\s*$/.test(t)){html+='<hr data-line="'+(startLine+i+1)+'">\n';i++;continue}
         if(t.startsWith('>')){
-          const q=[];
+          const q=[];const qs=i;
           while(i<lines.length&&lines[i].trim().startsWith('>')){q.push(lines[i].replace(/^>\s?/,''));i++}
-          html+='<blockquote>'+mdParse(q.join('\n')).trim()+'</blockquote>\n';
+          html+='<blockquote data-line="'+(startLine+qs+1)+'">'+mdParse(q.join('\n'),startLine+qs).trim()+'</blockquote>\n';
           continue;
         }
         if(t.startsWith('|')&&i+1<lines.length){
           const sep=lines[i+1].trim();
           if(/^\|?[\s:|-]+\|?\s*$/.test(sep)&&sep.includes('-')&&sep.includes('|')){
+            const tblStart=i;
             const header=mdParseRow(t);
             const aligns=sep.split('|').filter(s=>s.trim()!=='').map(s=>{const x=s.trim();return x.startsWith(':')?(x.endsWith(':')?'center':'left'):(x.endsWith(':')?'right':'')});
             i+=2;
-            html+='<table><thead><tr>'+header.map((c,ci)=>'<th'+(aligns[ci]?' style="text-align:'+aligns[ci]+'"':'')+'>'+mdInline(c.trim())+'</th>').join('')+'</tr></thead><tbody>';
+            html+='<table data-line="'+(startLine+tblStart+1)+'"><thead><tr>'+header.map((c,ci)=>'<th'+(aligns[ci]?' style="text-align:'+aligns[ci]+'"':'')+'>'+mdInline(c.trim())+'</th>').join('')+'</tr></thead><tbody>';
             while(i<lines.length&&lines[i].trim().startsWith('|')){
               const cells=mdParseRow(lines[i]);
               html+='<tr>'+cells.map((c,ci)=>'<td'+(aligns[ci]?' style="text-align:'+aligns[ci]+'"':'')+'>'+mdInline(c.trim())+'</td>').join('')+'</tr>';
@@ -1227,15 +1246,15 @@
             continue;
           }
         }
-        if(/^\s*[-*+]\s+/.test(line)){const r=mdParseList(lines,i,0,false);html+=r.html+'\n';i=r.next;continue}
-        if(/^\s*\d+[.)]\s+/.test(line)){const r=mdParseList(lines,i,0,true);html+=r.html+'\n';i=r.next;continue}
-        const para=[t];i++;
+        if(/^\s*[-*+]\s+/.test(line)){const r=mdParseList(lines,i,0,false,startLine+i+1);html+=r.html+'\n';i=r.next;continue}
+        if(/^\s*\d+[.)]\s+/.test(line)){const r=mdParseList(lines,i,0,true,startLine+i+1);html+=r.html+'\n';i=r.next;continue}
+        const paraStart=i;const para=[t];i++;
         while(i<lines.length&&lines[i].trim()!==''){
           const nt=lines[i];
           if(/^(#{1,6}\s|>|\u0000B\d+\u0000$|[-*+]\s|\d+[.)]\s|\|)/.test(nt)||/^(-{3,}|\*{3,}|_{3,})\s*$/.test(nt.trim()))break;
           para.push(nt.trim());i++;
         }
-        html+='<p>'+mdInline(para.join('\n'))+'</p>\n';
+        html+='<p data-line="'+(startLine+paraStart+1)+'">'+mdInline(para.join('\n'))+'</p>\n';
       }
       return html;
     }
@@ -1413,16 +1432,81 @@
       }catch(e){ console.warn('turndown sync fail:',e.message); }
     }
 
-    /* ── 源码区 ↔ 渲染区滚动联动（按内容行数/滚动高度比例映射） ── */
+    /* ── 源码区 ↔ 渲染区行级联动 ──
+       点击任意一侧的一行：另一侧对应行高亮 0.5s，并瞬间滚动到水平对齐；
+       滚动时仍按内容比例双向跟随（防回环）。 */
     function setupScrollSync(){
-      const ta=$('#fContent'), pv=$('#fPreview');
+      const ta=$('#fContent'), pv=$('#fPreview'), mark=$('#sourceLineMark');
       if(!ta||!pv) return;
-      let pvSyncing=false;
-      const syncSrcToPv=()=>{
+      const metrics=()=>{
+        const cs=getComputedStyle(ta);
+        return { lineH: parseFloat(cs.lineHeight)||20.8, padTop: parseFloat(cs.paddingTop)||0 };
+      };
+      const caretLine=()=>{
         const caret=ta.selectionStart;
-        const line=(ta.value.slice(0,caret).match(/\n/g)||[]).length+1;
+        return (ta.value.slice(0,caret).match(/\n/g)||[]).length+1;
+      };
+      // 预览中找 data-line 最接近 line 的元素
+      const nearestEl=(line)=>{
+        const els=pv.querySelectorAll('[data-line]');
+        let best=null,bestD=Infinity;
+        els.forEach(el=>{const d=Math.abs(parseInt(el.dataset.line,10)-line);if(d<bestD){bestD=d;best=el}});
+        return best;
+      };
+      let flashTimer=null, markTimer=null, pvSyncing=false;
+      // 源码行高亮：overlay 矩形显示 0.5s（top 随 scrollTop 同步）
+      const flashSourceLine=(line)=>{
+        if(!mark) return;
+        const {lineH,padTop}=metrics();
+        mark.style.top=(padTop+(line-1)*lineH-ta.scrollTop)+'px';
+        mark.style.height=lineH+'px';
+        mark.classList.add('show');
+        clearTimeout(markTimer);
+        markTimer=setTimeout(()=>mark.classList.remove('show'),500);
+      };
+      // 预览元素高亮 0.5s
+      const flashPreviewLine=(line)=>{
+        const el=nearestEl(line);
+        if(!el) return;
+        el.classList.add('line-flash');
+        clearTimeout(flashTimer);
+        flashTimer=setTimeout(()=>pv.querySelectorAll('.line-flash').forEach(x=>x.classList.remove('line-flash')),500);
+      };
+      // 源码滚动到某行水平居中
+      const alignSourceToLine=(line)=>{
+        const {lineH,padTop}=metrics();
+        ta.scrollTop=Math.max(0,(line-1)*lineH+padTop-ta.clientHeight/2);
+      };
+      // 预览滚动到对应元素水平居中（scrollIntoView 触发 scroll 事件，用标志防回环）
+      const alignPreviewToLine=(line)=>{
+        const el=nearestEl(line);
+        if(!el) return;
+        pvSyncing=true;
+        el.scrollIntoView({block:'center'});
+        requestAnimationFrame(()=>{pvSyncing=false});
+      };
+      // 点击渲染区 → 源码对应行高亮 + 对齐
+      pv.addEventListener('click',e=>{
+        let el=e.target;
+        while(el&&el!==pv&&!el.dataset.line) el=el.parentElement;
+        if(el&&el.dataset.line){
+          const line=parseInt(el.dataset.line,10);
+          alignSourceToLine(line);
+          flashSourceLine(line);
+        }
+      });
+      // 点击/按键源码 → 预览对应行高亮 + 对齐
+      const onSrcActive=()=>{
+        const line=caretLine();
+        alignPreviewToLine(line);
+        flashPreviewLine(line);
+      };
+      ta.addEventListener('click',onSrcActive);
+      ta.addEventListener('keyup',onSrcActive);
+      // 滚动跟随（比例映射）
+      const syncSrcToPv=()=>{
         const total=(ta.value.match(/\n/g)||[]).length+1;
-        const ratio=Math.min(1,line/Math.max(1,total));
+        const ratio=Math.min(1,caretLine()/Math.max(1,total));
         pvSyncing=true;
         pv.scrollTop=ratio*(pv.scrollHeight-pv.clientHeight);
         requestAnimationFrame(()=>{pvSyncing=false});
@@ -1432,9 +1516,6 @@
         const ratio=max>0?pv.scrollTop/max:0;
         ta.scrollTop=ratio*(ta.scrollHeight-ta.clientHeight);
       };
-      let t=null;
-      ta.addEventListener('click',()=>{clearTimeout(t);t=setTimeout(syncSrcToPv,60)});
-      ta.addEventListener('keyup',()=>{clearTimeout(t);t=setTimeout(syncSrcToPv,60)});
       let st=null;
       pv.addEventListener('scroll',()=>{if(pvSyncing)return;clearTimeout(st);st=setTimeout(syncPvToSrc,80)});
     }
