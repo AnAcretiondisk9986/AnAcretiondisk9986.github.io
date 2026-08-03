@@ -2120,7 +2120,7 @@ main {
   position: relative;
   height: min(38vh, 360px);
   min-height: 240px;
-  transition: transform 560ms cubic-bezier(0.22, 0.9, 0.3, 1);
+  transition: transform 600ms cubic-bezier(0.3, 0.55, 0.25, 1);
   will-change: transform;
 }
 
@@ -2141,7 +2141,7 @@ main {
   filter: saturate(0.78) contrast(0.95) brightness(0.9);
   transform: translate(-50%, -50%) scale(0.82);
   transform-origin: center center;
-  transition: transform 560ms cubic-bezier(0.22, 0.9, 0.3, 1), opacity 560ms ease, filter 560ms ease;
+  transition: transform 600ms cubic-bezier(0.3, 0.55, 0.25, 1), opacity 560ms ease, filter 560ms ease;
   will-change: transform;
 }
 
@@ -2182,7 +2182,11 @@ main {
   backdrop-filter: blur(5px);
   cursor: pointer;
   transform: translateY(-50%);
-  transition: color 180ms ease, background 180ms ease;
+  transition: color 180ms ease, background 180ms ease, transform 180ms ease;
+}
+
+.gallery-billboard-arrow:active {
+  transform: translateY(-50%) translateY(2px);
 }
 
 .gallery-billboard-arrow[data-billboard-prev] {
@@ -2224,6 +2228,13 @@ main {
 .gallery-billboard-dots button[aria-current='true'] {
   border-color: var(--red);
   background: var(--red);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gallery-billboard-track,
+  .gallery-billboard-slide {
+    transition-duration: 1ms;
+  }
 }
 
 .gallery-masonry {
