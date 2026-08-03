@@ -2,6 +2,7 @@
 import { getCollection } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import ArchiveSeal from '../components/ArchiveSeal.astro';
+import PageHeroMedia from '../components/PageHeroMedia.astro';
 import ThemeCopy from '../components/ThemeCopy.astro';
 import standaloneGallery from '../data/gallery.json';
 
@@ -99,6 +100,7 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
 <BaseLayout title="照片" description="Acretiondisk 的照片。">
   <div class="gallery-shell">
     <header class="gallery-header">
+      <PageHeroMedia />
       <div class="gallery-header-copy">
         <div class="folio-kicker">
           <span>IMAGO / PERSONAL ARCHIVE</span>
