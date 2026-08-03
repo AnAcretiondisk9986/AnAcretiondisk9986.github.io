@@ -767,37 +767,44 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
     }
     const selected = [...pool];
 
-    for (const image of selected) {
-      const slide = document.createElement('button');
-      slide.type = 'button';
-      slide.className = 'gallery-billboard-slide';
-      slide.dataset.galleryOpen = '';
-      slide.dataset.gallerySrc = image.src;
-      if (image.original) slide.dataset.galleryOriginal = image.original;
-      slide.dataset.galleryAlt = image.alt || image.title;
-      slide.dataset.galleryTitle = image.title;
-      slide.dataset.galleryCaption = image.caption || image.alt;
-      slide.dataset.gallerySource = image.sourceUrl || '';
-      slide.dataset.gallerySourceTitle = image.sourceTitle || '';
-      slide.setAttribute('aria-label', `查看${image.title}`);
-      const img = document.createElement('img');
-      img.src = image.thumb || image.src;
-      img.alt = image.alt || image.title;
-      img.loading = 'lazy';
-      img.decoding = 'async';
-      img.referrerPolicy = 'no-referrer';
-      slide.append(img);
-      track.append(slide);
+    // 伪无限循环:轨道复制 3 份,active 只在中间份活动,首尾通过「无感知瞬移」无缝衔接
+    // (轨道平移一整份长度,同一张图落到相同屏幕位置,用户无感知)
+    const COPIES = 3;
+    for (let c = 0; c < COPIES; c++) {
+      for (const image of selected) {
+        const slide = document.createElement('button');
+        slide.type = 'button';
+        slide.className = 'gallery-billboard-slide';
+        slide.dataset.galleryOpen = '';
+        slide.dataset.gallerySrc = image.src;
+        if (image.original) slide.dataset.galleryOriginal = image.original;
+        slide.dataset.galleryAlt = image.alt || image.title;
+        slide.dataset.galleryTitle = image.title;
+        slide.dataset.galleryCaption = image.caption || image.alt;
+        slide.dataset.gallerySource = image.sourceUrl || '';
+        slide.dataset.gallerySourceTitle = image.sourceTitle || '';
+        slide.setAttribute('aria-label', `查看${image.title}`);
+        const img = document.createElement('img');
+        img.src = image.thumb || image.src;
+        img.alt = image.alt || image.title;
+        img.loading = 'lazy';
+        img.decoding = 'async';
+        img.referrerPolicy = 'no-referrer';
+        slide.append(img);
+        track.append(slide);
+      }
     }
 
     const slides = [...track.children] as HTMLButtonElement[];
     const count = slides.length;
-    let active = 0;
+    const per = selected.length; // 每份张数
+    let active = per; // 初始位于中间份第一张,两侧始终有图
     const GAP = 18;
     const FOCUS_SCALE = 1.2;
     const SIDE_SCALE = 0.82;
 
-    // 线性轨道:每张图静态定位,切换时整个轨道平移,最后一张播完直接瞬移切回第一张
+    // 线性轨道 ×3 份:每张图静态定位,切换时整个轨道平移(600ms 过渡);
+    // 伪无限循环下没有真正的首尾,active 在中间份活动,越界时无缝瞬移一份
     const centers: number[] = [];
     const layoutTrack = () => {
       const widths = slides.map((slide) => slide.offsetWidth || 240);
@@ -839,10 +846,30 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
       slides.forEach((slide) => { slide.style.transition = on ? '' : 'none'; });
     };
 
-    const goTo = (next: number) => {
-      let target = next;
-      if (target < 0) target = count - 1;
-      if (target > count - 1) target = 0;
+    // 伪无限:active 越出中间份([per, 2per))时,等过渡结束后把轨道整体平移一份(瞬移,无过渡),
+    // 使同一张图落到相同的屏幕位置,视觉无感知
+    const wrapActive = () => {
+      if (active < per || active >= per * 2) {
+        const shift = active < per ? per : -per;
+        setTransitions(false);
+        active += shift;
+        applyTrack();
+        applyActive();
+        void track.offsetWidth; // 提交瞬移
+        setTransitions(true); // 恢复过渡,供随后的目标变化使用
+        void track.offsetWidth;
+      }
+    };
+
+    // 切换到目标「真实索引」(0..per-1):自动选择距当前物理位置最近的副本,
+    // 相邻切换(±1)始终平滑,跨多张(指示点远跳/点击远处)瞬移
+    const goToReal = (realTarget: number) => {
+      const real = ((active % per) + per) % per;
+      const delta = realTarget - real;
+      if (delta === 0) return;
+      const candNear = active + delta; // 当前所在份的同真实索引
+      const candMid = per + realTarget; // 中间份的同真实索引
+      const target = Math.abs(candNear - active) <= Math.abs(candMid - active) ? candNear : candMid;
       const jump = Math.abs(target - active) > 1;
       if (jump) {
         setTransitions(false);
@@ -851,10 +878,24 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
       active = target;
       applyTrack();
       applyActive();
-      if (jump) requestAnimationFrame(() => setTransitions(true));
+      if (jump) {
+        requestAnimationFrame(() => setTransitions(true));
+        // 瞬移无过渡,立即无缝拉回中间份,保证后续调用方拿到的 active 不越界
+        wrapActive();
+      } else if (active < per || active >= per * 2) {
+        // 相邻切换越界:等 600ms 过渡播完再无缝拉回(期间两侧始终有图,回拉视觉无感知)
+        // 主触发用 transitionend(精确、不受后台定时器节流影响),setTimeout 仅作兜底
+        window.setTimeout(() => wrapActive(), 620);
+      }
     };
-    // 自动轮播:线性前进,最后一张播完切回第一张
-    billboardGoNext = () => goTo(active + 1);
+
+    // 过渡一结束立即把越界的 active 无缝拉回中间份(active 不长期越界,后续计算不错位)
+    track.addEventListener('transitionend', () => wrapActive());
+
+    const goPrev = () => goToReal(((active % per) + per - 1) % per);
+    const goNext = () => goToReal((active % per + 1) % per);
+    // 自动轮播:线性前进,伪无限下永远能前进
+    billboardGoNext = goNext;
 
     // 指示点
     const dotButtons: HTMLButtonElement[] = [];
@@ -862,14 +903,17 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
       const dot = document.createElement('button');
       dot.type = 'button';
       dot.setAttribute('aria-label', `第 ${index + 1} 张`);
-      dot.addEventListener('click', () => goTo(index));
+      dot.addEventListener('click', () => {
+        goToReal(index);
+      });
       dots.append(dot);
       dotButtons.push(dot);
     });
 
     const updateDots = () => {
+      const realActive = active % per; // 指示点按真实索引高亮
       dotButtons.forEach((dot, index) => {
-        dot.setAttribute('aria-current', String(index === active));
+        dot.setAttribute('aria-current', String(index === realActive));
       });
     };
 
@@ -880,8 +924,8 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
     const viewportObserver = new ResizeObserver(applyTrack);
     viewportObserver.observe(viewport);
 
-    prevBtn.addEventListener('click', () => goTo(active - 1));
-    nextBtn.addEventListener('click', () => goTo(active + 1));
+    prevBtn.addEventListener('click', goPrev);
+    nextBtn.addEventListener('click', goNext);
 
     // 触摸/触控笔左右轻扫切换(鼠标点击不参与,避免与 click 双重触发导致一次跳两张)
     let touchStartX = 0;
@@ -897,7 +941,8 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
       const dx = event.clientX - touchStartX;
       if (Math.abs(dx) > 48) {
         swipeLock = true; // 轻扫已切换,拦截随后的合成 click
-        goTo(active + (dx < 0 ? 1 : -1));
+        if (dx < 0) goNext();
+        else goPrev();
       }
     });
 
@@ -909,7 +954,7 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
           return;
         }
         if (i === active) openGalleryViewer(slide);
-        else goTo(i);
+        else if (i % per !== active % per) goToReal(i % per);
       });
     });
 

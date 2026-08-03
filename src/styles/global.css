@@ -2186,7 +2186,7 @@ main {
 }
 
 .gallery-billboard-arrow:active {
-  transform: translateY(-50%) translateY(2px);
+  transform: translateY(-50%) scale(0.88);
 }
 
 .gallery-billboard-arrow[data-billboard-prev] {
