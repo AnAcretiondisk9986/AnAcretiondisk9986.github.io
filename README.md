@@ -5,6 +5,18 @@
 
 ---
 
+## 3.4.0（2026-08-09）
+
+### ♪ 文章内嵌音乐播放条（自托管音频直链）
+
+- 文章 Markdown 正文写 `<div class="song-player" data-src="音频直链" data-title="歌名" data-artist="歌手" data-cover="封面URL"><a href="音频直链">♪ 播放音频</a></div>` 即可嵌入播放条（satteri 原样保留）；`data-src` 必填、其余可选，占位内文本为无 JS 时的降级链接。
+- 前端脚本 `src/scripts/song-player.ts` 把占位块增强为统一风格播放条：封面 / 歌名 / 播放暂停 / 进度拖动 / 时间显示；同页多个播放条共享一个 Audio 实例互斥播放；`astro:page-load` 驱动 View Transitions 导航后重新增强，离开文章页自动停止播放；打印时隐藏。
+- 文件托管复用 `blog-images` 仓库 + jsDelivr（建议新建 `audio/` 目录），与图片架构完全同构；**MP3 全平台可播，FLAC 在 Safari / iOS 上不支持**，且 jsDelivr 对 GitHub 单文件限 20MB（无损大文件会超限）。
+- 管理面板文章编辑器工具栏新增「♪ 音乐」按钮：粘贴音频直链（可选填歌名 / 歌手 / 封面）或已有的 song-player 占位代码，一键生成并插入正文光标处；实时预览同步支持占位块渲染（仅提取闭合完整的占位块、属性转义、src 限 http(s)，面板内用原生 audio 可直接试听）。
+- 样式：`global.css` 基础卡片样式走全局变量自动适配明暗；minimal 主题卡片化（圆角 + 阴影）、liquid 主题沿用 `--liquid-radius`；移动端自动换行。
+- **管理面板可直接上传音频**：「♪ 音乐」对话框新增「⬆ 上传音频」按钮，选择 MP3 / FLAC / OGG / WAV / M4A 文件后自动上传到 `blog-images` 仓库 `audio/` 目录并推送（复用图片仓库管线，音频不做转码），成功后直链自动回填到输入框；单文件上限 20MB（jsDelivr 限制）。
+- 模板仓库已同步（`blog-template` 同版本；模板的音频存其 `public/audio/`，返回本地 `/audio/` 路径）。
+
 ## 3.3.1（2026-08-03）
 
 ### 📝 修订说明（2026-08-03）

@@ -715,8 +715,8 @@
   letter-spacing: 0;
 }
 
-:root[data-visual-theme='still'] .prose :is(img, iframe, pre),
-:root[data-visual-theme='fluid'] .prose :is(img, iframe, pre) {
+:root[data-visual-theme='still'] .prose :is(img, iframe, pre, .song-player),
+:root[data-visual-theme='fluid'] .prose :is(img, iframe, pre, .song-player) {
   border-radius: var(--liquid-radius);
 }
 

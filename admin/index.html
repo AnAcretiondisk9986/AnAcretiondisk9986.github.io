@@ -111,6 +111,12 @@
     /* 视频嵌入预览 */
     .markdown-preview .video-embed{margin:10px 0}
     .markdown-preview .video-embed iframe{width:100%;aspect-ratio:16/9;height:auto;border:1px solid #2a2a30;background:#101014;border-radius:2px;display:block}
+    .markdown-preview .music-embed{margin:10px 0;padding:10px 12px;border:1px solid #2a2a30;border-radius:6px;background:#16161a}
+    .markdown-preview .music-embed-meta{font-size:12px;color:#c8b080;margin-bottom:8px;word-break:break-all}
+    .markdown-preview .music-embed audio{display:block;width:100%;height:36px}
+    .music-fields{display:grid;gap:6px;margin-top:8px}
+    .music-upload-row{display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap}
+    .music-upload-tip{font-size:11px;color:#6a6a70}
     /* 插入视频对话框 */
     .video-modal-mask{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:1000;display:flex;align-items:center;justify-content:center}
     .video-modal{width:560px;max-width:92vw;background:#1a1a1e;border:1px solid #3a3a40;box-shadow:0 8px 40px rgba(0,0,0,.5);padding:18px 20px;display:flex;flex-direction:column;gap:12px;border-radius:2px}
@@ -182,7 +188,7 @@
     </div>
     <div class="tip-bar">
       <span>💡 粘贴图片自动上传</span>
-      <span>▶ 正文工具栏可插入 B站 / YouTube 视频</span>
+      <span>▶ 正文工具栏可插入视频 / ♪ 音乐播放条</span>
       <span>⚡ Ctrl+S 保存</span>
       <span>⇩ 拉取=同步远端最新内容</span>
       <span>⬆ 推送=内容 / 全量推送=含代码</span>
@@ -203,6 +209,32 @@
       <div class="video-actions">
         <button class="btn" id="btnVideoCancel">取消</button>
         <button class="btn primary" id="btnVideoInsert">插入</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 插入音乐播放条对话框 -->
+  <div class="video-modal-mask" id="musicModal" style="display:none">
+    <div class="video-modal">
+      <h3>♪ 插入音乐播放条</h3>
+      <input id="fMusicSrc" placeholder="音频直链，如 https://cdn.jsdelivr.net/gh/用户名/blog-images@main/audio/xxx.mp3" />
+      <div class="music-fields">
+        <input id="fMusicTitle" placeholder="歌名（可选）" />
+        <input id="fMusicArtist" placeholder="歌手（可选）" />
+        <input id="fMusicCover" placeholder="封面图片 URL（可选）" />
+      </div>
+      <div class="video-hint">
+        推荐 MP3（全平台可播）；FLAC 在 Safari / iOS 不支持，且 jsDelivr 单文件限 20MB。<br />
+        也可直接粘贴已有的 &lt;div class="song-player" …&gt; 占位代码，自动提取字段重建。
+      </div>
+      <div class="music-upload-row">
+        <input type="file" id="fMusicFile" accept="audio/*" style="display:none" />
+        <button class="btn small" id="btnMusicUpload">⬆ 上传音频</button>
+        <span class="music-upload-tip">单文件 ≤20MB（jsDelivr 上限），上传后自动回填直链</span>
+      </div>
+      <div class="video-actions">
+        <button class="btn" id="btnMusicCancel">取消</button>
+        <button class="btn primary" id="btnMusicInsert">插入</button>
       </div>
     </div>
   </div>
@@ -311,6 +343,7 @@
             <div class="editor-toolbar">
               <label>正文 (Markdown)</label>
               <button class="btn small" id="btnInsertVideo" title="插入 B站 / YouTube 等流媒体视频">▶ 视频</button>
+              <button class="btn small" id="btnInsertMusic" title="插入音乐播放条（自托管音频直链）">♪ 音乐</button>
               <div class="view-switch" id="viewSwitch">
                 <button data-view="edit">编辑</button>
                 <button data-view="split" class="active">分屏</button>
@@ -327,6 +360,7 @@
       setupPreview();
       setupPostCover();
       setupVideoInsert();
+      setupMusicInsert();
       // Focus title for new posts
       if(!post.title) $('#fTitle')?.focus();
     }
@@ -364,6 +398,7 @@
             <div class="editor-toolbar">
               <label>正文 (Markdown)</label>
               <button class="btn small" id="btnInsertVideo" title="插入 B站 / YouTube 等流媒体视频">▶ 视频</button>
+              <button class="btn small" id="btnInsertMusic" title="插入音乐播放条（自托管音频直链）">♪ 音乐</button>
               <div class="view-switch" id="viewSwitch">
                 <button data-view="edit">编辑</button>
                 <button data-view="split" class="active">分屏</button>
@@ -380,6 +415,7 @@
       setupPreview();
       setupPostCover();
       setupVideoInsert();
+      setupMusicInsert();
       renderList();
       $('#fTitle')?.focus();
     }
@@ -616,6 +652,91 @@
       $('#fVideoInput').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('#btnVideoInsert').click()}});
     }
 
+    /* ── 插入音乐播放条（自托管音频直链，如 jsDelivr 上的 mp3 / flac） ── */
+    // 从 song-player 占位代码中提取 data-* 字段
+    function musicAttr(s,name){
+      const m=s.match(new RegExp('data-'+name+'\\s*=\\s*["\']([^"\']+)["\']','i'));
+      return m?m[1]:'';
+    }
+    // 预览侧解码一次实体（生成器写入的 &lt; &amp; 等），避免标题/歌手双重转义显示为字面实体
+    function musicDecode(s){
+      return String(s||'').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&amp;/g,'&');
+    }
+    // 生成标准占位代码；无 JS 时占位内的链接作为降级入口
+    function musicEmbedHtml(src,title,artist,cover){
+      if(!src||!/^(https?:)?\/\//i.test(src)) return {error:'音频地址必须是 http(s) 链接'};
+      let attrs='data-src="'+mdAttr(src)+'"';
+      if(title) attrs+=' data-title="'+mdAttr(title)+'"';
+      if(artist) attrs+=' data-artist="'+mdAttr(artist)+'"';
+      if(cover) attrs+=' data-cover="'+mdAttr(cover)+'"';
+      return {html:'<div class="song-player" '+attrs+'><a href="'+mdAttr(src)+'">♪ 播放音频</a></div>'};
+    }
+    // 把用户输入转换为 song-player 占位代码；无法识别时返回 {error}
+    function buildMusicEmbed(input,title,artist,cover){
+      const s=(input||'').trim();
+      if(!s) return {error:'请粘贴音频直链或 song-player 占位代码'};
+      // 1) 直接粘贴 song-player 占位代码：提取字段重建（丢弃其他属性）
+      if(/<div[^>]*song-player/i.test(s)){
+        const src=musicAttr(s,'src');
+        if(!src||!/^(https?:)?\/\//i.test(src)) return {error:'song-player 代码中缺少有效 src（须为 http(s)）'};
+        return musicEmbedHtml(src,musicAttr(s,'title')||title,musicAttr(s,'artist')||artist,musicAttr(s,'cover')||cover);
+      }
+      // 2) 音频直链
+      if(/^(https?:)?\/\//i.test(s)) return musicEmbedHtml(s,title,artist,cover);
+      return {error:'无法识别：请粘贴音频直链（http(s)），或 song-player 占位代码'};
+    }
+    // 文章编辑器的「♪ 音乐」按钮 → 打开对话框
+    function setupMusicInsert(){
+      const btn=$('#btnInsertMusic'); if(!btn) return;
+      btn.onclick=()=>{
+        const modal=$('#musicModal'); if(!modal) return;
+        ['fMusicSrc','fMusicTitle','fMusicArtist','fMusicCover'].forEach(id=>{const el=$('#'+id);if(el) el.value=''});
+        modal.style.display='flex';
+        $('#fMusicSrc')?.focus();
+      };
+    }
+    // 对话框事件（静态 HTML，初始化时绑定一次）
+    function bindMusicModal(){
+      const modal=$('#musicModal'); if(!modal) return;
+      $('#btnMusicCancel').onclick=()=>{modal.style.display='none'};
+      modal.addEventListener('click',e=>{if(e.target===modal)modal.style.display='none'});
+      $('#btnMusicInsert').onclick=()=>{
+        const r=buildMusicEmbed($('#fMusicSrc')?.value,$('#fMusicTitle')?.value,$('#fMusicArtist')?.value,$('#fMusicCover')?.value);
+        if(r.error){toast(r.error);return}
+        const ta=$('#fContent');
+        if(ta){
+          const s=ta.selectionStart;
+          ta.value=ta.value.substring(0,s)+'\n'+r.html+'\n'+ta.value.substring(ta.selectionEnd);
+          ta.focus();
+        }
+        modal.style.display='none';
+        refreshPreview();
+        toast('已插入音乐播放条');
+      };
+      $('#fMusicSrc').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('#btnMusicInsert').click()}});
+      // 音频上传：选择文件后经 /api/upload 落库到仓库 audio/ 目录，成功后回填直链
+      const musicFile=$('#fMusicFile'), musicUploadBtn=$('#btnMusicUpload');
+      if(musicFile&&musicUploadBtn){
+        musicUploadBtn.onclick=()=>musicFile.click();
+        musicFile.addEventListener('change',async()=>{
+          const f=musicFile.files?musicFile.files[0]:null;
+          musicFile.value='';
+          if(!f) return;
+          if(!f.type.startsWith('audio/')){toast('仅支持音频文件');return}
+          toast('上传中…');
+          const fd=new FormData(); fd.set('file',f);
+          try{
+            const res=await apiFetch('/api/upload',{method:'POST',body:fd});
+            const data=await res.json();
+            if(!res.ok){toast(data.error||'上传失败');return}
+            const srcEl=$('#fMusicSrc');
+            if(srcEl) srcEl.value=data.url;
+            toast('已上传，直链已填入');
+          }catch(e){toast('上传失败：'+e.message)}
+        });
+      }
+    }
+
     async function uploadImage(file, target = 'content') {
       if(!file||!file.type.startsWith('image/')){toast('仅支持图片');return}
       toast('上传中…');
@@ -745,6 +866,8 @@
         if(vm){html+='\u0000V'+vm[1]+'\u0000\n';i++;continue}
         const km=t.match(/^\u0000K(\d+)\u0000$/);
         if(km){html+='\u0000K'+km[1]+'\u0000\n';i++;continue}
+        const mm=t.match(/^\u0000M(\d+)\u0000$/);
+        if(mm){html+='\u0000M'+mm[1]+'\u0000\n';i++;continue}
         const hm=t.match(/^(#{1,6})\s+(.*)$/);
         if(hm){html+='<h'+hm[1].length+'>'+mdInline(hm[2])+'</h'+hm[1].length+'>\n';i++;continue}
         if(/^(-{3,}|\*{3,}|_{3,})\s*$/.test(t)){html+='<hr>\n';i++;continue}
@@ -800,8 +923,22 @@
         rest=rest.slice(close+9);
       }
       text=head+rest;
+      // 提取闭合完整的 song-player 占位块（\u0000M 占位符；mdInline 正则会排除 \u0000 防止属性注入）
+      const songs=[];
+      rest=text; head='';
+      while(true){
+        const open=rest.search(/<div[^>]*\bsong-player\b[^>]*>/i);
+        if(open===-1) break;
+        const close=rest.toLowerCase().indexOf('</div>',open);
+        if(close===-1) break;
+        songs.push(rest.slice(open,close+6));
+        head+=rest.slice(0,open)+'\u0000M'+(songs.length-1)+'\u0000';
+        rest=rest.slice(close+6);
+      }
+      text=head+rest;
       let html=mdParse(mdEscapeText(text));
       html=html.replace(/\u0000V(\d+)\u0000/g,(m,i)=>videoEmbedHtml(videos[+i]));
+      html=html.replace(/\u0000M(\d+)\u0000/g,(m,i)=>musicEmbedPreview(songs[+i]));
       html=html.replace(/\u0000K(\d+)\u0000/g,(m,i)=>{
         const b=blocks[+i];
         return '<pre><code'+(b.lang?' class="language-'+mdAttr(b.lang)+'"':'')+'>'+mdEscapeText(b.code).replace(/\n$/,'')+'</code></pre>';
@@ -814,6 +951,14 @@
       const src=m?m[1]:'';
       if(!src||!/^(https?:)?\/\//i.test(src)) return '<p style="color:#c06050;font-size:12px">⚠ iframe 缺少有效 src，未渲染</p>';
       return '<div class="video-embed"><iframe src="'+mdAttr(src)+'" title="嵌入式视频播放器" loading="lazy" allowfullscreen referrerpolicy="no-referrer-when-downgrade"></iframe></div>';
+    }
+    // 从 song-player 占位提取字段，渲染为面板内可直接试听的预览（原生 audio）
+    function musicEmbedPreview(block){
+      const src=musicAttr(block,'src');
+      if(!src||!/^(https?:)?\/\//i.test(src)) return '<p style="color:#c06050;font-size:12px">⚠ song-player 缺少有效 src，未渲染</p>';
+      const title=musicDecode(musicAttr(block,'title'))||'未命名曲目';
+      const artist=musicDecode(musicAttr(block,'artist'));
+      return '<div class="music-embed"><div class="music-embed-meta">♪ '+mdAttr(title)+(artist?' — '+mdAttr(artist):'')+'</div><audio controls preload="none" src="'+mdAttr(src)+'"></audio></div>';
     }
 
     // 实时预览：视图切换 + 输入防抖渲染
@@ -853,6 +998,7 @@
     });
 
     bindVideoModal();
+    bindMusicModal();
     loadPosts();
 
     // ── 模式切换 ──

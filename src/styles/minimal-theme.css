@@ -764,6 +764,13 @@
     box-shadow: 0 10px 30px var(--shadow);
   }
 
+  :root[data-visual-theme='minimal'] .prose .song-player {
+    border: 1px solid var(--rule);
+    border-radius: 7px;
+    background: var(--paper-light);
+    box-shadow: 0 10px 30px var(--shadow);
+  }
+
   :root[data-visual-theme='minimal'] .prose pre {
     border: 1px solid var(--rule);
     border-radius: 7px;

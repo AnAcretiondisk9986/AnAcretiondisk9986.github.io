@@ -10,10 +10,13 @@ import matter from 'gray-matter';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const BLOG_DIR = resolve(__dirname, 'src', 'content', 'blog');
 // 图片仓库：与博客仓库平级的 blog-images，图片上传后经 jsDelivr CDN 外链引用
-const IMG_REPO_DIR = resolve(__dirname, '..', 'blog-images');
+// IMG_REPO_DIR 支持环境变量覆盖（测试隔离用）
+const IMG_REPO_DIR = process.env.IMG_REPO_DIR ? resolve(process.env.IMG_REPO_DIR) : resolve(__dirname, '..', 'blog-images');
 const IMAGE_DIR = resolve(IMG_REPO_DIR, 'image');
+const AUDIO_DIR = resolve(IMG_REPO_DIR, 'audio');
 const ORIGINAL_DIR = resolve(IMAGE_DIR, 'original');
 const IMG_BASE_URL = 'https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/';
+const AUDIO_BASE_URL = 'https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/audio/';
 const GALLERY_JSON = resolve(__dirname, 'src', 'data', 'gallery.json');
 const ABOUT_JSON = resolve(__dirname, 'src', 'data', 'about.json');
 const FRONTEND_JSON = resolve(__dirname, 'src', 'data', 'frontend.json');
@@ -110,12 +113,13 @@ function nextGalleryDayIndex(items, date) {
 }
 
 // ── Multer: image-only upload ──
-const ALLOWED_MIME = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml', 'image/x-icon'];
+const ALLOWED_MIME = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml', 'image/x-icon', 'audio/mpeg', 'audio/flac', 'audio/ogg', 'audio/wav', 'audio/x-wav', 'audio/mp4', 'audio/aac', 'audio/x-m4a'];
 const upload = multer({
   storage: multer.diskStorage({
-    destination: (_req, _file, cb) => {
+    destination: (_req, file, cb) => {
+      const dir = String(file.mimetype).startsWith('audio/') ? AUDIO_DIR : IMAGE_DIR;
       try {
-        mkdir(IMAGE_DIR, { recursive: true }).then(() => cb(null, IMAGE_DIR), err => cb(err));
+        mkdir(dir, { recursive: true }).then(() => cb(null, dir), err => cb(err));
       } catch (err) { cb(err); }
     },
     filename: (_req, file, cb) => {
@@ -131,7 +135,7 @@ const upload = multer({
     if (ALLOWED_MIME.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('仅支持 PNG / JPEG / GIF / WebP / SVG 图片格式'), false);
+      cb(new Error('仅支持 PNG / JPEG / GIF / WebP / SVG 图片与 MP3 / FLAC / OGG / WAV / M4A 音频'), false);
     }
   },
   limits: { fileSize: 35 * 1024 * 1024 },
@@ -364,12 +368,20 @@ app.post('/api/upload', (req, res, next) => {
     }
     if (!req.file) return res.status(400).json({ error: '未选择文件' });
     try {
-      const origName = await archiveOriginal(req.file.path, basename(req.file.path));
-      const filename = await saveImageFile(req.file.path);
+      const isAudio = String(req.file.mimetype).startsWith('audio/');
+      let filename, origName = null;
+      if (isAudio) {
+        // 音频：原样保留（不做转码），落库到 audio/ 目录
+        filename = basename(req.file.path);
+      } else {
+        origName = await archiveOriginal(req.file.path, basename(req.file.path));
+        filename = await saveImageFile(req.file.path);
+      }
       const push = await pushImageRepo();
+      const base = isAudio ? AUDIO_BASE_URL : IMG_BASE_URL;
       res.status(201).json({
         success: true,
-        url: `${IMG_BASE_URL}${encodeURIComponent(filename)}`,
+        url: `${base}${encodeURIComponent(filename)}`,
         originalUrl: origName ? `${IMG_BASE_URL}original/${encodeURIComponent(origName)}` : '',
         pushed: push.pushed,
       });

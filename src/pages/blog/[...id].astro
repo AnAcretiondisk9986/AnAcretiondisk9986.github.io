@@ -99,6 +99,22 @@ const printUrl = JSON.stringify(
   </div>
 </BaseLayout>
 
+<script>
+  // 音乐播放条：把正文里的 .song-player 占位块增强为可播放的播放条
+  // 模块只执行一次；astro:page-load 在首次加载与每次 VT 导航后触发，重新扫描新 DOM
+  // （注意：不能给本脚本加 data-astro-rerun——会隐式 is:inline 导致 import/TS 内联失效，见 AGENT_HANDOFF v3.0.1）
+  import { initSongPlayers, stopSongPlayback } from '../../scripts/song-player';
+  initSongPlayers();
+  // 内联 module 每次 VT 导航会重新执行：用全局标记保证监听器只注册一次
+  if (!(window as any).__acrSongPlayerBound) {
+    (window as any).__acrSongPlayerBound = true;
+    document.addEventListener('astro:page-load', () => {
+      stopSongPlayback(); // 离开上一页后停止其音频，避免声音延续到新页面
+      initSongPlayers();
+    });
+  }
+</script>
+
 <script is:inline data-astro-rerun>
   // 阅览次数（不蒜子统计）：按当前页面 URL 计数，境内可直连。
   // 数字就绪后才显示条目；服务不可用时保持隐藏，不影响页面其余内容。

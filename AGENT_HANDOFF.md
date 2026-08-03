@@ -2,6 +2,19 @@
 
 > 本文件已在用户授权下公开于 GitHub 仓库。每位 Agent 完成工作后在此记录变更。
 
+**♪ 文章内嵌音乐播放条（自托管音频直链，mp3 / flac；v3.4.0）**
+
+- 占位语法：`<div class="song-player" data-src="…" data-title="…" data-artist="…" data-cover="…"><a href="…">♪ 播放音频</a></div>`——satteri 原样保留；`data-src` 必填且限 http(s)，占位内文本为无 JS 降级链接（渲染时替换）。
+- `src/scripts/song-player.ts`（新增）：扫描 `.prose .song-player[data-src]` 增强为播放条（封面 / 标题 / 艺术家 / 播放暂停 / 进度拖动 / 时间）；共享 Audio 单实例、同页互斥播放；标题等文本一律 `textContent` 写入防注入；`initSongPlayers` 幂等（`is-enhanced` 类检测）；导出 `stopSongPlayback()`。
+- 文章页 `[...id].astro` 引入：hoisted `<script>` + `astro:page-load` 驱动——**不能加 `data-astro-rerun`（v3.0.1 踩坑：隐式 is:inline 使 import/TS 内联失效）**；脚本较小被 Astro 内联为 module，每次 VT 导航重新执行，故监听器注册用 `window.__acrSongPlayerBound` 全局幂等标记；page-load 回调先 `stopSongPlayback()`（离开文章页停止上一页音频）再重新增强。
+- 样式：`global.css` `.song-player*`（卡片布局、封面、进度条 accent-color、时间、错误提示、移动端换行、`@media print` 隐藏）；minimal 主题卡片化（圆角 7px + 阴影）、liquid 主题 `--liquid-radius`。
+- 管理面板 `admin/index.html`：工具栏「♪ 音乐」按钮（编辑 / 新建两处模板）、musicModal 对话框（直链 + 可选歌名 / 歌手 / 封面 + **「⬆ 上传音频」按钮**）、`buildMusicEmbed` / `musicAttr` / `musicEmbedHtml`（粘贴 song-player 占位代码自动提取重建，属性经 `mdAttr` 转义）、`setupMusicInsert` / `bindMusicModal`；预览 `mdRenderVideo` 新增 `\u0000M` 占位符提取闭合完整的 song-player 块，`musicEmbedPreview` 渲染原生 `<audio>` 可试听（未闭合 / 无有效 src 回退警告文本）。
+- 后端 `admin-server.mjs` 上传接口支持音频：`ALLOWED_MIME` 新增 `audio/mpeg / flac / ogg / wav / x-wav / mp4 / aac / x-m4a`；multer destination 按 mimetype 分流到仓库 `audio/` 目录（主站 `IMG_REPO_DIR/audio`，模板 `public/audio`）；`/api/upload` 音频分支不做 sharp 转码、原样保留扩展名，返回 `AUDIO_BASE_URL`（主站 jsDelivr `…/audio/`，模板本地 `/audio/`）；`IMG_REPO_DIR` 支持环境变量覆盖（测试隔离用）；模板 `/api/push` 的 stageCmd 增加 `public/audio/`。
+- 格式与容量提醒：MP3 全平台可播；FLAC 在 Safari / iOS 不支持；jsDelivr 对 GitHub 单文件限 20MB（已写入面板对话框提示）。
+- 验证：`npm run build` 22 页成功（含临时测试文章）；构建产物确认占位块原样保留、脚本内联 module 完整（无 import 泄漏、无 data-astro-rerun）、样式进入全局 CSS；两份 admin `<script>` 经 `new Function` 语法检查通过且音乐相关引用一致；`/admin` 200、`/api/posts` 带 token 200；临时测试文章与 dist 产物已删除。
+- 模板仓库 `blog-template` 已同步（song-player.ts / 文章页 / global.css / admin 全部一致）。
+- 发布：未推送、未打 tag（待用户发布）。
+
 **🔢 文章列表：序号纯数字 + 标题自适应字号（首页 / 卷册目录，v3.2.1）**
 
 - `src/components/PostCatalog.astro`：序号下方「文章 / FOLIO」小字删除，序号统一为纯 `01 / 02 / 03`（四种视觉主题一致）。
