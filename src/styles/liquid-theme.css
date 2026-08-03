@@ -348,60 +348,6 @@
     rgba(7, 22, 17, var(--liquid-overlay));
 }
 
-/* 全站背景:除首页外,页面背景 = 首页 hero 图,body::before 高斯模糊 + ::after 主题遮罩;
-   模糊强度跟随「玻璃模糊」滑块(1.5 倍),遮罩跟随「背景遮罩」滑块,
-   图片数据源 frontend.json(--page-bg-still/fluid,管理面板改图全站同步)。
-   层级:背景 z:1 → 纸纹 z:1(同层 DOM 靠后,盖在背景上)→ 内容 .site-shell z:2 */
-:root[data-visual-theme='still'] body:not(.is-home)::before,
-:root[data-visual-theme='fluid'] body:not(.is-home)::before {
-  content: '';
-  position: fixed;
-  z-index: 1;
-  inset: -6%;
-  pointer-events: none;
-  background-position: center;
-  background-size: cover;
-  background-repeat: no-repeat;
-  filter: blur(calc(var(--liquid-blur) * 1.5)) saturate(1.08);
-}
-
-:root[data-visual-theme='still'] body:not(.is-home)::before {
-  background-image: var(--page-bg-still);
-}
-
-:root[data-visual-theme='fluid'] body:not(.is-home)::before {
-  background-image: var(--page-bg-fluid);
-}
-
-/* 轻遮罩:背景图清晰可见,可读性主要由玻璃组件底承担;亮色轻提亮 / 暗色轻压暗 */
-:root[data-visual-theme='still'] body:not(.is-home)::after,
-:root[data-visual-theme='fluid'] body:not(.is-home)::after {
-  content: '';
-  position: fixed;
-  z-index: 1;
-  inset: 0;
-  pointer-events: none;
-}
-
-:root[data-theme='light'] body:not(.is-home)::after {
-  background: rgba(244, 248, 246, calc(var(--liquid-overlay) * 0.4));
-}
-
-:root[data-theme='dark'] body:not(.is-home)::after {
-  background: rgba(6, 12, 10, calc(var(--liquid-overlay) * 0.65));
-}
-
-/* 纸纹盖在背景上(与背景同层、DOM 靠后),内容提到背景之上 */
-:root[data-visual-theme='still'] .paper-grain,
-:root[data-visual-theme='fluid'] .paper-grain {
-  z-index: 1;
-}
-
-:root[data-visual-theme='still'] .site-shell,
-:root[data-visual-theme='fluid'] .site-shell {
-  z-index: 2;
-}
-
 :root[data-visual-theme='still'] .hero-copy-panel,
 :root[data-visual-theme='fluid'] .hero-copy-panel {
   position: relative;
@@ -593,17 +539,6 @@
   border-color: var(--liquid-rule);
 }
 
-/* 页头玻璃容器:标题文字在玻璃底上,避免直接压在模糊背景上造成阅读困难(与下方组件同款) */
-:root[data-visual-theme='still'] :is(.catalog-header, .gallery-header, .guestbook-header, .dossier-header),
-:root[data-visual-theme='fluid'] :is(.catalog-header, .gallery-header, .guestbook-header, .dossier-header) {
-  border: 1px solid var(--liquid-highlight);
-  border-radius: var(--liquid-radius);
-  background: var(--liquid-surface);
-  box-shadow: var(--liquid-edge), 0 10px 28px rgba(20, 37, 32, 0.08);
-  -webkit-backdrop-filter: blur(var(--liquid-blur)) saturate(130%);
-  backdrop-filter: blur(var(--liquid-blur)) saturate(130%);
-}
-
 :root[data-visual-theme='still'] :is(.section-heading h2, .catalog-title h1, .gallery-header h1, .guestbook-header h1, .dossier-header h1),
 :root[data-visual-theme='fluid'] :is(.section-heading h2, .catalog-title h1, .gallery-header h1, .guestbook-header h1, .dossier-header h1) {
   font-family: var(--liquid-art-font);
@@ -637,29 +572,13 @@
 :root[data-visual-theme='still'] .portrait-record,
 :root[data-visual-theme='fluid'] .portrait-record,
 :root[data-visual-theme='still'] .dossier-copy blockquote,
-:root[data-visual-theme='fluid'] .dossier-copy blockquote,
-:root[data-visual-theme='still'] .article-shell,
-:root[data-visual-theme='fluid'] .article-shell,
-:root[data-visual-theme='still'] .gallery-panel,
-:root[data-visual-theme='fluid'] .gallery-panel,
-:root[data-visual-theme='still'] .wordcloud-box,
-:root[data-visual-theme='fluid'] .wordcloud-box,
-:root[data-visual-theme='still'] .dossier,
-:root[data-visual-theme='fluid'] .dossier,
-:root[data-visual-theme='still'] .catalog-footer,
-:root[data-visual-theme='fluid'] .catalog-footer {
+:root[data-visual-theme='fluid'] .dossier-copy blockquote {
   border: 1px solid var(--liquid-highlight);
   border-radius: var(--liquid-radius);
   background: var(--liquid-surface);
   box-shadow: var(--liquid-edge), 0 10px 28px rgba(20, 37, 32, 0.08);
   -webkit-backdrop-filter: blur(var(--liquid-blur)) saturate(130%);
   backdrop-filter: blur(var(--liquid-blur)) saturate(130%);
-}
-
-/* 大容器玻璃化后补内边距,避免内容贴玻璃边缘 */
-:root[data-visual-theme='still'] :is(.article-shell, .gallery-panel, .dossier),
-:root[data-visual-theme='fluid'] :is(.article-shell, .gallery-panel, .dossier) {
-  padding-inline: clamp(20px, 4vw, 44px);
 }
 
 :root[data-visual-theme='still'] .archive-entry,
@@ -739,36 +658,11 @@
   backdrop-filter: blur(var(--liquid-blur)) saturate(130%);
 }
 
-/* 中间层条(上下均有相邻容器,非页面边缘)去掉圆角,保持连续面板感;
-   页面边缘容器(页头/正文面板/页脚)与独立卡片保留圆角 */
-:root[data-visual-theme='still'] :is(.gallery-order-bar, .gallery-view-bar, .gallery-tabs),
-:root[data-visual-theme='fluid'] :is(.gallery-order-bar, .gallery-view-bar, .gallery-tabs) {
-  border-radius: 0;
-}
-
-/* 页头大标题(ThemeCopy)与小标题在子容器中水平居中;mark 标记区(seal + dl)整体居中 */
-:root[data-visual-theme='still'] :is(.catalog-title, .gallery-header-copy, .guestbook-header-copy, .dossier-header > div),
-:root[data-visual-theme='fluid'] :is(.catalog-title, .gallery-header-copy, .guestbook-header-copy, .dossier-header > div) {
-  align-items: center;
-  text-align: center;
-}
-
-:root[data-visual-theme='still'] :is(.catalog-title > p:last-child, .dossier-header > div > p:last-child),
-:root[data-visual-theme='fluid'] :is(.catalog-title > p:last-child, .dossier-header > div > p:last-child) {
-  margin-inline: auto;
-}
-
-:root[data-visual-theme='still'] :is(.catalog-mark, .gallery-header-mark, .guestbook-header-mark),
-:root[data-visual-theme='fluid'] :is(.catalog-mark, .gallery-header-mark, .guestbook-header-mark) {
-  justify-items: center;
-  align-items: center;
-  text-align: center;
-}
-
 :root[data-visual-theme='still'] :is(.gallery-sort button, .gallery-view-switch button, .catalog-view-switch button, .gallery-tab, .appearance-selector button),
 :root[data-visual-theme='fluid'] :is(.gallery-sort button, .gallery-view-switch button, .catalog-view-switch button, .gallery-tab, .appearance-selector button) {
   border-radius: 6px;
-  font-family: var(--sans);  letter-spacing: 0;
+  font-family: var(--sans);
+  letter-spacing: 0;
 }
 
 :root[data-visual-theme='still'] :is(.gallery-sort button[aria-pressed='true'], .gallery-view-switch button[aria-pressed='true'], .catalog-view-switch button[aria-pressed='true'], .gallery-tab[aria-selected='true'], .appearance-selector button[aria-pressed='true']),

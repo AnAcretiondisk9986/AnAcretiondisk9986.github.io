@@ -41,8 +41,6 @@ const frontendStyle = [
   `--liquid-blur:${frontend.glassBlur}px`,
   `--liquid-radius:${frontend.cardRadius}px`,
   `--liquid-art-font:${displayFont}`,
-  `--page-bg-still:url("${frontend.stillHeroImage}")`,
-  `--page-bg-fluid:url("${frontend.fluidHeroImage}")`,
 ].join(';');
 const pageTitle = title === 'Acretiondisk' ? siteName : `${title} · ${siteName}`;
 const pathname = Astro.url.pathname;
@@ -102,7 +100,7 @@ const navigation = [
       })();
     </script>
   </head>
-  <body class={pathname === '/' ? 'is-home' : undefined}>
+  <body>
     <ClientRouter />
     <div class="paper-grain" aria-hidden="true"></div>
     <div class="site-shell">
