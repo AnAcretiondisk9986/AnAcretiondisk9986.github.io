@@ -3,6 +3,7 @@ title: "资源分享:Human Anatomy Atlas 2026（内含安装教程视频）"
 description: 一个辅助学习解剖学（含人解系解）的3D软件，能在Windows上运行，顺便也测试一下我新加的内嵌视频功能
 pubDate: "2026-08-01"
 dayIndex: 4
+cover: "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/image_1785591630339.webp"
 tags:
   - 医学
   - 软件
