@@ -33,15 +33,18 @@ const navigation = [
     <meta name="generator" content={Astro.generator} />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>{pageTitle}</title>
-    <script is:inline>
-      const savedTheme = localStorage.getItem('theme');
-      const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      document.documentElement.dataset.theme = savedTheme ?? (systemDark ? 'dark' : 'light');
-      // js = 允许脚本驱动的进入动画;vt = 支持 View Transitions(避免与路由过渡动画叠加)
-      document.documentElement.classList.add('js');
-      if (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        document.documentElement.classList.add('vt');
-      }
+    <!-- data-astro-rerun:View Transitions 导航后需重新执行,恢复 data-theme/js/vt(swap 会移除 <html> 属性);IIFE 包裹防止重复执行时顶层 const 重复声明 -->
+    <script is:inline data-astro-rerun>
+      (() => {
+        const savedTheme = localStorage.getItem('theme');
+        const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        document.documentElement.dataset.theme = savedTheme ?? (systemDark ? 'dark' : 'light');
+        // js = 允许脚本驱动的进入动画;vt = 支持 View Transitions(避免与路由过渡动画叠加)
+        document.documentElement.classList.add('js');
+        if (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          document.documentElement.classList.add('vt');
+        }
+      })();
     </script>
   </head>
   <body>
@@ -111,23 +114,26 @@ const navigation = [
       </footer>
     </div>
 
-    <script>
-      const button = document.querySelector<HTMLButtonElement>('.theme-toggle');
-      button?.addEventListener('click', () => {
-        const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
-        const apply = () => {
-          document.documentElement.dataset.theme = next;
-          localStorage.setItem('theme', next);
-        };
-        // 支持 View Transitions 时以交叉淡化衔接明暗主题切换
-        if (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
-          document.startViewTransition(apply);
-        } else {
-          apply();
-        }
-      });
+    <!-- data-astro-rerun:VT 导航后 DOM 被替换,必须重新执行以绑定按钮监听器;内联脚本需为纯 JS 且用 IIFE 包裹(重复执行时顶层 const 会冲突) -->
+    <script is:inline data-astro-rerun>
+      (() => {
+        const button = document.querySelector('.theme-toggle');
+        button?.addEventListener('click', () => {
+          const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+          const apply = () => {
+            document.documentElement.dataset.theme = next;
+            localStorage.setItem('theme', next);
+          };
+          // 支持 View Transitions 时以交叉淡化衔接明暗主题切换
+          if (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            document.startViewTransition(apply);
+          } else {
+            apply();
+          }
+        });
 
-      requestAnimationFrame(() => document.documentElement.classList.add('is-ready'));
+        requestAnimationFrame(() => document.documentElement.classList.add('is-ready'));
+      })();
     </script>
   </body>
 </html>

@@ -357,6 +357,9 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
 <script>
   // 独立收藏数据池(由上方 JSON 标签注入,避免 define:vars 内联导致 TS 语法残留)
   import { captureFlip, playFlip } from '../scripts/reorder-anim';
+  document.addEventListener('astro:page-load', () => {
+
+  // astro:page-load:整页加载与每次 VT 导航后触发,重新初始化(打包脚本只执行一次,事件驱动每次导航执行)
 
   // 让容器内当前可见的卡片播放一次「轻盈升起」进入动画(翻页时使用)
   const animateCardsEntering = (container: HTMLElement | null) => {
@@ -926,5 +929,6 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
   document.querySelector<HTMLButtonElement>('[data-gallery-close]')?.addEventListener('click', () => viewer?.close());
   viewer?.addEventListener('click', (event) => {
     if (event.target === viewer) viewer.close();
+  });
   });
 </script>

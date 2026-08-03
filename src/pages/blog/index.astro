@@ -98,5 +98,6 @@ const cloudWords = buildWordCloud(
 
 <script>
   import { initOrderToggle } from '../../scripts/order-toggle';
-  initOrderToggle();
+  // astro:page-load 在整页加载与每次 VT 导航后触发;打包脚本只执行一次,靠事件驱动每次导航重新初始化
+  document.addEventListener('astro:page-load', () => initOrderToggle());
 </script>

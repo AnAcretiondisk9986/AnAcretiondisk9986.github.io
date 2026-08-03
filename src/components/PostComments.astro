@@ -40,6 +40,7 @@
 </section>
 
 <script>
+  document.addEventListener('astro:page-load', () => {
   const MAX_LEN = 300;
   const PAGE_SIZE = 20;
   const FETCH_TIMEOUT = 8000; // 8 秒超时：连不上就直接按「地区不支持」处理
@@ -349,6 +350,7 @@
   });
 
   loadComments(true);
+  });
 </script>
 
 <style is:global>

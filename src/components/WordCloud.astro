@@ -132,6 +132,9 @@ const siteBase = Astro.site?.toString() ?? '';
 
 <script>
   import WordCloud from '../vendor/wordcloud2.js';
+  document.addEventListener('astro:page-load', () => {
+
+  // astro:page-load:整页加载与每次 VT 导航后触发,重新初始化(打包脚本只执行一次,事件驱动每次导航执行)
 
   const box = document.querySelector<HTMLElement>('[data-wordcloud-box]');
   const canvas = document.querySelector<HTMLCanvasElement>('[data-wordcloud]');
@@ -319,4 +322,5 @@ const siteBase = Astro.site?.toString() ?? '';
     });
   }
   }
+  });
 </script>

@@ -1,7 +1,22 @@
 # Acretiondisk Blog — 更新日志
 
 > 使用 Astro 构建的个人博客，部署到 GitHub Pages（`https://anacretiondisk9986.github.io/`）。
-> 当前版本：**3.0.0**（2026-08-02）
+> 当前版本：**3.0.1**（2026-08-03）
+
+---
+
+## 3.0.1（2026-08-03）
+
+### 🐛 修复：除首页外的昼夜模式切换按钮失效
+
+- **症状**：通过页面间切换（View Transitions 路由）进入的任何页面（卷册/图志/关于/留言/文章页），昼夜切换按钮点击无反应;导航后页面还会丢失已保存的明暗主题。
+- **根因**（两层）：
+  1. Astro `ClientRouter` 的脚本去重机制——相同内容的内联脚本（布局里的主题初始化与按钮绑定脚本全站同文本）只在首次执行，View Transitions 导航后被 `deselectScripts` 跳过，新 DOM 上的按钮没有监听器;同时 swap 会移除 `<html>` 上的 `data-theme` 属性，主题初始化脚本又不重跑，主题即丢失。
+  2. 直接给打包脚本加 `data-astro-rerun` 会隐式内联（Astro 文档：给 `<script>` 加任何属性即隐式 `is:inline`），TS 泛型与 `import` 泄漏进浏览器直接语法报错——这也是修复过程中踩到的坑。
+- **修复**：
+  - `BaseLayout` 的主题初始化与按钮绑定脚本改为 `is:inline data-astro-rerun` 并用 IIFE 包裹（内联脚本重复执行时顶层 `const` 会抛 `Identifier has already been declared`，IIFE 规避）;按钮脚本去掉 TS 泛型。
+  - 含 `import`/TS 的页面脚本（排序/画廊/留言/词云/评论/统计）改用 `astro:page-load` 事件驱动初始化——打包脚本只执行一次，每次导航（含整页加载）由事件触发重新绑定;`initOrderToggle` 增加 WeakSet 幂等保护，避免首页与卷册页两个模块重复绑定导致排序来回切换。
+- 验证：`npm run build` 19 页成功;headless Chrome 实测首页→文章页→留言页→图志页→首页全链路（真实 VT 导航，含往返、主题保持、按钮双向切换、排序/词云/留言/画廊初始化）全部通过。
 
 ---
 

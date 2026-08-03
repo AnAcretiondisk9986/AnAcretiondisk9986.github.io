@@ -2,6 +2,17 @@
 
 > 本文件已在用户授权下公开于 GitHub 仓库。每位 Agent 完成工作后在此记录变更。
 
+**🐛 修复除首页外昼夜模式切换按钮失效（v3.0.1）**
+
+- 症状：通过 View Transitions 导航进入的任何页面（卷册/图志/关于/留言/文章页），昼夜按钮点击无反应；导航后页面丢失已保存主题（`data-theme` 被 swap 移除且初始化脚本不重跑）。
+- 根因 1：Astro `ClientRouter` 的 `deselectScripts`/`detectScriptExecuted` 按脚本内容（内联脚本取 `textContent`）去重——全站同文本的主题初始化与按钮绑定脚本在首页首次执行后，后续所有 VT 导航都被跳过，新 DOM 按钮无监听器。
+- 根因 2（修复过程踩坑）：给打包 `<script>` 直接加 `data-astro-rerun` 会隐式 `is:inline`（Astro 文档原话），TS 泛型（`querySelector<HTMLButtonElement>`）与 `import` 原样内联进 HTML，浏览器解析成比较运算/语法错误，脚本全部失效——含 `import`/TS 的脚本不能走 `data-astro-rerun`。
+- 根因 3：内联脚本加 `data-astro-rerun` 后每次导航重新执行，顶层 `const` 与首次执行留下的全局词法声明冲突，抛 `SyntaxError: Identifier 'x' has already been declared`，脚本整体被丢弃——内联脚本必须 IIFE 包裹（busuanzi 统计脚本原本就是 IIFE 故无恙）。
+- 修复：`src/layouts/BaseLayout.astro` 两个脚本 → `is:inline data-astro-rerun` + IIFE + 去 TS 泛型；页面/组件脚本（index、blog/index、gallery、guestbook、WordCloud、PostComments）→ 改注册 `astro:page-load` 监听器驱动初始化（模块只执行一次、事件每次导航触发）；`order-toggle.ts` 加 WeakSet 幂等（首页与卷册页两模块注册同一函数，防重复绑定致排序来回切换）；文章页 busuanzi 脚本加 `data-astro-rerun`。
+- 附带发现：本机 `python -m http.server`（Python 3.14）对 `.js` 返回 `text/plain`，浏览器严格 MIME 检查拒绝执行全部 module 脚本，导致本地复现时 VT 从未真正发生——新增 `scripts/static-server.mjs`（MIME 正确）与 `scripts/verify-vt-theme.mjs`（VT 导航回归测试）。
+- 验证：`npm run build` 19 页成功；headless Chrome 真实 VT 导航全链路（首页→文章页→留言页→图志页→首页，含往返、主题保持、按钮双向切换、排序/词云/留言/画廊初始化）全部通过。
+- 发布：README 新增 3.0.1 条目；模板仓库（blog-template）已同步本次全部源码改动。
+
 **🎠 广告牌改为线性轨道轮播（v2.2.3）**
 
 - 取消环形设定（用户要求）：`buildBillboard` 重写——每张 slide 静态定位 `left: centers[i]`（间距逐对自适应：`max(w)×1.2/2 + min(w)×0.82/2 + GAP`），切换时整个轨道 `translateX` 平移（560ms），焦点图对齐视口中心；不再按 `active` 重排每张图位置（不再是环状滚筒）。

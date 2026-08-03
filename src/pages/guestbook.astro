@@ -67,6 +67,7 @@ import ArchiveSeal from '../components/ArchiveSeal.astro';
 </BaseLayout>
 
 <script>
+  document.addEventListener('astro:page-load', () => {
   const PAGE_PATH = '/guestbook/';
   const MAX_LEN = 300;
   const PAGE_SIZE = 20;
@@ -357,4 +358,5 @@ import ArchiveSeal from '../components/ArchiveSeal.astro';
   });
 
   loadComments(true);
+  });
 </script>
