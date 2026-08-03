@@ -2,34 +2,58 @@
 
 > 本文件已在用户授权下公开于 GitHub 仓库。每位 Agent 完成工作后在此记录变更。
 
-**♪ 文章内嵌音乐播放条（自托管音频直链 + 网易云歌曲适配；v3.4.0）**
+**🎧 v3.4.0 完整交接：音乐播放条 / 音频工作流 / 格式化工具栏 / 图片尺寸 / 编辑器改造（2026-08-09 发布）**
 
-**迭代 2（用户反馈驱动）：**
-- **网易云歌曲页链接自动适配**：`song-player` 的 `data-src` 支持 `music.163.com/song?id=…`——`resolveAudioSrc()` 自动映射到官方外链直链端点 `https://music.163.com/song/media/outer/url?id=<id>.mp3`（实测可用：302 → `m*.music.126.net` 的 audio/mpeg）；无版权 / 下架歌曲 404 时错误提示区分网易云来源。**注意**：该端点 302 重定向且带时效签名，不可作为永久直链依赖；面板生成器只接受 `song?id=` 形式的网易云链接，其他网易云页面拒绝。
-- **播放器 UI 重设计**：封面 56px、标题 / 歌手完整换行显示（去掉 nowrap 截断，`overflow-wrap: anywhere`）、新增**音量滑块 + 静音按钮**（`audio.volume` 控制，静音记忆上次音量）、卡片渐变背景 + 阴影；移动端换行。
-- **后端元数据解析**：`admin-server.mjs` 新增 `extractAudioMeta()`（music-metadata `parseFile`）——上传音频时解析歌名 / 歌手 / 内嵌封面（封面经 sharp 转 WebP ≤600px 存 `image/` 目录，与音频同一次 push）；解析失败返回空字段不阻断上传。新依赖：`music-metadata@^11`（主站 + 模板均安装）。
-- **外链可播性探测**：新增 `GET /api/audio-probe?url=`（HEAD 优先，失败则 GET `Range: bytes=0-2047` 校验 Content-Type 与音频魔数 ID3/fLaC/OggS/RIFF/ftyp；网易云歌曲页先映射外链端点再探测）；面板「♪ 音乐」对话框输入防抖 400ms 自动探测，显示「✓ 可播放 · audio/mpeg · N KB」或失败警告（`.music-probe` 三态样式）。
-- **拖拽 / 粘贴 / 选择上传音频**：编辑区拖放与 Ctrl+V 支持 `audio/*`（优先音频，其次图片），`uploadAudioTrack()` 上传 + 解析 → 解析成功直接插入播放条到光标处；失败弹 musicModal 预填直链让用户补全。对话框「⬆ 上传音频」同样回填解析结果。
-- **网易云 iframe 容器适配**：`.prose iframe[src*="music.163.com"]` 按 `src` 的 `height=` 参数还原高度（`height=66` → 66px，其余 90px）、宽 `max-width:330px` 居中，不再被 16:9 撑出空白；面板预览 `.video-embed iframe` 同步适配。
-- 验证：`npm run build` 22 页成功；隔离仓库端到端——带 ID3v2.3 标签 + APIC 封面（UTF-16 中文）的 mp3 上传解析出「メランコリック / ヤマネマヒ / cover.webp」，无标签文件返回空字段，`/api/audio-probe` 对网易云歌 ok=true（audio/mpeg 2.9MB）、对 example.com ok=false（text/html）；两份 admin `new Function` 语法通过；模板 `node --check` 通过。
-- 模板 `blog-template` 已同步（song-player.ts / global.css / admin / admin-server + music-metadata）；模板封面存 `public/image/`、coverUrl 为本地 `/image/` 路径，无 jsDelivr。
-- **正文格式化工具栏**（`setupFmtToolbar` / `#fmtBar`）：加粗 `**`、斜体 `*`、删除线 `~~`、下划线 `<u>`、高亮 `<mark>`、H2/引用/链接/图片/列表/分割线/代码块；色板 5 色 + `<input type="color">` 调色盘 → 选中文字包 `<span style="color:…">`；对齐 → 包 `<div style="text-align:…">`（重复点击剥掉旧 div 替换，不嵌套）。预览 `mdRenderVideo` 新增 `\u0000H` 白名单标签提取（span/div/u/mark/center/b/i/strong/em/s/del/sub/sup），仅保留 style 属性重建、含 script/iframe/on* 的块拒绝提取回退文本；`mdParse` 补 `\u0000H` 整行透传。线上 `.prose mark` 高亮用 `color-mix(var(--gold-light) 42%)` 适配明暗。**注意**：白名单提取必须在 song-player(`\u0000M`)之后，否则会误吞 song-player 的 div。
-- **图片尺寸设置**（`setupImgSize` / `bindImgSizeModal` / `extractImageAtCaret`）：工具栏「⛶ 图宽」按钮——`extractImageAtCaret` 用 `/!\[([^\]]*)\]\(([^)\s]+).../g` 在光标所在行找最近的图片语法，弹窗预填 URL，宽度（% / px，`btnImgSizeClear` 清空=原图）生成 `<img src="…" style="width:…">`；无选区且光标在图片语法上时整体替换该图片，否则插入光标处。**预览白名单新增自闭合 `<img>` 支持**：提取循环对 `img` 以标签自身 `>` 为闭合点（区别于配对标签找 `</name>`），`htmlTagPreview` 对 img 仅保留 `src/style/alt/width/height/loading` 属性重建；`on*` 属性仍拒绝提取。线上 `.prose img` 无固定 width，内联 style 生效。
-- **编辑器体验升级**（`setupEditablePreview` / `setupScrollSync` / `setupSplitDivider`）：`editor-body` 高度 `min(72vh,860px)`；渲染区 `contenteditable`（HTML 上加 `contenteditable="true"`），编辑后防抖 600ms 经 turndown 转回 Markdown 写回 `#fContent`（**不重渲染预览**，光标不丢；源码再编辑才重渲染覆盖），粘贴强制纯文本；turndown `keep` 白名单 `span/div/u/mark/center/iframe/s/del/sub/sup`（变色/居中/下划线/高亮/视频/删除线原样保留，strong/em/img/a 等默认转 Markdown），实例缓存于 `window.__mdTurndown`；**行级联动**：mdParse/mdParseList 全部块级输出注入 `data-line`（段落用 paraStart、表格用 tblStart、blockquote 用 qs 记录起始行避免 i 推进后错位；mdParse 增 `startLine` 参数供 blockquote 递归偏移）；点击一侧 → 另一侧对应行高亮 0.5s（源码行用 `#sourceLineMark` overlay 矩形、预览行用 `.line-flash` class）+ 瞬间水平对齐（源码按行高公式滚动居中、预览 `scrollIntoView({block:center})`，`pvSyncing` 防回环）；滚动仍按比例双向跟随。**工具栏操作不再滚动**：`restoreScroll()` 在 focus/setSelectionRange 后恢复 `#fContent.scrollTop`。分栏拖拽**增量模式**（从当前占比按鼠标位移调整，点击不瞬移；0%–100% 无上下限，`localStorage('admin-split-ratio')` 记忆，默认 50）。**turndown 以本地文件引入**：`npm i turndown` 后复制 `node_modules/turndown/dist/turndown.js` → `admin/vendor/`，admin-server 需 `app.use('/admin', express.static(admin))` 才能访问 vendor（已加，主站 + 模板）。
-- 发布：v3.4.0 功能已推送（`376ab3e`），本迭代改动**未推送**（待用户确认）。
+### 一、文章内嵌音乐播放条（`src/scripts/song-player.ts` + 样式 + 文章页）
 
+- **占位语法**：`<div class="song-player" data-src="音频直链或网易云歌曲页链接" data-title="歌名" data-artist="歌手" data-cover="封面URL"><a href="…">♪ 播放音频</a></div>`——satteri 原样保留；`data-src` 必填且限 http(s)，占位内文本为无 JS 降级链接（渲染时替换）。
+- **脚本机制**：扫描 `.prose .song-player[data-src]` 增强为播放条（封面 / 标题 / 歌手完整换行 / 播放暂停 / 进度拖动 / 时间 / **音量滑块+静音**，静音记忆上次音量）；共享 Audio 单实例、同页互斥播放（切歌重建 src、`activeHost` 记录）；所有文本 `textContent` 写入防注入，`innerHTML` 仅用于常量 SVG；`initSongPlayers` 幂等（`is-enhanced` 类检测）；导出 `stopSongPlayback()`。
+- **网易云歌曲适配**：`resolveAudioSrc()` 把 `music.163.com/song?id=…` 映射到官方外链直链端点 `https://music.163.com/song/media/outer/url?id=<id>.mp3`（实测 302 → `m*.music.126.net` audio/mpeg，约 128kbps、带时效签名——**不可当永久直链依赖**）；无版权/下架歌曲 404 时错误提示区分网易云来源。`cfg.netease` 标记写入 `host.dataset.netease`。
+- **文章页引入**（`[...id].astro`）：hoisted `<script>` + `astro:page-load` 驱动——**不能加 `data-astro-rerun`（v3.0.1 踩坑：隐式 is:inline 使 import/TS 内联失效）**；小脚本被 Astro 内联为 module、每次 VT 导航重新执行，监听器注册用 `window.__acrSongPlayerBound` 全局幂等标记；page-load 回调先 `stopSongPlayback()`（离开文章页停上一页音频）再重新增强。
+- **样式**（global.css）：卡片渐变背景+阴影、封面 56px、`.song-player__progress` accent-color、时间 tabular-nums、错误提示、移动端 flex-wrap、`@media print` 隐藏；minimal 主题卡片化（圆角 7px+阴影）、liquid 主题 `--liquid-radius`（两主题文件均已适配）。
 
+### 二、管理面板音频工作流（后端 + 面板）
 
-- 占位语法：`<div class="song-player" data-src="…" data-title="…" data-artist="…" data-cover="…"><a href="…">♪ 播放音频</a></div>`——satteri 原样保留；`data-src` 必填且限 http(s)，占位内文本为无 JS 降级链接（渲染时替换）。
-- `src/scripts/song-player.ts`（新增）：扫描 `.prose .song-player[data-src]` 增强为播放条（封面 / 标题 / 艺术家 / 播放暂停 / 进度拖动 / 时间）；共享 Audio 单实例、同页互斥播放；标题等文本一律 `textContent` 写入防注入；`initSongPlayers` 幂等（`is-enhanced` 类检测）；导出 `stopSongPlayback()`。
-- 文章页 `[...id].astro` 引入：hoisted `<script>` + `astro:page-load` 驱动——**不能加 `data-astro-rerun`（v3.0.1 踩坑：隐式 is:inline 使 import/TS 内联失效）**；脚本较小被 Astro 内联为 module，每次 VT 导航重新执行，故监听器注册用 `window.__acrSongPlayerBound` 全局幂等标记；page-load 回调先 `stopSongPlayback()`（离开文章页停止上一页音频）再重新增强。
-- 样式：`global.css` `.song-player*`（卡片布局、封面、进度条 accent-color、时间、错误提示、移动端换行、`@media print` 隐藏）；minimal 主题卡片化（圆角 7px + 阴影）、liquid 主题 `--liquid-radius`。
-- 管理面板 `admin/index.html`：工具栏「♪ 音乐」按钮（编辑 / 新建两处模板）、musicModal 对话框（直链 + 可选歌名 / 歌手 / 封面 + **「⬆ 上传音频」按钮**）、`buildMusicEmbed` / `musicAttr` / `musicEmbedHtml`（粘贴 song-player 占位代码自动提取重建，属性经 `mdAttr` 转义）、`setupMusicInsert` / `bindMusicModal`；预览 `mdRenderVideo` 新增 `\u0000M` 占位符提取闭合完整的 song-player 块，`musicEmbedPreview` 渲染原生 `<audio>` 可试听（未闭合 / 无有效 src 回退警告文本）。
-- 后端 `admin-server.mjs` 上传接口支持音频：`ALLOWED_MIME` 新增 `audio/mpeg / flac / ogg / wav / x-wav / mp4 / aac / x-m4a`；multer destination 按 mimetype 分流到仓库 `audio/` 目录（主站 `IMG_REPO_DIR/audio`，模板 `public/audio`）；`/api/upload` 音频分支不做 sharp 转码、原样保留扩展名，返回 `AUDIO_BASE_URL`（主站 jsDelivr `…/audio/`，模板本地 `/audio/`）；`IMG_REPO_DIR` 支持环境变量覆盖（测试隔离用）；模板 `/api/push` 的 stageCmd 增加 `public/audio/`。
-- 格式与容量提醒：MP3 全平台可播；FLAC 在 Safari / iOS 不支持；jsDelivr 对 GitHub 单文件限 20MB（已写入面板对话框提示）。
-- 验证：`npm run build` 22 页成功（含临时测试文章）；构建产物确认占位块原样保留、脚本内联 module 完整（无 import 泄漏、无 data-astro-rerun）、样式进入全局 CSS；两份 admin `<script>` 经 `new Function` 语法检查通过且音乐相关引用一致；`/admin` 200、`/api/posts` 带 token 200；临时测试文章与 dist 产物已删除。
-- 模板仓库 `blog-template` 已同步（song-player.ts / 文章页 / global.css / admin 全部一致）。
-- 发布：未推送、未打 tag（待用户发布）。
+- **上传接口**（admin-server.mjs）：`ALLOWED_MIME` 新增 `audio/mpeg / flac / ogg / wav / x-wav / mp4 / aac / x-m4a`；multer destination 按 mimetype 分流（音频→`AUDIO_DIR`，主站 `IMG_REPO_DIR/audio`=仓库根目录新建的 `audio/` 文件夹，模板 `public/audio`）；音频不转码原样保留扩展名；返回 `AUDIO_BASE_URL`（主站 jsDelivr `…/audio/`，模板本地 `/audio/`）；`IMG_REPO_DIR` 支持环境变量覆盖（测试隔离用）；模板 `/api/push` stageCmd 增加 `public/audio/`。
+- **元数据解析**：`extractAudioMeta()`（music-metadata `parseFile`，依赖 `music-metadata@^11`，主站+模板均安装）——歌名 / 歌手 / 内嵌封面（封面 sharp 转 WebP ≤600px 存 `image/` 目录，与音频同一次 push）；解析失败**打印日志**（`Audio meta parse failed:`）不阻断上传，返回空字段让前端弹窗手填。已知边界：非标编码（GBK 等）标签可能乱码。
+- **外链可播性探测**：`GET /api/audio-probe?url=`（HEAD 优先，失败 GET `Range: bytes=0-2047` 校验 Content-Type 与音频魔数 ID3/fLaC/OggS/RIFF/ftyp；网易云歌曲页先映射 outer/url 再探测）；面板「♪ 音乐」对话框输入防抖 400ms 自动探测，`.music-probe` 三态显示「✓ 可播放 · audio/mpeg · N KB」/「⏳ 探测中」/「⚠ 失败」。
+- **jsDelivr 缓存预热**：`warmJsDelivr()` 在 `/api/upload` 推送成功后后台 fetch 一次外链（不阻塞响应）——否则新文件首次访问 301 到 raw.githubusercontent.com，境内网络不稳导致上传后立即播放失败（用户实测踩坑）。失败仅记日志。
+- **面板入口**：工具栏「♪ 音乐」按钮 + musicModal 对话框（直链/网易云歌曲页链接 + 歌名/歌手/封面 + 「⬆ 上传音频」）；`buildMusicEmbed`/`musicAttr`/`musicEmbedHtml`（粘贴 song-player 占位代码自动提取重建，属性经 `mdAttr` 转义，src 限 http(s)）；**编辑区/上传区拖放与 Ctrl+V 支持 `audio/*`**（`uploadAudioTrack()`：上传+解析→成功直接插入播放条到光标处，失败弹窗预填）；预览 `mdRenderVideo` 用 `\u0000M` 占位符提取闭合 song-player 块，`musicEmbedPreview` 渲染原生 `<audio>` 可试听。
+- **网易云 iframe 容器适配**：`.prose iframe[src*="music.163.com"]` 按 `src` 的 `height=` 参数还原高度（`height=66`→66px，其余 90px）、宽 `max-width:330px` 居中；面板预览 `.video-embed iframe` 同步适配。
+
+### 三、正文格式化工具栏（`setupFmtToolbar` / `#fmtBar`）
+
+- 按钮：加粗 `**`、斜体 `*`、删除线 `~~`、下划线 `<u>`、高亮 `<mark>`、H2/引用/链接/图片/无序/有序列表/分割线/代码块（选区包裹或行首插入，`wrap()`/`linePrefix()`）。
+- **色板 + 调色盘**：5 色（红/金/绿/蓝/灰）+ `<input type="color">` → 选中文字包 `<span style="color:…">`。
+- **对齐**：`applyAlign()` **逐行包裹** `<div style="text-align:…">`（每行独立 div 保留换行特征，空行保留为含空格 div；重复点击先剥旧 div 再替换不嵌套）——曾因整块包裹导致多行并成一行（用户反馈），已修复。
+- 预览 `mdRenderVideo` 新增 `\u0000H` **白名单标签提取**（span/div/u/mark/center/b/i/strong/em/s/del/sub/sup/img），仅保留白名单属性重建（`htmlTagPreview`），含 script/iframe/on* 的块拒绝提取回退文本；`mdParse` 补 `\u0000H` 整行透传。**顺序注意**：白名单提取必须在 song-player(`\u0000M`)之后，否则误吞其 div。线上 `.prose mark` 高亮 `color-mix(var(--gold-light) 42%)` 明暗适配。
+
+### 四、图片尺寸设置（`setupImgSize` / `bindImgSizeModal` / `extractImageAtCaret`）
+
+- 工具栏「⛶ 图宽」：`extractImageAtCaret` 用 `/!\[([^\]]*)\]\(([^)\s]+).../g` 在光标所在行找最近图片语法，弹窗预填 URL；宽度（% / px，`btnImgSizeClear` 清空=原图）生成 `<img src="…" style="width:…">`；无选区且光标在图片语法上时**整体替换**该图片，否则插入光标处。
+- **预览白名单自闭合 `<img>` 支持**：提取循环对 `img` 以标签自身 `>` 为闭合点（配对标签找 `</name>`）；`htmlTagPreview` 对 img 仅保留 `src/style/alt/width/height/loading` 重建。线上 `.prose img` 无固定 width，内联 style 生效。
+
+### 五、编辑器体验升级（`setupEditablePreview` / `setupScrollSync` / `setupSplitDivider`）
+
+- **高度**：`.editor-body{height:min(72vh,860px);min-height:460px}`。
+- **渲染区可编辑**：`#fPreview` `contenteditable="true"`；编辑防抖 600ms 经 turndown 转回 Markdown 写回 `#fContent`（**不重渲染预览**，光标不丢；源码再编辑才重渲染覆盖）；粘贴强制纯文本。turndown `keep` 白名单 `span/div/u/mark/center/iframe/s/del/sub/sup`（变色/居中/下划线/高亮/视频/删除线原样保留，strong/em/img/a 默认转 Markdown），实例缓存 `window.__mdTurndown`；**转 Markdown 前清理 `data-line` 属性与 `.line-flash`**，防定位辅助污染源码。turndown 本地化 `admin/vendor/turndown.js`（`npm i turndown` 后从 node_modules 复制），admin-server 需 `app.use('/admin', express.static(admin))` 提供 vendor（曾 404，已修，主站+模板）。
+- **行级联动**（迭代 3 次，最终形态）：
+  - `mdParse`/`mdParseList` 全部块级输出注入 `data-line`（p 用 paraStart、表格 tblStart、blockquote 用 qs 记录起始行 + `startLine` 参数递归偏移）；
+  - **提取占位符补行**：mdRenderVideo 的 iframe / song-player / 白名单提取后，占位符后补回被提取块占用的行数（`'
+'.repeat(nl)`），保证后续 data-line 不错位（曾导致 150 行正文只有 3 个定位点、点击任意行都滚回开头——用户反馈修复，修复后 144 个定位点）；
+  - 占位符整行（`\u0000V/M/K/H`）在 mdParse 透传分支包 `<div data-line="…">`，段落循环 break 条件含 `\u0000[VKMH]\d+\u0000$` 防止吞并；
+  - **内容坐标 + 顶部对齐**（不能用居中/比例——视频等块级控件渲染高度远超源码行数，居中会把块起点推出视口，用户反馈修复）：`alignPreviewToLine` 用 `getBoundingClientRect` 差值得元素内容坐标，`pv.scrollTop=contentTop-8`；`alignSourceToLine` 用 `(line-1)*lineH+padTop-8`（行高固定精确）；
+  - 点击渲染区 → 源码行 `#sourceLineMark` overlay 高亮 0.5s + 顶部对齐；点击/按键源码 → 预览对应元素 `.line-flash` 高亮 0.5s（`hr.line-flash` 用 outline 否则不可见）+ 顶部对齐；300ms `suppressScrollSync` 抑制点击与滚动跟随互相覆盖；
+  - 滚动跟随双向按**内容坐标**（源码可视顶部行 → 预览元素；预览视口上方 12% 处元素 → 源码行），`pvSyncing`/`taSyncing` 防回环；
+  - **不要用 `scrollIntoView`**（会连带滚动外层页面）。
+- **分栏拖拽**：`.editor-divider` 增量模式（从当前占比按鼠标位移调整，点击不瞬移；0%–100% 无上下限——曾 20–80% 钳制用户反馈不便）；`localStorage('admin-split-ratio')` 记忆，默认 50。
+- **工具栏操作不滚动**：`restoreScroll()` 在 focus/setSelectionRange 后恢复 `#fContent.scrollTop`。
+
+### 六、验证与已知边界
+
+- 验证：`npm run build` 22 页成功；隔离仓库（`IMG_REPO_DIR` 环境变量）端到端——带 ID3v2.3 标签+APIC 封面（UTF-16 中文）mp3 解析出「メランコリック / ヤマネマヒ / cover.webp」、无标签文件返回空字段、`/api/audio-probe` 网易云歌 ok=true（audio/mpeg 2.9MB）vs example.com ok=false；两份 admin `new Function` 语法通过；渲染管线 node 复刻验证 data-line 全覆盖；`/admin` 200、`/api/posts` 带 token 200、vendor/turndown.js 200。
+- 已知边界：网易云 outer/url 端点带时效签名不可作永久直链；GBK 标签可能乱码（走手填兜底）；居中块内 Markdown 语法按字面显示（HTML 块内不解析，提示用纯文本或 `<b>`）；段内行定位到段首（段落内部行无独立 data-line，偏差≤段落行数）。
+- 发布：tag `v3.4.0` + GitHub Release 已创建；README 3.4.0 更新日志已整理。模板 `blog-template` 工作区已同步（song-player.ts / global.css / admin / admin-server + vendor + music-metadata / turndown），**模板子仓库未推送**（待用户单独提交）。
 
 **🔢 文章列表：序号纯数字 + 标题自适应字号（首页 / 卷册目录，v3.2.1）**
 
