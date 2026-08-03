@@ -328,6 +328,45 @@
     rgba(7, 22, 17, var(--liquid-overlay));
 }
 
+/* 全站背景:非首页页面与首页 hero 共用同一背景图(同一 frontend.json 数据源,改图全站同步);
+   fixed + z-index:-1 置于纸纹层之下(纸张颗粒感保留),仅 Liquid 主题显示,首页由 hero 自备背景故隐藏 */
+.page-bg {
+  display: none;
+}
+
+:root[data-visual-theme='still'] body:not(.is-home) .page-bg,
+:root[data-visual-theme='fluid'] body:not(.is-home) .page-bg {
+  position: fixed;
+  z-index: -1;
+  inset: 0;
+  display: block;
+}
+
+.page-bg-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+:root[data-visual-theme='still'] .page-bg-image--fluid,
+:root[data-visual-theme='fluid'] .page-bg-image--still {
+  display: none;
+}
+
+.page-bg-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(4, 12, 10, var(--liquid-overlay));
+}
+
+:root[data-visual-theme='fluid'] .page-bg-scrim {
+  background:
+    linear-gradient(90deg, rgba(7, 22, 17, calc(var(--liquid-overlay) + 0.09)), rgba(7, 22, 17, calc(var(--liquid-overlay) * 0.62))),
+    rgba(7, 22, 17, var(--liquid-overlay));
+}
+
 :root[data-visual-theme='still'] .hero-copy-panel,
 :root[data-visual-theme='fluid'] .hero-copy-panel {
   position: relative;

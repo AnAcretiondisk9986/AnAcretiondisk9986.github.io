@@ -100,8 +100,14 @@ const navigation = [
       })();
     </script>
   </head>
-  <body>
+  <body class={pathname === '/' ? 'is-home' : undefined}>
     <ClientRouter />
+    <!-- 全站背景:与首页 hero 共用同一背景图(frontend.json 数据源,管理面板改图全站同步);仅非首页页面显示,避免与首页 hero 背景重叠 -->
+    <div class="page-bg" aria-hidden="true">
+      <img class="page-bg-image page-bg-image--still" src={frontend.stillHeroImage} alt="" style={`object-position:${frontend.stillImagePosition}`} />
+      <img class="page-bg-image page-bg-image--fluid" src={frontend.fluidHeroImage} alt="" style={`object-position:${frontend.fluidImagePosition}`} />
+      <span class="page-bg-scrim"></span>
+    </div>
     <div class="paper-grain" aria-hidden="true"></div>
     <div class="site-shell">
       <aside class="edge-note edge-note--left" aria-hidden="true">
