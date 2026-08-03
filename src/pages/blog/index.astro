@@ -2,6 +2,7 @@
 import { getCollection } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ArchiveSeal from '../../components/ArchiveSeal.astro';
+import PageHeroMedia from '../../components/PageHeroMedia.astro';
 import PostCatalog from '../../components/PostCatalog.astro';
 import WordCloud from '../../components/WordCloud.astro';
 import ThemeCopy from '../../components/ThemeCopy.astro';
@@ -21,6 +22,7 @@ const cloudWords = buildWordCloud(
 
 <BaseLayout title="文章" description="Acretiondisk 的全部文章。">
   <header class="catalog-header">
+    <PageHeroMedia />
     <div class="catalog-title">
       <p class="eyebrow">CATALOGUS SCRIPTORUM</p>
       <h1><ThemeCopy minimal="全部文章" trace="卷册目录" /></h1>

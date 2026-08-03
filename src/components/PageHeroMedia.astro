@@ -1,0 +1,10 @@
+---
+// 页头 hero 背景:与首页 hero 完全同款(liquid-hero-* 样式复用,零新增背景 CSS),
+// 引用 frontend.json 同一数据源,管理面板改图全站同步
+import frontend from '../data/frontend.json';
+---
+<div class="liquid-hero-media" aria-hidden="true">
+  <img class="liquid-hero-image liquid-hero-image--still" src={frontend.stillHeroImage} alt="" style={`object-position:${frontend.stillImagePosition}`} />
+  <img class="liquid-hero-image liquid-hero-image--fluid" src={frontend.fluidHeroImage} alt="" style={`object-position:${frontend.fluidImagePosition}`} />
+  <span class="liquid-hero-scrim"></span>
+</div>

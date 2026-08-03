@@ -348,45 +348,6 @@
     rgba(7, 22, 17, var(--liquid-overlay));
 }
 
-/* 全站背景:非首页页面与首页 hero 共用同一背景图(同一 frontend.json 数据源,改图全站同步);
-   fixed + z-index:-1 置于纸纹层之下(纸张颗粒感保留),仅 Liquid 主题显示,首页由 hero 自备背景故隐藏 */
-.page-bg {
-  display: none;
-}
-
-:root[data-visual-theme='still'] body:not(.is-home) .page-bg,
-:root[data-visual-theme='fluid'] body:not(.is-home) .page-bg {
-  position: fixed;
-  z-index: -1;
-  inset: 0;
-  display: block;
-}
-
-.page-bg-image {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-:root[data-visual-theme='still'] .page-bg-image--fluid,
-:root[data-visual-theme='fluid'] .page-bg-image--still {
-  display: none;
-}
-
-.page-bg-scrim {
-  position: absolute;
-  inset: 0;
-  background: rgba(4, 12, 10, var(--liquid-overlay));
-}
-
-:root[data-visual-theme='fluid'] .page-bg-scrim {
-  background:
-    linear-gradient(90deg, rgba(7, 22, 17, calc(var(--liquid-overlay) + 0.09)), rgba(7, 22, 17, calc(var(--liquid-overlay) * 0.62))),
-    rgba(7, 22, 17, var(--liquid-overlay));
-}
-
 :root[data-visual-theme='still'] .hero-copy-panel,
 :root[data-visual-theme='fluid'] .hero-copy-panel {
   position: relative;
@@ -558,6 +519,44 @@
 :root[data-visual-theme='fluid'] :is(.catalog-header, .catalog-footer) {
   width: var(--content-width);
   margin-inline: auto;
+}
+
+/* 非首页页头全宽 hero:与首页 hero 完全同款(背景复用 .liquid-hero-* 样式),
+   背景贯穿视口左右边界(突破限宽容器),内容限宽居中,文字浅色高可读;仅 Liquid 主题生效 */
+:root[data-visual-theme='still'] :is(.catalog-header, .gallery-header, .guestbook-header, .dossier-header),
+:root[data-visual-theme='fluid'] :is(.catalog-header, .gallery-header, .guestbook-header, .dossier-header) {
+  position: relative;
+  overflow: hidden;
+  width: 100vw;
+  margin-inline: calc(50% - 50vw);
+  padding-inline: calc((100% - var(--content-width)) / 2 + (100vw - 100%) / 2);
+}
+
+/* 页头突破容器后右缘可能超出视口(含滚动条宽度),clip 掉避免横向滚动条(sticky 不受影响) */
+:root[data-visual-theme='still'],
+:root[data-visual-theme='fluid'] {
+  overflow-x: clip;
+}
+
+/* 页头内容置于背景之上 */
+:root[data-visual-theme='still'] :is(.catalog-header, .gallery-header, .guestbook-header, .dossier-header) > :not(.liquid-hero-media),
+:root[data-visual-theme='fluid'] :is(.catalog-header, .gallery-header, .guestbook-header, .dossier-header) > :not(.liquid-hero-media) {
+  position: relative;
+  z-index: 1;
+}
+
+/* 页头文字浅色化 + 阴影(hero 同款),保证背景图上可读 */
+:root[data-visual-theme='still'] :is(.catalog-header, .gallery-header, .guestbook-header, .dossier-header) :is(h1, h1 em, p, .eyebrow, .folio-kicker, dt, dd, .gallery-intro, small),
+:root[data-visual-theme='fluid'] :is(.catalog-header, .gallery-header, .guestbook-header, .dossier-header) :is(h1, h1 em, p, .eyebrow, .folio-kicker, dt, dd, .gallery-intro, small) {
+  color: #fff;
+  text-shadow: 0 2px 22px rgba(0, 0, 0, 0.35);
+}
+
+@media (max-width: 820px) {
+  :root[data-visual-theme='still'] :is(.catalog-header, .gallery-header, .guestbook-header, .dossier-header),
+  :root[data-visual-theme='fluid'] :is(.catalog-header, .gallery-header, .guestbook-header, .dossier-header) {
+    padding-inline: clamp(22px, 5vw, 78px);
+  }
 }
 
 :root[data-visual-theme='still'] .archive-section,
