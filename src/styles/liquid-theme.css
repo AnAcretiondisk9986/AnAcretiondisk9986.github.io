@@ -739,9 +739,10 @@
   backdrop-filter: blur(var(--liquid-blur)) saturate(130%);
 }
 
-/* 中间层容器(上下均有相邻容器,非页面最上/最下)去掉圆角,保持连续面板感 */
-:root[data-visual-theme='still'] :is(.gallery-order-bar, .gallery-view-bar, .gallery-tabs, .gallery-panel, .article-shell, .dossier, .appearance-selector),
-:root[data-visual-theme='fluid'] :is(.gallery-order-bar, .gallery-view-bar, .gallery-tabs, .gallery-panel, .article-shell, .dossier, .appearance-selector) {
+/* 中间层条(上下均有相邻容器,非页面边缘)去掉圆角,保持连续面板感;
+   页面边缘容器(页头/正文面板/页脚)与独立卡片保留圆角 */
+:root[data-visual-theme='still'] :is(.gallery-order-bar, .gallery-view-bar, .gallery-tabs),
+:root[data-visual-theme='fluid'] :is(.gallery-order-bar, .gallery-view-bar, .gallery-tabs) {
   border-radius: 0;
 }
 
