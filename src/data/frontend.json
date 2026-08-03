@@ -16,11 +16,11 @@
   "fluidImagePosition": "center",
   "displayFont": "noto-serif",
   "stillAccent": "#c44136",
-  "fluidPrimary": "#1f6955",
-  "fluidSecondary": "#db5d4f",
+  "fluidPrimary": "#4bd8fb",
+  "fluidSecondary": "#dba04d",
   "stillGlassOpacity": 0.15,
   "fluidGlassOpacity": 0.15,
-  "heroOverlayOpacity": 0.49,
-  "glassBlur": 13,
-  "cardRadius": 8
+  "heroOverlayOpacity": 0.2,
+  "glassBlur": 10,
+  "cardRadius": 6
 }
