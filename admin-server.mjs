@@ -350,9 +350,19 @@ async function extractAudioMeta(filePath) {
   }
 }
 
+// 预热 jsDelivr 缓存：上传的文件首次访问会 301 到 raw.githubusercontent.com 拉取，境内访问 raw 不稳定，
+// 上传成功后主动请求一次（后台进行，不阻塞响应），让链接立即可用；失败仅记日志不影响上传结果
+function warmJsDelivr(url) {
+  fetch(url, { redirect: 'follow', signal: AbortSignal.timeout(90000) })
+    .then(r => {
+      if (!r.ok) console.error('jsDelivr warm failed:', url, r.status);
+      else console.log('jsDelivr warmed:', url);
+    })
+    .catch(e => console.error('jsDelivr warm error:', url, e.message));
+}
+
 // 推送图片仓库（有变更才推），失败时给出友好错误
-async function pushImageRepo() {
-  const run = (cmd) => new Promise((resolve, reject) => {
+async function pushImageRepo() {  const run = (cmd) => new Promise((resolve, reject) => {
     exec(cmd, { cwd: IMG_REPO_DIR, timeout: 60000 }, (err, stdout, stderr) => {
       if (err) reject(new Error(stderr || err.message));
       else resolve(stdout.trim());
@@ -410,9 +420,12 @@ app.post('/api/upload', (req, res, next) => {
       }
       const push = await pushImageRepo();
       const base = isAudio ? AUDIO_BASE_URL : IMG_BASE_URL;
+      const publicUrl = `${base}${encodeURIComponent(filename)}`;
+      // 上传成功后后台预热 jsDelivr 缓存（不阻塞响应），避免用户立即播放时首次访问失败
+      warmJsDelivr(publicUrl);
       res.status(201).json({
         success: true,
-        url: `${base}${encodeURIComponent(filename)}`,
+        url: publicUrl,
         originalUrl: origName ? `${IMG_BASE_URL}original/${encodeURIComponent(origName)}` : '',
         pushed: push.pushed,
         title,
