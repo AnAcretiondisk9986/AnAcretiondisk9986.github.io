@@ -601,7 +601,10 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
     });
   });
 
-  selectGalleryTab(location.hash === '#independent' ? 'independent' : 'journal', false);
+  // 注意:selectGalleryTab 的初始调用必须放在所有 let 声明之后(billboardTimer 等),
+  // 否则 selectGalleryTab → pauseBillboard 访问 billboardTimer 会抛 TDZ(ReferenceError),
+  // 中断后续初始化(排序/查看器/轮播全部失效)。初始调用已移至脚本末尾。
+  // selectGalleryTab(location.hash === '#independent' ? 'independent' : 'journal', false);
 
   sortButtons.forEach((button) => {
     button.addEventListener('click', () => setGalleryOrder(button.dataset.gallerySort === 'oldest' ? 'oldest' : 'newest'));
@@ -930,5 +933,8 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
   viewer?.addEventListener('click', (event) => {
     if (event.target === viewer) viewer.close();
   });
+
+  // 初始视图(默认 journal)的调用放在所有 let/const 声明之后,避免 TDZ(见上方注释)
+  selectGalleryTab(location.hash === '#independent' ? 'independent' : 'journal', false);
   });
 </script>
