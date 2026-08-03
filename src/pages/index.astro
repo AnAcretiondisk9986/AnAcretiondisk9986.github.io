@@ -18,8 +18,8 @@ const posts = (await getCollection('blog', ({ data }) => !data.draft))
 <BaseLayout>
   <section class="codex-hero">
     <div class="liquid-hero-media">
-      <img class="liquid-hero-image liquid-hero-image--still" src={frontend.stillHeroImage} alt={frontend.stillHeroAlt} style={`object-position:${frontend.stillImagePosition}`} fetchpriority="high" />
-      <img class="liquid-hero-image liquid-hero-image--fluid" src={frontend.fluidHeroImage} alt={frontend.fluidHeroAlt} style={`object-position:${frontend.fluidImagePosition}`} fetchpriority="high" />
+      <img class="liquid-hero-image liquid-hero-image--still" src={frontend.stillHeroImage} alt={frontend.stillHeroAlt} style={`object-position:${frontend.stillImagePosition}`} fetchpriority="high" crossorigin="anonymous" />
+      <img class="liquid-hero-image liquid-hero-image--fluid" src={frontend.fluidHeroImage} alt={frontend.fluidHeroAlt} style={`object-position:${frontend.fluidImagePosition}`} fetchpriority="high" crossorigin="anonymous" />
       <span class="liquid-hero-scrim"></span>
     </div>
     <div class="hero-copy-panel">

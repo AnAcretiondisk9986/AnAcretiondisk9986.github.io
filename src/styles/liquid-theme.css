@@ -125,12 +125,13 @@
   z-index: 20;
   width: var(--content-width);
   margin: 12px auto 0;
-  border: 1px solid var(--liquid-highlight);
+  border: 1px solid var(--acr-hdr-border, var(--liquid-highlight));
   border-radius: 999px;
-  background: var(--liquid-surface);
+  background: var(--acr-hdr-glass, var(--liquid-surface));
   box-shadow: var(--liquid-shadow), var(--liquid-edge);
   -webkit-backdrop-filter: blur(var(--liquid-blur)) saturate(135%);
   backdrop-filter: blur(var(--liquid-blur)) saturate(135%);
+  transition: background-color 300ms ease, border-color 300ms ease;
 }
 
 :root[data-visual-theme='still'] .header-register,
@@ -156,9 +157,9 @@
   height: 38px;
   padding: 7px;
   border-radius: 50%;
-  color: #f7faf8;
-  background: var(--liquid-secondary);
-  transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1);
+  color: var(--acr-hdr-seal-ink, #f7faf8);
+  background: var(--acr-hdr-seal-bg, var(--liquid-secondary));
+  transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1), color 300ms ease, background-color 300ms ease;
 }
 
 :root[data-visual-theme='still'] .site-name:hover .site-seal,
@@ -172,15 +173,18 @@
   font-size: 0.9rem;
   font-weight: 720;
   letter-spacing: 0;
+  color: var(--acr-hdr-ink, inherit);
+  transition: color 300ms ease;
 }
 
 :root[data-visual-theme='still'] .site-name small,
 :root[data-visual-theme='fluid'] .site-name small {
   margin-top: 2px;
-  color: var(--ink-faint);
+  color: var(--acr-hdr-faint, var(--ink-faint));
   font-family: var(--sans);
   font-size: 0.66rem;
   letter-spacing: 0;
+  transition: color 300ms ease;
 }
 
 :root[data-visual-theme='still'] .site-header nav,
@@ -195,11 +199,11 @@
   padding: 0 13px;
   border: 0;
   border-radius: 999px;
-  color: var(--ink-soft);
+  color: var(--acr-hdr-soft, var(--ink-soft));
   font-family: var(--sans);
   font-size: 0.78rem;
   letter-spacing: 0;
-  transition: background-color 150ms ease, color 150ms ease, transform 140ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: background-color 150ms ease, color 300ms ease, transform 140ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 :root[data-visual-theme='still'] .site-header nav a::after,
@@ -229,12 +233,13 @@
 :root[data-visual-theme='fluid'] .site-name,
 :root[data-visual-theme='fluid'] .site-header nav {
   padding: 6px;
-  border: 1px solid var(--liquid-highlight);
+  border: 1px solid var(--acr-hdr-border, var(--liquid-highlight));
   border-radius: 999px;
-  background: var(--liquid-surface);
+  background: var(--acr-hdr-glass, var(--liquid-surface));
   box-shadow: var(--liquid-shadow), var(--liquid-edge);
   -webkit-backdrop-filter: blur(var(--liquid-blur)) saturate(140%);
   backdrop-filter: blur(var(--liquid-blur)) saturate(140%);
+  transition: background-color 300ms ease, border-color 300ms ease;
 }
 
 :root[data-visual-theme='fluid'] .site-name {
@@ -254,9 +259,9 @@
   padding: 0;
   border: 0;
   border-radius: 50%;
-  color: var(--liquid-primary);
+  color: var(--acr-hdr-soft, var(--liquid-primary));
   background: color-mix(in srgb, var(--liquid-primary) 9%, transparent);
-  transition: background-color 150ms ease, color 150ms ease, transform 140ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition: background-color 150ms ease, color 300ms ease, transform 140ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 :root[data-visual-theme='still'] .theme-toggle__label,
@@ -422,10 +427,10 @@
 :root[data-visual-theme='fluid'] .primary-link {
   min-height: 48px;
   padding: 0 18px;
-  border: 1px solid rgba(255, 255, 255, 0.85);
+  border: 1px solid var(--acr-btn-border, rgba(255, 255, 255, 0.85));
   border-radius: 999px;
-  color: var(--liquid-ink);
-  background: rgba(255, 255, 255, 0.92);
+  color: var(--acr-btn-ink, var(--liquid-ink));
+  background: var(--acr-btn-glass, rgba(255, 255, 255, 0.92));
   box-shadow: inset 0 1px #fff, 0 10px 26px rgba(0, 0, 0, 0.18);
   font-family: var(--sans);
   font-size: 0.84rem;
@@ -436,10 +441,15 @@
 }
 
 :root[data-visual-theme='fluid'] .primary-link {
-  color: var(--liquid-fluid-primary);
-  background: var(--liquid-fluid-surface);
+  color: var(--acr-btn-ink, var(--liquid-fluid-primary));
+  background: var(--acr-btn-glass, var(--liquid-fluid-surface));
   -webkit-backdrop-filter: blur(var(--liquid-blur)) saturate(140%);
   backdrop-filter: blur(var(--liquid-blur)) saturate(140%);
+}
+
+:root[data-visual-theme='still'] .primary-link:hover,
+:root[data-visual-theme='fluid'] .primary-link:hover {
+  background: var(--acr-btn-glass-hover, var(--red-dark));
 }
 
 :root[data-visual-theme='still'] .text-link,
@@ -460,14 +470,15 @@
   display: flex;
   margin: 0;
   padding: 8px;
-  border: 1px solid var(--liquid-highlight);
+  border: 1px solid var(--acr-hero-border, var(--liquid-highlight));
   border-radius: 999px;
-  color: var(--liquid-ink);
-  background: var(--liquid-surface);
+  color: var(--acr-hero-ink, var(--liquid-ink));
+  background: var(--acr-hero-glass, var(--liquid-surface));
   box-shadow: var(--liquid-shadow), var(--liquid-edge);
   text-shadow: none;
   -webkit-backdrop-filter: blur(var(--liquid-blur)) saturate(135%);
   backdrop-filter: blur(var(--liquid-blur)) saturate(135%);
+  transition: background-color 300ms ease, border-color 300ms ease, color 300ms ease;
 }
 
 :root[data-visual-theme='still'] .hero-register div,
@@ -479,24 +490,26 @@
 
 :root[data-visual-theme='still'] .hero-register div + div,
 :root[data-visual-theme='fluid'] .hero-register div + div {
-  border-left: 1px solid var(--liquid-rule);
+  border-left: 1px solid var(--acr-hero-rule, var(--liquid-rule));
 }
 
 :root[data-visual-theme='still'] .hero-register dt,
 :root[data-visual-theme='fluid'] .hero-register dt {
-  color: var(--ink-faint);
+  color: var(--acr-hero-faint, var(--ink-faint));
   font-family: var(--sans);
   font-size: 0.62rem;
   letter-spacing: 0;
+  transition: color 300ms ease;
 }
 
 :root[data-visual-theme='still'] .hero-register dd,
 :root[data-visual-theme='fluid'] .hero-register dd {
   margin-top: 4px;
-  color: var(--ink);
+  color: var(--acr-hero-ink, var(--ink));
   font-family: var(--sans);
   font-size: 0.7rem;
   font-weight: 720;
+  transition: color 300ms ease;
 }
 
 :root[data-visual-theme='still'] .archive-section,
