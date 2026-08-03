@@ -10,17 +10,17 @@ tags:
 draft: false
 ---
 
-![114609718_p0-16th.png](https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/114609718_p0-16th_1785758664929.webp)
+<img src="https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/114609718_p0-16th_1785758664929.webp" alt="图片" style="width:30%" />
 ---
 
-# HTML Original Player
+<span style="color: #c06050"># HTML Original Player</span>
 <div class="song-player" data-src="https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/audio/Yamane-Mah-Junky---Melancholic_1785758579034.mp3" data-title="Melancholic" data-artist="Yamane Mah" data-cover="https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/1785758579097_cover.webp"><a href="https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/audio/Yamane-Mah-Junky---Melancholic_1785758579034.mp3">♪ 播放音频</a></div>
 
 ---
 
 <iframe src="//player.bilibili.com/player.html?isOutside=true&aid=115943883675737&bvid=BV1hezMBzEqv&cid=35564293296&p=1" scrolling="no" border="0" frameborder="no" framespacing="0" allowfullscreen="true"></iframe>
 
-<span style="color: #5a7fa0"><div style="text-align: center">全然つかめないきみのこと</div>
+<div style="text-align: center">全然つかめないきみのこと</div>
 <div style="text-align: center"> </div>
 <div style="text-align: center">对于完全不能掌握的你</div>
 <div style="text-align: center"> </div>
@@ -157,4 +157,4 @@ draft: false
 <div style="text-align: center"> </div>
 <div style="text-align: center">おぼれたいのいとしのメランコリー</div>
 <div style="text-align: center"> </div>
-<div style="text-align: center">那样不想忘记的令人怜惜的忧伤</div></span>
+<div style="text-align: center">那样不想忘记的令人怜惜的忧伤</div>
