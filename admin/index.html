@@ -1339,9 +1339,12 @@
         e.preventDefault();
         div.classList.add('dragging');
         const rect=body.getBoundingClientRect();
+        // 增量模式：从当前占比出发按鼠标位移调整——点击不会瞬移，拖动全程连续；无上下限（0-100%）
+        const startX=e.clientX, startRatio=ratio;
         const move=ev=>{
-          let pct=((ev.clientX-rect.left)/rect.width)*100;
-          pct=Math.max(20,Math.min(80,pct));
+          const dx=ev.clientX-startX;
+          let pct=startRatio+(dx/rect.width)*100;
+          pct=Math.max(0,Math.min(100,pct));
           applyRatio(pct);
         };
         const up=()=>{
