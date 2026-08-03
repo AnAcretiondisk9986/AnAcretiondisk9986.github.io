@@ -1480,18 +1480,20 @@
         clearTimeout(flashTimer);
         flashTimer=setTimeout(()=>pv.querySelectorAll('.line-flash').forEach(x=>x.classList.remove('line-flash')),500);
       };
-      // 源码滚动到某行水平居中
+      // 源码滚动到某行顶部对齐（行高固定，精确；8px 边距）
       const alignSourceToLine=(line)=>{
         const {lineH,padTop}=metrics();
-        ta.scrollTop=Math.max(0,(line-1)*lineH+padTop-ta.clientHeight/2);
+        ta.scrollTop=Math.max(0,(line-1)*lineH+padTop-8);
       };
-      // 预览滚动到对应元素水平居中（手动计算，避免 scrollIntoView 连带滚动外层页面；pvSyncing 防回环）
+      // 预览滚动到对应元素：按渲染流实际内容坐标顶部对齐（块级控件如视频/播放器高度远超源码行数，
+      // 不能居中也不能按行比例，否则块起点会被推出视口）
       const alignPreviewToLine=(line)=>{
         const el=nearestEl(line);
         if(!el) return;
         pvSyncing=true;
-        const rel=el.getBoundingClientRect().top-pv.getBoundingClientRect().top;
-        pv.scrollTop=pv.scrollTop+rel-pv.clientHeight/2+el.offsetHeight/2;
+        const pvRect=pv.getBoundingClientRect();
+        const contentTop=el.getBoundingClientRect().top-pvRect.top+pv.scrollTop;
+        pv.scrollTop=Math.max(0,contentTop-8);
         requestAnimationFrame(()=>{pvSyncing=false});
       };
       // 点击渲染区 → 源码对应行高亮 + 对齐
@@ -1514,21 +1516,33 @@
       };
       ta.addEventListener('click',onSrcActive);
       ta.addEventListener('keyup',onSrcActive);
-      // 滚动跟随（比例映射）：源码滚动 → 预览按可视顶部行比例滚动；预览滚动 → 源码按比例滚动
+      // 滚动跟随（内容坐标定位，控件高度不影响）：
+      // 源码可视顶部行 → 预览对应元素顶部对齐；预览可视顶部附近元素 → 源码对应行顶部对齐
       const syncSrcToPv=()=>{
-        const {lineH}=metrics();
-        const line=Math.floor(ta.scrollTop/lineH)+1;
-        const total=(ta.value.match(/\n/g)||[]).length+1;
-        const ratio=Math.min(1,line/Math.max(1,total));
+        const {lineH,padTop}=metrics();
+        const line=Math.floor((ta.scrollTop+padTop)/lineH)+1;
+        const el=nearestEl(line);
+        if(!el) return;
         pvSyncing=true;
-        pv.scrollTop=ratio*(pv.scrollHeight-pv.clientHeight);
+        const pvRect=pv.getBoundingClientRect();
+        const contentTop=el.getBoundingClientRect().top-pvRect.top+pv.scrollTop;
+        pv.scrollTop=Math.max(0,contentTop-8);
         requestAnimationFrame(()=>{pvSyncing=false});
       };
       const syncPvToSrc=()=>{
-        const max=pv.scrollHeight-pv.clientHeight;
-        const ratio=max>0?pv.scrollTop/max:0;
+        const pvRect=pv.getBoundingClientRect();
+        const target=pv.scrollTop+pv.clientHeight*0.12; // 内容坐标：视口上方 12% 处
+        let best=null,bestD=Infinity;
+        pv.querySelectorAll('[data-line]').forEach(el=>{
+          const contentTop=el.getBoundingClientRect().top-pvRect.top+pv.scrollTop;
+          const d=Math.abs(contentTop-target);
+          if(d<bestD){bestD=d;best=el}
+        });
+        if(!best) return;
+        const line=parseInt(best.dataset.line,10)||1;
+        const {lineH,padTop}=metrics();
         taSyncing=true;
-        ta.scrollTop=ratio*(ta.scrollHeight-ta.clientHeight);
+        ta.scrollTop=Math.max(0,(line-1)*lineH+padTop-8);
         requestAnimationFrame(()=>{taSyncing=false});
       };
       let t=null,st=null;
