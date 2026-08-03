@@ -917,16 +917,19 @@
         t.value=t.value.slice(0,ls)+prefix+t.value.slice(ls);
         t.focus(); t.setSelectionRange(s+prefix.length,s+prefix.length);
       };
-      // 对齐：把选中块（整行/整段）包成 <div style="text-align:…">；重复点击替换而非嵌套
+      // 对齐：把选中块逐行包成 <div style="text-align:…">（块级 div 天然换行，空行保留间距）；
+      // 重复点击先剥掉旧 div 再替换，避免嵌套；已包 div 的行也先剥除
       const applyAlign=(align)=>{
         const t=getTa(); if(!t) return;
         const s=t.selectionStart, e=t.selectionEnd;
         const ls=t.value.lastIndexOf('\n',s-1)+1;
         let le=t.value.indexOf('\n',e); if(le===-1) le=t.value.length;
-        let block=t.value.slice(ls,le)||'内容';
-        const outer=block.match(/^<div[^>]*>([\s\S]*)<\/div>$/);
-        if(outer) block=outer[1];
-        const tag='<div style="text-align: '+align+'">'+block+'</div>';
+        const block=t.value.slice(ls,le)||'内容';
+        const lines=block.split('\n').map(line=>{
+          const m=line.match(/^<div[^>]*>([\s\S]*)<\/div>$/);
+          return m?m[1]:line;
+        });
+        const tag=lines.map(line=>'<div style="text-align: '+align+'">'+(line||' ')+'</div>').join('\n');
         t.value=t.value.slice(0,ls)+tag+t.value.slice(le);
         t.focus(); t.setSelectionRange(ls,ls+tag.length);
       };
