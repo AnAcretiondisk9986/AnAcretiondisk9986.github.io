@@ -325,7 +325,7 @@
       $('#btnSave').disabled = false;
       $('#editorContainer').innerHTML = `
         <div class="editor">
-          <div class="upload-area" id="uploadArea">📎 拖放或点击上传图片 → 自动插入 Markdown</div>
+          <div class="upload-area" id="uploadArea">📎 拖放或点击上传图片 / 音频 → 自动插入（音频解析歌名·歌手·封面）</div>
           <div class="url-import-bar">
             <input id="fImportUrl" placeholder="或粘贴外部图片 URL，点导入 →" />
             <button class="btn small" id="btnImportUrl">导入</button>
@@ -380,7 +380,7 @@
       const today = new Date().toISOString().split('T')[0];
       $('#editorContainer').innerHTML = `
         <div class="editor">
-          <div class="upload-area" id="uploadArea">📎 拖放或点击上传图片 → 自动插入 Markdown</div>
+          <div class="upload-area" id="uploadArea">📎 拖放或点击上传图片 / 音频 → 自动插入（音频解析歌名·歌手·封面）</div>
           <div class="url-import-bar">
             <input id="fImportUrl" placeholder="或粘贴外部图片 URL，点导入 →" />
             <button class="btn small" id="btnImportUrl">导入</button>
@@ -536,6 +536,19 @@
       area.ondragover = e=>{e.preventDefault();area.classList.add('dragover')};
       area.ondragleave = ()=>area.classList.remove('dragover');
       area.ondrop = async e=>{e.preventDefault();area.classList.remove('dragover');const f=e.dataTransfer.files[0];if(!f)return;if(f.type.startsWith('audio/')){await uploadAudioTrack(f)}else{await uploadImage(f,'content')}};
+
+      // 正文编辑区拖放：图片 / 音频直接上传并在光标处插入（音频自动解析歌名/歌手/封面）
+      const contentArea = $('#fContent');
+      if(contentArea){
+        contentArea.ondragover = e=>{e.preventDefault();e.dataTransfer.dropEffect='copy'};
+        contentArea.ondrop = async e=>{
+          e.preventDefault();
+          const f=e.dataTransfer.files && e.dataTransfer.files[0];
+          if(!f) return;
+          if(f.type.startsWith('audio/')){ await uploadAudioTrack(f); }
+          else if(f.type.startsWith('image/')){ await uploadImage(f,'content'); }
+        };
+      }
 
       const coverArea = $('#btnCoverUpload');
       if (coverArea) {
