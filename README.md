@@ -1,7 +1,7 @@
 # Acretiondisk Blog — 更新日志
 
 > 使用 Astro 构建的个人博客，部署到 GitHub Pages（`https://anacretiondisk9986.github.io/`）。
-> 当前版本：**3.3.1**（2026-08-03）
+> 开发版本：**3.3.1**（2026-08-03）· 最新 Release：[v3.3.0](https://github.com/AnAcretiondisk9986/AnAcretiondisk9986.github.io/releases/latest)
 
 ---
 
