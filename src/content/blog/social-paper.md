@@ -2,7 +2,8 @@
 title: 我如何自动化生产WMU暑期实践调研论文（含调研问卷，问卷数据由第三者生产）
 description: 根据课程通知、写作要求、调查问卷、问卷数据、参考文献和用户提供的事实，分析数据、生成必要图表并撰写通俗规范的中文社会实践调研论文或调研报告，最终输出并校验DOCX。适用于大一暑期社会实践、思想政治理论课社会实践、问卷调研报告、4000字以内课程论文、参考文献与附件整合等任务；支持DOCX、PDF、XLSX、CSV等本地材料。
 pubDate: "2026-07-30"
-dayIndex: 2 # 当日第 2 篇
+dayIndex: 2
+cover: "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/130910952_p0_1785739435198.webp"
 tags:
   - AI Agent
   - 自动化实践论文写作
