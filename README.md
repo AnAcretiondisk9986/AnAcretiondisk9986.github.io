@@ -1,9 +1,17 @@
 # Acretiondisk Blog — 更新日志
 
 > 使用 Astro 构建的个人博客，部署到 GitHub Pages（`https://anacretiondisk9986.github.io/`）。
-> 开发版本：**3.5.1**（2026-08-04）· 最新 Release：[v3.5.1](https://github.com/AnAcretiondisk9986/AnAcretiondisk9986.github.io/releases/latest)
+> 开发版本：**3.5.2**（2026-08-04）· 最新 Release：[v3.5.2](https://github.com/AnAcretiondisk9986/AnAcretiondisk9986.github.io/releases/latest)
 
 ---
+
+## 3.5.2（2026-08-04）
+
+### 🔒 安全加固：HEIC 解析器防御恶意 iloc
+
+- security_review 发现 `parseIlocWithBase` 对 `offset_size`/`length_size` 均为 0 的构造 iloc 无法推进字节，配合 version-2 的 32 位 `extent_count` 可空转数十亿次（阻塞事件循环）。
+- 修复：两者之和为 0 时直接拒绝解析（返回 null，按方向 1 处理）。触发条件苛刻（需 libheif 可解码的 HEIC + 管理面板 token + 本机），属纵深防御加固。
+- 模板仓库同步发布 **v1.5.2**。
 
 ## 3.5.1（2026-08-04）
 

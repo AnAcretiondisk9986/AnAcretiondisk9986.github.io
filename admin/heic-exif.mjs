@@ -63,6 +63,7 @@ function parseIlocWithBase(buf, ilocBox, itemId, baseOffsetSize) {
   const sizesByte1 = buf[ilocBox.start + ilocBox.header + 4]; // offset_size(4) + length_size(4)
   const offsetSize = sizesByte1 >> 4;
   const lengthSize = sizesByte1 & 0x0f;
+  if (offsetSize + lengthSize === 0) return null; // 防御:extent 循环无字节推进,恶意 iloc 可造成数十亿次空转
   let p = ilocBox.start + ilocBox.header + 5;
   let indexSize = 0;
   let itemCount = 0;

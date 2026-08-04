@@ -2,6 +2,14 @@
 
 > 本文件已在用户授权下公开于 GitHub 仓库。每位 Agent 完成工作后在此记录变更。
 
+**🔒 v3.5.2 安全加固：HEIC 解析器防御恶意 iloc（2026-08-04 发布，blog-template 同步 v1.5.2）**
+
+- security_review(MEDIUM)发现 `parseIlocWithBase`：iloc 的 `offset_size` 与 `length_size` 均为 0 时 extent 循环无字节推进，配合 version-2 的 32 位 `extent_count`(0xFFFFFFFF)可空转 ~4.29e9 次 × 最多 5 个 base 候选 ≈ 2.1e10 次迭代(事件循环阻塞数十秒)。
+- 修复：两者之和为 0 时直接 `return null`(按 orientation 1 处理)。触发条件苛刻(libheif 可解码 + admin token + localhost 127.0.0.1),属纵深防御。主仓库与模板两个副本同步。
+- 验证：`node --check` 两副本通过;`scripts/verify-heic-exif.mjs` 14 项回归全过。
+
+---
+
 **🐛 v3.5.1 修复：HEIC 竖拍方向（2026-08-04 发布，blog-template 同步 v1.5.1）**
 
 ### HEIC EXIF Orientation 支持（`admin/heic-exif.mjs` 新增,零依赖）
