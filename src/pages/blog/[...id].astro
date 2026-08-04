@@ -43,6 +43,14 @@ const printUrl = JSON.stringify(
 );
 // 分享短链:纯 ASCII 短码,避免中文 slug 在复制时被百分号转码拉长链接
 const shortUrl = `${Astro.site?.origin ?? ''}/s/${shortIdForPath(post.id)}`;
+// 时间显示:frontmatter 写了具体时间才精确到分钟,纯日期(如 "2026-08-04",解析为 UTC 午夜)只显示日期,
+// 避免时区偏移产生虚假的 08:00。判断用 UTC(纯日期字符串按 UTC 解析),显示用本地时间。
+const pad2 = (n: number) => String(n).padStart(2, '0');
+const fmtMinute = (d: Date) => {
+  const date = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+  const isDateOnly = d.getUTCHours() === 0 && d.getUTCMinutes() === 0;
+  return isDateOnly ? date : `${date} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+};
 ---
 
 <BaseLayout title={post.data.title} description={post.data.description}>
@@ -57,10 +65,6 @@ const shortUrl = `${Astro.site?.origin ?? ''}/s/${shortIdForPath(post.id)}`;
         <div><dt><ThemeCopy minimal="标签" trace="分类标签" /></dt><dd>{post.data.tags.join(' / ') || '未分类'}</dd></div>
         <div><dt><ThemeCopy minimal="作者" trace="记录者" /></dt><dd>Acretiondisk</dd></div>
         <div><dt>状态</dt><dd><ThemeCopy minimal="公开" trace="公开阅览" /></dd></div>
-        <div id="busuanzi_container_page_pv" hidden>
-          <dt><ThemeCopy minimal="阅读次数" trace="阅览次数" /></dt>
-          <dd><span id="busuanzi_value_page_pv">—</span></dd>
-        </div>
       </dl>
 
       <div class="share-link" data-shortlink>
@@ -89,13 +93,16 @@ const shortUrl = `${Astro.site?.origin ?? ''}/s/${shortIdForPath(post.id)}`;
         <p class="article-deck">{post.data.description}</p>
         <div class="article-meta">
           <time datetime={post.data.pubDate.toISOString()}>
-            发布 · {post.data.pubDate.toLocaleDateString('zh-CN')}
+            发布 · {fmtMinute(post.data.pubDate)}
           </time>
           {post.data.updatedDate && (
             <time datetime={post.data.updatedDate.toISOString()}>
-              修订 · {post.data.updatedDate.toLocaleDateString('zh-CN')}
+              修订 · {fmtMinute(post.data.updatedDate)}
             </time>
           )}
+          <span class="article-meta__pv" id="busuanzi_container_page_pv" hidden>
+            阅读 · <span id="busuanzi_value_page_pv">—</span>
+          </span>
         </div>
       </header>
 

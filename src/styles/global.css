@@ -4155,7 +4155,8 @@ main {
   .back-link,
   .margin-note,
   .print-action,
-  .share-link {
+  .share-link,
+  .article-meta__pv {
     display: none !important;
   }
 
