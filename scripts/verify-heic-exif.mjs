@@ -55,7 +55,40 @@ for (const [o, [ew, eh]] of Object.entries(expects)) {
   }
 }
 
-// —— 3) admin-server 语法联动检查(导入链) ——
+// —— 3) 像素级验证 orientation 5/7(非正方形 W=2,H=3,可区分操作顺序) ——
+{
+  const W = 2, H = 3;
+  const px = Buffer.alloc(W * H * 4);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const i = (y * W + x) * 4;
+    px[i] = y * W + x; px[i + 1] = 0; px[i + 2] = 0; px[i + 3] = 255;
+  }
+  const orig = [];
+  for (let y = 0; y < H; y++) { const r = []; for (let x = 0; x < W; x++) r.push(px[(y * W + x) * 4]); orig.push(r); }
+  const toMatrix = async (pipeline) => {
+    const { data, info } = await pipeline.raw().toBuffer({ resolveWithObject: true });
+    const m = [];
+    for (let y = 0; y < info.height; y++) { const r = []; for (let x = 0; x < info.width; x++) r.push(data[(y * info.width + x) * 4]); m.push(r); }
+    return m;
+  };
+  const run = async (o) => {
+    let p = sharp(Buffer.from(px), { raw: { width: W, height: H, channels: 4 } });
+    if (o === 5) p = p.rotate(270).flop();
+    else if (o === 7) p = p.rotate(90).flop();
+    return toMatrix(p);
+  };
+  // transpose(5): out[y][x] = 原(x,y);transverse(7): out[y][x] = 原(W-1-x, H-1-y)
+  const expect5 = [], expect7 = [];
+  for (let y = 0; y < W; y++) {
+    const r5 = [], r7 = [];
+    for (let x = 0; x < H; x++) { r5.push(orig[x][y]); r7.push(orig[H - 1 - x][W - 1 - y]); }
+    expect5.push(r5); expect7.push(r7);
+  }
+  check(JSON.stringify(await run(5)) === JSON.stringify(expect5), '像素级 orientation=5 → transpose 正确');
+  check(JSON.stringify(await run(7)) === JSON.stringify(expect7), '像素级 orientation=7 → transverse 正确');
+}
+
+// —— 4) admin-server 语法联动检查(导入链) ——
 try {
   await import('../admin/heic-exif.mjs');
   check(true, 'admin/heic-exif.mjs 模块可导入');

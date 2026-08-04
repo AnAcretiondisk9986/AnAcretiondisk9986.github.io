@@ -14,7 +14,7 @@
   - Exif item 数据 = 4 字节 exif_tiff_header_offset + TIFF;**TIFF magic 是 2 字节(0x002A),需按字节序读取**(曾误按单字节检查 0x00 失败);
   - `parseTiffOrientation` 读 IFD0 tag 0x0112(SHORT)。
 - **旋转管线**(admin-server.mjs saveImageFile heic 分支):orientation 2→flop、3→180、4→flip、5→270+flop、6→90、7→90+flop、8→270,其余不旋转;解析失败按 1 处理(不阻断上传)。
-- **验证**：`node scripts/verify-heic-exif.mjs` 12 项全过——3 个真实 iPhone HEIC 样本(blog-images/image/original/)解析 Orientation=1(横拍不旋转);合成 RGBA 数据走同一管线 Orientation 1-8 尺寸全部正确;模块导入链正常。**遗留**:暂无竖拍(6/8)真实样本,旋转组合经合成数据验证。
+- **验证**：`node scripts/verify-heic-exif.mjs` 14 项全过——3 个真实 iPhone HEIC 样本(blog-images/image/original/)解析 Orientation=1(横拍不旋转);合成 RGBA 数据走同一管线 Orientation 1-8 尺寸全部正确;非正方形(2x3)像素级验证 orientation 5/7 精确等于 transpose/transverse(sharp 内部固定按 flip→flop→rotate 顺序执行,与调用顺序无关——review 曾建议 5/7 互换,像素级验证证明原组合正确,未采纳)。**遗留**:暂无竖拍(6/8)真实样本,旋转方向经合成数据验证。
 - 模板同步:blog-template 复制 `admin/heic-exif.mjs`,convertHeicToWebp 同管线(v1.5.1)。
 
 ---
