@@ -667,7 +667,7 @@
           const f=e.dataTransfer.files && e.dataTransfer.files[0];
           if(!f) return;
           if(f.type.startsWith('audio/')){ await uploadAudioTrack(f); }
-          else if(f.type.startsWith('image/')){ await uploadImage(f,'content'); }
+          else if(isImageFile(f)){ await uploadImage(f,'content'); }
         };
       }
 
@@ -1087,8 +1087,13 @@
       $('#fImgSizeSrc').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('#btnImgSizeInsert').click()}});
     }
 
+    // Chrome/Edge 等浏览器不识别 HEIC，file.type 为空字符串：用扩展名白名单兜底，交给后端自动转 WebP
+    function isImageFile(f){
+      return !!f && (f.type.startsWith('image/') || /\.(png|jpe?g|gif|webp|svg|heic|heif)$/i.test(f.name||''));
+    }
+
     async function uploadImage(file, target = 'content') {
-      if(!file||!file.type.startsWith('image/')){toast('仅支持图片');return}
+      if(!isImageFile(file)){toast('仅支持图片');return}
       toast('上传中…');
       const fd = new FormData(); fd.set('file', file);
       try {
@@ -1414,6 +1419,23 @@
       pv.addEventListener('focus',()=>{previewEditing=true});
       pv.addEventListener('blur',()=>{previewEditing=false;flushPreviewToSource()});
       pv.addEventListener('input',()=>{clearTimeout(mdSyncTimer);mdSyncTimer=setTimeout(flushPreviewToSource,600)});
+      // 正文预览图片加载失败自动重试：jsDelivr CDN 首次访问可能未生效（上传后立即预览），
+      // 先重试原 URL 等待预热完成，仍失败再切换 jsDelivr 镜像，全部失败后放弃（error 不冒泡，需捕获阶段拦截）
+      pv.addEventListener('error', e => {
+        const img = e.target;
+        if (!(img instanceof HTMLImageElement) || !img.src || img.dataset.retryDone) return;
+        const n = parseInt(img.dataset.retryCount || '0', 10);
+        if (n >= 7) { img.dataset.retryDone = '1'; return; }
+        img.dataset.retryCount = String(n + 1);
+        const orig = img.dataset.origSrc || img.src;
+        img.dataset.origSrc = orig;
+        setTimeout(() => {
+          if (!img.isConnected) return; // 已被重新渲染移除，交由新一轮重试
+          const mirrors = [null, null, null, null, 'fastly.jsdelivr.net', 'gcore.jsdelivr.net'];
+          const host = mirrors[Math.min(n, mirrors.length - 1)];
+          img.src = host && orig.includes('cdn.jsdelivr.net') ? orig.replace('cdn.jsdelivr.net', host) : orig;
+        }, 1500 * (n + 1));
+      }, true);
       pv.addEventListener('paste',e=>{
         // 预览区粘贴纯文本，避免富文本格式污染源码
         e.preventDefault();

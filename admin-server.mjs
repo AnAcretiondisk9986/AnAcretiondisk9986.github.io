@@ -1,6 +1,7 @@
 import express from 'express';
 import multer from 'multer';
 import sharp from 'sharp';
+import decodeHeic from 'heic-decode';
 import { readdir, readFile, writeFile, unlink, mkdir, access, copyFile } from 'node:fs/promises';
 import { exec } from 'node:child_process';
 import { join, dirname, extname, basename, resolve } from 'node:path';
@@ -114,7 +115,9 @@ function nextGalleryDayIndex(items, date) {
 }
 
 // ── Multer: image-only upload ──
-const ALLOWED_MIME = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml', 'image/x-icon', 'audio/mpeg', 'audio/flac', 'audio/ogg', 'audio/wav', 'audio/x-wav', 'audio/mp4', 'audio/aac', 'audio/x-m4a'];
+const ALLOWED_MIME = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml', 'image/x-icon', 'image/heic', 'image/heif', 'audio/mpeg', 'audio/flac', 'audio/ogg', 'audio/wav', 'audio/x-wav', 'audio/mp4', 'audio/aac', 'audio/x-m4a'];
+// URL 导入支持的图片扩展名（与 MIME 校验互补；CDN/图床对 HEIC 等常返回 application/octet-stream）
+const IMAGE_EXTS = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.heic', '.heif'];
 const upload = multer({
   storage: multer.diskStorage({
     destination: (_req, file, cb) => {
@@ -133,10 +136,14 @@ const upload = multer({
     },
   }),
   fileFilter: (_req, file, cb) => {
-    if (ALLOWED_MIME.includes(file.mimetype)) {
+    // Chrome/Edge 等浏览器不识别 HEIC，会以 application/octet-stream（或空 MIME）上传：
+    // 仅对 heic/heif 按扩展名兜底放行（heic/heif 有 decodeHeic 内容校验；png/jpg 等仍要求标准 MIME）
+    const genericOk = (file.mimetype === 'application/octet-stream' || file.mimetype === '')
+      && ['.heic', '.heif'].includes(extname(file.originalname).toLowerCase());
+    if (ALLOWED_MIME.includes(file.mimetype) || genericOk) {
       cb(null, true);
     } else {
-      cb(new Error('仅支持 PNG / JPEG / GIF / WebP / SVG 图片与 MP3 / FLAC / OGG / WAV / M4A 音频'), false);
+      cb(new Error('仅支持 PNG / JPEG / GIF / WebP / SVG / HEIC 图片与 MP3 / FLAC / OGG / WAV / M4A 音频'), false);
     }
   },
   limits: { fileSize: 35 * 1024 * 1024 },
@@ -302,22 +309,43 @@ app.route('/api/posts/:slug')
     }
   });
 
-// 把已写入 IMAGE_DIR 的图片文件转成 WebP（png/jpg/jpeg），返回最终文件名；其余格式原样保留
+// 把已写入 IMAGE_DIR 的图片文件转成 WebP（png/jpg/jpeg 直接转；heic/heif 先用 libheif(wasm) 解码再转），
+// 返回最终文件名；其余格式原样保留
 async function saveImageFile(filePath) {
   const ext = extname(filePath).toLowerCase();
-  if (!['.png', '.jpg', '.jpeg'].includes(ext)) return basename(filePath);
   const base = filePath.slice(0, -ext.length);
   const outPath = `${base}.webp`;
-  await sharp(filePath).webp({ quality: 78 }).toFile(outPath);
-  await unlink(filePath);
+  if (['.png', '.jpg', '.jpeg'].includes(ext)) {
+    await sharp(filePath).webp({ quality: 78 }).toFile(outPath);
+  } else if (['.heic', '.heif'].includes(ext)) {
+    // sharp 预编译的 libvips 缺少 libde265（HEVC 解码器），iPhone 的 HEIC 需先用 libheif 解出像素再转码。
+    // decodeHeic.all 在解码前即可读取尺寸：先验宽高再解码，避免超大图先整张解码进内存造成 OOM
+    const buf = await readFile(filePath);
+    const images = await decodeHeic.all({ buffer: buf });
+    try {
+      const { width, height } = images[0];
+      if (width * height > 100_000_000) {
+        throw new Error('图片尺寸过大（超过 1 亿像素），无法处理');
+      }
+      const { width: w, height: h, data } = await images[0].decode();
+      await sharp(Buffer.from(data), { raw: { width: w, height: h, channels: 4 } })
+        .webp({ quality: 78 })
+        .toFile(outPath);
+    } finally {
+      images.dispose();
+    }
+  } else {
+    return basename(filePath);
+  }
+  await unlink(filePath).catch(() => {});
   return `${basename(outPath)}`;
 }
 
-// 归档原图到 image/original/（仅转码格式 png/jpg/jpeg 才有归档必要；gif/svg/webp 原样保留，主图即原图）。
+// 归档原图到 image/original/（仅转码格式 png/jpg/jpeg/heic/heif 才有归档必要；gif/svg/webp 原样保留，主图即原图）。
 // 返回归档后的文件名（不含目录），或 null 表示无需归档。
 async function archiveOriginal(filePath, name) {
   const ext = extname(filePath).toLowerCase();
-  if (!['.png', '.jpg', '.jpeg'].includes(ext)) return null;
+  if (!['.png', '.jpg', '.jpeg', '.heic', '.heif'].includes(ext)) return null;
   await mkdir(ORIGINAL_DIR, { recursive: true });
   const dest = join(ORIGINAL_DIR, name);
   await copyFile(filePath, dest);
@@ -351,14 +379,25 @@ async function extractAudioMeta(filePath) {
 }
 
 // 预热 jsDelivr 缓存：上传的文件首次访问会 301 到 raw.githubusercontent.com 拉取，境内访问 raw 不稳定，
-// 上传成功后主动请求一次（后台进行，不阻塞响应），让链接立即可用；失败仅记日志不影响上传结果
-function warmJsDelivr(url) {
-  fetch(url, { redirect: 'follow', signal: AbortSignal.timeout(90000) })
+// 上传成功后主动请求一次，让链接立即可用。waitMs > 0 时最多等待该毫秒数（预热成功即提前返回），
+// 使上传响应返回时 CDN 大概率已就绪、管理面板预览立即可见；失败/超时仅记日志，不影响上传结果。
+// 超时（waitMs 或 90s）即 abort 底层 fetch，避免后台连接悬挂。
+async function warmJsDelivr(url, waitMs = 0) {
+  const ctrl = new AbortController();
+  const abortTimer = setTimeout(() => ctrl.abort(), waitMs > 0 ? waitMs : 90000);
+  const p = fetch(url, { redirect: 'follow', signal: ctrl.signal })
     .then(r => {
       if (!r.ok) console.error('jsDelivr warm failed:', url, r.status);
       else console.log('jsDelivr warmed:', url);
     })
-    .catch(e => console.error('jsDelivr warm error:', url, e.message));
+    .catch(e => {
+      if (e.name !== 'AbortError') console.error('jsDelivr warm error:', url, e.message);
+    });
+  if (waitMs > 0) {
+    await Promise.race([p, new Promise(r => setTimeout(r, waitMs))]).finally(() => clearTimeout(abortTimer));
+  } else {
+    p.finally(() => clearTimeout(abortTimer));
+  }
 }
 
 // 推送图片仓库（有变更才推），失败时给出友好错误
@@ -404,6 +443,7 @@ app.post('/api/upload', (req, res, next) => {
       return res.status(500).json({ error: '上传失败' });
     }
     if (!req.file) return res.status(400).json({ error: '未选择文件' });
+    let filesSaved = false; // 转码/归档是否已成功落库（推送失败时保留文件，不清理）
     try {
       const isAudio = String(req.file.mimetype).startsWith('audio/');
       let filename, origName = null, title = '', artist = '', coverUrl = '';
@@ -418,11 +458,12 @@ app.post('/api/upload', (req, res, next) => {
         origName = await archiveOriginal(req.file.path, basename(req.file.path));
         filename = await saveImageFile(req.file.path);
       }
+      filesSaved = true;
       const push = await pushImageRepo();
       const base = isAudio ? AUDIO_BASE_URL : IMG_BASE_URL;
       const publicUrl = `${base}${encodeURIComponent(filename)}`;
-      // 上传成功后后台预热 jsDelivr 缓存（不阻塞响应），避免用户立即播放时首次访问失败
-      warmJsDelivr(publicUrl);
+      // 上传成功后预热 jsDelivr 缓存（等待最多 8 秒，让 CDN 就绪后返回，管理面板预览立即可见）
+      await warmJsDelivr(publicUrl, 8000);
       res.status(201).json({
         success: true,
         url: publicUrl,
@@ -434,6 +475,18 @@ app.post('/api/upload', (req, res, next) => {
       });
     } catch (e) {
       console.error('Upload Error:', e.message);
+      // 转码/归档失败时清理已写入的文件（含半成品 webp），避免残留被 git add -A 推送到公开图片仓库；
+      // 仅推送失败（filesSaved=true）则保留文件，供用户稍后重新推送
+      if (!filesSaved) {
+        try {
+          if (req.file?.path) {
+            await unlink(req.file.path).catch(() => {});
+            const ext = extname(req.file.path);
+            await unlink(`${req.file.path.slice(0, -ext.length)}.webp`).catch(() => {});
+          }
+          if (req.file?.filename) await unlink(join(ORIGINAL_DIR, req.file.filename)).catch(() => {});
+        } catch { /* 忽略清理错误 */ }
+      }
       res.status(e.status || 500).json({ error: e.message, detail: e.detail });
     }
   });
@@ -486,6 +539,8 @@ app.get('/api/audio-probe', async (req, res) => {
 
 // URL import (download external image to local)
 app.post('/api/import-url', async (req, res) => {
+  let filePath = null;
+  let filesSaved = false; // 转码/归档是否已成功落库（推送失败时保留文件，不清理）
   try {
     const { url, referer } = req.body;
     if (!url || typeof url !== 'string') {
@@ -519,7 +574,13 @@ app.post('/api/import-url', async (req, res) => {
 
     const contentType = (remote.headers.get('content-type') || '').split(';')[0].trim();
     if (!ALLOWED_MIME.includes(contentType)) {
-      return res.status(400).json({ error: `远程文件不是支持的图片格式（${contentType || '未知'}）` });
+      // CDN/图床常把图片返回为 application/octet-stream（或缺失 Content-Type）：
+      // 仅 heic/heif 按扩展名兜底放行（有 libheif 解码内容校验）；svg/gif/webp 等仍要求标准 MIME，避免未校验内容落库
+      const urlExt = extname(parsed.pathname).toLowerCase();
+      const isGeneric = contentType === 'application/octet-stream' || contentType === '';
+      if (!(isGeneric && ['.heic', '.heif'].includes(urlExt))) {
+        return res.status(400).json({ error: `远程文件不是支持的图片格式（${contentType || '未知'}）` });
+      }
     }
 
     const contentLength = parseInt(remote.headers.get('content-length') || '0', 10);
@@ -540,23 +601,36 @@ app.post('/api/import-url', async (req, res) => {
       .replace(/[^a-zA-Z0-9\u4e00-\u9fff_-]/g, '-')
       .substring(0, 60);
     const ext = extname(rawName).toLowerCase();
-    const finalExt = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg'].includes(ext) ? ext : '.jpg';
+    const finalExt = IMAGE_EXTS.includes(ext) ? ext : '.jpg';
     const filename = `${safeName}_${Date.now()}${finalExt}`;
 
     await mkdir(IMAGE_DIR, { recursive: true });
-    const filePath = join(IMAGE_DIR, filename);
+    filePath = join(IMAGE_DIR, filename);
     await writeFile(filePath, buffer);
     const origName = await archiveOriginal(filePath, filename);
     const savedName = await saveImageFile(filePath);
+    filesSaved = true;
     const push = await pushImageRepo();
+
+    const publicUrl = `${IMG_BASE_URL}${encodeURIComponent(savedName)}`;
+    // 预热 jsDelivr 缓存（等待最多 8 秒），让导入成功后管理面板预览立即可见
+    await warmJsDelivr(publicUrl, 8000);
 
     res.status(201).json({
       success: true,
-      url: `${IMG_BASE_URL}${encodeURIComponent(savedName)}`,
+      url: publicUrl,
       originalUrl: origName ? `${IMG_BASE_URL}original/${encodeURIComponent(origName)}` : '',
       pushed: push.pushed,
     });
   } catch (err) {
+    // 下载/转码/归档失败时清理已写入的文件（含半成品 webp），避免残留被推送到公开图片仓库；
+    // 仅推送失败（filesSaved=true）则保留文件，供用户稍后重新推送
+    if (filePath && !filesSaved) {
+      await unlink(filePath).catch(() => {});
+      const ext = extname(filePath);
+      await unlink(`${filePath.slice(0, -ext.length)}.webp`).catch(() => {});
+      await unlink(join(ORIGINAL_DIR, basename(filePath))).catch(() => {});
+    }
     if (err.name === 'AbortError' || err.name === 'TimeoutError') {
       return res.status(504).json({ error: '下载超时（30 秒）' });
     }
