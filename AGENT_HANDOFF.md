@@ -2,6 +2,30 @@
 
 > 本文件已在用户授权下公开于 GitHub 仓库。每位 Agent 完成工作后在此记录变更。
 
+**📎 v3.5.0 完整交接：文章分享短链 / 管理面板 HEIC 支持 / jsDelivr 预热优化（2026-08-04 发布，blog-template 同步 v1.5.0）**
+
+### 一、文章分享短链（自托管静态，无第三方依赖）
+
+- **短码生成**（`src/lib/shortlink.ts`）：`shortIdForPath(id)` = sha256(id) hex 前 8 位 → base36，6~7 位纯 ASCII 字母数字；确定性（同一文章永远同一短码）、无后端无存储。碰撞概率 ~2⁻³²，构建侧另有冲突检测兜底。
+- **跳转页**（`src/pages/s/[id].astro`）：`getStaticPaths` 遍历 `getCollection('blog', !draft)` 为每篇生成 `/s/<短码>`；短码冲突直接 `throw`（构建失败并提示调大 hash 位数）；`target = new URL('/blog/' + post.id + '/', import.meta.env.SITE).href`（new URL 自动对中文 slug 百分号编码）；`meta refresh` + JS `location.replace(target)` 双保险；`noindex` 防搜索引擎收录中转页。**⚠ 切勿对 target 再 `encodeURI`——会双重编码（`%`→`%25`）导致中文 slug 文章跳转 404（v3.5.0 已踩坑修复）。**
+- **文章页 UI**（`[...id].astro` 侧栏 dl 后）：`.share-link` 区块（`data-shortlink` 根），「⧉ 生成分享短链」按钮（复用 `.print-action` 视觉）→ 点击 `is-open` 展开面板（短链 code + 「复制」按钮 + 状态提示）；`shortUrl = ${Astro.site?.origin}/s/${shortIdForPath(post.id)}`，与跳转页同一函数保证一致。交互用 `is:inline data-astro-rerun` + IIFE（与 busuanzi 脚本同模式，VT 导航后重新绑定）；剪贴板 `navigator.clipboard.writeText` 失败降级 `document.execCommand('copy')`；提示 2.2s 自动消失。
+- **样式**：`global.css` 新增 `.share-link` 系列（红色描边小按钮、`is-open` 状态类切换面板 display——**不能只靠 `hidden` 属性，`display:flex` 会覆盖它**）；打印媒体查询隐藏 `.share-link`；小屏网格 `grid-column: 1 / -1`；`minimal-theme.css` 无边框/圆角适配（面板透明、复制按钮 `--rule-strong` 边框）。
+- **验证**：`npm run build` 44 页；19 篇文章短链与 `/s/` 页 target 交叉一致（含 `HealthCN2030.md` 大写 slug 小写化边界）；`astro preview` 起服 `/s/17mza5x` 与 `/blog/healthcn2030/` 均 200；review（双重编码 bug 已修复）+ security_review（无属性逃逸/开放重定向/XSS）通过。
+
+### 二、管理面板 HEIC/HEIF 支持（`admin-server.mjs` + `admin/index.html` + 新依赖 `heic-decode@^2`）
+
+- **上传/URL 导入**：`ALLOWED_MIME` 新增 `image/heic`、`image/heif`；URL 导入按 `IMAGE_EXTS` 扩展名白名单兜底（CDN/图床常返回 `application/octet-stream` 或空 MIME）；`fileFilter` 仅对 heic/heif 按扩展名放行（png/jpg 等仍要求标准 MIME）。
+- **转码**：`saveImageFile` 分支——png/jpg/jpeg 直接 sharp 转 WebP（q78）；heic/heif 先 `decodeHeic.all` 读尺寸（**>1 亿像素拒绝，防整图解码进内存 OOM**）再 `decode()` 取 RGBA 走 sharp raw 转 WebP；`archiveOriginal` 归档 heic/heif 原图至 `image/original/`。
+- **jsDelivr 预热等待**：`warmJsDelivr(url, waitMs)`——`waitMs > 0` 时最多等待该毫秒数（预热成功提前返回），超时 abort 底层 fetch 防悬挂；`/api/upload` 改为 `await warmJsDelivr(publicUrl, 8000)` 再响应，管理面板上传后预览立即可见；失败仅记日志。
+- **失败清理**：`filesSaved` 标记——转码/归档失败时清理已写文件（含半成品 `.webp`），防残留被 `git add -A` 推送到公开图片仓库；仅推送失败（filesSaved=true）保留文件供重新推送。
+- **面板**：`isImageFile(f)` 按扩展名兜底拖放/粘贴上传（Chrome/Edge 不识别 HEIC，`file.type` 为空）；正文预览 `error` 捕获阶段监听自动重试（1.5s×(n+1) 递增，7 次后放弃；仍失败切 jsDelivr 镜像 `fastly.jsdelivr.net` / `gcore.jsdelivr.net`）。
+
+### 三、发布记录与约定
+
+- 主仓库 tag `v3.5.0` + GitHub Release；README 更新日志新增 3.5.0 条目（含模板同步说明），顶部「开发版本」与「最新 Release」链接同步更新（v3.4.0 发布时漏改顶部版本号，本次已修正）。
+- 模板 `blog-template` 同步发布 **v1.5.0**（提交 `350cf19`，8 文件 +2490/-52）：同步词云、评论、画廊原图归档、播放条与音频工作流、格式化工具栏、图片尺寸、编辑器改造、HEIC 支持；模板构建 7 页通过。模板 README 保持使用文档定位不改动。
+- **`.githooks/pre-commit` 约定**：主仓库与模板均配置 `core.hooksPath=.githooks`，每次 commit 自动跑 `npm run build`，失败阻止提交——功能改动提交前先确认构建通过。
+
 **🎧 v3.4.0 完整交接：音乐播放条 / 音频工作流 / 格式化工具栏 / 图片尺寸 / 编辑器改造（2026-08-09 发布）**
 
 ### 一、文章内嵌音乐播放条（`src/scripts/song-player.ts` + 样式 + 文章页）

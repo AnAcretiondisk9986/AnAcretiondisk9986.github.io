@@ -1,9 +1,33 @@
 # Acretiondisk Blog — 更新日志
 
 > 使用 Astro 构建的个人博客，部署到 GitHub Pages（`https://anacretiondisk9986.github.io/`）。
-> 开发版本：**3.3.1**（2026-08-03）· 最新 Release：[v3.3.0](https://github.com/AnAcretiondisk9986/AnAcretiondisk9986.github.io/releases/latest)
+> 开发版本：**3.5.0**（2026-08-04）· 最新 Release：[v3.5.0](https://github.com/AnAcretiondisk9986/AnAcretiondisk9986.github.io/releases/latest)
 
 ---
+
+## 3.5.0（2026-08-04）
+
+### 📎 文章分享短链（自托管，免第三方服务）
+
+- 文章页侧栏新增「**生成分享短链**」按钮：点击展示短链（形如 `https://anacretiondisk9986.github.io/s/<短码>`）并可一键复制。短链为纯 ASCII，**彻底解决中文 slug 链接复制时被百分号转码拉长、难分享的问题**（如 120+ 字符的转码链接缩短为 45 字符）。
+- 实现：构建时为每篇非草稿文章自动生成 `/s/<短码>` 静态跳转页——短码由 slug 的 sha256 前 8 位 hex 转 base36 确定性生成（6~7 位字母数字，同一文章永远同一短码），跳转用 meta refresh + JS 双保险；`noindex` 防搜索引擎收录中转页；短码冲突（概率 ~2⁻³²）时构建直接报错提示。
+- 不依赖任何第三方短链 API，免费、永久有效、境内可直接访问。
+
+### 📷 管理面板支持 HEIC / HEIF 图片
+
+- 上传与 URL 导入支持 iPhone 的 **HEIC/HEIF**：Chrome/Edge 不识别 HEIC 会以 `application/octet-stream` 或空 MIME 上传，按扩展名白名单兜底放行；后端用 libheif（wasm）解码后自动转 WebP（q78），原图归档至 `image/original/`。
+- 超大图保护：解码前先读尺寸，**超过 1 亿像素拒绝处理**（防整图解码进内存 OOM）。
+- 新依赖：`heic-decode@^2`。
+
+### 🚀 jsDelivr 预热与上传稳定性
+
+- **预热等待**：上传成功后服务端等待 CDN 预热（最多 8 秒，成功即提前返回）再响应——管理面板上传后立即可见、播放立即成功，不再出现"刚上传就 301 到 raw.githubusercontent.com"失败；预热失败/超时仅记日志不影响上传。
+- **失败清理**：转码/归档失败时自动清理已写入的文件（含半成品 `.webp`），避免残留被 `git add -A` 推送到公开图片仓库；仅推送失败则保留文件供稍后重推。
+- **面板预览自动重试**：正文预览图片加载失败自动重试（1.5s 递增间隔 ×7），仍失败自动切换 jsDelivr 镜像（fastly / gcore），全部失败才放弃。
+
+### 🔁 模板仓库同步
+
+- `blog-template` 同步发布 **v1.5.0**：本轮起模板恢复跟进主仓库，同步词云、评论、画廊原图归档、播放条与音频工作流、格式化工具栏、图片尺寸、编辑器改造、HEIC 支持等全部功能（模板 README 保持使用文档定位，不改动）。
 
 ## 3.4.0（2026-08-09）
 
