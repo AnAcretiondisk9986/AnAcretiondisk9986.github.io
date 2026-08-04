@@ -2,6 +2,7 @@ import express from 'express';
 import multer from 'multer';
 import sharp from 'sharp';
 import decodeHeic from 'heic-decode';
+import { getHeicOrientation } from './admin/heic-exif.mjs';
 import { readdir, readFile, writeFile, unlink, mkdir, access, copyFile } from 'node:fs/promises';
 import { exec } from 'node:child_process';
 import { join, dirname, extname, basename, resolve } from 'node:path';
@@ -328,9 +329,17 @@ async function saveImageFile(filePath) {
         throw new Error('图片尺寸过大（超过 1 亿像素），无法处理');
       }
       const { width: w, height: h, data } = await images[0].decode();
-      await sharp(Buffer.from(data), { raw: { width: w, height: h, channels: 4 } })
-        .webp({ quality: 78 })
-        .toFile(outPath);
+      // heic-decode 只输出原始像素(无 EXIF):iPhone 竖拍照片需按 EXIF Orientation 旋转,否则横置 90°
+      const orientation = getHeicOrientation(buf) ?? 1;
+      let pipeline = sharp(Buffer.from(data), { raw: { width: w, height: h, channels: 4 } });
+      if (orientation === 2) pipeline = pipeline.flop();
+      else if (orientation === 3) pipeline = pipeline.rotate(180);
+      else if (orientation === 4) pipeline = pipeline.flip();
+      else if (orientation === 5) pipeline = pipeline.rotate(270).flop();
+      else if (orientation === 6) pipeline = pipeline.rotate(90);
+      else if (orientation === 7) pipeline = pipeline.rotate(90).flop();
+      else if (orientation === 8) pipeline = pipeline.rotate(270);
+      await pipeline.webp({ quality: 78 }).toFile(outPath);
     } finally {
       images.dispose();
     }
