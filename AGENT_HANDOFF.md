@@ -2,6 +2,23 @@
 
 > 本文件已在用户授权下公开于 GitHub 仓库。每位 Agent 完成工作后在此记录变更。
 
+**🐛 v3.5.1 修复：HEIC 竖拍方向（2026-08-04 发布，blog-template 同步 v1.5.1）**
+
+### HEIC EXIF Orientation 支持（`admin/heic-exif.mjs` 新增,零依赖）
+
+- **背景**：v3.5.0 的 HEIC 转码用 heic-decode 只取原始像素,丢弃 EXIF——iPhone 竖拍照片(EXIF Orientation=6/8)转出的 WebP 横置 90°。
+- **实现**（`getHeicOrientation(buffer)` → 1~8 或 null）：
+  - `walkBoxes` 遍历 ISO-BMFF box(含 largesize);meta>iinf 中 item_type=='Exif' 的 infe 定位 item_ID;
+  - **infe item_ID 实测为 2 字节**(即使 version=2 声明 4 字节)——按 2/4 双解析自适应;
+  - iloc 条目解析 **base_offset_size 自校正**(候选 [声明值,2,0,4,8],取能精确消费到 iloc 末尾且定位到目标 item 者;真实 iPhone 样本声明 0 实际 2);
+  - Exif item 数据 = 4 字节 exif_tiff_header_offset + TIFF;**TIFF magic 是 2 字节(0x002A),需按字节序读取**(曾误按单字节检查 0x00 失败);
+  - `parseTiffOrientation` 读 IFD0 tag 0x0112(SHORT)。
+- **旋转管线**(admin-server.mjs saveImageFile heic 分支):orientation 2→flop、3→180、4→flip、5→270+flop、6→90、7→90+flop、8→270,其余不旋转;解析失败按 1 处理(不阻断上传)。
+- **验证**：`node scripts/verify-heic-exif.mjs` 12 项全过——3 个真实 iPhone HEIC 样本(blog-images/image/original/)解析 Orientation=1(横拍不旋转);合成 RGBA 数据走同一管线 Orientation 1-8 尺寸全部正确;模块导入链正常。**遗留**:暂无竖拍(6/8)真实样本,旋转组合经合成数据验证。
+- 模板同步:blog-template 复制 `admin/heic-exif.mjs`,convertHeicToWebp 同管线(v1.5.1)。
+
+---
+
 **📎 v3.5.0 完整交接：文章分享短链 / 管理面板 HEIC 支持 / jsDelivr 预热优化（2026-08-04 发布，blog-template 同步 v1.5.0）**
 
 ### 一、文章分享短链（自托管静态，无第三方依赖）

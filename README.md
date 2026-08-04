@@ -1,9 +1,18 @@
 # Acretiondisk Blog — 更新日志
 
 > 使用 Astro 构建的个人博客，部署到 GitHub Pages（`https://anacretiondisk9986.github.io/`）。
-> 开发版本：**3.5.0**（2026-08-04）· 最新 Release：[v3.5.0](https://github.com/AnAcretiondisk9986/AnAcretiondisk9986.github.io/releases/latest)
+> 开发版本：**3.5.1**（2026-08-04）· 最新 Release：[v3.5.1](https://github.com/AnAcretiondisk9986/AnAcretiondisk9986.github.io/releases/latest)
 
 ---
+
+## 3.5.1（2026-08-04）
+
+### 🐛 修复：HEIC 竖拍照片方向（v3.5.0 缺陷）
+
+- v3.5.0 的 HEIC 支持存在缺陷：heic-decode 只输出原始像素（不含 EXIF），**iPhone 竖拍照片（EXIF Orientation=6/8）转出的 WebP 会横置 90°**。
+- 修复：新增 `admin/heic-exif.mjs`（零依赖）按 ISO-BMFF 定位 `meta>iinf` 的 Exif item、经 `iloc` 取数据、解析 TIFF IFD0 的 Orientation（1~8），转码前按方向旋转/镜像后再输出 WebP。
+- 真实 iPhone 样本验证：3 个 HEIC 均正确读出 Orientation=1（横拍不旋转）；合成数据验证 Orientation 2–8 全部按标准旋转/镜像（6/8 交换宽高）。
+- 模板仓库同步发布 **v1.5.1**。
 
 ## 3.5.0（2026-08-04）
 
