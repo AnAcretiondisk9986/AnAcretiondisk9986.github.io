@@ -688,6 +688,22 @@
     box-shadow: none;
   }
 
+  :root[data-visual-theme='minimal'] .share-link__panel {
+    border-color: var(--rule);
+    background: transparent;
+  }
+
+  :root[data-visual-theme='minimal'] .share-link__copy {
+    border-color: var(--rule-strong);
+    border-radius: 6px;
+    color: var(--ink);
+  }
+
+  :root[data-visual-theme='minimal'] .share-link__copy:hover {
+    color: var(--paper);
+    background: var(--rule);
+  }
+
   :root[data-visual-theme='minimal'] .article-margin dl {
     border-color: var(--rule);
   }

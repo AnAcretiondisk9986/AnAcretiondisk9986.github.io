@@ -1103,6 +1103,65 @@ main {
   outline-offset: 2px;
 }
 
+/* —— 分享短链:文章页侧栏,纯 ASCII 短链避免中文 URL 转码变长 —— */
+.share-link {
+  margin-bottom: 42px;
+}
+
+.share-link__panel {
+  display: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  margin-top: 10px;
+  padding: 9px 11px;
+  border: 1px solid var(--rule);
+  background: color-mix(in srgb, var(--paper-light) 62%, transparent);
+}
+.share-link.is-open .share-link__panel {
+  display: flex;
+}
+
+.share-link__url {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  font-family: var(--latin);
+  font-size: 0.66rem;
+  letter-spacing: 0.02em;
+  line-height: 1.6;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.share-link__copy {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border: 1px solid var(--red);
+  border-radius: 2px;
+  color: var(--red);
+  background: transparent;
+  font-family: var(--serif);
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+.share-link__copy:hover {
+  color: var(--paper-light);
+  background: var(--red);
+}
+.share-link__copy:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.share-link__hint {
+  color: var(--ink-faint);
+  font-family: var(--serif);
+  font-size: 0.66rem;
+}
+
 .article-margin dl {
   margin: 0;
   border-top: 1px solid var(--rule-strong);
@@ -3618,6 +3677,10 @@ main {
     justify-self: start;
   }
 
+  .article-margin .share-link__panel {
+    grid-column: 1 / -1;
+  }
+
   .margin-note {
     margin: 0;
   }
@@ -4081,7 +4144,8 @@ main {
   .theme-toggle,
   .back-link,
   .margin-note,
-  .print-action {
+  .print-action,
+  .share-link {
     display: none !important;
   }
 

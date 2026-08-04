@@ -5,6 +5,7 @@ import PostComments from '../../components/PostComments.astro';
 import ThemeCopy from '../../components/ThemeCopy.astro';
 import WordCloud from '../../components/WordCloud.astro';
 import { buildWordCloud } from '../../lib/wordcloud';
+import { shortIdForPath } from '../../lib/shortlink';
 
 export async function getStaticPaths() {
   const posts = await getCollection('blog', ({ data }) => !data.draft);
@@ -40,6 +41,8 @@ const printFolio = JSON.stringify(`FOLIO ${folioCode}`);
 const printUrl = JSON.stringify(
   `${Astro.site?.origin ?? ''}${Astro.url.pathname}`.replace(/\/$/, ''),
 );
+// 分享短链:纯 ASCII 短码,避免中文 slug 在复制时被百分号转码拉长链接
+const shortUrl = `${Astro.site?.origin ?? ''}/s/${shortIdForPath(post.id)}`;
 ---
 
 <BaseLayout title={post.data.title} description={post.data.description}>
@@ -59,6 +62,18 @@ const printUrl = JSON.stringify(
           <dd><span id="busuanzi_value_page_pv">—</span></dd>
         </div>
       </dl>
+
+      <div class="share-link" data-shortlink>
+        <button class="print-action share-link__btn" type="button" data-shortlink-generate>
+          <span aria-hidden="true">⧉</span> 生成分享短链
+        </button>
+        <div class="share-link__panel" data-shortlink-panel>
+          <code class="share-link__url" data-shortlink-url>{shortUrl}</code>
+          <button class="share-link__copy" type="button" data-shortlink-copy>复制</button>
+          <span class="share-link__hint" data-shortlink-hint role="status"></span>
+        </div>
+      </div>
+
       <WordCloud words={articleWords} compact title="关键词" traceTitle="本篇关键词" />
       <p class="margin-note"><ThemeCopy minimal="文字与观点会随认知更新。" trace="原始观察记录。文字与观点会随认知更新而修订。" /></p>
     </aside>
@@ -139,6 +154,55 @@ const printUrl = JSON.stringify(
     s.src = 'https://busuanzi.ibruce.info/busuanzi?jsonpCallback=busuanziCallback';
     s.onerror = () => { box.hidden = true; };
     document.head.appendChild(s);
+  })();
+</script>
+
+<script is:inline data-astro-rerun>
+  // 分享短链:点击「生成」展示短链(纯 ASCII,复制不会被转码),再点短链或「复制」即可复制。
+  // data-astro-rerun:VT 导航后 DOM 被替换,每次页面加载需重新绑定;
+  // IIFE 包裹,重复执行时顶层 const 不冲突。
+  (() => {
+    const root = document.querySelector('[data-shortlink]');
+    const generateBtn = root?.querySelector('[data-shortlink-generate]');
+    const panel = root?.querySelector('[data-shortlink-panel]');
+    const copyBtn = root?.querySelector('[data-shortlink-copy]');
+    const urlEl = root?.querySelector('[data-shortlink-url]');
+    const hint = root?.querySelector('[data-shortlink-hint]');
+    if (!root || !generateBtn || !panel || !copyBtn || !urlEl || !hint) return;
+
+    let hintTimer = 0;
+    const showHint = (text) => {
+      hint.textContent = text;
+      window.clearTimeout(hintTimer);
+      hintTimer = window.setTimeout(() => { hint.textContent = ''; }, 2200);
+    };
+
+    const copyShortUrl = async () => {
+      const text = (urlEl.textContent || '').trim();
+      let ok = false;
+      try {
+        await navigator.clipboard.writeText(text);
+        ok = true;
+      } catch {
+        // 剪贴板 API 不可用(非安全上下文 / 权限受限)时降级为「选中复制」
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try { ok = document.execCommand('copy'); } catch { ok = false; }
+        ta.remove();
+      }
+      showHint(ok ? '已复制 ✓' : '复制失败,请手动选择短链复制');
+    };
+
+    generateBtn.addEventListener('click', () => {
+      root.classList.add('is-open');
+      generateBtn.hidden = true;
+    });
+    copyBtn.addEventListener('click', copyShortUrl);
+    urlEl.addEventListener('click', copyShortUrl);
   })();
 </script>
 
