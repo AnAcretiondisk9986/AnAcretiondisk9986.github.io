@@ -1122,6 +1122,16 @@ main {
   display: flex;
 }
 
+.share-link__title {
+  flex: 0 0 100%; /* 独占一行,标题过长自动换行 */
+  font-family: var(--serif);
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  color: var(--red);
+}
+
 .share-link__url {
   max-width: 100%;
   overflow-wrap: anywhere;

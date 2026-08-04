@@ -68,6 +68,7 @@ const shortUrl = `${Astro.site?.origin ?? ''}/s/${shortIdForPath(post.id)}`;
           <span aria-hidden="true">⧉</span> 生成分享短链
         </button>
         <div class="share-link__panel" data-shortlink-panel>
+          <span class="share-link__title" data-shortlink-title>《{post.data.title}》</span>
           <code class="share-link__url" data-shortlink-url>{shortUrl}</code>
           <button class="share-link__copy" type="button" data-shortlink-copy>复制</button>
           <span class="share-link__hint" data-shortlink-hint role="status"></span>
@@ -158,7 +159,7 @@ const shortUrl = `${Astro.site?.origin ?? ''}/s/${shortIdForPath(post.id)}`;
 </script>
 
 <script is:inline data-astro-rerun>
-  // 分享短链:点击「生成」展示短链(纯 ASCII,复制不会被转码),再点短链或「复制」即可复制。
+  // 分享短链:点击「生成」展示《标题》+ 短链(纯 ASCII,复制不会被转码),点短链或「复制」即可复制《标题》与短链。
   // data-astro-rerun:VT 导航后 DOM 被替换,每次页面加载需重新绑定;
   // IIFE 包裹,重复执行时顶层 const 不冲突。
   (() => {
@@ -167,8 +168,9 @@ const shortUrl = `${Astro.site?.origin ?? ''}/s/${shortIdForPath(post.id)}`;
     const panel = root?.querySelector('[data-shortlink-panel]');
     const copyBtn = root?.querySelector('[data-shortlink-copy]');
     const urlEl = root?.querySelector('[data-shortlink-url]');
+    const titleEl = root?.querySelector('[data-shortlink-title]');
     const hint = root?.querySelector('[data-shortlink-hint]');
-    if (!root || !generateBtn || !panel || !copyBtn || !urlEl || !hint) return;
+    if (!root || !generateBtn || !panel || !copyBtn || !urlEl || !titleEl || !hint) return;
 
     let hintTimer = 0;
     const showHint = (text) => {
@@ -178,7 +180,10 @@ const shortUrl = `${Astro.site?.origin ?? ''}/s/${shortIdForPath(post.id)}`;
     };
 
     const copyShortUrl = async () => {
-      const text = (urlEl.textContent || '').trim();
+      // 复制内容 = 《标题》 + 短链,便于分享时识别文章
+      const title = (titleEl?.textContent || '').trim();
+      const url = (urlEl.textContent || '').trim();
+      const text = title ? `${title} ${url}` : url;
       let ok = false;
       try {
         await navigator.clipboard.writeText(text);
