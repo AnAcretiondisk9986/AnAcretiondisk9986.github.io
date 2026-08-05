@@ -8,3 +8,4 @@ src/content/blog/.obsidian/
 *.log
 .reasonix/
 .ssh-keys/
+.admin-token

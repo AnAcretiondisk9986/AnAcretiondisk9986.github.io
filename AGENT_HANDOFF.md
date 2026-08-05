@@ -2,6 +2,16 @@
 
 > 本文件已在用户授权下公开于 GitHub 仓库。每位 Agent 完成工作后在此记录变更。
 
+**🔒 v3.5.3 管理面板安全加固后续：认证口令持久化 + 文档同步（2026-08-05，未发布，blog-template 未同步）**
+
+- **背景**：v3.5.3 安全提交（`09128eb Harden admin authentication and remote URL handling`）移除默认口令 `acr-admin` 后出现运维问题——未设 `ADMIN_TOKEN` 时每次重启随机口令都变，外部脚本/curl 调 API 会失效；且 README/AGENT_HANDOFF 仍描述旧默认口令。
+- **修复**（`admin-server.mjs`）：新增 `TOKEN_FILE = resolve(__dirname, '.admin-token')` 与 `loadAdminToken()`——未设置 `ADMIN_TOKEN` 时首次启动生成 `randomBytes(32).toString('hex')` 口令写入 `.admin-token`（mode 0o600），之后重启复用，零配置且重启稳定，不退回硬编码弱口令；写入失败降级临时随机口令（告警不阻断启动）；`ADMIN_TOKEN = await loadAdminToken()`（顶层 await，Node 24 ESM 支持）；启动日志提示口令文件位置（仅未设 env 时）。`.gitignore` 新增 `.admin-token`。
+- **文档同步**：README 顶部新增 3.5.3 changelog 条目 + 开发版本 bump 3.5.3；README v1.1 功能总结与 AGENT_HANDOFF 认证段旧描述「默认 `acr-admin`」均改为持久化机制描述。
+- **验证**（Windows 实测，PORT=4399 三轮启动）：`node --check` 通过；首次启动生成文件、页面注入值与文件一致、带 header 200 / 无 token 401；kill 后重启 token 不变；`ADMIN_TOKEN=my-fixed-token` 时环境变量优先（env token 200、文件 token 401）、文件不被改写、页面注入 env 值；测试端口已释放。
+- **遗留**：`blog-template` 子模块仍是旧版认证（默认 `acr-admin` + 空口令放行），未同步（待用户决定是否跟进）。
+
+---
+
 **🔒 v3.5.2 安全加固：HEIC 解析器防御恶意 iloc（2026-08-04 发布，blog-template 同步 v1.5.2）**
 
 - security_review(MEDIUM)发现 `parseIlocWithBase`：iloc 的 `offset_size` 与 `length_size` 均为 0 时 extent 循环无字节推进，配合 version-2 的 32 位 `extent_count`(0xFFFFFFFF)可空转 ~4.29e9 次 × 最多 5 个 base 候选 ≈ 2.1e10 次迭代(事件循环阻塞数十秒)。
@@ -490,7 +500,7 @@ origin/main: d21ff97 已推送（970e9e1..d21ff97）
 
 - **文件**：`admin-server.mjs`、`admin/index.html`
 - 完整的 Express API：`/api/posts`（GET/POST 列表与新建）、`/api/posts/:slug`（GET/PUT/DELETE 读写删）。纯 HTML/CSS/JS 前端，暗色主题，Ctrl+S 快捷键。
-- 认证：`x-admin-token` header（默认 `acr-admin`，环境变量 `ADMIN_TOKEN` 可覆盖）。路径穿越防护、YAML 转义安全处理。
+- 认证：`x-admin-token` header（未设置 `ADMIN_TOKEN` 时自动生成随机口令并持久化于 `.admin-token`，重启不变；环境变量 `ADMIN_TOKEN` 可覆盖）。路径穿越防护、YAML 转义安全处理。
 
 **🔧 Git 远程切换为 SSH**
 

@@ -27,8 +27,26 @@ const GALLERY_JSON = resolve(__dirname, 'src', 'data', 'gallery.json');
 const ABOUT_JSON = resolve(__dirname, 'src', 'data', 'about.json');
 const FRONTEND_JSON = resolve(__dirname, 'src', 'data', 'frontend.json');
 const PORT = parseInt(process.env.PORT, 10) || 4322;
-const ADMIN_TOKEN = process.env.ADMIN_TOKEN || randomBytes(32).toString('hex');
+const TOKEN_FILE = resolve(__dirname, '.admin-token');
 const ADMIN_HTML = resolve(__dirname, 'admin', 'index.html');
+
+/** 未设置 ADMIN_TOKEN 时：首次启动生成随机口令并持久化到 .admin-token，之后复用（重启后口令不变） */
+async function loadAdminToken() {
+  if (process.env.ADMIN_TOKEN) return process.env.ADMIN_TOKEN;
+  try {
+    const existing = (await readFile(TOKEN_FILE, 'utf8')).trim();
+    if (existing) return existing;
+  } catch { /* 首次启动，生成新口令 */ }
+  const generated = randomBytes(32).toString('hex');
+  try {
+    await writeFile(TOKEN_FILE, `${generated}\n`, { mode: 0o600 });
+  } catch (err) {
+    console.warn(`[warn] 无法写入口令文件 ${TOKEN_FILE}: ${err.message}，本次使用临时随机口令`);
+  }
+  return generated;
+}
+
+const ADMIN_TOKEN = await loadAdminToken();
 const MAX_REMOTE_BYTES = 35 * 1024 * 1024;
 const MAX_REDIRECTS = 5;
 
@@ -1227,7 +1245,11 @@ app.use('/admin', express.static(join(__dirname, 'admin')));
 app.listen(PORT, '127.0.0.1', () => {
   const url = `http://localhost:${PORT}/admin`;
   console.log(`\n📚 博客管理面板已启动: ${url}\n`);
-  console.log(`   仅限本地使用 — 请勿暴露到公网\n`);
+  console.log(`   仅限本地使用 — 请勿暴露到公网`);
+  if (!process.env.ADMIN_TOKEN) {
+    console.log(`   管理口令：自动生成并保存于 ${TOKEN_FILE}（重启后保持不变）`);
+  }
+  console.log('');
 
   if (process.env.ADMIN_NO_OPEN !== '1') {
     const cmd = process.platform === 'win32'

@@ -1,9 +1,19 @@
 # Acretiondisk Blog — 更新日志
 
 > 使用 Astro 构建的个人博客，部署到 GitHub Pages（`https://anacretiondisk9986.github.io/`）。
-> 开发版本：**3.5.2**（2026-08-04）· 最新 Release：[v3.5.2](https://github.com/AnAcretiondisk9986/AnAcretiondisk9986.github.io/releases/latest)
+> 开发版本：**3.5.3**（2026-08-05）· 最新 Release：[v3.5.2](https://github.com/AnAcretiondisk9986/AnAcretiondisk9986.github.io/releases/latest)
 
 ---
+
+## 3.5.3（2026-08-05）
+
+### 🔒 管理面板安全加固：认证与远程 URL 处理
+
+- **移除默认口令**：不再内置默认口令 `acr-admin`——未设置环境变量 `ADMIN_TOKEN` 时，首次启动自动生成 256 位随机口令并持久化到 `.admin-token`（已加入 .gitignore，重启后保持不变）；管理面板页面动态注入当前口令，浏览器访问无需额外配置。
+- **认证收紧**：仅接受 `x-admin-token` header；移除 `?token=` query 传参（避免口令进入访问日志/浏览器历史/Referer），空口令不再放行。
+- **SSRF 防护**：图片 URL 导入与音频探测仅允许公网 http/https——拒绝本机地址；DNS 解析后任一地址命中内网/链路本地即拒绝；重定向手动跟随且每跳重新校验（最多 5 跳），防「公网跳内网」绕过。
+- **下载限流**：远程文件流式读取 + 实时大小检查（35MB），不再一次性全量载入内存。
+- **链接净化**：画廊 sourceUrl、首页 CTA 链接仅允许 http/https 或站内相对链接，`javascript:` 等伪协议服务端拒绝、前端构建期二次兜底。
 
 ## 3.5.2（2026-08-04）
 
@@ -482,7 +492,7 @@
 
 - 独立 Express 管理服务器（`npm run admin` → `http://localhost:4322/admin`），纯 HTML/CSS/JS 前端，暗色主题，Ctrl+S 保存。
 - 完整文章 CRUD API、图片上传（拖放/粘贴/点击 → `public/image/`，MIME 白名单 + 20MB 限制）、一键推送。
-- 安全加固：`x-admin-token` 认证（默认 `acr-admin`，环境变量 `ADMIN_TOKEN` 可覆盖）、路径穿越防护、YAML 转义、错误信息脱敏、绑定 127.0.0.1。
+- 安全加固：`x-admin-token` 认证（未设置 `ADMIN_TOKEN` 时自动生成随机口令并持久化于 `.admin-token`，重启不变；环境变量 `ADMIN_TOKEN` 可覆盖）、路径穿越防护、YAML 转义、错误信息脱敏、绑定 127.0.0.1。
 - Git 远程切换为 SSH（ED25519，走 22 端口）；Windows 双击 `启动管理面板.bat`、macOS 双击 `启动博客管理面板.command` 一键启动 + 自动打开浏览器。
 
 ### 🐛 修复
