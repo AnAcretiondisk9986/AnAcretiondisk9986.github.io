@@ -5,6 +5,7 @@ import ArchiveSeal from '../components/ArchiveSeal.astro';
 import PostCatalog from '../components/PostCatalog.astro';
 import SpecimenPlate from '../components/SpecimenPlate.astro';
 import ThemeCopy from '../components/ThemeCopy.astro';
+import { safeLink } from '../lib/safe-link';
 import frontend from '../data/frontend.json';
 
 const posts = (await getCollection('blog', ({ data }) => !data.draft))
@@ -12,6 +13,7 @@ const posts = (await getCollection('blog', ({ data }) => !data.draft))
     b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
     || (b.data.dayIndex ?? 0) - (a.data.dayIndex ?? 0)
     || b.id.localeCompare(a.id));
+const primaryCtaHref = safeLink(frontend.primaryCtaHref, '/blog/');
 
 ---
 
@@ -42,7 +44,7 @@ const posts = (await getCollection('blog', ({ data }) => !data.draft))
       <p class="hero-copy liquid-hero-copy">{frontend.heroDescription}</p>
 
       <div class="hero-actions">
-        <a class="primary-link" href={frontend.primaryCtaHref || '/blog/'}>
+        <a class="primary-link" href={primaryCtaHref}>
           <span class="legacy-hero-copy"><ThemeCopy minimal="浏览文章" trace="展开卷册" /></span>
           <span class="liquid-hero-copy">{frontend.primaryCtaLabel}</span>
           <span aria-hidden="true">→</span>

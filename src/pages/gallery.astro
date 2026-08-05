@@ -3,6 +3,7 @@ import { getCollection } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import ArchiveSeal from '../components/ArchiveSeal.astro';
 import ThemeCopy from '../components/ThemeCopy.astro';
+import { safeLink } from '../lib/safe-link';
 import standaloneGallery from '../data/gallery.json';
 
 interface GalleryImage {
@@ -76,6 +77,7 @@ const journalImages: GalleryImage[] = posts.flatMap((post) => {
 const standaloneImages: GalleryImage[] = sortNewestFirst(standaloneGallery as GalleryImage[]).map((img) => ({
     ...img,
     thumb: img.src,
+    sourceUrl: safeLink(img.sourceUrl),
   }));
 assignDaySequence(journalImages);
 assignDaySequence(standaloneImages);

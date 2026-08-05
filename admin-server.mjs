@@ -5,8 +5,11 @@ import decodeHeic from 'heic-decode';
 import { getHeicOrientation } from './admin/heic-exif.mjs';
 import { readdir, readFile, writeFile, unlink, mkdir, access, copyFile } from 'node:fs/promises';
 import { exec } from 'node:child_process';
+import { lookup as dnsLookup } from 'node:dns/promises';
+import { isIP } from 'node:net';
 import { join, dirname, extname, basename, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { randomBytes } from 'node:crypto';
 import matter from 'gray-matter';
 import { parseFile as parseAudioMeta } from 'music-metadata';
 
@@ -24,19 +27,97 @@ const GALLERY_JSON = resolve(__dirname, 'src', 'data', 'gallery.json');
 const ABOUT_JSON = resolve(__dirname, 'src', 'data', 'about.json');
 const FRONTEND_JSON = resolve(__dirname, 'src', 'data', 'frontend.json');
 const PORT = parseInt(process.env.PORT, 10) || 4322;
-const ADMIN_TOKEN = process.env.ADMIN_TOKEN || 'acr-admin';
+const ADMIN_TOKEN = process.env.ADMIN_TOKEN || randomBytes(32).toString('hex');
+const ADMIN_HTML = resolve(__dirname, 'admin', 'index.html');
+const MAX_REMOTE_BYTES = 35 * 1024 * 1024;
+const MAX_REDIRECTS = 5;
 
 // ── Auth middleware ──
 function auth(req, res, next) {
-  if (!ADMIN_TOKEN) return next();
-  if (req.path === '/admin' && req.method === 'GET') return next();
-  const token = req.headers['x-admin-token'] || req.query.token || '';
+  const token = req.headers['x-admin-token'] || '';
   if (token === ADMIN_TOKEN) return next();
   res.status(401).json({ error: '未授权' });
 }
 
 const app = express();
 app.use(express.urlencoded({ extended: true }));
+
+function safeLink(raw, { allowEmpty = true } = {}) {
+  const value = String(raw ?? '').trim();
+  if (!value) return allowEmpty ? '' : null;
+  if ((value.startsWith('/') && !value.startsWith('//')) || value.startsWith('#') || value.startsWith('?')) {
+    return value;
+  }
+  try {
+    const parsed = new URL(value);
+    return ['http:', 'https:'].includes(parsed.protocol) ? parsed.href : null;
+  } catch {
+    return null;
+  }
+}
+
+function isPrivateAddress(address) {
+  if (isIP(address) === 4) {
+    const [a, b] = address.split('.').map(Number);
+    return a === 0 || a === 10 || a === 127 || (a === 100 && b >= 64 && b <= 127)
+      || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31)
+      || (a === 192 && b === 168) || a >= 224;
+  }
+  const normalized = address.toLowerCase();
+  if (normalized.startsWith('::ffff:')) return isPrivateAddress(normalized.slice(7));
+  return normalized === '::' || normalized === '::1' || normalized.startsWith('fc')
+    || normalized.startsWith('fd') || normalized.startsWith('fe8')
+    || normalized.startsWith('fe9') || normalized.startsWith('fea') || normalized.startsWith('feb');
+}
+
+async function assertPublicUrl(raw) {
+  const parsed = new URL(raw);
+  if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('仅支持 http/https 链接');
+  const hostname = parsed.hostname.replace(/^\[|\]$/g, '').toLowerCase();
+  if (!hostname || hostname === 'localhost' || hostname.endsWith('.localhost') || hostname.endsWith('.local')) {
+    throw new Error('不允许访问本机地址');
+  }
+  const addresses = isIP(hostname)
+    ? [hostname]
+    : (await dnsLookup(hostname, { all: true })).map(({ address }) => address);
+  if (!addresses.length || addresses.some(isPrivateAddress)) throw new Error('不允许访问内网地址');
+  return parsed;
+}
+
+async function fetchPublic(raw, init = {}) {
+  let current = String(raw);
+  for (let redirects = 0; redirects <= MAX_REDIRECTS; redirects += 1) {
+    const parsed = await assertPublicUrl(current);
+    const response = await fetch(parsed, { ...init, redirect: 'manual' });
+    if (![301, 302, 303, 307, 308].includes(response.status)) return response;
+    const location = response.headers.get('location');
+    if (!location || redirects === MAX_REDIRECTS) throw new Error('远程地址重定向次数过多');
+    await response.body?.cancel();
+    current = new URL(location, parsed).href;
+  }
+  throw new Error('远程地址重定向失败');
+}
+
+async function readLimitedBuffer(response, maxBytes = MAX_REMOTE_BYTES) {
+  const contentLength = Number(response.headers.get('content-length'));
+  if (Number.isFinite(contentLength) && contentLength > maxBytes) throw new Error('远程文件超过大小限制');
+  if (!response.body) return Buffer.alloc(0);
+  const reader = response.body.getReader();
+  const chunks = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > maxBytes) throw new Error('下载文件超过大小限制');
+      chunks.push(Buffer.from(value));
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  return Buffer.concat(chunks, total);
+}
 
 // ── Slug validation ──
 const SLUG_RE = /^[a-z0-9\u4e00-\u9fff]([a-z0-9\u4e00-\u9fff-]*[a-z0-9\u4e00-\u9fff])?$/i;
@@ -520,7 +601,7 @@ app.get('/api/audio-probe', async (req, res) => {
     let ok = false, contentType = '', size = 0, note = '';
     // 1) HEAD 探测
     try {
-      const r = await fetch(probeUrl, { method: 'HEAD', redirect: 'follow', signal: AbortSignal.timeout(15000), headers });
+      const r = await fetchPublic(probeUrl, { method: 'HEAD', signal: AbortSignal.timeout(15000), headers });
       contentType = r.headers.get('content-type') || '';
       size = Number(r.headers.get('content-length')) || 0;
       ok = r.ok && (contentType.startsWith('audio/') || contentType.includes('mpeg') || contentType.includes('octet-stream'));
@@ -529,12 +610,12 @@ app.get('/api/audio-probe', async (req, res) => {
     // 2) GET Range 前 2KB，按 Content-Type 与音频魔数兜底
     if (!ok) {
       try {
-        const r = await fetch(probeUrl, { redirect: 'follow', signal: AbortSignal.timeout(15000), headers: { ...headers, Range: 'bytes=0-2047' } });
+        const r = await fetchPublic(probeUrl, { signal: AbortSignal.timeout(15000), headers: { ...headers, Range: 'bytes=0-2047' } });
         contentType = r.headers.get('content-type') || '';
         size = Number(r.headers.get('content-length')) || 0;
         ok = r.status === 206 || r.ok;
         if (ok && !contentType.startsWith('audio/')) {
-          const head = Buffer.from(await r.arrayBuffer()).subarray(0, 12).toString('latin1');
+          const head = (await readLimitedBuffer(r, 2048)).subarray(0, 12).toString('latin1');
           ok = head.startsWith('ID3') || head.startsWith('fLaC') || head.startsWith('OggS')
             || head.startsWith('RIFF') || head.startsWith('ftyp') || head.startsWith('\u0000\u0000\u0000');
         }
@@ -571,10 +652,9 @@ app.post('/api/import-url', async (req, res) => {
       fetchHeaders.Referer = referer.trim();
     }
 
-    const remote = await fetch(url.trim(), {
+    const remote = await fetchPublic(url.trim(), {
       headers: fetchHeaders,
       signal: AbortSignal.timeout(30000),
-      redirect: 'follow',
     });
 
     if (!remote.ok) {
@@ -597,13 +677,13 @@ app.post('/api/import-url', async (req, res) => {
       return res.status(400).json({ error: '远程文件超过 35MB 限制' });
     }
 
-    const buffer = Buffer.from(await remote.arrayBuffer());
+    const buffer = await readLimitedBuffer(remote);
     if (buffer.length > 35 * 1024 * 1024) {
       return res.status(400).json({ error: '下载文件超过 35MB 限制' });
     }
 
     // Generate safe filename
-    const urlPath = parsed.pathname;
+    const urlPath = new URL(remote.url || url.trim()).pathname;
     const rawName = urlPath.split('/').pop() || 'import';
     const safeName = rawName
       .replace(/\.[^.]+$/, '')
@@ -862,7 +942,9 @@ app.route('/api/gallery')
         date: finalDate,
         dayIndex: di ?? nextGalleryDayIndex(items, finalDate),
       };
-      if (sourceUrl) item.sourceUrl = sourceUrl.trim();
+      const sourceLink = sourceUrl == null ? '' : safeLink(sourceUrl);
+      if (sourceLink === null) return res.status(400).json({ error: 'Invalid source URL' });
+      if (sourceLink) item.sourceUrl = sourceLink;
       if (sourceTitle) item.sourceTitle = sourceTitle.trim();
       if (original) item.original = original.trim();
       items.unshift(item);
@@ -898,6 +980,8 @@ app.route('/api/gallery/:id')
         return res.status(400).json({ error: 'src 和 title 为必填字段' });
       }
 
+      const sourceLink = sourceUrl == null ? '' : safeLink(sourceUrl);
+      if (sourceLink === null) return res.status(400).json({ error: 'Invalid source URL' });
       const finalDate = safeDate(date, items[idx].date);
       const others = items.filter((_, i) => i !== idx);
       const di = parseDayIndex(dayIndex);
@@ -909,7 +993,7 @@ app.route('/api/gallery/:id')
         caption: (caption || '').trim(),
         date: finalDate,
         dayIndex: di ?? nextGalleryDayIndex(others, finalDate),
-        sourceUrl: (sourceUrl || '').trim() || undefined,
+        sourceUrl: sourceLink || undefined,
         sourceTitle: (sourceTitle || '').trim() || undefined,
         original: (original || '').trim() || undefined,
       };
@@ -1082,6 +1166,8 @@ app.route('/api/frontend')
     try {
       const prev = await readFrontend();
       const body = req.body || {};
+      const primaryCtaHref = body.primaryCtaHref == null ? prev.primaryCtaHref : safeLink(body.primaryCtaHref);
+      if (primaryCtaHref === null) return res.status(400).json({ error: 'Invalid CTA URL' });
       const strField = (key, max = 1000) => body[key] == null
         ? prev[key]
         : cleanAboutStr(body[key], max);
@@ -1096,7 +1182,7 @@ app.route('/api/frontend')
         heroTitleLine2: strField('heroTitleLine2', 80),
         heroDescription: strField('heroDescription', 300),
         primaryCtaLabel: strField('primaryCtaLabel', 40),
-        primaryCtaHref: strField('primaryCtaHref', 1000),
+        primaryCtaHref,
         stillHeroImage: strField('stillHeroImage', 2000),
         stillHeroAlt: strField('stillHeroAlt', 200),
         stillImagePosition: enumField('stillImagePosition', IMAGE_POSITIONS),
@@ -1126,10 +1212,17 @@ app.route('/api/frontend')
 app.use(express.static(join(__dirname, 'public')));
 
 // Admin panel
-app.use('/admin', express.static(join(__dirname, 'admin')));
-app.get('/admin', (_req, res) => {
-  res.sendFile(join(__dirname, 'admin', 'index.html'));
+app.get(['/admin', '/admin/', '/admin/index.html'], async (_req, res) => {
+  try {
+    const html = await readFile(ADMIN_HTML, 'utf8');
+    const injected = html.replace("const TOKEN = '__ADMIN_TOKEN__';", `const TOKEN = ${JSON.stringify(ADMIN_TOKEN)};`);
+    res.type('html').send(injected);
+  } catch (err) {
+    console.error('Admin panel error:', err.message);
+    res.status(500).send('Admin panel unavailable');
+  }
 });
+app.use('/admin', express.static(join(__dirname, 'admin')));
 
 app.listen(PORT, '127.0.0.1', () => {
   const url = `http://localhost:${PORT}/admin`;
