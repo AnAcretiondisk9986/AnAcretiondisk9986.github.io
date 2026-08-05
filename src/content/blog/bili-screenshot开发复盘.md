@@ -1,7 +1,7 @@
 ---
 title: Bili Screenshot 开发复盘：从 MV3 双截图管线到 macOS 下载降级
 description: 一天 13 次提交，把一个 B 站快捷键截图想法做成可发布的 Chromium 扩展。完整拆解视频原帧采集、跨域回退、弹幕合成、连拍状态、快捷键冲突、下载终态检测与打包流程。
-pubDate: "2026-08-05T23:25:00+08:00"
+pubDate: "2026-08-05T23:25:00"
 dayIndex: 1
 cover: "/images/bili-screenshot/options.png"
 tags:
