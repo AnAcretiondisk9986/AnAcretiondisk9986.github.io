@@ -1,9 +1,9 @@
 ---
 title: Bili Screenshot 开发复盘：从 MV3 双截图管线到 macOS 下载降级
-description: 一天 13 次提交，把一个 B 站快捷键截图想法做成可发布的 Chromium 扩展。完整拆解视频原帧采集、跨域回退、弹幕合成、连拍状态、快捷键冲突、下载终态检测与打包流程。
-pubDate: "2026-08-05T23:25:00"
+description: 把一个 B 站快捷键截图想法做成可发布的 Chromium 扩展。完整拆解视频原帧采集、跨域回退、弹幕合成、连拍状态、快捷键冲突、下载终态检测与打包流程。
+pubDate: "2026-08-05"
 dayIndex: 1
-cover: "/images/bili-screenshot/options.png"
+cover: "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/ChatGPT-Image-2026---8---5----22_26_12_1785944092900.webp"
 tags:
   - 技术
   - Chrome扩展
@@ -12,9 +12,11 @@ tags:
 draft: false
 ---
 
+# B站视频分享
+<iframe src="//player.bilibili.com/player.html?isOutside=true&aid=117043361816481&bvid=BV1HwMm6dEAM&cid=40627867415&p=1" scrolling="no" border="0" frameborder="no" framespacing="0" allowfullscreen="true"></iframe>
 # Bili Screenshot 开发复盘：从 MV3 双截图管线到 macOS 下载降级
 
-8 月 5 日，我把一个很具体的需求做成了浏览器扩展：在 B 站视频页按一下快捷键，当前画面直接保存到本地。不要浏览器边框，不要每次弹出“另存为”，尽量保留视频源分辨率，弹幕可选。
+在 B 站视频页按一下快捷键，当前画面直接保存到本地。不要浏览器边框，不要每次弹出“另存为”，尽量保留视频源分辨率，弹幕可选。
 
 仓库是 [GitHub: AnAcretiondisk9986/Bili-Screenshot](https://github.com/AnAcretiondisk9986/Bili-Screenshot)。从第一笔提交到 `main` 上的 `v1.1.4`，时间是 18:09 到 22:59，共 13 次提交。下面不只列功能，而是从需求边界、架构、失败回退、版本演进到发布，把整个开发过程还原一遍。
 
@@ -24,13 +26,13 @@ draft: false
 
 这个工具没有做成通用网页截图器。它只服务一个高频动作：**截取 B 站播放器当前帧**。边界确定后，第一版需求也就很清楚：
 
-- 快捷键触发，截图过程不打断播放；
-- 优先导出视频源分辨率，而不是播放器在屏幕上的尺寸；
-- JPEG / PNG 可选，JPEG 质量可调；
-- 可以带弹幕，也可以只要干净画面；
-- 文件自动进入下载目录下的指定子目录；
-- 文件名能够带日期、时间、BV 号、标题和播放进度。
-
+<span style="color: #c06050"><div style="text-align: center"> 快捷键触发，截图过程不打断播放；</div>
+<div style="text-align: center"> 优先导出视频源分辨率，而不是播放器在屏幕上的尺寸；</div>
+<div style="text-align: center"> JPEG / PNG 可选，JPEG 质量可调；</div>
+<div style="text-align: center"> 可以带弹幕，也可以只要干净画面；</div>
+<div style="text-align: center"> 文件自动进入下载目录下的指定子目录；</div>
+<div style="text-align: center"> 文件名能够带日期、时间、BV 号、标题和播放进度。</div>
+<div style="text-align: center"> </div></span>
 后续功能——连拍、复制到剪贴板、截图历史、页面内快捷键——都围绕这条主链路增加，没有改变它的核心。
 
 ## 二、为什么选 Manifest V3
@@ -63,7 +65,7 @@ chrome.downloads 保存 → 记录历史 → 角标或系统通知
 
 ## 三、主截图管线：直接拿视频原帧
 
-最理想的截图不是网页截屏，而是把 `<video>` 当前帧画进 canvas：
+最理想的截图不是网页截屏，<span style="color: #c06050">而是把 `<video>` 当前帧画进 canvas：</span>
 
 ```js
 const canvas = document.createElement("canvas");
