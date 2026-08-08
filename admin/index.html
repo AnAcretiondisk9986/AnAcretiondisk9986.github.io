@@ -436,6 +436,10 @@
               <button class="btn small" id="btnInsertMusic" title="插入音乐播放条（自托管音频直链）">♪ 音乐</button>
               <button class="btn small" id="btnInsertImgSize" title="设置图片宽度">⛶ 图宽</button>
               <span class="fmt-sep"></span>
+              <button class="btn small" data-align="left" title="居左（自动切回源码模式）">⇤</button>
+              <button class="btn small" data-align="center" title="居中（自动切回源码模式）">⇔</button>
+              <button class="btn small" data-align="right" title="居右（自动切回源码模式）">⇥</button>
+              <span class="fmt-sep"></span>
               <span class="fmt-colors">
                 <button class="btn small fmt-color" data-fmt="color" data-color="#c06050" title="红色" style="color:#e07a68">A</button>
                 <button class="btn small fmt-color" data-fmt="color" data-color="#b99c60" title="金色" style="color:#d9b96e">A</button>
@@ -502,6 +506,10 @@
               <button class="btn small" id="btnInsertVideo" title="插入 B站 / YouTube 等流媒体视频（自动切回源码模式）">▶ 视频</button>
               <button class="btn small" id="btnInsertMusic" title="插入音乐播放条（自托管音频直链）">♪ 音乐</button>
               <button class="btn small" id="btnInsertImgSize" title="设置图片宽度">⛶ 图宽</button>
+              <span class="fmt-sep"></span>
+              <button class="btn small" data-align="left" title="居左（自动切回源码模式）">⇤</button>
+              <button class="btn small" data-align="center" title="居中（自动切回源码模式）">⇔</button>
+              <button class="btn small" data-align="right" title="居右（自动切回源码模式）">⇥</button>
               <span class="fmt-sep"></span>
               <span class="fmt-colors">
                 <button class="btn small fmt-color" data-fmt="color" data-color="#c06050" title="红色" style="color:#e07a68">A</button>
@@ -1067,8 +1075,66 @@
       }, true);
     }
 
+    // ── 段落对齐（源码模式）：把光标所在段落包成 <div style="text-align:…">，重复点击剥除旧 div ──
+    // TOAST UI 富文本模式不支持段落对齐（schema 无 textAlign），对齐仅以 HTML 形态存在于源码中
+    function mdPosToOffset(md, pos) {
+      const lines = md.split('\n');
+      let off = 0;
+      for (let i = 0; i < (pos[0] - 1) && i < lines.length; i++) off += lines[i].length + 1;
+      const col = pos[1] || 0;
+      return off + Math.min(col, (lines[pos[0] - 1] || '').length);
+    }
+
+    function offsetToMdPos(md, off) {
+      const lines = md.split('\n');
+      let remain = off;
+      for (let i = 0; i < lines.length; i++) {
+        if (remain <= lines[i].length) return [i + 1, remain];
+        remain -= lines[i].length + 1;
+      }
+      return [lines.length, 0];
+    }
+
+    function applyAlignToMarkdown(align) {
+      if (!editor) { toast('编辑器未就绪'); return; }
+      ensureMarkdownMode();
+      const md = editor.getMarkdown() || '';
+      const sel = editor.getSelection();
+      let from = 0, to = md.length;
+      if (Array.isArray(sel) && Array.isArray(sel[0]) && Array.isArray(sel[1])) {
+        from = mdPosToOffset(md, sel[0]);
+        to = mdPosToOffset(md, sel[1]);
+        if (to < from) { const t = from; from = to; to = t; }
+      }
+      const ls = md.lastIndexOf('\n', from - 1) + 1;
+      let le = md.indexOf('\n', to); if (le === -1) le = md.length;
+      const block = md.slice(ls, le);
+      const m = block.match(/^<div[^>]*>([\s\S]*)<\/div>$/);
+      const inner = m ? m[1] : block;
+      const tag = '<div style="text-align: ' + align + '">' + (inner || ' ') + '</div>';
+      editor.setMarkdown(md.slice(0, ls) + tag + md.slice(le));
+      // 恢复光标到原位置（markdown 模式的 setSelection 需 MdPos=[line,col]，数字偏移会失效）
+      try {
+        const pos = offsetToMdPos(md, from);
+        editor.setSelection([pos[0], pos[1]], [pos[0], pos[1]]);
+      } catch(e) { /* 选区恢复失败不影响功能 */ }
+      editor.focus();
+      toast('已设为' + (align === 'left' ? '居左' : align === 'center' ? '居中' : '居右'));
+    }
+
     /* ── 格式工具栏（加粗/标题/列表等已由 TOAST UI 内置工具栏提供；此处只保留其没有的：颜色） ── */
     function setupFmtToolbar(){
+      // 对齐按钮：富文本模式不支持，点击自动切回源码模式后包裹 div
+      document.querySelectorAll('[data-align]').forEach(btn=>{
+        btn.onclick=()=>{
+          if(!editor){toast('编辑器未就绪');return}
+          if (isWysiwygView()) {
+            ensureMarkdownMode();
+            toast('对齐在源码模式执行，已自动切换');
+          }
+          applyAlignToMarkdown(btn.dataset.align);
+        };
+      });
       // 颜色按钮不再包在 #fmtBar 容器中（已随旧工具栏移除），直接按 data-fmt 查询
       document.querySelectorAll('[data-fmt="color"]').forEach(btn=>{
         // 阻止 mousedown 默认行为：避免点击按钮时编辑器失焦丢失选区
