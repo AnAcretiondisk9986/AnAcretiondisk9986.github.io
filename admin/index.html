@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>博客管理 — Acretiondisk</title>
   <link rel="icon" href="/favicon.svg" />
+  <link rel="stylesheet" href="/admin/vendor/toastui/toastui-editor.css" />
+  <link rel="stylesheet" href="/admin/vendor/toastui/toastui-editor-dark.css" />
+  <link rel="stylesheet" href="/admin/vendor/toastui/tui-color-picker.css" />
+  <link rel="stylesheet" href="/admin/vendor/toastui/color-syntax.css" />
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
     body{font-family:'Noto Sans SC','Source Han Sans SC','Microsoft YaHei',system-ui,sans-serif;background:#0f0f11;color:#d4d0c8;height:100vh;display:flex}
@@ -147,6 +151,17 @@
     .video-modal h3{margin:0;font-size:14px;color:#c8b080;letter-spacing:2px;font-weight:normal}
     .video-modal .video-hint{font-size:10px;color:#6a6a70;line-height:1.7}
     .video-modal .video-actions{display:flex;gap:8px;justify-content:flex-end}
+    /* 封面裁剪对话框 */
+    .cover-crop-modal{width:min(860px,94vw);height:min(620px,90vh);max-height:92vh}
+    .cover-crop-view{position:relative;flex:1;min-height:340px;background:#101013;border:1px solid #2e2e34;border-radius:4px;overflow:hidden;touch-action:none;user-select:none;cursor:default}
+    .cover-crop-view img{position:absolute;left:0;top:0;display:block;pointer-events:none}
+    .cover-crop-mask{position:absolute;pointer-events:none;background:rgba(4,4,6,.66)}
+    .cover-crop-sel{position:absolute;box-sizing:border-box;border:1px solid rgba(255,255,255,.9);box-shadow:0 0 0 1px rgba(0,0,0,.6);cursor:move;background:repeating-linear-gradient(0deg,transparent 0,transparent calc(33.333% - 1px),rgba(255,255,255,.18) calc(33.333% - 1px),rgba(255,255,255,.18) 33.333%),repeating-linear-gradient(90deg,transparent 0,transparent calc(25% - 1px),rgba(255,255,255,.18) calc(25% - 1px),rgba(255,255,255,.18) 25%)}
+    .cover-crop-handle{position:absolute;right:-6px;bottom:-6px;width:12px;height:12px;border:1px solid #fff;background:#c8b080;cursor:nwse-resize;box-shadow:0 0 3px rgba(0,0,0,.7)}
+    .cover-crop-ratio{position:absolute;left:8px;top:8px;padding:3px 8px;border-radius:999px;background:rgba(15,15,17,.8);color:#d4d0c8;font-size:10px;letter-spacing:1px;pointer-events:none}
+    .cover-crop-footer{display:flex;align-items:center;gap:8px}
+    .cover-crop-tip{flex:1;font-size:10px;color:#6a6a70;line-height:1.6;min-width:0}
+    .cover-crop-loading{position:absolute;inset:0;display:grid;place-items:center;color:#8a8a90;font-size:12px;letter-spacing:1px;background:#101013}
     .markdown-preview code{background:#101014;border:1px solid #2a2a30;padding:1px 5px;font-family:'Cascadia Code','Consolas',monospace;font-size:12px;color:#c0b898;border-radius:2px}
     .markdown-preview pre{background:#101014;border:1px solid #2a2a30;border-left:2px solid #5a5020;padding:10px 12px;overflow-x:auto;margin:8px 0;border-radius:2px}
     .markdown-preview pre code{background:none;border:none;padding:0;font-size:12px;line-height:1.6;color:#c0b898}
@@ -288,7 +303,32 @@
     </div>
   </div>
 
-  <script src="vendor/turndown.js"></script>
+  <!-- 封面裁剪对话框 -->
+  <div class="video-modal-mask" id="coverCropModal" style="display:none">
+    <div class="video-modal cover-crop-modal">
+      <h3>✂ 封面裁剪</h3>
+      <div class="cover-crop-view" id="cropView">
+        <div class="cover-crop-loading" id="cropLoading">加载图片…</div>
+        <img id="cropImg" alt="" />
+        <div class="cover-crop-mask" id="cropMaskTop"></div>
+        <div class="cover-crop-mask" id="cropMaskLeft"></div>
+        <div class="cover-crop-mask" id="cropMaskRight"></div>
+        <div class="cover-crop-mask" id="cropMaskBottom"></div>
+        <div class="cover-crop-sel" id="cropSel"><div class="cover-crop-handle" id="cropHandle"></div></div>
+        <div class="cover-crop-ratio">16:10</div>
+      </div>
+      <div class="cover-crop-footer">
+        <span class="cover-crop-tip">拖动选区移动 · 拖右下角手柄缩放 · 滚轮缩放。裁剪结果将作为独立图片上传，原图保留在图片仓库。</span>
+        <button class="btn" id="btnCropCancel">取消</button>
+        <button class="btn" id="btnCropOriginal">使用原图</button>
+        <button class="btn primary" id="btnCropConfirm">确认裁剪</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/admin/vendor/toastui/tui-color-picker.js"></script>
+  <script src="/admin/vendor/toastui/toastui-editor-all.js"></script>
+  <script src="/admin/vendor/toastui/color-syntax.js"></script>
   <script>
     const API = '/api/posts';
     const TOKEN = '__ADMIN_TOKEN__';
@@ -345,9 +385,9 @@
     function postCoverEditor(cover = '') {
       return `
         <div class="post-cover-editor">
-          <button type="button" class="post-cover-preview" id="btnCoverUpload" aria-label="上传文章封面">
+          <button type="button" class="post-cover-preview" id="btnCoverUpload" aria-label="上传文章封面（可截选）">
             <img id="coverPreviewImage" alt="" hidden />
-            <span class="post-cover-empty" id="coverPreviewEmpty">上传封面</span>
+            <span class="post-cover-empty" id="coverPreviewEmpty">上传封面（可截选）</span>
             <span class="post-cover-source" id="coverPreviewSource">无封面</span>
           </button>
           <div class="post-cover-fields">
@@ -391,35 +431,10 @@
           </div>
           <div class="form-group editor-wrap" style="flex:1">
             <div class="editor-toolbar">
-              <label>正文 (Markdown)</label>
-              <button class="btn small" id="btnInsertVideo" title="插入 B站 / YouTube 等流媒体视频">▶ 视频</button>
+              <label>正文</label>
+              <button class="btn small" id="btnInsertVideo" title="插入 B站 / YouTube 等流媒体视频（自动切回源码模式）">▶ 视频</button>
               <button class="btn small" id="btnInsertMusic" title="插入音乐播放条（自托管音频直链）">♪ 音乐</button>
-              <div class="view-switch" id="viewSwitch">
-                <button data-view="edit">编辑</button>
-                <button data-view="split" class="active">分屏</button>
-                <button data-view="preview">预览</button>
-              </div>
-            </div>
-            <div class="editor-fmtbar" id="fmtBar">
-              <button class="btn small" data-fmt="bold" title="加粗"><b>B</b></button>
-              <button class="btn small" data-fmt="italic" title="斜体"><i>I</i></button>
-              <button class="btn small" data-fmt="strike" title="删除线"><s>S</s></button>
-              <button class="btn small" data-fmt="underline" title="下划线"><u>U</u></button>
-              <button class="btn small" data-fmt="highlight" title="高亮">H</button>
-              <span class="fmt-sep"></span>
-              <button class="btn small" data-fmt="h2" title="二级标题">H2</button>
-              <button class="btn small" data-fmt="quote" title="引用">❝</button>
-              <button class="btn small" data-fmt="link" title="链接">🔗</button>
-              <button class="btn small" data-fmt="image" title="图片">🖼</button>
               <button class="btn small" id="btnInsertImgSize" title="设置图片宽度">⛶ 图宽</button>
-              <button class="btn small" data-fmt="ul" title="无序列表">• 列表</button>
-              <button class="btn small" data-fmt="ol" title="有序列表">1. 列表</button>
-              <button class="btn small" data-fmt="hr" title="分割线">——</button>
-              <button class="btn small" data-fmt="code" title="代码块">&lt;/&gt;</button>
-              <span class="fmt-sep"></span>
-              <button class="btn small" data-fmt="align-left" title="居左">⇤</button>
-              <button class="btn small" data-fmt="align-center" title="居中">⇔</button>
-              <button class="btn small" data-fmt="align-right" title="居右">⇥</button>
               <span class="fmt-sep"></span>
               <span class="fmt-colors">
                 <button class="btn small fmt-color" data-fmt="color" data-color="#c06050" title="红色" style="color:#e07a68">A</button>
@@ -429,27 +444,25 @@
                 <button class="btn small fmt-color" data-fmt="color" data-color="#8a8a90" title="灰色" style="color:#a8a8b0">A</button>
                 <input type="color" id="fmtColorPick" title="自定义颜色" />
               </span>
+              <div class="view-switch" id="viewSwitch">
+                <button data-view="edit">源码</button>
+                <button data-view="split" class="active">分屏</button>
+                <button data-view="wysiwyg">富文本</button>
+              </div>
             </div>
-            <div class="editor-body split" id="editorBody">
-            <div class="source-wrap">
-              <textarea class="content-area" id="fContent">${esc(post.content||'')}</textarea>
-              <div class="source-line-mark" id="sourceLineMark"></div>
-            </div>
-              <div class="editor-divider" id="editorDivider" title="拖动调整分栏宽度"></div>
-              <div class="markdown-preview" id="fPreview" contenteditable="true" spellcheck="false"></div>
+            <div class="editor-body" id="editorBody">
+              <div id="toastEditor"></div>
             </div>
           </div>
         </div>`;
       setupUpload();
-      setupPreview();
-      setupEditablePreview();
-      setupScrollSync();
-      setupSplitDivider();
+      initToastEditor(post.content || '');
       setupPostCover();
       setupVideoInsert();
       setupMusicInsert();
       setupFmtToolbar();
       setupImgSize();
+      setupViewSwitch();
       // Focus title for new posts
       if(!post.title) $('#fTitle')?.focus();
     }
@@ -485,35 +498,10 @@
           </div>
           <div class="form-group editor-wrap" style="flex:1">
             <div class="editor-toolbar">
-              <label>正文 (Markdown)</label>
-              <button class="btn small" id="btnInsertVideo" title="插入 B站 / YouTube 等流媒体视频">▶ 视频</button>
+              <label>正文</label>
+              <button class="btn small" id="btnInsertVideo" title="插入 B站 / YouTube 等流媒体视频（自动切回源码模式）">▶ 视频</button>
               <button class="btn small" id="btnInsertMusic" title="插入音乐播放条（自托管音频直链）">♪ 音乐</button>
-              <div class="view-switch" id="viewSwitch">
-                <button data-view="edit">编辑</button>
-                <button data-view="split" class="active">分屏</button>
-                <button data-view="preview">预览</button>
-              </div>
-            </div>
-            <div class="editor-fmtbar" id="fmtBar">
-              <button class="btn small" data-fmt="bold" title="加粗"><b>B</b></button>
-              <button class="btn small" data-fmt="italic" title="斜体"><i>I</i></button>
-              <button class="btn small" data-fmt="strike" title="删除线"><s>S</s></button>
-              <button class="btn small" data-fmt="underline" title="下划线"><u>U</u></button>
-              <button class="btn small" data-fmt="highlight" title="高亮">H</button>
-              <span class="fmt-sep"></span>
-              <button class="btn small" data-fmt="h2" title="二级标题">H2</button>
-              <button class="btn small" data-fmt="quote" title="引用">❝</button>
-              <button class="btn small" data-fmt="link" title="链接">🔗</button>
-              <button class="btn small" data-fmt="image" title="图片">🖼</button>
               <button class="btn small" id="btnInsertImgSize" title="设置图片宽度">⛶ 图宽</button>
-              <button class="btn small" data-fmt="ul" title="无序列表">• 列表</button>
-              <button class="btn small" data-fmt="ol" title="有序列表">1. 列表</button>
-              <button class="btn small" data-fmt="hr" title="分割线">——</button>
-              <button class="btn small" data-fmt="code" title="代码块">&lt;/&gt;</button>
-              <span class="fmt-sep"></span>
-              <button class="btn small" data-fmt="align-left" title="居左">⇤</button>
-              <button class="btn small" data-fmt="align-center" title="居中">⇔</button>
-              <button class="btn small" data-fmt="align-right" title="居右">⇥</button>
               <span class="fmt-sep"></span>
               <span class="fmt-colors">
                 <button class="btn small fmt-color" data-fmt="color" data-color="#c06050" title="红色" style="color:#e07a68">A</button>
@@ -523,27 +511,25 @@
                 <button class="btn small fmt-color" data-fmt="color" data-color="#8a8a90" title="灰色" style="color:#a8a8b0">A</button>
                 <input type="color" id="fmtColorPick" title="自定义颜色" />
               </span>
+              <div class="view-switch" id="viewSwitch">
+                <button data-view="edit">源码</button>
+                <button data-view="split" class="active">分屏</button>
+                <button data-view="wysiwyg">富文本</button>
+              </div>
             </div>
-            <div class="editor-body split" id="editorBody">
-            <div class="source-wrap">
-              <textarea class="content-area" id="fContent"></textarea>
-              <div class="source-line-mark" id="sourceLineMark"></div>
-            </div>
-              <div class="editor-divider" id="editorDivider" title="拖动调整分栏宽度"></div>
-              <div class="markdown-preview" id="fPreview" contenteditable="true" spellcheck="false"></div>
+            <div class="editor-body" id="editorBody">
+              <div id="toastEditor"></div>
             </div>
           </div>
         </div>`;
       setupUpload();
-      setupPreview();
-      setupEditablePreview();
-      setupScrollSync();
-      setupSplitDivider();
+      initToastEditor('');
       setupPostCover();
       setupVideoInsert();
       setupMusicInsert();
       setupFmtToolbar();
       setupImgSize();
+      setupViewSwitch();
       renderList();
       $('#fTitle')?.focus();
     }
@@ -555,7 +541,7 @@
       const cover = $('#fCover')?.value || '';
       const pubDate = $('#fPubDate')?.value || '';
       const tags = $('#fTags')?.value || '';
-      const content = $('#fContent')?.value || '';
+      const content = getEditorMarkdown();
       const draft = !$('#fDraftToggle')?.classList.contains('on');
       if(!title){toast('标题不能为空');return}
 
@@ -626,7 +612,7 @@
       if (!input || !image || !empty || !source) return;
 
       const customCover = input.value.trim();
-      const bodyCover = firstPostImage($('#fContent')?.value || '');
+      const bodyCover = firstPostImage(getEditorMarkdown() || '');
       const url = customCover || bodyCover;
       source.textContent = customCover ? '自定义封面' : bodyCover ? '正文首图' : '无封面';
       empty.hidden = Boolean(url);
@@ -644,7 +630,6 @@
       const input = $('#fCover');
       if (!input) return;
       input.addEventListener('input', syncPostCoverPreview);
-      $('#fContent')?.addEventListener('input', syncPostCoverPreview);
       const clear = $('#btnCoverClear');
       if (clear) clear.onclick = () => { input.value = ''; syncPostCoverPreview(); input.focus(); };
       syncPostCoverPreview();
@@ -658,16 +643,18 @@
       area.ondragleave = ()=>area.classList.remove('dragover');
       area.ondrop = async e=>{e.preventDefault();area.classList.remove('dragover');const f=e.dataTransfer.files[0];if(!f)return;if(f.type.startsWith('audio/')){await uploadAudioTrack(f)}else{await uploadImage(f,'content')}};
 
-      // 正文编辑区拖放：图片 / 音频直接上传并在光标处插入（音频自动解析歌名/歌手/封面）
-      const contentArea = $('#fContent');
-      if(contentArea){
-        contentArea.ondragover = e=>{e.preventDefault();e.dataTransfer.dropEffect='copy'};
-        contentArea.ondrop = async e=>{
-          e.preventDefault();
+      // 编辑器区拖放：图片交给 TOAST UI 的 addImageBlobHook（光标处插入）；音频由我们处理
+      const editorBox = $('#toastEditor');
+      if(editorBox){
+        editorBox.ondragover = e=>{e.preventDefault();e.dataTransfer.dropEffect='copy'};
+        editorBox.ondrop = async e=>{
           const f=e.dataTransfer.files && e.dataTransfer.files[0];
           if(!f) return;
-          if(f.type.startsWith('audio/')){ await uploadAudioTrack(f); }
-          else if(isImageFile(f)){ await uploadImage(f,'content'); }
+          if(f.type.startsWith('audio/')){
+            e.preventDefault();
+            await uploadAudioTrack(f);
+          }
+          // 图片不拦截：TOAST UI 原生拖放会走 addImageBlobHook 上传并在光标处插入
         };
       }
 
@@ -713,10 +700,7 @@
             const avatarInput = $('#fAvatar');
             if (avatarInput) { avatarInput.value = data.url; avatarInput.focus(); refreshAvatarPreview(); }
           } else {
-            const md = `![](${data.url})`;
-            const ta = $('#fContent');
-            if (ta) { const s = ta.selectionStart; ta.value = ta.value.substring(0, s) + md + '\n' + ta.value.substring(ta.selectionEnd); ta.focus(); }
-            refreshPreview();
+            insertImageIntoEditor(data.url, '');
           }
           toast('已导入: ' + data.url);
         } catch (e) { toast('导入失败: ' + e.message); }
@@ -725,6 +709,9 @@
 
       // Paste image / audio support
       document.onpaste = async e => {
+        // TOAST UI 在两种模式下都已内置粘贴图片处理（addImageBlobHook）且先于 document 触发；
+        // 事件冒泡到这里时若已 preventDefault 说明编辑器已接管，跳过以免同一张图上传两次、插入两张
+        if (e.defaultPrevented) return;
         const items = e.clipboardData?.items ? [...e.clipboardData.items] : [];
         const audioItem = items.find(i=>i.type.startsWith('audio/'));
         const imgItem = items.find(i=>i.type.startsWith('image/'));
@@ -784,14 +771,8 @@
       $('#btnVideoInsert').onclick=()=>{
         const r=buildVideoEmbed($('#fVideoInput')?.value);
         if(r.error){toast(r.error);return}
-        const ta=$('#fContent');
-        if(ta){
-          const s=ta.selectionStart;
-          ta.value=ta.value.substring(0,s)+'\n'+r.html+'\n'+ta.value.substring(ta.selectionEnd);
-          ta.focus();
-        }
+        insertMarkdownBlock(r.html);
         modal.style.display='none';
-        refreshPreview();
         toast('已插入视频');
       };
       $('#fVideoInput').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('#btnVideoInsert').click()}});
@@ -875,14 +856,8 @@
       $('#btnMusicInsert').onclick=()=>{
         const r=buildMusicEmbed($('#fMusicSrc')?.value,$('#fMusicTitle')?.value,$('#fMusicArtist')?.value,$('#fMusicCover')?.value);
         if(r.error){toast(r.error);return}
-        const ta=$('#fContent');
-        if(ta){
-          const s=ta.selectionStart;
-          ta.value=ta.value.substring(0,s)+'\n'+r.html+'\n'+ta.value.substring(ta.selectionEnd);
-          ta.focus();
-        }
+        insertMarkdownBlock(r.html);
         modal.style.display='none';
-        refreshPreview();
         toast('已插入音乐播放条');
       };
       $('#fMusicSrc').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('#btnMusicInsert').click()}});
@@ -927,9 +902,7 @@
         if(data.title){
           const r=musicEmbedHtml(data.url,data.title,data.artist||'',data.coverUrl||'');
           if(!r.error){
-            const ta=$('#fContent');
-            if(ta){const s=ta.selectionStart;ta.value=ta.value.substring(0,s)+'\n'+r.html+'\n'+ta.value.substring(ta.selectionEnd);ta.focus()}
-            refreshPreview();
+            insertMarkdownBlock(r.html);
             toast('已插入播放条（'+data.title+'）');
             return;
           }
@@ -951,105 +924,187 @@
       }catch(e){toast('上传失败：'+e.message)}
     }
 
-    /* ── 正文格式化工具栏（Markdown 语法 / 内联 HTML 片段） ── */
-    function setupFmtToolbar(){
-      const bar=$('#fmtBar'); if(!bar) return;
-      const getTa=()=>$('#fContent');
-      // 选中文字包裹 before/after（无选区时插入占位文本）
-      const wrap=(before,after,placeholder)=>{
-        const t=getTa(); if(!t) return;
-        const s=t.selectionStart, e=t.selectionEnd;
-        const sel=t.value.slice(s,e)||placeholder;
-        t.value=t.value.slice(0,s)+before+sel+after+t.value.slice(e);
-        const p=s+before.length;
-        t.focus(); t.setSelectionRange(p,p+sel.length);
-      };
-      // 行首插入前缀（标题 / 引用 / 列表）
-      const linePrefix=(prefix)=>{
-        const t=getTa(); if(!t) return;
-        const s=t.selectionStart;
-        const ls=t.value.lastIndexOf('\n',s-1)+1;
-        t.value=t.value.slice(0,ls)+prefix+t.value.slice(ls);
-        t.focus(); t.setSelectionRange(s+prefix.length,s+prefix.length);
-      };
-      // 对齐：把选中块逐行包成 <div style="text-align:…">（块级 div 天然换行，空行保留间距）；
-      // 重复点击先剥掉旧 div 再替换，避免嵌套；已包 div 的行也先剥除
-      const applyAlign=(align)=>{
-        const t=getTa(); if(!t) return;
-        const s=t.selectionStart, e=t.selectionEnd;
-        const ls=t.value.lastIndexOf('\n',s-1)+1;
-        let le=t.value.indexOf('\n',e); if(le===-1) le=t.value.length;
-        const block=t.value.slice(ls,le)||'内容';
-        const lines=block.split('\n').map(line=>{
-          const m=line.match(/^<div[^>]*>([\s\S]*)<\/div>$/);
-          return m?m[1]:line;
-        });
-        const tag=lines.map(line=>'<div style="text-align: '+align+'">'+(line||' ')+'</div>').join('\n');
-        t.value=t.value.slice(0,ls)+tag+t.value.slice(le);
-        t.focus(); t.setSelectionRange(ls,ls+tag.length);
-      };
-      // 工具栏操作后恢复源码区滚动位置：focus/setSelectionRange 会把视口跳到光标处，用户不希望滑动
-      const restoreScroll=()=>{
-        const t=getTa(); if(!t) return;
-        const st=t.scrollTop;
-        requestAnimationFrame(()=>{t.scrollTop=st});
-      };
-      bar.querySelectorAll('[data-fmt]').forEach(btn=>{
-        btn.onclick=()=>{
-          const f=btn.dataset.fmt;
-          switch(f){
-            case 'bold': wrap('**','**','加粗文字'); break;
-            case 'italic': wrap('*','*','斜体文字'); break;
-            case 'strike': wrap('~~','~~','删除线文字'); break;
-            case 'underline': wrap('<u>','</u>','下划线文字'); break;
-            case 'highlight': wrap('<mark>','</mark>','高亮文字'); break;
-            case 'h2': linePrefix('## '); break;
-            case 'quote': linePrefix('> '); break;
-            case 'link': wrap('[','](https://)','链接文字'); break;
-            case 'image': wrap('![','](https://)','图片说明'); break;
-            case 'ul': linePrefix('- '); break;
-            case 'ol': linePrefix('1. '); break;
-            case 'hr': { const t=getTa(); if(t){const s=t.selectionStart;t.value=t.value.slice(0,s)+'\n---\n'+t.value.slice(t.selectionEnd);t.focus();} break; }
-            case 'code': wrap('\n```\n','\n```\n','代码'); break;
-            case 'color': wrap('<span style="color: '+btn.dataset.color+'">','</span>','彩色文字'); break;
-            case 'align-left': applyAlign('left'); break;
-            case 'align-center': applyAlign('center'); break;
-            case 'align-right': applyAlign('right'); break;
+    /* ── TOAST UI 富文本编辑器（Markdown / 富文本双模式，底层 markdown-it 标准解析） ── */
+    let editor = null;
+
+    // 创建/重建编辑器（每次渲染编辑器区域时调用；initialValue 为 Markdown 源码，
+    // 兼容老文章（纯 Markdown / Markdown+HTML 混合）与新的富文本内容）
+    function initToastEditor(content) {
+      const el = $('#toastEditor');
+      if (!el) return;
+      if (editor) { try { editor.destroy(); } catch(e) {} editor = null; }
+      if (!window.toastui || !toastui.Editor) { toast('编辑器组件加载失败，请检查 /admin/vendor/toastui/'); return; }
+      try {
+        const { Editor } = toastui;
+        const colorSyntax = Editor.plugin && Editor.plugin.uml;
+        el.classList.add('toastui-editor-dark');
+        editor = new Editor({
+          el,
+          initialValue: String(content || ''),
+          initialEditType: 'markdown',
+          previewStyle: 'vertical',
+          height: '540px',
+          language: 'zh-CN',
+          plugins: colorSyntax ? [colorSyntax] : [],
+          hooks: {
+            addImageBlobHook: async (blob, callback) => {
+              try {
+                const fd = new FormData();
+                fd.set('file', blob, blob.name || 'image.png');
+                const res = await apiFetch('/api/upload', { method: 'POST', body: fd });
+                const data = await res.json();
+                if (data.error) { toast(data.error); return; }
+                callback(data.url, blob.name || 'image');
+                toast('图片已上传: ' + data.url);
+              } catch(e) { toast('图片上传失败: ' + e.message); }
+            }
           }
-          restoreScroll();
-          refreshPreview();
+        });
+      } catch(e) {
+        console.error('TOAST UI 初始化失败:', e);
+        toast('编辑器初始化失败: ' + e.message);
+        editor = null;
+        return;
+      }
+      editor.on('change', () => syncPostCoverPreview());
+      setupEditorImgRetry(el);
+      const savedView = localStorage.getItem('admin-editor-view') || 'split';
+      applyView(savedView, true);
+      const vs = $('#viewSwitch');
+      if (vs) vs.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.view === savedView));
+      return editor;
+    }
+
+    // 保存 / 封面提取等统一取 Markdown 源码（富文本模式下 TOAST UI 自动转换）
+    function getEditorMarkdown() {
+      try { return editor ? editor.getMarkdown() : ''; } catch(e) { return ''; }
+    }
+
+    // 当前是否富文本视图（TOAST UI 3.x 无模式查询 API，用我们自己的视图状态判断）
+    function isWysiwygView() {
+      const act = document.querySelector('#viewSwitch button.active');
+      return !!act && act.dataset.view === 'wysiwyg';
+    }
+
+    // 在光标处插入 Markdown / HTML 片段（视频 / 音乐 / 图宽；自动切回源码模式）
+    function insertMarkdownBlock(md) {
+      if (!editor) { toast('编辑器未就绪'); return; }
+      ensureMarkdownMode();
+      editor.insertText('\n' + md + '\n');
+      editor.focus();
+    }
+
+    // 插入图片：富文本模式用 insertImage 命令，源码模式用 Markdown 语法
+    function insertImageIntoEditor(url, alt) {
+      if (!editor) { toast('编辑器未就绪'); return; }
+      if (isWysiwygView()) {
+        editor.exec('insertImage', { imageUrl: url, altText: alt || '图片' });
+      } else {
+        editor.insertText(`![${alt || '图片'}](${url})`);
+      }
+      editor.focus();
+    }
+
+    // 视频 / 音乐 / 图宽 / 颜色等标记仅以 HTML 形态存在于源码中：非源码模式自动切回
+    function ensureMarkdownMode() {
+      if (!editor) return;
+      if (isWysiwygView()) {
+        editor.changeMode('markdown');
+        editor.changePreviewStyle('tab');
+        const vs = $('#viewSwitch');
+        if (vs) vs.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.view === 'edit'));
+      }
+    }
+
+    // 视图切换：源码（纯 Markdown）/ 分屏（源码+预览）/ 富文本（所见即所得）；成功返回 true
+    function applyView(view, silent) {
+      if (!editor) return false;
+      if (view === 'wysiwyg') {
+        // 富文本模式不支持部分老文章 HTML（对齐 div / 高亮 mark / 下划线 / 视频 / 播放条等），
+        // 切换后这些标记可能被 TOAST UI 规范化改写，先提示用户
+        const md = editor.getMarkdown() || '';
+        if (!silent && /<(?:div|mark|center|u|iframe|song-player)\b/i.test(md)) {
+          if (!confirm('当前正文含富文本模式不支持的格式（对齐 / 高亮 / 下划线 / 视频 / 播放条等），切换到富文本再切回时这些格式可能被改写。\n\n继续切换？')) return false;
+        }
+        editor.changeMode('wysiwyg');
+      } else {
+        editor.changeMode('markdown');
+        // 源码 = tab 模式（默认停在 Write，可点开预览标签）；分屏 = vertical 左右分栏
+        editor.changePreviewStyle(view === 'edit' ? 'tab' : 'vertical');
+      }
+      return true;
+    }
+
+    function setupViewSwitch() {
+      const vs = $('#viewSwitch');
+      if (!vs) return;
+      vs.querySelectorAll('button').forEach(btn => {
+        btn.onclick = () => {
+          const v = btn.dataset.view;
+          if (!applyView(v)) return; // 用户取消切换时保持原状态
+          vs.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
+          try { localStorage.setItem('admin-editor-view', v); } catch(e) {}
+        };
+      });
+    }
+
+    // 预览图片加载失败自动重试：jsDelivr CDN 首次访问可能未生效（上传后立即预览）
+    function setupEditorImgRetry(root) {
+      root.addEventListener('error', e => {
+        const img = e.target;
+        if (!(img instanceof HTMLImageElement) || !img.src || img.dataset.retryDone) return;
+        const n = parseInt(img.dataset.retryCount || '0', 10);
+        if (n >= 7) { img.dataset.retryDone = '1'; return; }
+        img.dataset.retryCount = String(n + 1);
+        const orig = img.dataset.origSrc || img.src;
+        img.dataset.origSrc = orig;
+        setTimeout(() => {
+          if (!img.isConnected) return; // 已被重新渲染移除，交由新一轮重试
+          const mirrors = [null, null, null, null, 'fastly.jsdelivr.net', 'gcore.jsdelivr.net'];
+          const host = mirrors[Math.min(n, mirrors.length - 1)];
+          img.src = host && orig.includes('cdn.jsdelivr.net') ? orig.replace('cdn.jsdelivr.net', host) : orig;
+        }, 1500 * (n + 1));
+      }, true);
+    }
+
+    /* ── 格式工具栏（加粗/标题/列表等已由 TOAST UI 内置工具栏提供；此处只保留其没有的：颜色） ── */
+    function setupFmtToolbar(){
+      // 颜色按钮不再包在 #fmtBar 容器中（已随旧工具栏移除），直接按 data-fmt 查询
+      document.querySelectorAll('[data-fmt="color"]').forEach(btn=>{
+        // 阻止 mousedown 默认行为：避免点击按钮时编辑器失焦丢失选区
+        btn.addEventListener('mousedown', e => e.preventDefault());
+        btn.onclick=()=>{
+          if(!editor){toast('编辑器未就绪');return}
+          // 颜色在源码/富文本两种模式下 color-syntax 都支持，无需切换模式（切换会丢失选区）
+          editor.exec('color', { selectedColor: btn.dataset.color });
+          editor.focus();
         };
       });
       const pick=$('#fmtColorPick');
-      if(pick) pick.oninput=()=>{wrap('<span style="color: '+pick.value+'">','</span>','彩色文字');restoreScroll();refreshPreview()};
+      // 用 onchange 而非 oninput：oninput 在拖动/长按时连续触发，每次都会应用颜色，
+      // 瞬间生成大量 <span style="color:…">；onchange 只在选定颜色（松手/确认）后触发一次
+      if(pick) {
+        pick.addEventListener('mousedown', e => e.preventDefault());
+        pick.onchange=()=>{
+          if(!editor){toast('编辑器未就绪');return}
+          editor.exec('color', { selectedColor: pick.value });
+          editor.focus();
+        };
+      }
     }
 
-    /* ── 图片尺寸：从光标处提取图片并设置显示宽度（生成 <img style="width:…"> 替换） ── */
-    // 在光标所在行找 ![alt](url) 完整匹配，返回 {start,end,alt,src} 或 null
-    function extractImageAtCaret(text,pos){
-      const ls=text.lastIndexOf('\n',pos-1)+1;
-      let le=text.indexOf('\n',pos); if(le===-1) le=text.length;
-      const line=text.slice(ls,le);
-      const re=/!\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g;
-      let m,best=null,bestDist=Infinity;
-      while((m=re.exec(line))){
-        const d=Math.abs(ls+m.index+2-pos);
-        if(d<bestDist){bestDist=d;best={start:ls+m.index,end:ls+m.index+m[0].length,alt:m[1],src:m[2]}}
-      }
-      return best;
-    }
+    /* ── 图片尺寸：生成带宽度样式的 <img> 插入（TOAST UI 无法读取光标处图片，预填正文第一张图） ── */
     function setupImgSize(){
       const btn=$('#btnInsertImgSize'); if(!btn) return;
       btn.onclick=()=>{
         const modal=$('#imgSizeModal'); if(!modal) return;
-        const ta=$('#fContent');
-        let src='';
-        if(ta){const im=extractImageAtCaret(ta.value,ta.selectionStart);if(im)src=im.src}
-        const sEl=$('#fImgSizeSrc'); if(sEl) sEl.value=src||'';
+        const md=getEditorMarkdown()||'';
+        const m=md.match(/!\[[^\]]*\]\(\s*([^\s)\r\n]+)/);
+        const sEl=$('#fImgSizeSrc'); if(sEl) sEl.value=m?m[1]:'';
         const vEl=$('#fImgSizeVal'); if(vEl) vEl.value=60;
         const uEl=$('#fImgSizeUnit'); if(uEl) uEl.value='%';
         modal.style.display='flex';
-        (src?$('#fImgSizeVal'):sEl)?.focus();
+        (m?$('#fImgSizeVal'):sEl)?.focus();
       };
     }
     function bindImgSizeModal(){
@@ -1069,19 +1124,8 @@
           if(Number.isFinite(n)&&n>0) img+=' style="width:'+n+unit+'"';
         }
         img+=' />';
-        const ta=$('#fContent');
-        if(ta){
-          const s=ta.selectionStart,e=ta.selectionEnd;
-          let start=s,end=e;
-          if(s===e){ // 无选区：光标在图片语法上则整体替换该图片，否则插入光标处
-            const im=extractImageAtCaret(ta.value,s);
-            if(im){start=im.start;end=im.end}
-          }
-          ta.value=ta.value.slice(0,start)+img+ta.value.slice(end);
-          ta.focus(); ta.setSelectionRange(start,start+img.length);
-        }
+        insertMarkdownBlock(img);
         modal.style.display='none';
-        refreshPreview();
         toast('已设置图片尺寸');
       };
       $('#fImgSizeSrc').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('#btnImgSizeInsert').click()}});
@@ -1092,8 +1136,262 @@
       return !!f && (f.type.startsWith('image/') || /\.(png|jpe?g|gif|webp|svg|heic|heif)$/i.test(f.name||''));
     }
 
+    /* ── 封面裁剪：上传后截选 16:10 区域 ── */
+    const COVER_RATIO = 16 / 10;
+    const COVER_OUT_W = 1600;
+    const clamp = (v, min, max) => Math.min(Math.max(v, min), max);
+    let crop = null; // { img, imgW, imgH, scale, ox, oy, minScale, sel, uploadedUrl, onDone, sourceIsLocal }
+
+    // 封面上传流程：先上传原图 → 打开裁剪对话框 → 用户确认后按所选区域生成封面图再上传
+    async function uploadCover(file) {
+      if(!isImageFile(file)){toast('仅支持图片');return}
+      toast('上传中…');
+      const fd = new FormData(); fd.set('file', file);
+      let data;
+      try {
+        const res = await apiFetch('/api/upload', { method:'POST', body:fd });
+        data = await res.json();
+      } catch(e) { toast('上传失败'); return; }
+      if(data.error){toast(data.error);return}
+      openCoverCrop(file, data.url, url => {
+        const coverInput = $('#fCover');
+        if (coverInput) { coverInput.value = url; coverInput.focus(); syncPostCoverPreview(); }
+        toast('封面已设置: ' + url);
+      });
+    }
+
+    function openCoverCrop(file, uploadedUrl, onDone) {
+      const modal = $('#coverCropModal');
+      if (!modal) return;
+      crop = { img: null, imgW: 0, imgH: 0, scale: 1, ox: 0, oy: 0, minScale: 1,
+               sel: { x:0, y:0, w:0, h:0 }, uploadedUrl, onDone, sourceIsLocal: true };
+      const img = $('#cropImg');
+      const btn = $('#btnCropConfirm');
+      if (btn) { btn.disabled = false; btn.textContent = '确认裁剪'; }
+      $('#cropLoading').hidden = false;
+      img.removeAttribute('src');
+      img.onload = () => {
+        if (!crop || !img.naturalWidth) return;
+        crop.img = img;
+        crop.imgW = img.naturalWidth;
+        crop.imgH = img.naturalHeight;
+        initCropLayout();
+      };
+      img.onerror = () => {
+        if (!crop) return;
+        if (crop.sourceIsLocal) {
+          // 本地无法解码（如 HEIC）：改用服务器已转码的图片（jsDelivr WebP，CORS 允许）
+          crop.sourceIsLocal = false;
+          img.src = crop.uploadedUrl;
+        } else {
+          // 服务器图片也加载失败：放弃裁剪，直接落地上传结果
+          toast('无法显示该图片，已直接使用上传结果');
+          const done = crop.onDone, url = crop.uploadedUrl;
+          closeCoverCrop();
+          done && done(url);
+        }
+      };
+      modal.style.display = 'flex';
+      img.crossOrigin = 'anonymous'; // 回退到服务器图（jsDelivr 等带 CORS）时 canvas 才可读
+      try {
+        crop.sourceIsLocal = true;
+        crop.blobUrl = URL.createObjectURL(file);
+        img.src = crop.blobUrl;
+      } catch(e) {
+        crop.sourceIsLocal = false;
+        img.src = uploadedUrl;
+      }
+    }
+
+    function closeCoverCrop() {
+      const modal = $('#coverCropModal');
+      if (modal) modal.style.display = 'none';
+      if (crop) {
+        if (crop.blobUrl) { URL.revokeObjectURL(crop.blobUrl); crop.blobUrl = null; }
+        const img = $('#cropImg');
+        if (img) img.removeAttribute('src');
+      }
+      crop = null;
+      const btn = $('#btnCropConfirm');
+      if (btn) { btn.disabled = false; btn.textContent = '确认裁剪'; }
+    }
+
+    // 初始布局：整图完整显示，选区为图中最大的 16:10 矩形（居中）
+    function initCropLayout() {
+      const view = $('#cropView');
+      const rect = view.getBoundingClientRect();
+      const viewW = Math.max(rect.width - 2, 100), viewH = Math.max(rect.height - 2, 100);
+      const scale = Math.min(viewW / crop.imgW, viewH / crop.imgH);
+      crop.minScale = scale;
+      crop.scale = scale;
+      crop.ox = (viewW - crop.imgW * scale) / 2;
+      crop.oy = (viewH - crop.imgH * scale) / 2;
+      let w, h;
+      if (crop.imgW / crop.imgH > COVER_RATIO) { h = crop.imgH; w = h * COVER_RATIO; }
+      else { w = crop.imgW; h = w / COVER_RATIO; }
+      crop.sel = { x: (crop.imgW - w) / 2, y: (crop.imgH - h) / 2, w, h };
+      $('#cropLoading').hidden = true;
+      renderCrop();
+    }
+
+    function renderCrop() {
+      if (!crop) return;
+      const view = $('#cropView');
+      const rect = view.getBoundingClientRect();
+      const img = $('#cropImg');
+      img.style.width = Math.round(crop.imgW * crop.scale) + 'px';
+      img.style.height = Math.round(crop.imgH * crop.scale) + 'px';
+      img.style.left = Math.round(crop.ox) + 'px';
+      img.style.top = Math.round(crop.oy) + 'px';
+      updateCropMasks(rect.width, rect.height);
+    }
+
+    function updateCropMasks(viewW, viewH) {
+      const sel = crop.sel;
+      const sx = crop.ox + sel.x * crop.scale;
+      const sy = crop.oy + sel.y * crop.scale;
+      const sw = sel.w * crop.scale;
+      const sh = sel.h * crop.scale;
+      const selEl = $('#cropSel');
+      selEl.style.left = sx + 'px'; selEl.style.top = sy + 'px';
+      selEl.style.width = sw + 'px'; selEl.style.height = sh + 'px';
+      const place = (id, l, t, w, h) => {
+        const el = $(id);
+        el.style.left = l + 'px'; el.style.top = t + 'px';
+        el.style.width = Math.max(0, w) + 'px'; el.style.height = Math.max(0, h) + 'px';
+      };
+      place('#cropMaskTop', 0, 0, viewW, sy);
+      place('#cropMaskLeft', 0, sy, sx, sh);
+      place('#cropMaskRight', sx + sw, sy, viewW - sx - sw, sh);
+      place('#cropMaskBottom', 0, sy + sh, viewW, viewH - sy - sh);
+    }
+
+    // 确认裁剪：canvas 按选区输出 16:10 封面图，再走 /api/upload 上传入库
+    function confirmCoverCrop() {
+      if (!crop || !crop.img) return;
+      const done = crop.onDone; // 开头捕获，避免异步回调中 crop 已被取消置 null
+      const img = crop.img, sel = crop.sel;
+      const outW = Math.max(320, Math.min(COVER_OUT_W, Math.round(sel.w)));
+      const outH = Math.round(outW / COVER_RATIO);
+      const canvas = document.createElement('canvas');
+      canvas.width = outW; canvas.height = outH;
+      const ctx = canvas.getContext('2d');
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      try {
+        ctx.drawImage(img, sel.x, sel.y, sel.w, sel.h, 0, 0, outW, outH);
+      } catch(e) {
+        toast('无法处理该图片（可能跨域受限），已使用原图');
+        const done = crop.onDone, url = crop.uploadedUrl;
+        closeCoverCrop();
+        done && done(url);
+        return;
+      }
+      const btn = $('#btnCropConfirm');
+      if (btn) { btn.disabled = true; btn.textContent = '上传中…'; }
+      const finish = () => { if (btn) { btn.disabled = false; btn.textContent = '确认裁剪'; } };
+      try {
+        canvas.toBlob(blob => {
+          if (!blob) { toast('裁剪失败'); finish(); return; }
+          if (!crop) { finish(); return; } // 已取消：不发无意义请求
+          const fd = new FormData();
+          fd.set('file', blob, 'cover_' + Date.now() + '.webp');
+          apiFetch('/api/upload', { method:'POST', body:fd })
+            .then(r => r.json())
+            .then(data => {
+              if (data.error) { toast(data.error); return; }
+              if (!crop) { toast('已取消，裁剪图仍保留在仓库'); return; }
+              closeCoverCrop();
+              done && done(data.url);
+            })
+            .catch(() => toast('裁剪图上传失败'))
+            .finally(finish);
+        }, 'image/webp', 0.92);
+      } catch(e) {
+        // canvas 被跨域图片污染时 toBlob 抛 SecurityError → 回退使用原图
+        toast('无法处理该图片（跨域受限），已使用原图');
+        finish();
+        const url = crop.uploadedUrl;
+        closeCoverCrop();
+        done && done(url);
+      }
+    }
+
+    function bindCoverCropModal() {
+      const modal = $('#coverCropModal'); if (!modal) return;
+      $('#btnCropCancel').onclick = closeCoverCrop;
+      modal.addEventListener('click', e => { if (e.target === modal) closeCoverCrop(); });
+      $('#btnCropOriginal').onclick = () => {
+        if (!crop) return;
+        const done = crop.onDone, url = crop.uploadedUrl;
+        closeCoverCrop();
+        done && done(url);
+      };
+      $('#btnCropConfirm').onclick = confirmCoverCrop;
+
+      const view = $('#cropView');
+      // 选区拖动移动 / 右下角手柄缩放（保持 16:10）
+      view.addEventListener('pointerdown', e => {
+        if (!crop || !crop.img) return;
+        const handle = e.target.closest && e.target.closest('#cropHandle');
+        const selEl = $('#cropSel');
+        const inSel = handle || e.target === selEl || selEl.contains(e.target);
+        if (!inSel) return;
+        e.preventDefault();
+        view.setPointerCapture(e.pointerId);
+        const mode = handle ? 'resize' : 'move';
+        const start = { x: e.clientX, y: e.clientY, sx: crop.sel.x, sy: crop.sel.y, sw: crop.sel.w, sh: crop.sel.h };
+        const onMove = ev => {
+          if (!crop) return;
+          const dx = (ev.clientX - start.x) / crop.scale;
+          const dy = (ev.clientY - start.y) / crop.scale;
+          if (mode === 'move') {
+            crop.sel.x = clamp(start.sx + dx, 0, crop.imgW - crop.sel.w);
+            crop.sel.y = clamp(start.sy + dy, 0, crop.imgH - crop.sel.h);
+          } else {
+            // 以选区中心为锚缩放
+            const cx = start.sx + start.sw / 2, cy = start.sy + start.sh / 2;
+            let w = start.sw + Math.max(dx, dy / COVER_RATIO);
+            const maxW = Math.min(cx * 2, (crop.imgW - cx) * 2, cy * 2 * COVER_RATIO, (crop.imgH - cy) * 2 * COVER_RATIO);
+            const minW = Math.min(64, Math.max(1, maxW));
+            w = clamp(w, minW, maxW);
+            const h = w / COVER_RATIO;
+            crop.sel = { x: cx - w / 2, y: cy - h / 2, w, h };
+          }
+          renderCrop();
+        };
+        const onUp = () => {
+          view.removeEventListener('pointermove', onMove);
+          view.removeEventListener('pointerup', onUp);
+          view.removeEventListener('pointercancel', onUp);
+        };
+        view.addEventListener('pointermove', onMove);
+        view.addEventListener('pointerup', onUp);
+        view.addEventListener('pointercancel', onUp);
+      });
+
+      // 滚轮缩放（以鼠标位置为中心）
+      view.addEventListener('wheel', e => {
+        if (!crop || !crop.img) return;
+        e.preventDefault();
+        const rect = view.getBoundingClientRect();
+        const px = e.clientX - rect.left, py = e.clientY - rect.top;
+        const newScale = clamp(crop.scale * (e.deltaY < 0 ? 1.12 : 1 / 1.12), crop.minScale, crop.minScale * 8);
+        const ox = (px - crop.ox) / crop.scale, oy = (py - crop.oy) / crop.scale;
+        crop.scale = newScale;
+        crop.ox = px - ox * newScale;
+        crop.oy = py - oy * newScale;
+        renderCrop();
+      }, { passive: false });
+
+      document.addEventListener('keydown', e => {
+        if (e.key === 'Escape' && modal.style.display !== 'none') closeCoverCrop();
+      });
+    }
+
     async function uploadImage(file, target = 'content') {
       if(!isImageFile(file)){toast('仅支持图片');return}
+      if (target === 'cover') return uploadCover(file);
       toast('上传中…');
       const fd = new FormData(); fd.set('file', file);
       try {
@@ -1120,15 +1418,8 @@
           const avatarInput = $('#fAvatar');
           if (avatarInput) { avatarInput.value = data.url; avatarInput.focus(); refreshAvatarPreview(); }
           toast('已上传头像: ' + data.url);
-        } else if (target === 'cover') {
-          const coverInput = $('#fCover');
-          if (coverInput) { coverInput.value = data.url; coverInput.focus(); syncPostCoverPreview(); }
-          toast('封面已上传: ' + data.url);
         } else {
-          const md = `![${file.name}](${data.url})`;
-          const ta = $('#fContent');
-          if(ta){const s=ta.selectionStart;ta.value=ta.value.substring(0,s)+md+'\n'+ta.value.substring(ta.selectionEnd);ta.focus()}
-          refreshPreview();
+          insertImageIntoEditor(data.url, file.name.replace(/\.[^.]+$/, ''));
           toast('已上传: '+data.url);
         }
       } catch(e) { toast('上传失败') }
@@ -1144,470 +1435,7 @@
     // 属性值转义：额外转义双引号，防止注入属性；先还原一次 &amp; 避免双重转义
     function mdEscapeAttr(s){return mdEscapeText(s).replace(/"/g,'&quot;')}
     function mdAttr(s){return mdEscapeAttr(String(s).replace(/&amp;/g,'&'))}
-    // 行内语法：行内代码 / 图片 / 链接 / 删除线 / 粗体 / 斜体 / 自动链接
-    function mdInline(text){
-      const codeSpans=[];
-      // 捕获组排除 \u0000：防止视频占位符（\u0000V…）落入行内代码 / 属性值，避免还原时注入 HTML
-      text = text.replace(/`([^`\u0000]+)`/g,(m,c)=>{codeSpans.push('<code>'+c+'</code>');return '\u0000C'+(codeSpans.length-1)+'\u0000'});
-      text = text.replace(/!\[([^\]\u0000]*)\]\(([^)\s\u0000]+)(?:\s+"([^"\u0000]*)")?\)/g,(m,alt,src,title)=>{
-        const t=title?' title="'+mdAttr(title)+'"':'';
-        return '<img src="'+mdAttr(src)+'" alt="'+mdAttr(alt)+'"'+t+' loading="lazy">';
-      });
-      text = text.replace(/\[([^\]\u0000]*)\]\(([^)\s\u0000]+)(?:\s+"([^"\u0000]*)")?\)/g,(m,label,href,title)=>{
-        const t=title?' title="'+mdAttr(title)+'"':'';
-        return '<a href="'+mdAttr(href)+'"'+t+' target="_blank" rel="noopener">'+label+'</a>';
-      });
-      text = text.replace(/~~([^~]+)~~/g,'<del>$1</del>');
-      text = text.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
-      text = text.replace(/__([^_]+)__/g,'<strong>$1</strong>');
-      text = text.replace(/(?<![*\w])\*([^*\n]+)\*(?![*\w])/g,'<em>$1</em>');
-      text = text.replace(/(?<![\w_])_([^_\n]+)_(?![\w_])/g,'<em>$1</em>');
-      text = text.replace(/&lt;((?:https?:\/\/|mailto:)[^>\s\u0000]+)>/g,(m,url)=>'<a href="'+mdAttr(url)+'" target="_blank" rel="noopener">'+url+'</a>');
-      text = text.replace(/\u0000C(\d+)\u0000/g,(m,i)=>codeSpans[+i]);
-      return text;
-    }
-    function mdParseRow(line){return line.trim().replace(/^\||\|$/g,'').split('|')}
-    // 列表解析（支持缩进嵌套），返回 {html, next}；startLine 用于行号标记
-    function mdParseList(lines,i,indent,ordered,startLine){
-      const tag=ordered?'ol':'ul';
-      const itemRe=ordered?/^(\s*)(\d+)[.)]\s+/:/^(\s*)[-*+]\s+/;
-      let base=indent,opened=false,html='';
-      while(i<lines.length){
-        const m=lines[i].match(itemRe);
-        if(!m) break;
-        const cur=m[1].length;
-        if(!opened){base=cur;opened=true;html+='<'+tag+' data-line="'+(startLine||i+1)+'">'}
-        else if(cur<base) break;
-        if(cur>base){
-          const sub=mdParseList(lines,i,cur,/^\s*\d+[.)]\s+/.test(lines[i]),i+1);
-          html+=sub.html;i=sub.next;continue;
-        }
-        let body=lines[i].replace(itemRe,'').trim();
-        body=body.replace(/^\[([ xX])\]\s+(.*)$/,(m,ch,txt)=>'<input type="checkbox" disabled'+(ch.trim()?' checked':'')+'> '+txt);
-        i++;
-        const cont=[];let sub='';
-        while(i<lines.length){
-          const l=lines[i],cm=l.match(itemRe);
-          if(cm){
-            if(cm[1].length<=cur) break;
-            const s=mdParseList(lines,i,cm[1].length,/^\s*\d+[.)]\s+/.test(l),i+1);
-            sub+=s.html;i=s.next;continue;
-          }
-          if(l.trim()===''){i++;break}
-          if(/^\s+/.test(l)){cont.push(l.trim());i++;continue}
-          break;
-        }
-        html+='<li>'+mdInline(body+(cont.length?' '+cont.join(' '):''))+sub+'</li>';
-      }
-      if(opened) html+='</'+tag+'>';
-      return {html,next:i};
-    }
-    // 块级解析（入参已转义；递归复用）
-    function mdParse(src,startLine){
-      startLine=startLine||0;
-      const blocks=[];
-      src = src.replace(/```(\w*)\n?([\s\S]*?)```/g,(m,lang,code)=>{blocks.push({lang,code});return '\u0000B'+(blocks.length-1)+'\u0000'});
-      const lines=src.split('\n');
-      let html='',i=0;
-      while(i<lines.length){
-        const line=lines[i],t=line.trim();
-        if(!t){i++;continue}
-        const bm=t.match(/^\u0000B(\d+)\u0000$/);
-        if(bm){
-          const b=blocks[+bm[1]];
-          html+='<pre data-line="'+(startLine+i+1)+'"><code'+(b.lang?' class="language-'+mdAttr(b.lang)+'"':'')+'>'+b.code.replace(/\n$/,'')+'</code></pre>\n';
-          i++;continue;
-        }
-        const vm=t.match(/^\u0000V(\d+)\u0000$/);
-        if(vm){html+='<div data-line="'+(startLine+i+1)+'">\u0000V'+vm[1]+'\u0000</div>\n';i++;continue}
-        const km=t.match(/^\u0000K(\d+)\u0000$/);
-        if(km){html+='<div data-line="'+(startLine+i+1)+'">\u0000K'+km[1]+'\u0000</div>\n';i++;continue}
-        const mm=t.match(/^\u0000M(\d+)\u0000$/);
-        if(mm){html+='<div data-line="'+(startLine+i+1)+'">\u0000M'+mm[1]+'\u0000</div>\n';i++;continue}
-        const htm=t.match(/^\u0000H(\d+)\u0000$/);
-        if(htm){html+='<div data-line="'+(startLine+i+1)+'">\u0000H'+htm[1]+'\u0000</div>\n';i++;continue}
-        const hm=t.match(/^(#{1,6})\s+(.*)$/);
-        if(hm){html+='<h'+hm[1].length+' data-line="'+(startLine+i+1)+'">'+mdInline(hm[2])+'</h'+hm[1].length+'>\n';i++;continue}
-        if(/^(-{3,}|\*{3,}|_{3,})\s*$/.test(t)){html+='<hr data-line="'+(startLine+i+1)+'">\n';i++;continue}
-        if(t.startsWith('>')){
-          const q=[];const qs=i;
-          while(i<lines.length&&lines[i].trim().startsWith('>')){q.push(lines[i].replace(/^>\s?/,''));i++}
-          html+='<blockquote data-line="'+(startLine+qs+1)+'">'+mdParse(q.join('\n'),startLine+qs).trim()+'</blockquote>\n';
-          continue;
-        }
-        if(t.startsWith('|')&&i+1<lines.length){
-          const sep=lines[i+1].trim();
-          if(/^\|?[\s:|-]+\|?\s*$/.test(sep)&&sep.includes('-')&&sep.includes('|')){
-            const tblStart=i;
-            const header=mdParseRow(t);
-            const aligns=sep.split('|').filter(s=>s.trim()!=='').map(s=>{const x=s.trim();return x.startsWith(':')?(x.endsWith(':')?'center':'left'):(x.endsWith(':')?'right':'')});
-            i+=2;
-            html+='<table data-line="'+(startLine+tblStart+1)+'"><thead><tr>'+header.map((c,ci)=>'<th'+(aligns[ci]?' style="text-align:'+aligns[ci]+'"':'')+'>'+mdInline(c.trim())+'</th>').join('')+'</tr></thead><tbody>';
-            while(i<lines.length&&lines[i].trim().startsWith('|')){
-              const cells=mdParseRow(lines[i]);
-              html+='<tr>'+cells.map((c,ci)=>'<td'+(aligns[ci]?' style="text-align:'+aligns[ci]+'"':'')+'>'+mdInline(c.trim())+'</td>').join('')+'</tr>';
-              i++;
-            }
-            html+='</tbody></table>\n';
-            continue;
-          }
-        }
-        if(/^\s*[-*+]\s+/.test(line)){const r=mdParseList(lines,i,0,false,startLine+i+1);html+=r.html+'\n';i=r.next;continue}
-        if(/^\s*\d+[.)]\s+/.test(line)){const r=mdParseList(lines,i,0,true,startLine+i+1);html+=r.html+'\n';i=r.next;continue}
-        const paraStart=i;const para=[t];i++;
-        while(i<lines.length&&lines[i].trim()!==''){
-          const nt=lines[i];
-          if(/^(#{1,6}\s|>|\u0000B\d+\u0000$|\u0000[VKMH]\d+\u0000$|[-*+]\s|\d+[.)]\s|\|)/.test(nt)||/^(-{3,}|\*{3,}|_{3,})\s*$/.test(nt.trim()))break;
-          para.push(nt.trim());i++;
-        }
-        html+='<p data-line="'+(startLine+paraStart+1)+'">'+mdInline(para.join('\n'))+'</p>\n';
-      }
-      return html;
-    }
-    // 实时预览渲染入口：先保护围栏代码块（其中的 <iframe> 不应被提取），再提取正文 iframe，其余文本照常轻转义
-    function mdRenderVideo(src){
-      const videos=[];
-      const blocks=[];
-      let text=String(src||'');
-      text=text.replace(/```(\w*)\n?([\s\S]*?)```/g,(m,lang,code)=>{blocks.push({lang,code});return '\u0000K'+(blocks.length-1)+'\u0000'});
-      // 仅提取「闭合完整」的 iframe 块；未闭合的保持原样按文本转义显示，避免吞掉后续正文
-      // 注意：占位符后补回被提取块占用的行数（\n 重复），保证后续 data-line 行号不错位
-      let rest=text, head='';
-      while(true){
-        const open=rest.search(/<iframe[\s>]/i);
-        if(open===-1) break;
-        const close=rest.toLowerCase().indexOf('</iframe>',open);
-        if(close===-1) break;
-        videos.push(rest.slice(open,close+9));
-        const nl=(rest.slice(open,close+9).match(/\n/g)||[]).length;
-        head+=rest.slice(0,open)+'\u0000V'+(videos.length-1)+'\u0000'+'\n'.repeat(nl);
-        rest=rest.slice(close+9);
-      }
-      text=head+rest;
-      // 提取闭合完整的 song-player 占位块（\u0000M 占位符；mdInline 正则会排除 \u0000 防止属性注入）
-      const songs=[];
-      rest=text; head='';
-      while(true){
-        const open=rest.search(/<div[^>]*\bsong-player\b[^>]*>/i);
-        if(open===-1) break;
-        const close=rest.toLowerCase().indexOf('</div>',open);
-        if(close===-1) break;
-        songs.push(rest.slice(open,close+6));
-        const nl=(rest.slice(open,close+6).match(/\n/g)||[]).length;
-        head+=rest.slice(0,open)+'\u0000M'+(songs.length-1)+'\u0000'+'\n'.repeat(nl);
-        rest=rest.slice(close+6);
-      }
-      text=head+rest;
-      // 提取白名单行内/块级 HTML 标签（变色/下划线/高亮/对齐等），预览原样渲染；
-      // 内容含 script/iframe/on* 等危险模式时拒绝提取，回退文本显示
-      const htmlTags=[];
-      rest=text; head='';
-      while(true){
-        const open=rest.search(/<(span|div|u|mark|center|b|i|strong|em|s|del|sub|sup|img)\b[^>]*>/i);
-        if(open===-1) break;
-        const nm=(rest.slice(open+1).match(/^([a-z]+)/i)||[])[1];
-        if(!nm){head+=rest.slice(0,open+1);rest=rest.slice(open+1);continue}
-        const name=nm.toLowerCase();
-        let close,end;
-        if(name==='img'){
-          // 自闭合标签：闭合点就是标签自身的 >
-          close=rest.indexOf('>',open);
-          if(close===-1){head+=rest.slice(0,open+1);rest=rest.slice(open+1);continue}
-          end=close+1;
-        }else{
-          close=rest.toLowerCase().indexOf('</'+name+'>',open);
-          if(close===-1){head+=rest.slice(0,open+1);rest=rest.slice(open+1);continue}
-          end=close+name.length+3;
-        }
-        const block=rest.slice(open,end);
-        if(/<\s*(script|iframe|object|embed|style|link|meta|form|svg)[\s>]/i.test(block)||/\son\w+\s*=/i.test(block)){
-          head+=rest.slice(0,open+1);rest=rest.slice(open+1);continue;
-        }
-        htmlTags.push(block);
-        const nl=(block.match(/\n/g)||[]).length;
-        head+=rest.slice(0,open)+'\u0000H'+(htmlTags.length-1)+'\u0000'+'\n'.repeat(nl);
-        rest=rest.slice(end);
-      }
-      text=head+rest;
-      let html=mdParse(mdEscapeText(text));
-      html=html.replace(/\u0000V(\d+)\u0000/g,(m,i)=>videoEmbedHtml(videos[+i]));
-      html=html.replace(/\u0000M(\d+)\u0000/g,(m,i)=>musicEmbedPreview(songs[+i]));
-      html=html.replace(/\u0000H(\d+)\u0000/g,(m,i)=>htmlTagPreview(htmlTags[+i]));
-      html=html.replace(/\u0000K(\d+)\u0000/g,(m,i)=>{
-        const b=blocks[+i];
-        return '<pre><code'+(b.lang?' class="language-'+mdAttr(b.lang)+'"':'')+'>'+mdEscapeText(b.code).replace(/\n$/,'')+'</code></pre>';
-      });
-      return html;
-    }
-    // 从原始 iframe 中提取 src 并重建干净标签（丢弃 on* 事件等潜在危险属性）
-    function videoEmbedHtml(iframe){
-      const m=iframe.match(/<iframe[^>]*\bsrc\s*=\s*["']([^"']+)["']/i);
-      const src=m?m[1]:'';
-      if(!src||!/^(https?:)?\/\//i.test(src)) return '<p style="color:#c06050;font-size:12px">⚠ iframe 缺少有效 src，未渲染</p>';
-      return '<div class="video-embed"><iframe src="'+mdAttr(src)+'" title="嵌入式视频播放器" loading="lazy" allowfullscreen referrerpolicy="no-referrer-when-downgrade"></iframe></div>';
-    }
-    // 白名单 HTML 标签预览：仅保留白名单属性重建（丢弃 on* 等事件属性），内部内容原样输出
-    function htmlTagPreview(tag){
-      const m=tag.match(/^<([a-z]+)\b([^>]*)>/i);
-      if(!m) return tag;
-      const name=m[1].toLowerCase();
-      if(name==='img'){
-        // 自闭合图片：保留 src/style/alt/width/height/loading，丢弃其余属性
-        const attr=(k)=>(m[2].match(new RegExp('\\b'+k+'\\s*=\\s*["\']([^"\']*)["\']','i'))||[])[1]||'';
-        let out='<img';
-        const src=attr('src');
-        if(src) out+=' src="'+mdAttr(src)+'"';
-        const alt=attr('alt');
-        if(alt) out+=' alt="'+mdAttr(alt)+'"';
-        for(const k of ['style','width','height','loading']){
-          const v=attr(k);
-          if(v) out+=' '+k+'="'+mdAttr(v)+'"';
-        }
-        return out+' />';
-      }
-      const style=(m[2].match(/\bstyle\s*=\s*["']([^"']*)["']/i)||[])[1]||'';
-      const inner=tag.slice(tag.indexOf('>')+1, tag.length-(name.length+3));
-      return '<'+name+(style?' style="'+mdAttr(style)+'"':'')+'>'+inner+'</'+name+'>';
-    }
 
-    // 从 song-player 占位提取字段，渲染为面板内可直接试听的预览（原生 audio）
-    function musicEmbedPreview(block){      const src=musicAttr(block,'src');
-      if(!src||!/^(https?:)?\/\//i.test(src)) return '<p style="color:#c06050;font-size:12px">⚠ song-player 缺少有效 src，未渲染</p>';
-      const title=musicDecode(musicAttr(block,'title'))||'未命名曲目';
-      const artist=musicDecode(musicAttr(block,'artist'));
-      return '<div class="music-embed"><div class="music-embed-meta">♪ '+mdAttr(title)+(artist?' — '+mdAttr(artist):'')+'</div><audio controls preload="none" src="'+mdAttr(src)+'"></audio></div>';
-    }
-
-    // 实时预览：视图切换 + 输入防抖渲染
-    let previewTimer=null;
-    function refreshPreview(){
-      const ta=$('#fContent'),pv=$('#fPreview');
-      if(!ta||!pv) return;
-      pv.innerHTML=mdRenderVideo(ta.value);
-    }
-    function setupPreview(){
-      const ta=$('#fContent');
-      if(!ta) return;
-      const switchBtns=document.querySelectorAll('#viewSwitch button');
-      switchBtns.forEach(btn=>{
-        btn.onclick=()=>{
-          const body=$('#editorBody');
-          if(!body) return;
-          body.className='editor-body '+btn.dataset.view;
-          switchBtns.forEach(b=>b.classList.toggle('active',b===btn));
-          try{localStorage.setItem('admin-editor-view',btn.dataset.view)}catch(e){}
-          if(btn.dataset.view!=='edit') refreshPreview();
-        };
-      });
-      let view='split';
-      try{view=localStorage.getItem('admin-editor-view')||'split'}catch(e){}
-      const body=$('#editorBody');
-      if(body){
-        body.className='editor-body '+view;
-        switchBtns.forEach(b=>b.classList.toggle('active',b.dataset.view===view));
-      }
-      ta.addEventListener('input',()=>{clearTimeout(previewTimer);previewTimer=setTimeout(refreshPreview,150)});
-      refreshPreview();
-    }
-
-    /* ── 渲染区可编辑：预览(contenteditable)改动经 turndown 转回 Markdown 写回源码区 ──
-       同步时不重渲染预览，避免打断预览区编辑光标；源码区再次编辑时才重渲染覆盖预览 */
-    let previewEditing=false, mdSyncTimer=null, taSyncing=false;
-    function setupEditablePreview(){
-      const pv=$('#fPreview'), ta=$('#fContent');
-      if(!pv||!ta) return;
-      pv.addEventListener('focus',()=>{previewEditing=true});
-      pv.addEventListener('blur',()=>{previewEditing=false;flushPreviewToSource()});
-      pv.addEventListener('input',()=>{clearTimeout(mdSyncTimer);mdSyncTimer=setTimeout(flushPreviewToSource,600)});
-      // 正文预览图片加载失败自动重试：jsDelivr CDN 首次访问可能未生效（上传后立即预览），
-      // 先重试原 URL 等待预热完成，仍失败再切换 jsDelivr 镜像，全部失败后放弃（error 不冒泡，需捕获阶段拦截）
-      pv.addEventListener('error', e => {
-        const img = e.target;
-        if (!(img instanceof HTMLImageElement) || !img.src || img.dataset.retryDone) return;
-        const n = parseInt(img.dataset.retryCount || '0', 10);
-        if (n >= 7) { img.dataset.retryDone = '1'; return; }
-        img.dataset.retryCount = String(n + 1);
-        const orig = img.dataset.origSrc || img.src;
-        img.dataset.origSrc = orig;
-        setTimeout(() => {
-          if (!img.isConnected) return; // 已被重新渲染移除，交由新一轮重试
-          const mirrors = [null, null, null, null, 'fastly.jsdelivr.net', 'gcore.jsdelivr.net'];
-          const host = mirrors[Math.min(n, mirrors.length - 1)];
-          img.src = host && orig.includes('cdn.jsdelivr.net') ? orig.replace('cdn.jsdelivr.net', host) : orig;
-        }, 1500 * (n + 1));
-      }, true);
-      pv.addEventListener('paste',e=>{
-        // 预览区粘贴纯文本，避免富文本格式污染源码
-        e.preventDefault();
-        const text=(e.clipboardData||window.clipboardData).getData('text/plain');
-        document.execCommand('insertText',false,text);
-      });
-    }
-    function flushPreviewToSource(){
-      if(!window.TurndownService) return;
-      const pv=$('#fPreview'), ta=$('#fContent');
-      if(!pv||!ta||!pv.isConnected) return;
-      try{
-        // 转 Markdown 前清理定位辅助（data-line / 临时高亮），避免污染源码
-        pv.querySelectorAll('[data-line]').forEach(el=>el.removeAttribute('data-line'));
-        pv.querySelectorAll('.line-flash').forEach(el=>el.classList.remove('line-flash'));
-        if(!window.__mdTurndown){
-          const td=new TurndownService({headingStyle:'atx',bulletListMarker:'-',codeBlockStyle:'fenced',hr:'---'});
-          // keep:无 Markdown 等价物、须保留原 HTML 的标签(变色/居中/下划线/高亮/iframe/删除线等)
-          td.keep(['span','div','u','mark','center','iframe','s','del','sub','sup']);
-          window.__mdTurndown=td;
-        }
-        const md=window.__mdTurndown.turndown(pv.innerHTML);
-        if(md!==ta.value){ ta.value=md; }
-      }catch(e){ console.warn('turndown sync fail:',e.message); }
-    }
-
-    /* ── 源码区 ↔ 渲染区行级联动 ──
-       点击任意一侧的一行：另一侧对应行高亮 0.5s，并瞬间滚动到水平对齐；
-       滚动时仍按内容比例双向跟随（防回环）。 */
-    function setupScrollSync(){
-      const ta=$('#fContent'), pv=$('#fPreview'), mark=$('#sourceLineMark');
-      if(!ta||!pv) return;
-      const metrics=()=>{
-        const cs=getComputedStyle(ta);
-        return { lineH: parseFloat(cs.lineHeight)||20.8, padTop: parseFloat(cs.paddingTop)||0 };
-      };
-      const caretLine=()=>{
-        const caret=ta.selectionStart;
-        return (ta.value.slice(0,caret).match(/\n/g)||[]).length+1;
-      };
-      // 预览中找 data-line 最接近 line 的元素
-      const nearestEl=(line)=>{
-        const els=pv.querySelectorAll('[data-line]');
-        let best=null,bestD=Infinity;
-        els.forEach(el=>{const d=Math.abs(parseInt(el.dataset.line,10)-line);if(d<bestD){bestD=d;best=el}});
-        return best;
-      };
-      let flashTimer=null, markTimer=null, pvSyncing=false;
-      // 源码行高亮：overlay 矩形显示 0.5s（top 随 scrollTop 同步）
-      const flashSourceLine=(line)=>{
-        if(!mark) return;
-        const {lineH,padTop}=metrics();
-        mark.style.top=(padTop+(line-1)*lineH-ta.scrollTop)+'px';
-        mark.style.height=lineH+'px';
-        mark.classList.add('show');
-        clearTimeout(markTimer);
-        markTimer=setTimeout(()=>mark.classList.remove('show'),500);
-      };
-      // 预览元素高亮 0.5s
-      const flashPreviewLine=(line)=>{
-        const el=nearestEl(line);
-        if(!el) return;
-        el.classList.add('line-flash');
-        clearTimeout(flashTimer);
-        flashTimer=setTimeout(()=>pv.querySelectorAll('.line-flash').forEach(x=>x.classList.remove('line-flash')),500);
-      };
-      // 源码滚动到某行顶部对齐（行高固定，精确；8px 边距）
-      const alignSourceToLine=(line)=>{
-        const {lineH,padTop}=metrics();
-        ta.scrollTop=Math.max(0,(line-1)*lineH+padTop-8);
-      };
-      // 预览滚动到对应元素：按渲染流实际内容坐标顶部对齐（块级控件如视频/播放器高度远超源码行数，
-      // 不能居中也不能按行比例，否则块起点会被推出视口）
-      const alignPreviewToLine=(line)=>{
-        const el=nearestEl(line);
-        if(!el) return;
-        pvSyncing=true;
-        const pvRect=pv.getBoundingClientRect();
-        const contentTop=el.getBoundingClientRect().top-pvRect.top+pv.scrollTop;
-        pv.scrollTop=Math.max(0,contentTop-8);
-        requestAnimationFrame(()=>{pvSyncing=false});
-      };
-      // 点击渲染区 → 源码对应行高亮 + 对齐
-      pv.addEventListener('click',e=>{
-        let el=e.target;
-        while(el&&el!==pv&&!el.dataset.line) el=el.parentElement;
-        if(el&&el.dataset.line){
-          const line=parseInt(el.dataset.line,10);
-          alignSourceToLine(line);
-          flashSourceLine(line);
-        }
-      });
-      // 点击/按键源码 → 预览对应行高亮 + 对齐（300ms 内抑制随后的比例滚动跟随，避免覆盖居中结果）
-      let suppressScrollSync=0;
-      const onSrcActive=()=>{
-        const line=caretLine();
-        suppressScrollSync=Date.now()+300;
-        alignPreviewToLine(line);
-        flashPreviewLine(line);
-      };
-      ta.addEventListener('click',onSrcActive);
-      ta.addEventListener('keyup',onSrcActive);
-      // 滚动跟随（内容坐标定位，控件高度不影响）：
-      // 源码可视顶部行 → 预览对应元素顶部对齐；预览可视顶部附近元素 → 源码对应行顶部对齐
-      const syncSrcToPv=()=>{
-        const {lineH,padTop}=metrics();
-        const line=Math.floor((ta.scrollTop+padTop)/lineH)+1;
-        const el=nearestEl(line);
-        if(!el) return;
-        pvSyncing=true;
-        const pvRect=pv.getBoundingClientRect();
-        const contentTop=el.getBoundingClientRect().top-pvRect.top+pv.scrollTop;
-        pv.scrollTop=Math.max(0,contentTop-8);
-        requestAnimationFrame(()=>{pvSyncing=false});
-      };
-      const syncPvToSrc=()=>{
-        const pvRect=pv.getBoundingClientRect();
-        const target=pv.scrollTop+pv.clientHeight*0.12; // 内容坐标：视口上方 12% 处
-        let best=null,bestD=Infinity;
-        pv.querySelectorAll('[data-line]').forEach(el=>{
-          const contentTop=el.getBoundingClientRect().top-pvRect.top+pv.scrollTop;
-          const d=Math.abs(contentTop-target);
-          if(d<bestD){bestD=d;best=el}
-        });
-        if(!best) return;
-        const line=parseInt(best.dataset.line,10)||1;
-        const {lineH,padTop}=metrics();
-        taSyncing=true;
-        ta.scrollTop=Math.max(0,(line-1)*lineH+padTop-8);
-        requestAnimationFrame(()=>{taSyncing=false});
-      };
-      let t=null,st=null;
-      ta.addEventListener('scroll',()=>{if(taSyncing||Date.now()<suppressScrollSync)return;clearTimeout(t);t=setTimeout(syncSrcToPv,60)});
-      pv.addEventListener('scroll',()=>{if(pvSyncing)return;clearTimeout(st);st=setTimeout(syncPvToSrc,80)});
-    }
-
-    /* ── 分栏拖拽：调整源码区/渲染区宽度占比（20%–80%，localStorage 记忆） ── */
-    function setupSplitDivider(){
-      const div=$('#editorDivider'), body=$('#editorBody');
-      if(!div||!body) return;
-      let ratio=50;
-      try{ ratio=Number(localStorage.getItem('admin-split-ratio'))||50 }catch(e){}
-      const applyRatio=(p)=>{
-        ratio=p;
-        const ta=$('#fContent');
-        if(ta) ta.style.flexBasis=p+'%';
-      };
-      applyRatio(ratio);
-      div.addEventListener('mousedown',e=>{
-        e.preventDefault();
-        div.classList.add('dragging');
-        const rect=body.getBoundingClientRect();
-        // 增量模式：从当前占比出发按鼠标位移调整——点击不会瞬移，拖动全程连续；无上下限（0-100%）
-        const startX=e.clientX, startRatio=ratio;
-        const move=ev=>{
-          const dx=ev.clientX-startX;
-          let pct=startRatio+(dx/rect.width)*100;
-          pct=Math.max(0,Math.min(100,pct));
-          applyRatio(pct);
-        };
-        const up=()=>{
-          div.classList.remove('dragging');
-          document.removeEventListener('mousemove',move);
-          document.removeEventListener('mouseup',up);
-          document.body.style.cursor='';
-          try{localStorage.setItem('admin-split-ratio',String(ratio))}catch(e){}
-        };
-        document.body.style.cursor='col-resize';
-        document.addEventListener('mousemove',move);
-        document.addEventListener('mouseup',up);
-      });
-    }
 
     document.addEventListener('keydown', e => {
       if((e.ctrlKey||e.metaKey)&&e.key==='s'){e.preventDefault();currentMode==='gallery'?saveGalleryItem():currentMode==='about'?saveAbout():currentMode==='frontend'?saveFrontend():currentMode==='guestbook'?null:savePost()}
@@ -1616,6 +1444,7 @@
     bindVideoModal();
     bindMusicModal();
     bindImgSizeModal();
+    bindCoverCropModal();
     loadPosts();
 
     // ── 模式切换 ──
