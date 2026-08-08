@@ -128,13 +128,13 @@
     .markdown-preview a{color:#80a0c0;text-decoration:none;border-bottom:1px dotted #3a4a5a}
     .markdown-preview img{max-width:100%;height:auto;border-radius:2px;margin:8px 0;display:block;border:1px solid #2a2a30}
     /* 视频嵌入预览 */
-    .markdown-preview .video-embed{margin:10px 0}
-    .markdown-preview .video-embed iframe{width:100%;aspect-ratio:16/9;height:auto;border:1px solid #2a2a30;background:#101014;border-radius:2px;display:block}
-    .markdown-preview .video-embed iframe[src*="music.163.com"]{width:330px;max-width:100%;aspect-ratio:auto;height:90px;margin-inline:auto}
-    .markdown-preview .video-embed iframe[src*="music.163.com"][src*="height=66"]{height:66px}
-    .markdown-preview .music-embed{margin:10px 0;padding:10px 12px;border:1px solid #2a2a30;border-radius:6px;background:#16161a}
-    .markdown-preview .music-embed-meta{font-size:12px;color:#c8b080;margin-bottom:8px;word-break:break-all}
-    .markdown-preview .music-embed audio{display:block;width:100%;height:36px}
+    .markdown-preview .video-embed,.toastui-editor-contents .video-embed{margin:10px 0}
+    .markdown-preview .video-embed iframe,.toastui-editor-contents .video-embed iframe{width:100%;aspect-ratio:16/9;height:auto;border:1px solid #2a2a30;background:#101014;border-radius:2px;display:block}
+    .markdown-preview .video-embed iframe[src*="music.163.com"],.toastui-editor-contents .video-embed iframe[src*="music.163.com"]{width:330px;max-width:100%;aspect-ratio:auto;height:90px;margin-inline:auto}
+    .markdown-preview .video-embed iframe[src*="music.163.com"][src*="height=66"],.toastui-editor-contents .video-embed iframe[src*="music.163.com"][src*="height=66"]{height:66px}
+    .markdown-preview .music-embed,.toastui-editor-contents .music-embed{margin:10px 0;padding:10px 12px;border:1px solid #2a2a30;border-radius:6px;background:#16161a}
+    .markdown-preview .music-embed-meta,.toastui-editor-contents .music-embed-meta{font-size:12px;color:#c8b080;margin-bottom:8px;word-break:break-all}
+    .markdown-preview .music-embed audio,.toastui-editor-contents .music-embed audio{display:block;width:100%;height:36px}
     .music-fields{display:grid;gap:6px;margin-top:8px}
     .music-upload-row{display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap}
     .music-upload-tip{font-size:11px;color:#6a6a70}
@@ -953,7 +953,7 @@
           previewStyle: 'vertical',
           height: '540px',
           language: 'zh-CN',
-          plugins: colorSyntax ? [colorSyntax] : [],
+          plugins: colorSyntax ? [colorSyntax, buildMediaPlugin] : [buildMediaPlugin],
           hooks: {
             addImageBlobHook: async (blob, callback) => {
               try {
@@ -1120,6 +1120,72 @@
       } catch(e) { /* 选区恢复失败不影响功能 */ }
       editor.focus();
       toast('已设为' + (align === 'left' ? '居左' : align === 'center' ? '居中' : '居右'));
+    }
+
+    /* ── 多媒体预览插件：恢复 iframe 视频与 song-player 播放条 ──
+       TOAST UI 3.x 的 markdown 预览默认过滤 div 内嵌的 iframe(视频预览变空 div)，
+       song-player 仅显示链接文本。此插件在 htmlBlock 渲染层恢复两者。
+       注意：必须用 openTag/closeTag 形式返回 —— {type:'html'} 形式在预览
+       增量更新时渲染器被调用但 DOM 不更新(TOAST UI 3.2.2 行为)。 */
+    function buildMediaPlugin() {
+      const safeAttrs = attrs => {
+        const out = {};
+        for (const [k, v] of Object.entries(attrs || {})) {
+          if (/^on/i.test(k) || k === 'srcdoc' || k === 'data-nodeid') continue;
+          out[k] = v;
+        }
+        return out;
+      };
+      return {
+        toHTMLRenderers: {
+          htmlBlock: {
+            iframe(node, { entering }) {
+              if (!entering) return null;
+              const src = node.attrs && node.attrs.src;
+              if (!src || !/^(https?:)?\/\//i.test(src)) return { type: 'text', content: '' };
+              return { type: 'openTag', tagName: 'iframe', attributes: safeAttrs(node.attrs) };
+            },
+            div(node, { entering }) {
+              const cls = (node.attrs && node.attrs.class) || '';
+              if (cls.includes('video-embed')) {
+                if (!entering) return null;
+                // childrenHTML 含原始子 HTML(默认渲染会过滤掉内嵌 iframe)
+                const m = String(node.childrenHTML || '').match(/<iframe[^>]*\bsrc\s*=\s*["']([^"']+)["'][^>]*>/i);
+                if (!m || !/^(https?:)?\/\//i.test(m[1])) {
+                  return { type: 'openTag', tagName: 'div', attributes: safeAttrs(node.attrs) };
+                }
+                return [
+                  { type: 'openTag', tagName: 'div', attributes: safeAttrs(node.attrs) },
+                  { type: 'openTag', tagName: 'iframe', attributes: { src: m[1], loading: 'lazy' } },
+                  { type: 'closeTag', tagName: 'iframe' },
+                  { type: 'closeTag', tagName: 'div' },
+                ];
+              }
+              if (cls.includes('song-player')) {
+                if (!entering) return null;
+                const a = node.attrs || {};
+                const src = a['data-src'] || '';
+                if (!/^(https?:)?\/\//i.test(src)) {
+                  return { type: 'text', content: '⚠ song-player 缺少有效 src，未渲染' };
+                }
+                const meta = '♪ ' + (a['data-title'] || '未命名曲目') + (a['data-artist'] ? ' — ' + a['data-artist'] : '');
+                return [
+                  { type: 'openTag', tagName: 'div', attributes: { class: 'song-player' } },
+                  { type: 'openTag', tagName: 'div', attributes: { class: 'music-embed-meta' } },
+                  { type: 'text', content: meta },
+                  { type: 'closeTag', tagName: 'div' },
+                  { type: 'openTag', tagName: 'audio', attributes: { controls: '', preload: 'none', src } },
+                  { type: 'closeTag', tagName: 'audio' },
+                  { type: 'closeTag', tagName: 'div' },
+                ];
+              }
+              return entering
+                ? { type: 'openTag', tagName: 'div', attributes: safeAttrs(node.attrs) }
+                : { type: 'closeTag', tagName: 'div' };
+            },
+          },
+        },
+      };
     }
 
     /* ── 格式工具栏（加粗/标题/列表等已由 TOAST UI 内置工具栏提供；此处只保留其没有的：颜色） ── */
