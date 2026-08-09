@@ -1,7 +1,6 @@
 ---
 import { getCollection } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
-import ArchiveSeal from '../components/ArchiveSeal.astro';
 import ThemeCopy from '../components/ThemeCopy.astro';
 import { safeLink } from '../lib/safe-link';
 import standaloneGallery from '../data/gallery.json';
@@ -115,7 +114,7 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
         <p class="gallery-intro"><ThemeCopy minimal="文章中的图片，以及单独收藏的照片。" trace="从文字中显影的片段，以及尚未归入卷册的独立收藏。" /></p>
       </div>
       <div class="gallery-header-mark">
-        <ArchiveSeal />
+        <img class="archive-seal" src="/logo.webp" alt="" width="400" height="400" loading="lazy" />
         <dl>
           <div><dt><ThemeCopy minimal="文章图片" trace="随文图像" /></dt><dd>{String(journalImages.length).padStart(2, '0')}</dd></div>
           <div><dt><ThemeCopy minimal="独立照片" trace="独立收藏" /></dt><dd>{String(standaloneImages.length).padStart(2, '0')}</dd></div>
@@ -322,7 +321,7 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
         </nav>
       ) : (
         <div class="gallery-empty gallery-empty--independent">
-          <ArchiveSeal />
+          <img class="archive-seal" src="/logo.webp" alt="" width="180" height="180" loading="lazy" />
           <strong><ThemeCopy minimal="还没有独立照片" trace="独立收藏尚未入藏" /></strong>
           <span><ThemeCopy minimal="单独收藏的照片会显示在这里。" trace="此处保留给未附着于文章的图像记录。" /></span>
         </div>

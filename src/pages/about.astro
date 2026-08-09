@@ -1,6 +1,5 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import ArchiveSeal from '../components/ArchiveSeal.astro';
 import ThemeCopy from '../components/ThemeCopy.astro';
 import about from '../data/about.json';
 
@@ -37,7 +36,7 @@ function linkify(text = '') {
         <h1>{about.title}</h1>
         <p>{about.subtitle}</p>
       </div>
-      <ArchiveSeal class="dossier-seal" />
+      <img class="archive-seal dossier-seal" src="/logo.webp" alt="" width="260" height="260" loading="lazy" />
     </header>
 
     <section class="appearance-settings" aria-labelledby="appearance-heading">
@@ -71,7 +70,7 @@ function linkify(text = '') {
         <div class:list={['portrait-placeholder', avatarSrc ? 'has-avatar' : '']} aria-label="Acretiondisk 个人标记">
           {avatarSrc
             ? <img src={avatarSrc} alt="Acretiondisk 头像" loading="lazy" />
-            : (<><ArchiveSeal /><span>ACR</span></>)}
+            : (<><img class="archive-seal" src="/logo.webp" alt="Acretiondisk 标记" width="260" height="260" loading="lazy" /><span>ACR</span></>)}
         </div>
         <dl class="identity-table">
           {

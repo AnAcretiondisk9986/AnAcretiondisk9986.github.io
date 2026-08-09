@@ -1,7 +1,6 @@
 ---
 import { getCollection } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
-import ArchiveSeal from '../components/ArchiveSeal.astro';
 import PostCatalog from '../components/PostCatalog.astro';
 import SpecimenPlate from '../components/SpecimenPlate.astro';
 import ThemeCopy from '../components/ThemeCopy.astro';
@@ -61,7 +60,7 @@ const primaryCtaHref = safeLink(frontend.primaryCtaHref, '/blog/');
 
     <div class="hero-plate-panel">
       <SpecimenPlate />
-      <ArchiveSeal class="hero-seal" />
+      <img class="archive-seal hero-seal" src="/logo.webp" alt="" width="240" height="240" loading="lazy" />
     </div>
   </section>
 
@@ -81,7 +80,7 @@ const primaryCtaHref = safeLink(frontend.primaryCtaHref, '/blog/');
   </section>
 
   <section class="index-coda">
-    <ArchiveSeal class="coda-seal" />
+    <img class="archive-seal coda-seal" src="/logo.webp" alt="" width="132" height="132" loading="lazy" />
     <blockquote><ThemeCopy minimal="“写下来，是为了更清楚地看见自己。”" trace="“记录并非为了留住一切，而是为了在时间中辨认自己。”" /></blockquote>
     <p>FINIS PAGINAE · INITIUM SEQUENTIS</p>
   </section>

@@ -420,9 +420,13 @@
   }
 
   :root[data-visual-theme='minimal'] .hero-plate-panel::before,
-  :root[data-visual-theme='minimal'] .hero-plate-panel::after,
-  :root[data-visual-theme='minimal'] .hero-seal {
+  :root[data-visual-theme='minimal'] .hero-plate-panel::after {
     display: none;
+  }
+
+  :root[data-visual-theme='minimal'] .hero-seal {
+    display: block;
+    width: 240px;
   }
 
   :root[data-visual-theme='minimal'] .specimen-plate {
@@ -506,7 +510,7 @@
   }
 
   :root[data-visual-theme='minimal'] .coda-seal {
-    width: 48px;
+    width: 132px;
   }
 
   /* 卷册目录与排序控件 */
@@ -545,7 +549,7 @@
   }
 
   :root[data-visual-theme='minimal'] :is(.catalog-mark, .gallery-header-mark, .guestbook-header-mark) .archive-seal {
-    width: 72px;
+    width: min(88%, 400px);
     margin-bottom: 20px;
   }
 
@@ -819,7 +823,7 @@
   }
 
   :root[data-visual-theme='minimal'] .dossier-seal {
-    width: 66px;
+    width: 260px;
   }
 
   :root[data-visual-theme='minimal'] .appearance-settings {

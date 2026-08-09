@@ -3,7 +3,6 @@ import '../styles/global.css';
 import '../styles/minimal-theme.css';
 import '../styles/liquid-theme.css';
 import { ClientRouter } from 'astro:transitions';
-import ArchiveSeal from '../components/ArchiveSeal.astro';
 import ThemeCopy from '../components/ThemeCopy.astro';
 import frontend from '../data/frontend.json';
 
@@ -60,7 +59,7 @@ const navigation = [
     <meta name="viewport" content="width=device-width" />
     <meta name="description" content={description} />
     <meta name="generator" content={Astro.generator} />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
     <title>{pageTitle}</title>
     <!-- data-astro-rerun:View Transitions 导航后需重新执行,恢复 data-theme/js/vt(swap 会移除 <html> 属性);IIFE 包裹防止重复执行时顶层 const 重复声明 -->
     <script is:inline data-astro-rerun define:vars={{ defaultVisualTheme }}>
@@ -121,7 +120,7 @@ const navigation = [
 
         <div class="header-main">
           <a class="site-name" href="/" aria-label={`${siteName} 首页`}>
-            <ArchiveSeal class="site-seal" />
+            <img class="site-seal site-logo" src="/logo-primary.webp" alt={`${siteName} LOGO`} width="48" height="48" />
             <span>
               <b>{siteName}</b>
               <small>{siteTagline}</small>
@@ -154,7 +153,7 @@ const navigation = [
 
       <footer class="site-footer">
         <div class="footer-mark">
-          <ArchiveSeal class="footer-seal" label={siteName} />
+          <img class="footer-seal site-logo" src="/logo-primary.webp" alt={`${siteName} LOGO`} width="48" height="48" />
           <p>
             <strong>{siteName} · <ThemeCopy minimal="持续更新" trace="持续编目" /></strong>
             <span>{siteTagline}</span>
@@ -176,6 +175,9 @@ const navigation = [
           const dark = document.documentElement.dataset.theme === 'dark';
           if (icon) icon.textContent = dark ? '☾' : '☀';
           button?.setAttribute('aria-label', dark ? '切换为浅色模式' : '切换为深色模式');
+          // 站点内切换主题时同步切换 favicon(站点主题由 data-theme 控制,与系统 prefers-color-scheme 无关)
+          const favicon = document.querySelector('link[rel="icon"]');
+          if (favicon) favicon.href = dark ? '/favicon-dark.png' : '/favicon.png';
         };
         syncThemeButton();
         button?.addEventListener('click', () => {
