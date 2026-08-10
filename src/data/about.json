@@ -44,5 +44,24 @@
     }
   ],
   "projectsTitle": "我的项目",
-  "projects": []
+  "projects": [
+    {
+      "index": "1",
+      "name": "Ac记账",
+      "url": "https://github.com/AnAcretiondisk9986/ac-ledger",
+      "title": "ac-ledger: AcLedger bookkeeping app (desktop + web) · GitHub"
+    },
+    {
+      "index": "2",
+      "name": "个人博客",
+      "url": "https://github.com/AnAcretiondisk9986/AnAcretiondisk9986.github.io",
+      "title": "Acretiondisk Blog"
+    },
+    {
+      "index": "3",
+      "name": "Bili-Screenshot",
+      "url": "https://github.com/AnAcretiondisk9986/Bili-Screenshot",
+      "title": "Bili-Screenshot: B站视频截图 Chrome 扩展：快捷键静默截图、原始分辨率导出、JPEG质量压缩、弹幕开关、连拍、文件名模板、一键安装器 · GitHub"
+    }
+  ]
 }
