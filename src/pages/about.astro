@@ -1,6 +1,7 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import ThemeCopy from '../components/ThemeCopy.astro';
+import { safeLink } from '../lib/safe-link';
 import about from '../data/about.json';
 
 // 头像已是图片仓库的 jsDelivr 外链，直接引用
@@ -104,6 +105,25 @@ function linkify(text = '') {
             }
           </ol>
         </div>
+
+        {
+          about.projectsTitle && (
+            <div class="interest-index project-index">
+              <h2>{about.projectsTitle}</h2>
+              <ol>
+                {
+                  (about.projects || []).map(item => {
+                    // 仅放行 http(s) 链接（safeLink 其余返回空串），标题已由管理面板解析或手动填写，空时兜底显示裸网址
+                    const href = safeLink(item.url);
+                    return (
+                      <li><span>{item.index}</span><b>{item.name}</b><small>{href ? <a href={href} target="_blank" rel="noopener noreferrer">{item.title || item.url}</a> : (item.title || '')}</small></li>
+                    );
+                  })
+                }
+              </ol>
+            </div>
+          )
+        }
       </section>
     </div>
   </article>

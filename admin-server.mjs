@@ -1065,6 +1065,63 @@ async function readAbout() {
   }
 }
 
+// ── 网页标题解析（“我的项目”网址解析）──
+const TITLE_FETCH_TIMEOUT = 8000;
+const TITLE_MAX_BYTES = 512 * 1024;
+
+function decodeHtmlEntities(s) {
+  const named = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', ndash: '–', mdash: '—', hellip: '…', middot: '·', copy: '©', reg: '®', trade: '™' };
+  const safeChar = (code) => {
+    if (code === 0 || code > 0x10ffff) return '';
+    try { return String.fromCodePoint(code); } catch { return ''; }
+  };
+  return s
+    .replace(/&#x([0-9a-f]+);/gi, (_, h) => safeChar(parseInt(h, 16)))
+    .replace(/&#(\d+);/g, (_, d) => safeChar(parseInt(d, 10)))
+    .replace(/&([a-z]+);/gi, (m, e) => named[e.toLowerCase()] ?? m);
+}
+
+/** 抓取网页 <title>；解析失败返回空串（复用 fetchPublic 的 SSRF 防护与重定向处理） */
+async function fetchPageTitle(rawUrl) {
+  try {
+    const safe = safeLink(rawUrl, { allowEmpty: false });
+    if (!safe) return '';
+    const res = await fetchPublic(safe, {
+      signal: AbortSignal.timeout(TITLE_FETCH_TIMEOUT),
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; BlogAdmin/1.0; title-resolver)' },
+    });
+    if (!res.ok) return '';
+    const contentType = res.headers.get('content-type') || '';
+    if (!/text\/html|application\/xhtml/i.test(contentType)) return '';
+    const buf = await readLimitedBuffer(res, TITLE_MAX_BYTES);
+    if (!buf.length) return '';
+    let charset = /charset=["']?([\w-]+)/i.exec(contentType)?.[1] || null;
+    if (!charset) {
+      const m = /<meta[^>]+charset=["']?([\w-]+)/i.exec(buf.subarray(0, 2048).toString('latin1'));
+      if (m) charset = m[1];
+    }
+    let text;
+    try {
+      text = charset ? new TextDecoder(charset).decode(buf) : buf.toString('utf8');
+    } catch {
+      text = buf.toString('utf8');
+    }
+    const m = /<title[^>]*>([\s\S]*?)<\/title>/i.exec(text);
+    if (!m) return '';
+    return decodeHtmlEntities(m[1]).replace(/\s+/g, ' ').trim().slice(0, 200);
+  } catch {
+    return '';
+  }
+}
+
+/** 保存项目条目时：仅对 title 为空且有网址的条目自动解析（解析失败保持空，前端兜底显示裸网址） */
+async function resolveProjectTitles(projects) {
+  return Promise.all((projects || []).map(async (p) => {
+    if (p.title || !p.url) return p;
+    return { ...p, title: await fetchPageTitle(p.url) };
+  }));
+}
+
 // urlencoded body 中数组以 JSON 字符串传输，统一解析
 function parseJsonArray(v) {
   if (Array.isArray(v)) return v;
@@ -1093,6 +1150,7 @@ app.route('/api/about')
       const body = req.body || {};
       const identityArr = parseJsonArray(body.identity);
       const interestsArr = parseJsonArray(body.interests);
+      const projectsArr = parseJsonArray(body.projects);
       const paragraphsArr = parseJsonArray(body.paragraphs);
       // 字符串字段：未提交（undefined/null）时保留旧值；提交空串则清空（如移除头像）
       const strField = (v, prevVal, max) => (v == null ? (prevVal || '') : cleanAboutStr(v, max));
@@ -1110,6 +1168,10 @@ app.route('/api/about')
         quoteText: strField(body.quoteText, prev.quoteText || ''),
         interestsTitle: strField(body.interestsTitle, prev.interestsTitle || ''),
         interests: interestsArr ? cleanAboutItems(interestsArr, ['index', 'name', 'note']) : (prev.interests || []),
+        projectsTitle: strField(body.projectsTitle, prev.projectsTitle || ''),
+        projects: projectsArr
+          ? await resolveProjectTitles(cleanAboutItems(projectsArr, ['index', 'name', 'url', 'title']))
+          : (prev.projects || []),
       };
       await writeFile(ABOUT_JSON, JSON.stringify(next, null, 2) + '\n', 'utf-8');
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -1119,6 +1181,18 @@ app.route('/api/about')
       res.status(500).json({ error: '服务器内部错误' });
     }
   });
+
+// 单行“解析标题”按钮：给定网址返回 <title>（解析失败返回空串）
+app.post('/api/about/resolve-title', express.json(), async (req, res) => {
+  try {
+    const title = await fetchPageTitle(req.body?.url);
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.json({ success: true, title });
+  } catch (err) {
+    console.error('Resolve Title Error:', err.message);
+    res.status(500).json({ error: '解析失败' });
+  }
+});
 
 // ── Frontend customization API ──
 

@@ -2125,10 +2125,20 @@
           <button class="btn small danger" type="button" data-about-del>×</button>
         </div>`;
       }
-      return `<div class="about-interest-row" style="display:flex;gap:8px;align-items:center">
+      if (kind === 'interest') {
+        return `<div class="about-interest-row" style="display:flex;gap:8px;align-items:center">
+          <input class="ai-index" placeholder="序号" value="${escAttr(item.index || '')}" style="width:50px" />
+          <input class="ai-name" placeholder="名称" value="${escAttr(item.name || '')}" style="width:130px" />
+          <input class="ai-note" placeholder="链接/备注（粘贴 http(s) 链接自动可跳转）" value="${escAttr(item.note || '')}" style="flex:1" />
+          <button class="btn small danger" type="button" data-about-del>×</button>
+        </div>`;
+      }
+      return `<div class="about-project-row" style="display:flex;gap:8px;align-items:center">
         <input class="ai-index" placeholder="序号" value="${escAttr(item.index || '')}" style="width:50px" />
-        <input class="ai-name" placeholder="名称" value="${escAttr(item.name || '')}" style="width:130px" />
-        <input class="ai-note" placeholder="链接/备注（粘贴 http(s) 链接自动可跳转）" value="${escAttr(item.note || '')}" style="flex:1" />
+        <input class="ai-name" placeholder="名称" value="${escAttr(item.name || '')}" style="width:110px" />
+        <input class="ai-url" placeholder="网址 https://…" value="${escAttr(item.url || '')}" style="flex:1" />
+        <input class="ai-title" placeholder="网页标题（留空则保存时自动解析）" value="${escAttr(item.title || '')}" style="width:200px" />
+        <button class="btn small" type="button" data-about-title title="抓取网页 <title> 填入标题框">⤓ 解析</button>
         <button class="btn small danger" type="button" data-about-del>×</button>
       </div>`;
     }
@@ -2140,6 +2150,7 @@
       $('#btnSave').disabled = false;
       const identity = data.identity || [];
       const interests = data.interests || [];
+      const projects = data.projects || [];
       $('#editorContainer').innerHTML = `
         <div class="editor">
           <div class="form-group">
@@ -2192,6 +2203,16 @@
             <div id="aboutInterestsRows" style="display:flex;flex-direction:column;gap:6px">${interests.map(it => aboutRowTemplate('interest', it)).join('')}</div>
             <button class="btn small" type="button" id="btnAddInterest" style="align-self:flex-start;margin-top:6px">＋ 添加一项</button>
           </div>
+
+          <div class="form-group">
+            <label>项目列表标题</label><input id="fProjectsTitle" value="${escAttr(data.projectsTitle || '')}" placeholder="我的项目" />
+          </div>
+          <div class="form-group">
+            <label>项目条目（序号 / 名称 / 网址 / 网页标题）</label>
+            <div id="aboutProjectsRows" style="display:flex;flex-direction:column;gap:6px">${projects.map(it => aboutRowTemplate('project', it)).join('')}</div>
+            <button class="btn small" type="button" id="btnAddProject" style="align-self:flex-start;margin-top:6px">＋ 添加一项</button>
+            <small style="display:block;color:#5a5a50;font-size:10px;margin-top:4px">网址解析：标题留空时保存会自动抓取网页 &lt;title&gt;；也可点行内「⤓ 解析」即时抓取后手动修改。</small>
+          </div>
         </div>`;
 
       setupUpload();
@@ -2207,11 +2228,40 @@
         div.innerHTML = aboutRowTemplate('interest', {});
         rows.appendChild(div.firstElementChild);
       };
-      // 删除行（事件委托）
-      document.querySelectorAll('#aboutIdentityRows, #aboutInterestsRows').forEach(container => {
+      $('#btnAddProject').onclick = () => {
+        const rows = $('#aboutProjectsRows');
+        const div = document.createElement('div');
+        div.innerHTML = aboutRowTemplate('project', {});
+        rows.appendChild(div.firstElementChild);
+      };
+      // 删除行 / 解析标题（事件委托）
+      document.querySelectorAll('#aboutIdentityRows, #aboutInterestsRows, #aboutProjectsRows').forEach(container => {
         container.addEventListener('click', e => {
           const btn = e.target.closest('[data-about-del]');
-          if (btn) btn.closest('div.about-identity-row, div.about-interest-row')?.remove();
+          if (btn) btn.closest('div.about-identity-row, div.about-interest-row, div.about-project-row')?.remove();
+          const titleBtn = e.target.closest('[data-about-title]');
+          if (titleBtn) {
+            const row = titleBtn.closest('div.about-project-row');
+            const urlInput = row.querySelector('.ai-url');
+            const titleInput = row.querySelector('.ai-title');
+            const url = (urlInput.value || '').trim();
+            if (!url) { toast('请先填写网址再解析'); return; }
+            titleBtn.disabled = true;
+            titleBtn.textContent = '解析中…';
+            apiFetch(ABOUT_API + '/resolve-title', {
+              method: 'POST',
+              body: JSON.stringify({ url }),
+              headers: { 'Content-Type': 'application/json' },
+            })
+              .then(res => res.json())
+              .then(data => {
+                if (data.error) { toast(data.error); return; }
+                titleInput.value = data.title || '';
+                toast(data.title ? '已解析：' + data.title : '未能解析到标题（可能被反爬或非 HTML）');
+              })
+              .catch(err => toast('解析失败: ' + err.message))
+              .finally(() => { titleBtn.disabled = false; titleBtn.textContent = '⤓ 解析'; });
+          }
         });
       });
       refreshAvatarPreview();
@@ -2238,6 +2288,8 @@
         quoteText: $('#fQuoteText')?.value?.trim() || '',
         interestsTitle: $('#fInterestsTitle')?.value?.trim() || '',
         interests: collect('#aboutInterestsRows .about-interest-row', [['index', 'ai-index'], ['name', 'ai-name'], ['note', 'ai-note']]),
+        projectsTitle: $('#fProjectsTitle')?.value?.trim() || '',
+        projects: collect('#aboutProjectsRows .about-project-row', [['index', 'ai-index'], ['name', 'ai-name'], ['url', 'ai-url'], ['title', 'ai-title']]),
       };
 
       try {
@@ -2253,6 +2305,8 @@
         fd.set('interestsTitle', payload.interestsTitle);
         fd.set('identity', JSON.stringify(payload.identity));
         fd.set('interests', JSON.stringify(payload.interests));
+        fd.set('projectsTitle', payload.projectsTitle);
+        fd.set('projects', JSON.stringify(payload.projects));
         const res = await apiFetch(ABOUT_API, { method: 'PUT', body: fd, headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
         const data = await res.json();
         if (data.error) { toast(data.error); return; }
