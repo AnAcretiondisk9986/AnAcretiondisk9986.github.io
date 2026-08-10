@@ -1915,8 +1915,6 @@ main {
   width: min(88%, 400px);
   margin-bottom: 46px;
   color: var(--gold);
-  opacity: 0.72;
-  transform: rotate(8deg);
 }
 
 .gallery-header-mark dl {
@@ -2972,8 +2970,6 @@ main {
   width: min(88%, 400px);
   margin-bottom: 46px;
   color: var(--gold);
-  opacity: 0.72;
-  transform: rotate(-6deg);
 }
 
 .guestbook-header-mark dl {
