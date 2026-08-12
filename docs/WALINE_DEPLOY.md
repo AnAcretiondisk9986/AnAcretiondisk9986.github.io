@@ -25,7 +25,7 @@
    | `AUTHOR_EMAIL`         | 是        | 你的邮箱（用于邮件通知等）                                                                                                     |
    | `JWT_TOKEN`            | 是        | 任意随机长字符串（管理令牌签名密钥，例如 `openssl rand -hex 32`）                                                                      |
    | `SITE_NAME`            | 建议       | `Acretiondisk`                                                                                                    |
-   | `SITE_URL`             | 建议       | `https://anacretiondisk9986.github.io/`                                                                           |
+   | `SITE_URL`             | 建议       | `https://acretiondisk.top/`                                                                                       |
    | `DISABLE_REGION`       | 不要设置     | 不设置即默认显示 IP 属地；若设为 `true` 会关闭属地显示                                                                                 |
    | `IPQPS`                | 可选       | 同一 IP 发布间隔秒数，默认 60                                                                                                |
    

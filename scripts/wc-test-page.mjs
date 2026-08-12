@@ -39,7 +39,7 @@ html,body{margin:0;background:#191713}
 </head>
 <body>
 <div data-wordcloud-box style="width:600px;margin:20px;background:var(--paper-light);border:1px solid #555">
-<canvas data-wordcloud data-words='${words}' data-site="https://anacretiondisk9986.github.io/"></canvas>
+<canvas data-wordcloud data-words='${words}' data-site="https://acretiondisk.top/"></canvas>
 <div data-wordcloud-tip hidden></div>
 </div>
 <pre id="out">waiting</pre>
