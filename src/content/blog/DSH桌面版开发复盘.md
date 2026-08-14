@@ -3,6 +3,7 @@ title: "DSH 桌面版开发复盘：用 Go + go-webview2 把一个 Agent 运行�
 description: "把 DeepSeek Harness（DSH）做成轻量化 Windows 桌面版：Go + go-webview2 外壳、go:embed 内嵌便携 Node 与完整依赖树、自解压自安装 exe、无边框自绘标题栏。复盘从 0 到发布踩过的 12 个坑与可迁移的桌面化方法论。"
 pubDate: "2026-08-14"
 dayIndex: 2
+cover: "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/cover_1786715273185_1786715273187.webp"
 tags:
   - 技术
   - 复盘

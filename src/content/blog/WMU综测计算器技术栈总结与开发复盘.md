@@ -3,7 +3,7 @@ title: WMU 综测计算器技术栈总结与开发复盘：零依赖纯前端的
 description: 温医大综测计算器的技术栈全解：零依赖纯前端如何实现双方案计算、教务成绩粘贴导入、13 学院转专业规则数据化，以及 81 个零安装单测与 GitHub Actions CI 的工程化闭环。
 pubDate: "2026-08-14"
 dayIndex: 1
-cover: "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/index-view_1786690679140.webp"
+cover: "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/cover_1786715883452_1786715883456.webp"
 tags:
   - 技术
   - 复盘
