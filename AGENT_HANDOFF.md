@@ -2,6 +2,14 @@
 
 > 本文件已在用户授权下公开于 GitHub 仓库。每位 Agent 完成工作后在此记录变更。
 
+**📝 发布《WMU 综测计算器技术栈总结与开发复盘》+ 修复 Pages 部署失败（2026-08-14）**
+
+- **发布**：经管理面板 API（`POST /api/posts` + `/api/push`）发布新文章「WMU 综测计算器技术栈总结与开发复盘：零依赖纯前端的完整形态」（slug `wmu综测计算器技术栈总结与开发复盘`，2026-08-14 第 1 篇，短链 `/s/1usxfnh`）。4 张项目截图（综测/转专业页各视口+整页）经 `/api/upload` 上传至 `blog-images` 仓库并转 WebP（jsDelivr 外链），截图内容经本地 Ollama qwen3-vl-4b 验证渲染正常。
+- **修复**（`.github/workflows/deploy.yml`）：`actions/configure-pages@v5` → `@v6`——2026-08-14 起 GitHub Actions 强制 Node 20 弃用迁移（actions 默认跑 Node 24），configure-pages@v5 在 Node 24 下「Setup Pages」步骤报 `Get Pages site failed: HttpError` 导致部署失败（`4658368` 失败、`ba7f739` 为最后一个成功）。升级 @v6（2026-03-25 发布，适配 Node 24）后部署恢复（`eefc493` 成功，58 页）。
+- **验证**：线上 `https://acretiondisk.top/blog/wmu综测计算器技术栈总结与开发复盘/` 200；4 张截图、封面、首页与卷册目录均正常；短链 `/s/1usxfnh` 正常。
+
+---
+
 **🔒 v3.5.3 管理面板安全加固后续：认证口令持久化 + 文档同步（2026-08-05，未发布，blog-template 未同步）**
 
 - **背景**：v3.5.3 安全提交（`09128eb Harden admin authentication and remote URL handling`）移除默认口令 `acr-admin` 后出现运维问题——未设 `ADMIN_TOKEN` 时每次重启随机口令都变，外部脚本/curl 调 API 会失效；且 README/AGENT_HANDOFF 仍描述旧默认口令。
