@@ -2,6 +2,13 @@
 
 > 本文件已在用户授权下公开于 GitHub 仓库。每位 Agent 完成工作后在此记录变更。
 
+**📝 发布《DSH 桌面版开发复盘》博文（2026-08-14）**
+
+- **发布**：新增文章「DSH 桌面版开发复盘：用 Go + go-webview2 把一个 Agent 运行时打包成双击即用的 exe」（slug `dsh桌面版开发复盘`，2026-08-14 第 2 篇，`draft: false`）。内容基于 DSH 桌面版项目（`DSH-ACEDIT/apps/desktop`）的 `HANDOFF.md` 交接文档与 `README.md` 整理，复盘从 0 到发布的全过程：Go + go-webview2 外壳、go:embed 内嵌便携 Node 与依赖树、12 个踩坑记录（.NET 尾部标记、Node ≥ v22.15.0 的 `node:zlib` zstd 导出、npm 11 allow-scripts、无边框窗口 WndProc 子类化等）与 7 条可迁移方法论。
+- **说明**：本文为纯文字复盘，未配截图/封面（可后续补传 blog-images 仓库）。
+
+---
+
 **📝 发布《WMU 综测计算器技术栈总结与开发复盘》+ 修复 Pages 部署失败（2026-08-14）**
 
 - **发布**：经管理面板 API（`POST /api/posts` + `/api/push`）发布新文章「WMU 综测计算器技术栈总结与开发复盘：零依赖纯前端的完整形态」（slug `wmu综测计算器技术栈总结与开发复盘`，2026-08-14 第 1 篇，短链 `/s/1usxfnh`）。4 张项目截图（综测/转专业页各视口+整页）经 `/api/upload` 上传至 `blog-images` 仓库并转 WebP（jsDelivr 外链），截图内容经本地 Ollama qwen3-vl-4b 验证渲染正常。
