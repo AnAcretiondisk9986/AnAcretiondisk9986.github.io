@@ -13,7 +13,7 @@
 
 - **发布**：经管理面板 API（`POST /api/posts` + `/api/push`）发布新文章「WMU 综测计算器技术栈总结与开发复盘：零依赖纯前端的完整形态」（slug `wmu综测计算器技术栈总结与开发复盘`，2026-08-14 第 1 篇，短链 `/s/1usxfnh`）。4 张项目截图（综测/转专业页各视口+整页）经 `/api/upload` 上传至 `blog-images` 仓库并转 WebP（jsDelivr 外链），截图内容经本地 Ollama qwen3-vl-4b 验证渲染正常。
 - **修复**（`.github/workflows/deploy.yml`）：`actions/configure-pages@v5` → `@v6`——2026-08-14 起 GitHub Actions 强制 Node 20 弃用迁移（actions 默认跑 Node 24），configure-pages@v5 在 Node 24 下「Setup Pages」步骤报 `Get Pages site failed: HttpError` 导致部署失败（`4658368` 失败、`ba7f739` 为最后一个成功）。升级 @v6（2026-03-25 发布，适配 Node 24）后部署恢复（`eefc493` 成功，58 页）。
-- **验证**：线上 `https://acretiondisk.top/blog/wmu综测计算器技术栈总结与开发复盘/` 200；4 张截图、封面、首页与卷册目录均正常；短链 `/s/1usxfnh` 正常。
+- **验证**：线上 `https://blog.acretiondisk.top/blog/wmu综测计算器技术栈总结与开发复盘/` 200；4 张截图、封面、首页与卷册目录均正常；短链 `/s/1usxfnh` 正常。
 
 ---
 
@@ -327,7 +327,7 @@
 
 - 本地路径：`C:\Users\AnAcretiondisk\Documents\个人博客`
 - 仓库：`git@github.com:AnAcretiondisk9986/AnAcretiondisk9986.github.io.git`（SSH，ED25519 密钥已配置）
-- 线上：`https://anacretiondisk9986.github.io/`
+- 线上：`https://blog.acretiondisk.top/`
 - 技术栈：Astro (static) + Markdown Content Collections + GitHub Actions + GitHub Pages
 - 部署：push `main` → Actions (Node 22) → `npm ci` → `npm run build` → deploy `dist/`
 - 包管理器：npm

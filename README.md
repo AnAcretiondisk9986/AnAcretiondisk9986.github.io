@@ -1,6 +1,6 @@
 # Acretiondisk Blog — 更新日志
 
-> 使用 Astro 构建的个人博客，部署到 GitHub Pages（`https://acretiondisk.top/`）。
+> 使用 Astro 构建的个人博客，部署到 GitHub Pages（`https://blog.acretiondisk.top/`）。
 > 开发版本：**3.5.3**（2026-08-05）· 最新 Release：[v3.5.2](https://github.com/AnAcretiondisk9986/AnAcretiondisk9986.github.io/releases/latest)
 
 ---
@@ -36,7 +36,7 @@
 
 ### 📎 文章分享短链（自托管，免第三方服务）
 
-- 文章页侧栏新增「**生成分享短链**」按钮：点击展示短链（形如 `https://anacretiondisk9986.github.io/s/<短码>`）并可一键复制。短链为纯 ASCII，**彻底解决中文 slug 链接复制时被百分号转码拉长、难分享的问题**（如 120+ 字符的转码链接缩短为 45 字符）。
+- 文章页侧栏新增「**生成分享短链**」按钮：点击展示短链（形如 `https://blog.acretiondisk.top/s/<短码>`）并可一键复制。短链为纯 ASCII，**彻底解决中文 slug 链接复制时被百分号转码拉长、难分享的问题**（如 120+ 字符的转码链接缩短为 45 字符）。
 - 实现：构建时为每篇非草稿文章自动生成 `/s/<短码>` 静态跳转页——短码由 slug 的 sha256 前 8 位 hex 转 base36 确定性生成（6~7 位字母数字，同一文章永远同一短码），跳转用 meta refresh + JS 双保险；`noindex` 防搜索引擎收录中转页；短码冲突（概率 ~2⁻³²）时构建直接报错提示。
 - 不依赖任何第三方短链 API，免费、永久有效、境内可直接访问。
 
