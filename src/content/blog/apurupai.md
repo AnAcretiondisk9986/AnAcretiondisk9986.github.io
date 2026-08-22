@@ -2,11 +2,12 @@
 title: "补一下昨天到的苹果乐。Apurupai!"
 description: 分享
 pubDate: "2026-07-31"
-dayIndex: 2 # 当日第 2 篇
+dayIndex: 2
 tags:
   - 日常
   - 分享
 draft: false
+access: authorized
 ---
 
 ![img (2).jpg](https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/img--2-_1785475469058.webp)
