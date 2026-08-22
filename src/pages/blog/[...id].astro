@@ -8,7 +8,7 @@ import { buildWordCloud } from '../../lib/wordcloud';
 import { shortIdForPath } from '../../lib/shortlink';
 
 export async function getStaticPaths() {
-  const posts = await getCollection('blog', ({ data }) => !data.draft);
+  const posts = await getCollection('blog', ({ data }) => !data.draft && data.access !== 'admin');
   const dayCounts = new Map<string, number>();
   for (const post of posts) {
     const key = post.data.pubDate.toISOString().slice(0, 10);
@@ -31,6 +31,7 @@ interface Props {
 
 const { post, folioCode } = Astro.props;
 const { Content } = await render(post);
+const isAuthorized = post.data.access === 'authorized';
 
 // 单篇正文词频统计:词云只反映这篇文章的关键词
 const articleWords = buildWordCloud(
@@ -64,7 +65,8 @@ const fmtMinute = (d: Date) => {
         <div><dt><ThemeCopy minimal="文章编号" trace="条目编号" /></dt><dd>{folioCode}</dd></div>
         <div><dt><ThemeCopy minimal="标签" trace="分类标签" /></dt><dd>{post.data.tags.join(' / ') || '未分类'}</dd></div>
         <div><dt><ThemeCopy minimal="作者" trace="记录者" /></dt><dd>Acretiondisk</dd></div>
-        <div><dt>状态</dt><dd><ThemeCopy minimal="公开" trace="公开阅览" /></dd></div>
+        <div><dt>状态</dt><dd><ThemeCopy minimal={isAuthorized ? '授权阅览' : '公开'} trace={isAuthorized ? '验证后阅览' : '公开阅览'} /></dd></div>
+        <div><dt>私密通道</dt><dd><a href="/private/">私密文章 ↗</a></dd></div>
       </dl>
 
       <div class="share-link" data-shortlink>
@@ -108,9 +110,21 @@ const fmtMinute = (d: Date) => {
 
       <div class="article-ornament" aria-hidden="true"><span>✦</span></div>
 
-      <div class="prose">
-        <Content />
-      </div>
+      {isAuthorized ? (
+        <div class="access-gate" data-authorized-gate data-authorized-article={post.id}>
+          <p class="access-gate__eyebrow">授权级文章</p>
+          <h2>输入站长的网名后继续阅读</h2>
+          <p>答案不区分大小写。</p>
+          <form data-authorized-form>
+            <input type="text" autocomplete="off" required placeholder="站长的网名" aria-label="站长的网名" />
+            <button type="submit">验证并打开</button>
+          </form>
+          <p class="access-gate__error" data-authorized-error role="alert"></p>
+        </div>
+      ) : (
+        <div class="prose"><Content /></div>
+      )}
+      {isAuthorized && <template data-authorized-body><div class="prose"><Content /></div></template>}
 
       <footer class="article-endmark">
         <span><ThemeCopy minimal="读完了" trace="FINIS" /></span>
@@ -137,6 +151,31 @@ const fmtMinute = (d: Date) => {
     });
   }
 </script>
+
+{isAuthorized && <script is:inline data-astro-rerun>
+  (() => {
+    const form = document.querySelector('[data-authorized-form]');
+    const gate = document.querySelector('[data-authorized-gate]');
+    const error = document.querySelector('[data-authorized-error]');
+    if (!form || !gate || !error) return;
+    const key = `acr-authorized:${gate.dataset.authorizedArticle || 'article'}`;
+    const unlocked = sessionStorage.getItem(key) === '1';
+    const reveal = () => {
+      gate.outerHTML = '<div class="prose" data-authorized-content></div>';
+      const target = document.querySelector('[data-authorized-content]');
+      if (target) target.innerHTML = document.querySelector('template[data-authorized-body]')?.innerHTML || '';
+    };
+    if (unlocked) reveal();
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const value = String(new FormData(form).values().next().value || '').trim().toLowerCase();
+      if (value === 'anacretiondisk' || value === 'acretiondisk') {
+        sessionStorage.setItem(key, '1');
+        reveal();
+      } else error.textContent = '网名不正确，请再试一次。';
+    });
+  })();
+</script>}
 
 <script is:inline data-astro-rerun>
   // 阅览次数（不蒜子统计）：按当前页面 URL 计数，境内可直连。

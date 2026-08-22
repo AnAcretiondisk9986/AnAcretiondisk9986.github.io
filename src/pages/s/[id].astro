@@ -8,7 +8,7 @@ import { shortIdForPath } from '../../lib/shortlink';
  * 短码与文章页侧栏展示的「分享短链」由同一函数 shortIdForPath 生成,保证一致。
  */
 export async function getStaticPaths() {
-  const posts = await getCollection('blog', ({ data }) => !data.draft);
+  const posts = await getCollection('blog', ({ data }) => !data.draft && data.access !== 'admin');
   const site = import.meta.env.SITE;
   const used = new Map<string, string>();
   return posts.map((post) => {

@@ -1,0 +1,56 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import ThemeCopy from '../../components/ThemeCopy.astro';
+import privateAccess from '../../data/private-access.json';
+
+const posts = (await getCollection('blog', ({ data }) => !data.draft && data.access === 'admin'))
+  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+const passwordHash = privateAccess.passwordHash;
+---
+
+<BaseLayout title="私密文章" description="管理员级文章入口。">
+  <main class="private-index">
+    <header class="catalog-header">
+      <div class="catalog-title">
+        <p class="eyebrow">PRIVATE ARCHIVE</p>
+        <h1><ThemeCopy minimal="私密文章" trace="私密卷册" /></h1>
+        <p>此处文章不会出现在公开文章目录中。</p>
+      </div>
+    </header>
+    <div class="access-gate" data-private-index-gate>
+      <p class="access-gate__eyebrow">管理员级文章</p>
+      <h2>输入密码后查看私密目录</h2>
+      <form data-private-index-form><input type="password" autocomplete="current-password" required placeholder="私密文章密码" aria-label="私密文章密码" /><button type="submit">验证并打开</button></form>
+      <p class="access-gate__error" data-private-index-error role="alert"></p>
+    </div>
+    <template data-private-index-body><div class="private-list">
+      {posts.length ? posts.map((post) => (
+        <article class="private-entry">
+          <div><span class="private-entry__mark">LOCKED</span><h2><a href={`/private/${post.id}/`}>{post.data.title}</a></h2><p>{post.data.description}</p></div>
+          <time datetime={post.data.pubDate.toISOString()}>{post.data.pubDate.toISOString().slice(0, 10)}</time>
+        </article>
+      )) : <p class="private-empty">暂无私密文章。</p>}
+    </div></template>
+  </main>
+</BaseLayout>
+
+<script is:inline define:vars={{ passwordHash }}>
+  (() => {
+    const gate = document.querySelector('[data-private-index-gate]');
+    const form = document.querySelector('[data-private-index-form]');
+    const error = document.querySelector('[data-private-index-error]');
+    const body = document.querySelector('template[data-private-index-body]');
+    if (!gate || !form || !error || !body) return;
+    const reveal = () => gate.replaceWith(body.content.cloneNode(true));
+    if (sessionStorage.getItem('acr-private-index') === '1') reveal();
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const password = String(new FormData(form).values().next().value || '');
+      const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(password));
+      const hash = [...new Uint8Array(digest)].map((v) => v.toString(16).padStart(2, '0')).join('');
+      if (hash === passwordHash) { sessionStorage.setItem('acr-private-index', '1'); reveal(); }
+      else error.textContent = '密码不正确。';
+    });
+  })();
+</script>

@@ -204,6 +204,7 @@
         <button class="mode-tab" data-mode="gallery">画廊</button>
         <button class="mode-tab" data-mode="about">关于</button>
         <button class="mode-tab" data-mode="frontend">前端定制</button>
+        <button class="mode-tab" data-mode="access">访问控制</button>
         <button class="mode-tab" data-mode="guestbook">留言</button>
       </div>
     </div>
@@ -331,6 +332,7 @@
   <script src="/admin/vendor/toastui/color-syntax.js"></script>
   <script>
     const API = '/api/posts';
+    const PRIVATE_ACCESS_API = '/api/private-access';
     const TOKEN = '__ADMIN_TOKEN__';
     let currentSlug = null, posts = [];
     let currentMode = 'posts', galleryItems = [], currentGalleryId = null;
@@ -357,6 +359,22 @@
       } catch(e) { toast('加载失败: '+e.message) }
     }
 
+    function renderPrivateAccess() {
+      $('#editorContainer').innerHTML = `<div class="editor" style="max-width:640px"><div class="form-group"><label>管理员级文章密码</label><input id="fPrivatePassword" type="password" autocomplete="new-password" placeholder="输入新密码（至少 4 个字符）" /></div><button class="btn primary" id="btnPrivatePassword">保存密码</button><p style="color:#6a6a70;font-size:11px;line-height:1.7;margin-top:12px">密码以 SHA-256 哈希保存。修改后需要重新构建并发布博客，线上私密文章页面才会使用新密码。</p></div>`;
+      $('#btnPrivatePassword').onclick = savePrivateAccess;
+    }
+
+    async function savePrivateAccess() {
+      const password = $('#fPrivatePassword')?.value || '';
+      if (password.length < 4) { toast('密码至少需要 4 个字符'); return; }
+      try {
+        const res = await apiFetch(PRIVATE_ACCESS_API, { method: 'PUT', body: new URLSearchParams({ password }), headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
+        const data = await res.json();
+        if (data.error) { toast(data.error); return; }
+        $('#fPrivatePassword').value = ''; toast('私密文章密码已保存');
+      } catch (e) { toast('保存失败: ' + e.message); }
+    }
+
     function renderList() {
       const el = $('#postList');
       if(!posts.length){el.innerHTML='<div class="empty-state" style="padding:30px">暂无文章</div>';return}
@@ -364,7 +382,7 @@
         <div class="post-item${p.slug===currentSlug?' active':''}" data-slug="${p.slug}">
           <div class="info" onclick="selectPost('${p.slug}')">
             <div class="title">${esc(p.title||p.slug)}</div>
-            <div class="meta">${p.pubDate||''}${p.dayIndex?` · #${p.dayIndex}`:''}${p.draft?' <span class="draft-badge">草稿</span>':''}</div>
+            <div class="meta">${p.pubDate||''}${p.dayIndex?` · #${p.dayIndex}`:''}${p.draft?' <span class="draft-badge">草稿</span>':''}${p.access&&p.access!=='public'?` <span class="draft-badge">${p.access==='admin'?'管理员':'授权'}</span>`:''}</div>
           </div>
           <div class="actions">
             <button class="btn small danger" onclick="event.stopPropagation();deletePost('${p.slug}')">×</button>
@@ -429,6 +447,7 @@
             <div class="toggle${post.draft?'':' on'}" id="fDraftToggle" onclick="toggleDraft()"></div>
             <span>发布</span><span style="font-size:10px;color:#6a6a70" id="draftStatus">${post.draft?'当前为草稿':'已发布'}</span>
           </div>
+          <div class="form-group"><label>访问权限</label><select id="fAccess"><option value="public" ${post.access==='public'?'selected':''}>访客级 · 公开查看</option><option value="authorized" ${post.access==='authorized'?'selected':''}>授权级 · 验证站长网名</option><option value="admin" ${post.access==='admin'?'selected':''}>管理员级 · 私密文章密码</option></select></div>
           <div class="form-group editor-wrap" style="flex:1">
             <div class="editor-toolbar">
               <label>正文</label>
@@ -500,6 +519,7 @@
             <div class="toggle on" id="fDraftToggle" onclick="toggleDraft()"></div>
             <span>发布</span><span style="font-size:10px;color:#6a6a70" id="draftStatus">已发布</span>
           </div>
+          <div class="form-group"><label>访问权限</label><select id="fAccess"><option value="public" selected>访客级 · 公开查看</option><option value="authorized">授权级 · 验证站长网名</option><option value="admin">管理员级 · 私密文章密码</option></select></div>
           <div class="form-group editor-wrap" style="flex:1">
             <div class="editor-toolbar">
               <label>正文</label>
@@ -560,6 +580,8 @@
       formData.set('dayIndex', $('#fDayIndex')?.value || '');
       formData.set('tags', tags); formData.set('content', content);
       formData.set('draft', String(draft));
+      formData.set('access', $('#fAccess')?.value || 'public');
+
 
       try {
         const url = currentSlug ? `${API}/${currentSlug}` : API;
@@ -1570,7 +1592,7 @@
 
 
     document.addEventListener('keydown', e => {
-      if((e.ctrlKey||e.metaKey)&&e.key==='s'){e.preventDefault();currentMode==='gallery'?saveGalleryItem():currentMode==='about'?saveAbout():currentMode==='frontend'?saveFrontend():currentMode==='guestbook'?null:savePost()}
+      if((e.ctrlKey||e.metaKey)&&e.key==='s'){e.preventDefault();currentMode==='gallery'?saveGalleryItem():currentMode==='about'?saveAbout():currentMode==='frontend'?saveFrontend():currentMode==='access'?savePrivateAccess():currentMode==='guestbook'?null:savePost()}
     });
 
     bindVideoModal();
@@ -1620,6 +1642,10 @@
         $('#editorContainer').innerHTML = '<div class="empty-state">加载前端配置…</div>';
         renderFrontendList();
         loadFrontend();
+      } else if (mode === 'access') {
+        currentSlug = null; currentGalleryId = null;
+        $('#editorTitle').textContent = '访问控制'; $('#btnNew').style.display = 'none'; $('#btnDelete').style.display = 'none'; $('#btnSave').style.display = 'none';
+        renderPrivateAccess();
       } else if (mode === 'guestbook') {
         currentSlug = null;
         $('#editorTitle').textContent = '留言管理（Waline）';
@@ -1643,7 +1669,7 @@
 
     // ── 按钮分发 ──
     $('#btnNew').onclick = () => currentMode === 'gallery' ? newGalleryItem() : newPost();
-    $('#btnRefresh').onclick = () => currentMode === 'gallery' ? loadGallery() : currentMode === 'about' ? loadAbout() : currentMode === 'frontend' ? loadFrontend() : currentMode === 'guestbook' ? loadGuestbookComments() : loadPosts();
+    $('#btnRefresh').onclick = () => currentMode === 'gallery' ? loadGallery() : currentMode === 'about' ? loadAbout() : currentMode === 'frontend' ? loadFrontend() : currentMode === 'access' ? renderPrivateAccess() : currentMode === 'guestbook' ? loadGuestbookComments() : loadPosts();
     $('#btnSave').onclick = () => currentMode === 'gallery' ? saveGalleryItem() : currentMode === 'about' ? saveAbout() : currentMode === 'frontend' ? saveFrontend() : savePost();
     $('#btnDelete').onclick = () => currentMode === 'gallery' ? (currentGalleryId && deleteGalleryItem(currentGalleryId)) : (currentSlug && deletePost(currentSlug));
     $('#btnPull').onclick = pullFromRemote;

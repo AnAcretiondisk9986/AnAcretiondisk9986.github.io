@@ -9,7 +9,7 @@ import { lookup as dnsLookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
 import { join, dirname, extname, basename, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { randomBytes } from 'node:crypto';
+import { randomBytes, createHash } from 'node:crypto';
 import matter from 'gray-matter';
 import { parseFile as parseAudioMeta } from 'music-metadata';
 
@@ -29,6 +29,8 @@ const FRONTEND_JSON = resolve(__dirname, 'src', 'data', 'frontend.json');
 const PORT = parseInt(process.env.PORT, 10) || 4322;
 const TOKEN_FILE = resolve(__dirname, '.admin-token');
 const ADMIN_HTML = resolve(__dirname, 'admin', 'index.html');
+const PRIVATE_ACCESS_FILE = resolve(__dirname, 'src', 'data', 'private-access.json');
+const DEFAULT_PRIVATE_PASSWORD = process.env.PRIVATE_ARTICLE_PASSWORD || 'AnAcretiondisk';
 
 /** 未设置 ADMIN_TOKEN 时：首次启动生成随机口令并持久化到 .admin-token，之后复用（重启后口令不变） */
 async function loadAdminToken() {
@@ -191,10 +193,26 @@ async function readPosts() {
       pubDate: safeDate(data.pubDate),
       tags: data.tags || [],
       draft: data.draft ?? false,
+      access: ['public', 'authorized', 'admin'].includes(data.access) ? data.access : 'public',
       dayIndex: data.dayIndex || undefined,
     });
   }
   return posts;
+}
+
+function privatePasswordHash(password) {
+  return createHash('sha256').update(String(password)).digest('hex');
+}
+
+async function readPrivateAccess() {
+  try {
+    const raw = JSON.parse(await readFile(PRIVATE_ACCESS_FILE, 'utf8'));
+    if (typeof raw.passwordHash === 'string' && /^[a-f0-9]{64}$/i.test(raw.passwordHash)) return raw;
+  } catch { /* initialize below */ }
+  const next = { passwordHash: privatePasswordHash(DEFAULT_PRIVATE_PASSWORD) };
+  await mkdir(dirname(PRIVATE_ACCESS_FILE), { recursive: true });
+  await writeFile(PRIVATE_ACCESS_FILE, JSON.stringify(next, null, 2) + '\n', 'utf8');
+  return next;
 }
 
 function parseDayIndex(raw) {
@@ -269,7 +287,7 @@ app.route('/api/posts')
   })
   .post(upload.none(), async (req, res) => {
     try {
-      const { title, description, cover, pubDate, dayIndex, tags, content, draft } = req.body;
+      const { title, description, cover, pubDate, dayIndex, tags, content, draft, access } = req.body;
       const candidate = (req.body.slug
         || (title || '').toLowerCase().replace(/[^a-z0-9\u4e00-\u9fff]+/g, '-').replace(/^-|-$/g, '')
         || 'untitled');
@@ -294,6 +312,7 @@ app.route('/api/posts')
         tagArray.forEach(t => fm.push(`  - ${yamlStr(t)}`));
       }
       fm.push(`draft: ${draft === 'true'}`);
+      fm.push(`access: ${['public', 'authorized', 'admin'].includes(access) ? access : 'public'}`);
       fm.push('---');
       fm.push('');
       fm.push(content || '');
@@ -325,6 +344,7 @@ app.route('/api/posts/:slug')
         dayIndex: data.dayIndex || undefined,
         tags: data.tags || [],
         draft: data.draft ?? false,
+        access: ['public', 'authorized', 'admin'].includes(data.access) ? data.access : 'public',
         content: content.trim(),
       });
     } catch (err) {
@@ -338,7 +358,7 @@ app.route('/api/posts/:slug')
       const oldChecked = validateSlug(req.params.slug);
       if (!oldChecked) return res.status(400).json({ error: '无效的 Slug' });
 
-      const { title, description, cover, pubDate, dayIndex, tags, content, draft, slug: newSlug } = req.body;
+      const { title, description, cover, pubDate, dayIndex, tags, content, draft, access, slug: newSlug } = req.body;
       const finalSlug = newSlug || req.params.slug;
       const newChecked = validateSlug(finalSlug);
       if (!newChecked) return res.status(400).json({ error: '新 Slug 包含无效字符或路径非法' });
@@ -362,6 +382,7 @@ app.route('/api/posts/:slug')
         tagArray.forEach(t => fm.push(`  - ${yamlStr(t)}`));
       }
       fm.push(`draft: ${draft === 'true'}`);
+      fm.push(`access: ${['public', 'authorized', 'admin'].includes(access) ? access : 'public'}`);
       fm.push('---');
       fm.push('');
       fm.push(content || '');
@@ -406,6 +427,29 @@ app.route('/api/posts/:slug')
       if (err.code === 'ENOENT') return res.status(404).json({ error: '文章不存在' });
       console.error('API Error:', err.message);
       res.status(500).json({ error: '服务器内部错误' });
+    }
+  });
+
+// 管理员级文章的访问口令（仅管理面板可读写，文章页只拿构建时生成的哈希）
+app.route('/api/private-access')
+  .get(async (_req, res) => {
+    try {
+      const settings = await readPrivateAccess();
+      res.json({ configured: Boolean(settings.passwordHash) });
+    } catch (err) {
+      res.status(500).json({ error: '读取私密文章设置失败' });
+    }
+  })
+  .put(upload.none(), async (req, res) => {
+    const password = String(req.body.password || '');
+    if (password.length < 4 || password.length > 200) return res.status(400).json({ error: '密码长度需为 4-200 个字符' });
+    try {
+      await mkdir(dirname(PRIVATE_ACCESS_FILE), { recursive: true });
+      await writeFile(PRIVATE_ACCESS_FILE, JSON.stringify({ passwordHash: privatePasswordHash(password) }, null, 2) + '\n', 'utf8');
+      res.json({ success: true });
+    } catch (err) {
+      console.error('Private access error:', err.message);
+      res.status(500).json({ error: '保存私密文章密码失败' });
     }
   });
 

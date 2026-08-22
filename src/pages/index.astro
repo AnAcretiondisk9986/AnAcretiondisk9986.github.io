@@ -7,7 +7,7 @@ import ThemeCopy from '../components/ThemeCopy.astro';
 import { safeLink } from '../lib/safe-link';
 import frontend from '../data/frontend.json';
 
-const posts = (await getCollection('blog', ({ data }) => !data.draft))
+const posts = (await getCollection('blog', ({ data }) => !data.draft && data.access !== 'admin'))
   .sort((a, b) =>
     b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
     || (b.data.dayIndex ?? 0) - (a.data.dayIndex ?? 0)

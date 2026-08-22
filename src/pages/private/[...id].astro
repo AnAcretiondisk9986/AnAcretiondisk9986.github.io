@@ -1,0 +1,61 @@
+---
+import { getCollection, render, type CollectionEntry } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import ThemeCopy from '../../components/ThemeCopy.astro';
+import privateAccess from '../../data/private-access.json';
+
+export async function getStaticPaths() {
+  const posts = await getCollection('blog', ({ data }) => !data.draft && data.access === 'admin');
+  return posts.map((post) => ({ params: { id: post.id }, props: { post } }));
+}
+
+interface Props { post: CollectionEntry<'blog'> }
+const { post } = Astro.props;
+const { Content } = await render(post);
+const passwordHash = privateAccess.passwordHash;
+---
+
+<BaseLayout title={`私密文章｜${post.data.title}`} description="管理员级文章。">
+  <main class="private-article" data-private-article={post.id}>
+    <a class="back-link" href="/private/">← 返回私密文章</a>
+    <div class="access-gate" data-private-gate>
+      <p class="access-gate__eyebrow">管理员级文章</p>
+      <h1>输入密码后查看</h1>
+      <p>密码由站长在管理系统中设置。</p>
+      <form data-private-form>
+        <input type="password" autocomplete="current-password" required placeholder="私密文章密码" aria-label="私密文章密码" />
+        <button type="submit">验证并打开</button>
+      </form>
+      <p class="access-gate__error" data-private-error role="alert"></p>
+    </div>
+    <template data-private-body>
+      <article class="article">
+        <header class="article-header"><div class="article-register"><span>PRIVATE ARTICLE</span><span>ACRETIONDISK</span></div><h1>{post.data.title}</h1><p class="article-deck">{post.data.description}</p><time datetime={post.data.pubDate.toISOString()}>发布 · {post.data.pubDate.toISOString().slice(0, 10)}</time></header>
+        <div class="article-ornament" aria-hidden="true"><span>✦</span></div>
+        <div class="prose"><Content /></div>
+      </article>
+    </template>
+  </main>
+</BaseLayout>
+
+<script is:inline define:vars={{ passwordHash }}>
+  (() => {
+    const root = document.querySelector('[data-private-article]');
+    const gate = root?.querySelector('[data-private-gate]');
+    const form = root?.querySelector('[data-private-form]');
+    const error = root?.querySelector('[data-private-error]');
+    const body = root?.querySelector('template[data-private-body]');
+    if (!root || !gate || !form || !error || !body) return;
+    const key = `acr-private:${root.dataset.privateArticle}`;
+    const reveal = () => { gate.replaceWith(body.content.cloneNode(true)); };
+    if (sessionStorage.getItem(key) === '1') reveal();
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const password = String(new FormData(form).values().next().value || '');
+      const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(password));
+      const hash = [...new Uint8Array(digest)].map((v) => v.toString(16).padStart(2, '0')).join('');
+      if (hash === passwordHash) { sessionStorage.setItem(key, '1'); reveal(); }
+      else error.textContent = '密码不正确。';
+    });
+  })();
+</script>
