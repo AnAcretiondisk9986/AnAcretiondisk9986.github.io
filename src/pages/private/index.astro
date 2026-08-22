@@ -52,7 +52,7 @@ const cloudWords = buildWordCloud(
   </main>
 </BaseLayout>
 
-<script is:inline define:vars={{ passwordHash }}>
+<script is:inline data-astro-rerun define:vars={{ passwordHash }}>
   (() => {
     const gate = document.querySelector('[data-private-index-gate]');
     const form = document.querySelector('[data-private-index-form]');
@@ -66,7 +66,7 @@ const cloudWords = buildWordCloud(
     };
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
-      const password = String(new FormData(form).values().next().value || '');
+      const password = String(new FormData(form).get('password') || '');
       const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(password));
       const hash = [...new Uint8Array(digest)].map((v) => v.toString(16).padStart(2, '0')).join('');
       if (hash === passwordHash) reveal();

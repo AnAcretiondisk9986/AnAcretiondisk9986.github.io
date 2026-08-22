@@ -115,7 +115,7 @@ const fmtMinute = (d: Date) => {
   </div>
 </BaseLayout>
 
-<script is:inline define:vars={{ passwordHash }}>
+<script is:inline data-astro-rerun define:vars={{ passwordHash }}>
   (() => {
     const root = document.querySelector('[data-private-article]');
     const gate = root?.querySelector('[data-private-gate]');
