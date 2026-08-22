@@ -5,9 +5,12 @@ import { firstImageFromBody } from '../lib/post-cover';
 
 interface Props {
   posts: CollectionEntry<'blog'>[];
+  basePath?: string;
+  private?: boolean;
 }
 
-const { posts } = Astro.props;
+const { posts, basePath = '/blog/', private: isPrivate = false } = Astro.props;
+const normalizedBasePath = basePath.endsWith('/') ? basePath : `${basePath}/`;
 const dayCounts = new Map<string, number>();
 
 for (const post of posts) {
@@ -55,6 +58,7 @@ const covers = new Map(posts.map((post) => [
     {posts.map((post, index) => {
       const cover = covers.get(post.id) ?? '';
       const dayKey = post.data.pubDate.toISOString().slice(0, 10);
+      const href = `${normalizedBasePath}${post.id}/`;
       return (
         <article class="catalog-entry" data-order-card data-order-date={dayKey} data-order-day-index={post.data.dayIndex ?? 0} data-order-position={index}>
           <div class="catalog-index">
@@ -64,7 +68,8 @@ const covers = new Map(posts.map((post) => [
             {cover && <img src={cover} alt="" loading={index < 3 ? 'eager' : 'lazy'} decoding="async" />}
           </figure>
           <div class="catalog-content">
-            <h2><a href={`/blog/${post.id}/`}>{post.data.title}</a></h2>
+            {isPrivate && <span class="private-entry__mark">LOCKED</span>}
+            <h2><a href={href}>{post.data.title}</a></h2>
             <p>{post.data.description}</p>
             {post.data.tags.length > 0 && (
               <ul class="tag-list" aria-label="标签">
@@ -79,7 +84,7 @@ const covers = new Map(posts.map((post) => [
               <span class="catalog-day-index">DAY {String(post.data.dayIndex ?? 0).padStart(2, '0')}</span>
             )}
           </time>
-          <a class="catalog-open" href={`/blog/${post.id}/`} aria-label={`阅读《${post.data.title}》`}><ThemeCopy minimal="阅读" trace="打开记录" /> ↗</a>
+          <a class="catalog-open" href={href} aria-label={`阅读《${post.data.title}》`}><ThemeCopy minimal="阅读" trace="打开记录" /> ↗</a>
         </article>
       );
     })}

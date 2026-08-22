@@ -1,12 +1,21 @@
 ---
 import { getCollection } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import PostCatalog from '../../components/PostCatalog.astro';
 import ThemeCopy from '../../components/ThemeCopy.astro';
+import WordCloud from '../../components/WordCloud.astro';
 import privateAccess from '../../data/private-access.json';
+import { buildWordCloud } from '../../lib/wordcloud';
 
 const posts = (await getCollection('blog', ({ data }) => !data.draft && data.access === 'admin'))
-  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+  .sort((a, b) =>
+    b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
+    || (b.data.dayIndex ?? 0) - (a.data.dayIndex ?? 0)
+    || b.id.localeCompare(a.id));
 const passwordHash = privateAccess.passwordHash;
+const cloudWords = buildWordCloud(
+  posts.map((p) => ({ title: p.data.title, body: p.body ?? '' })),
+);
 ---
 
 <BaseLayout title="私密文章" description="管理员级文章入口。">
@@ -17,6 +26,14 @@ const passwordHash = privateAccess.passwordHash;
         <h1><ThemeCopy minimal="私密文章" trace="私密卷册" /></h1>
         <p>此处文章不会出现在公开文章目录中。</p>
       </div>
+      <div class="catalog-mark">
+        <img class="archive-seal" src="/logo.webp" alt="" width="380" height="380" loading="lazy" />
+        <dl>
+          <div><dt><ThemeCopy minimal="文章总数" trace="私密馆藏总数" /></dt><dd>{String(posts.length).padStart(3, '0')}</dd></div>
+          <div><dt><ThemeCopy minimal="访问状态" trace="权限状态" /></dt><dd>需验证</dd></div>
+          <div><dt>排序规则</dt><dd data-order-text>由新至旧</dd></div>
+        </dl>
+      </div>
     </header>
     <div class="access-gate" data-private-index-gate>
       <p class="access-gate__eyebrow">管理员级文章</p>
@@ -24,14 +41,14 @@ const passwordHash = privateAccess.passwordHash;
       <form data-private-index-form><input name="password" type="password" autocomplete="current-password" required placeholder="私密文章密码" aria-label="私密文章密码" /><button type="submit">验证并打开</button></form>
       <p class="access-gate__error" data-private-index-error role="alert"></p>
     </div>
-    <template data-private-index-body><div class="private-list">
-      {posts.length ? posts.map((post) => (
-        <article class="private-entry">
-          <div><span class="private-entry__mark">LOCKED</span><h2><a href={`/private/${post.id}/`}>{post.data.title}</a></h2><p>{post.data.description}</p></div>
-          <time datetime={post.data.pubDate.toISOString()}>{post.data.pubDate.toISOString().slice(0, 10)}</time>
-        </article>
-      )) : <p class="private-empty">暂无私密文章。</p>}
-    </div></template>
+    <div data-private-index-body hidden>
+      <WordCloud words={cloudWords} title="关键词" traceTitle="私密关键词索引" />
+      {posts.length ? <PostCatalog posts={posts} basePath="/private/" private /> : <p class="private-empty">暂无私密文章。</p>}
+      <footer class="catalog-footer">
+        <span><ThemeCopy minimal="私密文章仅在验证后展示" trace="受权限控制的私密卷册" /></span>
+        <span>ACR / PRIVATE / {new Date().getFullYear()}</span>
+      </footer>
+    </div>
   </main>
 </BaseLayout>
 
@@ -42,14 +59,17 @@ const passwordHash = privateAccess.passwordHash;
     const error = document.querySelector('[data-private-index-error]');
     const body = document.querySelector('template[data-private-index-body]');
     if (!gate || !form || !error || !body) return;
-    const reveal = () => gate.replaceWith(body.content.cloneNode(true));
-    if (sessionStorage.getItem('acr-private-index') === '1') reveal();
+    const reveal = () => {
+      body.hidden = false;
+      gate.replaceWith(body);
+      document.dispatchEvent(new CustomEvent('astro:page-load'));
+    };
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
       const password = String(new FormData(form).values().next().value || '');
       const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(password));
       const hash = [...new Uint8Array(digest)].map((v) => v.toString(16).padStart(2, '0')).join('');
-      if (hash === passwordHash) { sessionStorage.setItem('acr-private-index', '1'); reveal(); }
+      if (hash === passwordHash) reveal();
       else error.textContent = '密码不正确。';
     });
   })();

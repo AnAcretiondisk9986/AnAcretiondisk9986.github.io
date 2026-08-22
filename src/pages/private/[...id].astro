@@ -124,19 +124,17 @@ const fmtMinute = (d: Date) => {
     const body = root?.querySelector('template[data-private-body]');
     const comments = root?.querySelector('[data-private-comments]');
     if (!root || !gate || !form || !error || !body) return;
-    const key = `acr-private:${root.dataset.privateArticle}`;
     const reveal = () => {
       gate.replaceWith(body.content.cloneNode(true));
       if (comments) comments.hidden = false;
       document.dispatchEvent(new CustomEvent('acr:private-revealed'));
     };
-    if (sessionStorage.getItem(key) === '1') reveal();
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
       const password = String(new FormData(form).get('password') || '');
       const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(password));
       const hash = [...new Uint8Array(digest)].map((v) => v.toString(16).padStart(2, '0')).join('');
-      if (hash === passwordHash) { sessionStorage.setItem(key, '1'); reveal(); }
+      if (hash === passwordHash) reveal();
       else error.textContent = '密码不正确。';
     });
   })();
