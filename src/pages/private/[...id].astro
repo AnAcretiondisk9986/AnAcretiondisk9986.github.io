@@ -6,7 +6,6 @@ import ThemeCopy from '../../components/ThemeCopy.astro';
 import WordCloud from '../../components/WordCloud.astro';
 import privateAccess from '../../data/private-access.json';
 import { buildWordCloud } from '../../lib/wordcloud';
-import { firstImageFromBody } from '../../lib/post-cover';
 
 export async function getStaticPaths() {
   const posts = await getCollection('blog', ({ data }) => !data.draft && data.access === 'admin');
@@ -33,7 +32,6 @@ interface Props {
 const { post, folioCode } = Astro.props;
 const { Content } = await render(post);
 const passwordHash = privateAccess.passwordHash;
-const cover = post.data.cover?.trim() || firstImageFromBody(post.body ?? '');
 const articleWords = buildWordCloud(
   [{ title: post.data.title, body: post.body ?? '' }],
   { maxWords: 24, minCount: 2 },
@@ -81,12 +79,6 @@ const fmtMinute = (d: Date) => {
         </div>
       </header>
 
-      {cover && (
-        <figure class="article-cover">
-          <img src={cover} alt={`${post.data.title}封面`} loading="eager" decoding="async" />
-        </figure>
-      )}
-
       <div class="article-ornament" aria-hidden="true"><span>✦</span></div>
 
       <div class="access-gate" data-private-gate>
@@ -117,6 +109,7 @@ const fmtMinute = (d: Date) => {
 
 <script is:inline data-astro-rerun define:vars={{ passwordHash }}>
   (() => {
+    const unlockKey = 'acr-private-admin-unlocked';
     const root = document.querySelector('[data-private-article]');
     const gate = root?.querySelector('[data-private-gate]');
     const form = root?.querySelector('[data-private-form]');
@@ -124,17 +117,24 @@ const fmtMinute = (d: Date) => {
     const body = root?.querySelector('template[data-private-body]');
     const comments = root?.querySelector('[data-private-comments]');
     if (!root || !gate || !form || !error || !body) return;
+    const isUnlocked = () => {
+      try { return localStorage.getItem(unlockKey) === passwordHash; } catch { return false; }
+    };
+    const rememberUnlock = () => {
+      try { localStorage.setItem(unlockKey, passwordHash); } catch {}
+    };
     const reveal = () => {
       gate.replaceWith(body.content.cloneNode(true));
       if (comments) comments.hidden = false;
       document.dispatchEvent(new CustomEvent('acr:private-revealed'));
     };
+    if (isUnlocked()) reveal();
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
       const password = String(new FormData(form).get('password') || '');
       const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(password));
       const hash = [...new Uint8Array(digest)].map((v) => v.toString(16).padStart(2, '0')).join('');
-      if (hash === passwordHash) reveal();
+      if (hash === passwordHash) { rememberUnlock(); reveal(); }
       else error.textContent = '密码不正确。';
     });
   })();
