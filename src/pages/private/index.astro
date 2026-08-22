@@ -21,7 +21,7 @@ const passwordHash = privateAccess.passwordHash;
     <div class="access-gate" data-private-index-gate>
       <p class="access-gate__eyebrow">管理员级文章</p>
       <h2>输入密码后查看私密目录</h2>
-      <form data-private-index-form><input type="password" autocomplete="current-password" required placeholder="私密文章密码" aria-label="私密文章密码" /><button type="submit">验证并打开</button></form>
+      <form data-private-index-form><input name="password" type="password" autocomplete="current-password" required placeholder="私密文章密码" aria-label="私密文章密码" /><button type="submit">验证并打开</button></form>
       <p class="access-gate__error" data-private-index-error role="alert"></p>
     </div>
     <template data-private-index-body><div class="private-list">

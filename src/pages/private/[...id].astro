@@ -23,7 +23,7 @@ const passwordHash = privateAccess.passwordHash;
       <h1>输入密码后查看</h1>
       <p>密码由站长在管理系统中设置。</p>
       <form data-private-form>
-        <input type="password" autocomplete="current-password" required placeholder="私密文章密码" aria-label="私密文章密码" />
+        <input name="password" type="password" autocomplete="current-password" required placeholder="私密文章密码" aria-label="私密文章密码" />
         <button type="submit">验证并打开</button>
       </form>
       <p class="access-gate__error" data-private-error role="alert"></p>
