@@ -1,41 +1,118 @@
 ---
 import { getCollection, render, type CollectionEntry } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import PostComments from '../../components/PostComments.astro';
 import ThemeCopy from '../../components/ThemeCopy.astro';
+import WordCloud from '../../components/WordCloud.astro';
 import privateAccess from '../../data/private-access.json';
+import { buildWordCloud } from '../../lib/wordcloud';
+import { firstImageFromBody } from '../../lib/post-cover';
 
 export async function getStaticPaths() {
   const posts = await getCollection('blog', ({ data }) => !data.draft && data.access === 'admin');
-  return posts.map((post) => ({ params: { id: post.id }, props: { post } }));
+  const dayCounts = new Map<string, number>();
+  for (const post of posts) {
+    const key = post.data.pubDate.toISOString().slice(0, 10);
+    dayCounts.set(key, (dayCounts.get(key) ?? 0) + 1);
+  }
+  return posts.map((post) => {
+    const key = post.data.pubDate.toISOString().slice(0, 10);
+    const folioBase = `${post.data.pubDate.getFullYear()}—${String(post.data.pubDate.getMonth() + 1).padStart(2, '0')}${String(post.data.pubDate.getDate()).padStart(2, '0')}`;
+    const folioCode = dayCounts.get(key)! > 1
+      ? `${folioBase}—${String(post.data.dayIndex ?? 1).padStart(2, '0')}`
+      : folioBase;
+    return { params: { id: post.id }, props: { post, folioCode } };
+  });
 }
 
-interface Props { post: CollectionEntry<'blog'> }
-const { post } = Astro.props;
+interface Props {
+  post: CollectionEntry<'blog'>;
+  folioCode: string;
+}
+
+const { post, folioCode } = Astro.props;
 const { Content } = await render(post);
 const passwordHash = privateAccess.passwordHash;
+const cover = post.data.cover?.trim() || firstImageFromBody(post.body ?? '');
+const articleWords = buildWordCloud(
+  [{ title: post.data.title, body: post.body ?? '' }],
+  { maxWords: 24, minCount: 2 },
+);
+const pad2 = (n: number) => String(n).padStart(2, '0');
+const fmtMinute = (d: Date) => {
+  const date = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+  const isDateOnly = d.getUTCHours() === 0 && d.getUTCMinutes() === 0;
+  return isDateOnly ? date : `${date} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+};
 ---
 
 <BaseLayout title={`私密文章｜${post.data.title}`} description="管理员级文章。">
-  <main class="private-article" data-private-article={post.id}>
-    <a class="back-link" href="/private/">← 返回私密文章</a>
-    <div class="access-gate" data-private-gate>
-      <p class="access-gate__eyebrow">管理员级文章</p>
-      <h1>输入密码后查看</h1>
-      <p>密码由站长在管理系统中设置。</p>
-      <form data-private-form>
-        <input name="password" type="password" autocomplete="current-password" required placeholder="私密文章密码" aria-label="私密文章密码" />
-        <button type="submit">验证并打开</button>
-      </form>
-      <p class="access-gate__error" data-private-error role="alert"></p>
-    </div>
-    <template data-private-body>
-      <article class="article">
-        <header class="article-header"><div class="article-register"><span>PRIVATE ARTICLE</span><span>ACRETIONDISK</span></div><h1>{post.data.title}</h1><p class="article-deck">{post.data.description}</p><time datetime={post.data.pubDate.toISOString()}>发布 · {post.data.pubDate.toISOString().slice(0, 10)}</time></header>
-        <div class="article-ornament" aria-hidden="true"><span>✦</span></div>
+  <div class="article-shell private-article-shell" data-private-article={post.id}>
+    <aside class="article-margin">
+      <a class="back-link" href="/private/">← <ThemeCopy minimal="返回私密文章" trace="返回私密卷册" /></a>
+      <div class="private-lock-note">
+        <span>PRIVATE ARCHIVE</span>
+        <small>管理员级文章 · 验证后阅览</small>
+      </div>
+      <button class="print-action" type="button" onclick="window.print()">
+        <span aria-hidden="true">⤓</span> 导出 PDF
+      </button>
+      <dl>
+        <div><dt><ThemeCopy minimal="文章编号" trace="条目编号" /></dt><dd>{folioCode}</dd></div>
+        <div><dt><ThemeCopy minimal="标签" trace="分类标签" /></dt><dd>{post.data.tags.join(' / ') || '未分类'}</dd></div>
+        <div><dt><ThemeCopy minimal="作者" trace="记录者" /></dt><dd>Acretiondisk</dd></div>
+        <div><dt>状态</dt><dd><ThemeCopy minimal="管理员级" trace="PRIVATE ACCESS" /></dd></div>
+      </dl>
+      <WordCloud words={articleWords} compact title="关键词" traceTitle="本篇关键词" />
+      <p class="margin-note"><ThemeCopy minimal="私密内容仅在验证后展开。" trace="本条目受访问控制保护，验证后展开全文。" /></p>
+    </aside>
+
+    <article class="article">
+      <header class="article-header">
+        <div class="article-register">
+          <span>PRIVATE {folioCode}</span>
+          <span><ThemeCopy minimal="ACRETIONDISK" trace="ARCHIVUM PERSONAE" /></span>
+        </div>
+        <h1>{post.data.title}</h1>
+        {post.data.description && <p class="article-deck">{post.data.description}</p>}
+        <div class="article-meta">
+          <time datetime={post.data.pubDate.toISOString()}>发布 · {fmtMinute(post.data.pubDate)}</time>
+          {post.data.updatedDate && <time datetime={post.data.updatedDate.toISOString()}>修订 · {fmtMinute(post.data.updatedDate)}</time>}
+        </div>
+      </header>
+
+      {cover && (
+        <figure class="article-cover">
+          <img src={cover} alt={`${post.data.title}封面`} loading="eager" decoding="async" />
+        </figure>
+      )}
+
+      <div class="article-ornament" aria-hidden="true"><span>✦</span></div>
+
+      <div class="access-gate" data-private-gate>
+        <p class="access-gate__eyebrow">管理员级文章</p>
+        <h2>输入密码后查看</h2>
+        <p>密码由站长在管理系统中设置。</p>
+        <form data-private-form>
+          <input name="password" type="password" autocomplete="current-password" required placeholder="私密文章密码" aria-label="私密文章密码" />
+          <button type="submit">验证并打开</button>
+        </form>
+        <p class="access-gate__error" data-private-error role="alert"></p>
+      </div>
+
+      <template data-private-body>
         <div class="prose"><Content /></div>
-      </article>
-    </template>
-  </main>
+        <footer class="article-endmark">
+          <span><ThemeCopy minimal="读完了" trace="FINIS" /></span>
+          <p><ThemeCopy minimal="文章到这里结束" trace="本条目至此结束" /></p>
+        </footer>
+      </template>
+
+      <div class="private-comments" data-private-comments hidden>
+        <PostComments />
+      </div>
+    </article>
+  </div>
 </BaseLayout>
 
 <script is:inline define:vars={{ passwordHash }}>
@@ -45,17 +122,28 @@ const passwordHash = privateAccess.passwordHash;
     const form = root?.querySelector('[data-private-form]');
     const error = root?.querySelector('[data-private-error]');
     const body = root?.querySelector('template[data-private-body]');
+    const comments = root?.querySelector('[data-private-comments]');
     if (!root || !gate || !form || !error || !body) return;
     const key = `acr-private:${root.dataset.privateArticle}`;
-    const reveal = () => { gate.replaceWith(body.content.cloneNode(true)); };
+    const reveal = () => {
+      gate.replaceWith(body.content.cloneNode(true));
+      if (comments) comments.hidden = false;
+      document.dispatchEvent(new CustomEvent('acr:private-revealed'));
+    };
     if (sessionStorage.getItem(key) === '1') reveal();
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
-      const password = String(new FormData(form).values().next().value || '');
+      const password = String(new FormData(form).get('password') || '');
       const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(password));
       const hash = [...new Uint8Array(digest)].map((v) => v.toString(16).padStart(2, '0')).join('');
       if (hash === passwordHash) { sessionStorage.setItem(key, '1'); reveal(); }
       else error.textContent = '密码不正确。';
     });
   })();
+</script>
+
+<script>
+  import { initSongPlayers } from '../../scripts/song-player';
+  initSongPlayers();
+  document.addEventListener('acr:private-revealed', () => initSongPlayers());
 </script>
