@@ -58,6 +58,10 @@ const fmtMinute = (d: Date) => {
   <div class="article-shell">
     <aside class="article-margin">
       <a class="back-link" href="/blog/">← <ThemeCopy minimal="返回文章" trace="返回卷册目录" /></a>
+      <a class="private-channel" href="/private/">
+        <span class="private-channel__copy"><ThemeCopy minimal="私密文章" trace="私密卷册" /><small>PRIVATE ARCHIVE</small></span>
+        <span class="private-channel__arrow" aria-hidden="true">↗</span>
+      </a>
       <button class="print-action" type="button" onclick="window.print()">
         <span aria-hidden="true">⤓</span> 导出 PDF
       </button>
@@ -66,7 +70,6 @@ const fmtMinute = (d: Date) => {
         <div><dt><ThemeCopy minimal="标签" trace="分类标签" /></dt><dd>{post.data.tags.join(' / ') || '未分类'}</dd></div>
         <div><dt><ThemeCopy minimal="作者" trace="记录者" /></dt><dd>Acretiondisk</dd></div>
         <div><dt>状态</dt><dd><ThemeCopy minimal={isAuthorized ? '授权阅览' : '公开'} trace={isAuthorized ? '验证后阅览' : '公开阅览'} /></dd></div>
-        <div><dt>私密通道</dt><dd><a href="/private/">私密文章 ↗</a></dd></div>
       </dl>
 
       <div class="share-link" data-shortlink>

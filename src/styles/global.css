@@ -1093,6 +1093,60 @@ main {
   letter-spacing: 0.08em;
 }
 
+.private-channel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  margin: -18px 0 30px;
+  padding: 11px 13px;
+  border: 1px solid color-mix(in srgb, var(--red) 44%, var(--rule-strong));
+  border-left: 3px solid var(--red);
+  color: var(--ink);
+  background: color-mix(in srgb, var(--red) 5%, transparent);
+  transition: background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+.private-channel:hover {
+  border-color: var(--red);
+  background: color-mix(in srgb, var(--red) 10%, transparent);
+  transform: translateX(2px);
+}
+.private-channel__copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  font-family: var(--serif);
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+}
+.private-channel__copy small {
+  color: var(--ink-faint);
+  font-family: var(--latin);
+  font-size: 0.58rem;
+  letter-spacing: 0.14em;
+}
+.private-channel__arrow {
+  flex: none;
+  color: var(--red);
+  font-family: var(--latin);
+  font-size: 1.05rem;
+}
+.private-channel--dossier {
+  margin: 24px 0 0;
+  max-width: 520px;
+}
+.dossier .private-channel {
+  color: var(--ink);
+  text-decoration: none;
+  word-break: normal;
+  transition: background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+.dossier .private-channel:hover {
+  color: var(--ink);
+  text-decoration: none;
+}
+
 .access-gate {
   max-width: 560px;
   margin: 20px auto 56px;
@@ -3606,9 +3660,14 @@ main {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .private-channel,
   .catalog-entry,
   .catalog-view-switch button {
     transition-duration: 0ms;
+  }
+
+  .private-channel:hover {
+    transform: none;
   }
 }
 
@@ -3732,6 +3791,11 @@ main {
   .article-margin .back-link {
     grid-column: 1 / -1;
     margin-bottom: 0;
+  }
+
+  .article-margin .private-channel {
+    grid-column: 1 / -1;
+    margin: -8px 0 0;
   }
 
   .article-margin .print-action {
@@ -4222,6 +4286,7 @@ main {
   .edge-note,
   .theme-toggle,
   .back-link,
+  .private-channel,
   .margin-note,
   .print-action,
   .share-link,
