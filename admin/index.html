@@ -348,7 +348,17 @@
 
     async function apiFetch(url, opts = {}) {
       opts.headers = { ...(opts.headers || {}), 'x-admin-token': TOKEN };
-      return fetch(url, opts);
+      const res = await fetch(url, opts);
+      const contentType = (res.headers.get('content-type') || '').toLowerCase();
+      if (!contentType.includes('application/json')) {
+        // 打开了 Astro/静态站点或旧版管理进程时，/api 会返回 HTML；
+        // 在这里给出可操作提示，避免后续 res.json() 抛出无意义的 '<' 解析错误。
+        if (contentType.includes('text/html') || contentType === '') {
+          throw new Error('管理接口返回了网页，请重启管理面板并访问 http://localhost:4322/admin');
+        }
+        throw new Error(`管理接口返回非 JSON（HTTP ${res.status}）`);
+      }
+      return res;
     }
 
     async function loadPosts() {
