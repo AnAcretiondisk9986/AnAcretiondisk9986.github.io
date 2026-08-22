@@ -57,7 +57,7 @@ const cloudWords = buildWordCloud(
     const gate = document.querySelector('[data-private-index-gate]');
     const form = document.querySelector('[data-private-index-form]');
     const error = document.querySelector('[data-private-index-error]');
-    const body = document.querySelector('template[data-private-index-body]');
+    const body = document.querySelector('[data-private-index-body]');
     if (!gate || !form || !error || !body) return;
     const reveal = () => {
       body.hidden = false;
