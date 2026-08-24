@@ -1,5 +1,5 @@
 ---
-title: "A Critique of China: Power, Development, and the Cost of Stability"
+title: "A Critique of  ？？: Power, Development, and the Cost of Stability"
 description: ""
 pubDate: "2026-08-24"
 dayIndex: 1
