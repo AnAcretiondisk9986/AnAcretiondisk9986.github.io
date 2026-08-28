@@ -21,6 +21,7 @@ const IMG_REPO_DIR = process.env.IMG_REPO_DIR ? resolve(process.env.IMG_REPO_DIR
 const IMAGE_DIR = resolve(IMG_REPO_DIR, 'image');
 const AUDIO_DIR = resolve(IMG_REPO_DIR, 'audio');
 const ORIGINAL_DIR = resolve(IMAGE_DIR, 'original');
+const THUMB_DIR = resolve(IMAGE_DIR, 'thumb');
 const IMG_BASE_URL = 'https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/';
 const AUDIO_BASE_URL = 'https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/audio/';
 const GALLERY_JSON = resolve(__dirname, 'src', 'data', 'gallery.json');
@@ -454,13 +455,17 @@ app.route('/api/private-access')
   });
 
 // 把已写入 IMAGE_DIR 的图片文件转成 WebP（png/jpg/jpeg 直接转；heic/heif 先用 libheif(wasm) 解码再转），
-// 返回最终文件名；其余格式原样保留
+// 同时生成 480px 画廊缩略图到 image/thumb/（gallery 页列表/轮播用，点开才加载大图）；
+// 返回最终文件名；其余格式原样保留（缩略图仍尽力生成，失败不阻断上传）
 async function saveImageFile(filePath) {
   const ext = extname(filePath).toLowerCase();
   const base = filePath.slice(0, -ext.length);
   const outPath = `${base}.webp`;
+  let finalPath = filePath;
   if (['.png', '.jpg', '.jpeg'].includes(ext)) {
     await sharp(filePath).webp({ quality: 78 }).toFile(outPath);
+    await unlink(filePath).catch(() => {});
+    finalPath = outPath;
   } else if (['.heic', '.heif'].includes(ext)) {
     // sharp 预编译的 libvips 缺少 libde265（HEVC 解码器），iPhone 的 HEIC 需先用 libheif 解出像素再转码。
     // decodeHeic.all 在解码前即可读取尺寸：先验宽高再解码，避免超大图先整张解码进内存造成 OOM
@@ -483,14 +488,24 @@ async function saveImageFile(filePath) {
       else if (orientation === 7) pipeline = pipeline.rotate(90).flop();
       else if (orientation === 8) pipeline = pipeline.rotate(270);
       await pipeline.webp({ quality: 78 }).toFile(outPath);
+      await unlink(filePath).catch(() => {});
+      finalPath = outPath;
     } finally {
       images.dispose();
     }
-  } else {
-    return basename(filePath);
   }
-  await unlink(filePath).catch(() => {});
-  return `${basename(outPath)}`;
+  // 生成画廊缩略图（480px webp → image/thumb/<base>.webp）；失败仅记日志，不阻断上传
+  try {
+    await mkdir(THUMB_DIR, { recursive: true });
+    const thumbName = `${basename(finalPath, extname(finalPath))}.webp`;
+    await sharp(finalPath)
+      .resize({ width: 480, withoutEnlargement: true })
+      .webp({ quality: 70 })
+      .toFile(join(THUMB_DIR, thumbName));
+  } catch (e) {
+    console.error('Thumbnail generation failed:', filePath, e.message);
+  }
+  return basename(finalPath);
 }
 
 // 归档原图到 image/original/（仅转码格式 png/jpg/jpeg/heic/heif 才有归档必要；gif/svg/webp 原样保留，主图即原图）。
@@ -640,7 +655,9 @@ app.post('/api/upload', (req, res, next) => {
           if (req.file?.path) {
             await unlink(req.file.path).catch(() => {});
             const ext = extname(req.file.path);
-            await unlink(`${req.file.path.slice(0, -ext.length)}.webp`).catch(() => {});
+            const base = req.file.path.slice(0, -ext.length);
+            await unlink(`${base}.webp`).catch(() => {});
+            await unlink(join(THUMB_DIR, `${basename(base)}.webp`)).catch(() => {});
           }
           if (req.file?.filename) await unlink(join(ORIGINAL_DIR, req.file.filename)).catch(() => {});
         } catch { /* 忽略清理错误 */ }

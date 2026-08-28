@@ -21,6 +21,15 @@ interface GalleryImage {
   original?: string;
 }
 
+// 主图 URL → 缩略图 URL：image/xxx.<ext> → image/thumb/xxx.webp
+// （缩略图由 scripts/gen-thumbs.mjs 批量生成 / 上传时同步生成，全部为 480px webp）
+const thumbOf = (src: string) => {
+  const m = src.match(/^(.*\/image\/)([^/?#]+)$/);
+  if (!m) return src;
+  const base = decodeURIComponent(m[2]).replace(/\.[^.]+$/, '');
+  return `${m[1]}thumb/${encodeURIComponent(base)}.webp`;
+};
+
 const imageTime = (image: GalleryImage) => image.date ? Date.parse(image.date) : Number.NEGATIVE_INFINITY;
 const dayIndexOf = (image: GalleryImage) => image.dayIndex ?? 0;
 const sortNewestFirst = (images: GalleryImage[]) => [...images].sort((a, b) =>
@@ -71,11 +80,11 @@ const journalImages: GalleryImage[] = posts.flatMap((post) => {
         sourceTitle: post.data.title,
       };
     });
-  }).map((img) => ({ ...img, thumb: img.src }));
+  }).map((img) => ({ ...img, thumb: img.thumb ?? thumbOf(img.src) }));
 
 const standaloneImages: GalleryImage[] = sortNewestFirst(standaloneGallery as GalleryImage[]).map((img) => ({
     ...img,
-    thumb: img.src,
+    thumb: img.thumb ?? thumbOf(img.src),
     sourceUrl: safeLink(img.sourceUrl),
   }));
 assignDaySequence(journalImages);
@@ -365,6 +374,25 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
   import { captureFlip, playFlip } from '../scripts/reorder-anim';
   document.addEventListener('astro:page-load', () => {
 
+  // ── jsDelivr 镜像自动降级：国内访问 cdn.jsdelivr.net 时常被墙/超时，
+  // 捕获 img 加载失败后依次切换到 fastly / gcore / testingcf 镜像重试 ──
+  const CDN_HOSTS = ['cdn.jsdelivr.net', 'fastly.jsdelivr.net', 'gcore.jsdelivr.net', 'testingcf.jsdelivr.net'];
+  const nextCdnHost = (host: string) => {
+    const i = CDN_HOSTS.indexOf(host);
+    return i >= 0 && i < CDN_HOSTS.length - 1 ? CDN_HOSTS[i + 1] : null;
+  };
+  document.addEventListener('error', (event) => {
+    const img = event.target as HTMLImageElement | null;
+    if (!img || !(img instanceof HTMLImageElement)) return;
+    try {
+      const url = new URL(img.currentSrc || img.src);
+      const next = nextCdnHost(url.hostname);
+      if (!next) return; // 已到最后镜像,不再重试
+      url.hostname = next;
+      img.src = url.href; // 换镜像重试(失败会再次触发 error,自然推进到下一个)
+    } catch { /* 非 jsDelivr URL,忽略 */ }
+  }, true);
+
   // astro:page-load:整页加载与每次 VT 导航后触发,重新初始化(打包脚本只执行一次,事件驱动每次导航执行)
 
   const themeText = (minimal: string, trace: string) =>
@@ -607,9 +635,16 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
         panel.classList.add('is-switching');
       }
     });
-    // 广告牌轮播仅在独立收藏面板可见时运行
-    if (name === 'independent') resumeBillboard();
-    else pauseBillboard();
+    // 广告牌轮播仅在独立收藏面板可见时运行；懒构建：首次进入面板才创建（避免首屏生成 3×N 个图片节点）
+    if (name === 'independent') {
+      if (!billboardBuilt) {
+        billboardBuilt = true;
+        buildBillboard();
+      }
+      resumeBillboard();
+    } else {
+      pauseBillboard();
+    }
     if (updateHash) history.replaceState(null, '', `#${name}`);
   }
 
@@ -734,6 +769,7 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
   let billboardViewport: HTMLElement | null = null;
   let billboardReduced = false;
   let billboardGoNext: (() => void) | null = null;
+  let billboardBuilt = false; // 懒构建标记:首次切换到独立收藏面板时才创建轮播节点
 
   function pauseBillboard() {
     if (billboardTimer !== undefined) window.clearInterval(billboardTimer);
@@ -969,7 +1005,8 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
     viewport.addEventListener('blur', resumeBillboard);
     resumeBillboard();
   }
-  buildBillboard();
+  // 轮播懒构建：buildBillboard 改由 selectGalleryTab 首次切换到 independent 时调用，
+  // 避免首屏即创建 3×独立照片数 的图片节点（此处不再直接构建）
 
   // 打开大图查看器(静态卡片与广告牌共用)
   function openGalleryViewer(button: HTMLButtonElement) {
