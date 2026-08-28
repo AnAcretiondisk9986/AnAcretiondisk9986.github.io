@@ -1,5 +1,6 @@
 ---
-import { getCollection } from 'astro:content';
+import { getPublicPosts } from '../lib/posts';
+import { sortNewestFirst, thumbOf } from '../lib/gallery';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import ThemeCopy from '../components/ThemeCopy.astro';
 import { safeLink } from '../lib/safe-link';
@@ -21,20 +22,6 @@ interface GalleryImage {
   original?: string;
 }
 
-// 主图 URL → 缩略图 URL：image/xxx.<ext> → image/thumb/xxx.webp
-// （缩略图由 scripts/gen-thumbs.mjs 批量生成 / 上传时同步生成，全部为 480px webp）
-const thumbOf = (src: string) => {
-  const m = src.match(/^(.*\/image\/)([^/?#]+)$/);
-  if (!m) return src;
-  const base = decodeURIComponent(m[2]).replace(/\.[^.]+$/, '');
-  return `${m[1]}thumb/${encodeURIComponent(base)}.webp`;
-};
-
-const imageTime = (image: GalleryImage) => image.date ? Date.parse(image.date) : Number.NEGATIVE_INFINITY;
-const dayIndexOf = (image: GalleryImage) => image.dayIndex ?? 0;
-const sortNewestFirst = (images: GalleryImage[]) => [...images].sort((a, b) =>
-  imageTime(b) - imageTime(a) || dayIndexOf(b) - dayIndexOf(a));
-
 // 为同一天内的图像分配日内序号（1 = 当天最早），不改变数组本身顺序
 const assignDaySequence = (images: GalleryImage[]) => {
   const byDay = new Map<string, GalleryImage[]>();
@@ -46,7 +33,7 @@ const assignDaySequence = (images: GalleryImage[]) => {
     else byDay.set(day, [image]);
   }
   for (const list of byDay.values()) {
-    list.sort((a, b) => dayIndexOf(a) - dayIndexOf(b));
+    list.sort((a, b) => (a.dayIndex ?? 0) - (b.dayIndex ?? 0));
     list.forEach((image, i) => {
       image.daySequence = i + 1;
       image.dayTotal = list.length;
@@ -54,11 +41,7 @@ const assignDaySequence = (images: GalleryImage[]) => {
   }
 };
 
-const posts = (await getCollection('blog', ({ data }) => !data.draft && data.access !== 'admin'))
-  .sort((a, b) =>
-    b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
-    || (b.data.dayIndex ?? 0) - (a.data.dayIndex ?? 0)
-    || b.id.localeCompare(a.id));
+const posts = await getPublicPosts();
 
 const markdownImage = /!\[([^\]]*)\]\(([^)\s]+)(?:\s+["'][^"']*["'])?\)/g;
 const journalImages: GalleryImage[] = posts.flatMap((post) => {

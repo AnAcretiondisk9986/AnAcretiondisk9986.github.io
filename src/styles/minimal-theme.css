@@ -1606,3 +1606,28 @@
     transition-duration: 1ms !important;
   }
 }
+
+/* —— 首页「档案中枢」版块（极简主题覆盖） —— */
+
+:root[data-visual-theme='minimal'] .home-gallery-grid a {
+  border-radius: 0;
+}
+
+:root[data-visual-theme='minimal'] .home-gallery-title {
+  display: none;
+}
+
+:root[data-visual-theme='minimal'] .home-gallery-grid a:hover img {
+  transform: none;
+  opacity: 0.92;
+}
+
+:root[data-visual-theme='minimal'] .dossier-teaser-copy p,
+:root[data-visual-theme='minimal'] .dossier-teaser-copy blockquote {
+  font-family: var(--sans);
+}
+
+:root[data-visual-theme='minimal'] .dossier-teaser-lead {
+  font-size: 1.35rem;
+  font-weight: 620;
+}

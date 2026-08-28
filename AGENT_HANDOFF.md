@@ -2,6 +2,26 @@
 
 > 本文件已在用户授权下公开于 GitHub 仓库。每位 Agent 完成工作后在此记录变更。
 
+**🏠 首页重构：从「全量文章列表」改为「个人档案导航中枢」（2026-08-14）**
+
+- **背景**：首页与 `/blog/` 功能高度重合——两页拉取同一份全量文章集合（过滤 + 排序逻辑逐字重复），首页「最新文章」区块实际展示全部文章（`v2.x` 起移除了 `.slice(0,3)`），与 `/blog/` 的 `PostCatalog` 是同一个列表、同一套排序/版式切换工具栏。
+- **方案**：首页改为杂志封面式导航中枢——Hero 保留，下方依次为「最新文章（最新 5 篇精选，固定横栏、无工具栏）」「关键词词云（全站词频）」「图志精选（独立图集最新 4 张缩略图）」「编目者档案（关于页摘要 + 头像 + 引言）」，每块带「查看全部 →」入口；`/blog/` 保持唯一完整编目（词云 + 全量 + 排序/版式切换）。结尾语 coda 保留。
+- **文件**：
+  - `src/lib/posts.ts`（新增）：`getPublicPosts()` 抽取全站公开文章拉取 + 排序，首页 / 卷册 / 图志三页共用（消除重复逻辑）。
+  - `src/lib/gallery.ts`（新增）：`thumbOf`（主图→480px webp 缩略图）、`sortNewestFirst`（date→dayIndex 降序）、`GalleryImageBrief` 类型，供图志页与首页图志精选共用。
+  - `src/components/GalleryTeaser.astro`（新增）：图志精选缩略墙版块（4 张方图，hover 放大 + 悬浮标题，点击进 `/gallery/`）。
+  - `src/components/AboutTeaser.astro`（新增）：编目者档案版块（头像 + lead + 首段 + 编目原则引言）。
+  - `src/pages/index.astro`：重写——`recentPosts = posts.slice(0, 5)` + `PostCatalog toolbar={false}`、`buildWordCloud` 全站词频、`sortNewestFirst(standaloneGallery).slice(0, 4)` 图志精选、`about.json` 档案摘要。
+  - `src/components/PostCatalog.astro`：新增 `toolbar?: boolean` prop（默认 true），首页精选关闭工具栏；`toolbar={false}` 时列表容器加 `data-catalog-fixed` 强制横栏（不被 `/blog/` 的 `localStorage('blog-layout')` 偏好带偏）。
+  - `src/scripts/catalog-layout.ts`：`data-catalog-fixed` 时跳过 `readStoredLayout()`，固定横栏布局；无工具栏时脚本安全（空按钮数组 + null 守卫，原有逻辑未动）。
+  - `src/pages/blog/index.astro`、`src/pages/gallery.astro`：改用 `getPublicPosts()` / `src/lib/gallery.ts`（gallery 原局部 `thumbOf`/`sortNewestFirst`/`imageTime`/`dayIndexOf` 删除，`assignDaySequence` 的 dayIndex 比较改内联）。
+  - `src/styles/global.css`：末尾追加「首页档案中枢」节——`.home-gallery-grid`（4 列 → 860px 下 2 列方图网格）、`.dossier-teaser`（头像 + 文案两列 → 单列）、hover 效果，全部使用主题变量。
+  - `src/styles/minimal-theme.css`：极简主题覆盖——缩略图直角、隐藏悬浮标题、hover 改透明度、档案文案换 `--sans`。
+- **验证**：`npm.cmd run build` 77 页成功；`dist/index.html` 实测——文章条目 5 条、工具栏 0、`data-catalog-fixed` 1、图志精选 4 张（Sakiko / Miyako Fuji / Uika / Viola = gallery.json 最新 4 张）、档案版块 + 头像各 1、查看全部入口 2 处；`dist/blog/index.html` 工具栏保留、33 条全量；`dist/gallery/index.html` 缩略图正常。
+- **遗留**：`blog-template` 模板子仓库未同步（沿用既有约定，待用户决定）；新版块样式在 `still`/`fluid`/`trace` 主题下沿用主题变量自适应，`minimal` 已单独覆盖。
+
+---
+
 **📝 发布《DSH 桌面版开发复盘》博文（2026-08-14）**
 
 - **发布**：新增文章「DSH 桌面版开发复盘：用 Go + go-webview2 把一个 Agent 运行时打包成双击即用的 exe」（slug `dsh桌面版开发复盘`，2026-08-14 第 2 篇，`draft: false`）。内容基于 DSH 桌面版项目（`DSH-ACEDIT/apps/desktop`）的 `HANDOFF.md` 交接文档与 `README.md` 整理，复盘从 0 到发布的全过程：Go + go-webview2 外壳、go:embed 内嵌便携 Node 与依赖树、12 个踩坑记录（.NET 尾部标记、Node ≥ v22.15.0 的 `node:zlib` zstd 导出、npm 11 allow-scripts、无边框窗口 WndProc 子类化等）与 7 条可迁移方法论。

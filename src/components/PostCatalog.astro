@@ -7,9 +7,11 @@ interface Props {
   posts: CollectionEntry<'blog'>[];
   basePath?: string;
   private?: boolean;
+  /** 是否显示排序/版式切换工具栏（首页精选列表关闭，固定横栏） */
+  toolbar?: boolean;
 }
 
-const { posts, basePath = '/blog/', private: isPrivate = false } = Astro.props;
+const { posts, basePath = '/blog/', private: isPrivate = false, toolbar = true } = Astro.props;
 const normalizedBasePath = basePath.endsWith('/') ? basePath : `${basePath}/`;
 const dayCounts = new Map<string, number>();
 
@@ -25,6 +27,7 @@ const covers = new Map(posts.map((post) => [
 ---
 
 <div class="catalog-collection">
+  {toolbar && (
   <div class="gallery-order-bar catalog-toolbar" aria-label="文章显示设置">
     <div class="gallery-order-label">
       <span>DISPLAY</span>
@@ -49,12 +52,13 @@ const covers = new Map(posts.map((post) => [
       </div>
     </div>
   </div>
+  )}
 
   <div class="catalog-rule" data-catalog-rule aria-hidden="true">
     <span>INDEX</span><span>IMAGO</span><span>TITULUS</span><span>DATE</span><span></span>
   </div>
 
-  <div class="catalog-list" data-catalog-list data-catalog-layout="rows" data-order-list>
+  <div class="catalog-list" data-catalog-list data-catalog-layout="rows" data-order-list data-catalog-fixed={toolbar ? undefined : ''}>
     {posts.map((post, index) => {
       const cover = covers.get(post.id) ?? '';
       const dayKey = post.data.pubDate.toISOString().slice(0, 10);

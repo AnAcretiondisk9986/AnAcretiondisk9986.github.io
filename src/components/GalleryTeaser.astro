@@ -1,0 +1,34 @@
+---
+import ThemeCopy from './ThemeCopy.astro';
+import type { GalleryImageBrief } from '../lib/gallery';
+
+interface Props {
+  images: GalleryImageBrief[];
+}
+
+const { images } = Astro.props;
+---
+
+<section class="archive-section">
+  <div class="section-heading codex-heading">
+    <div>
+      <p class="eyebrow">IMAGO RECENTES</p>
+      <h2><ThemeCopy minimal="图志精选" trace="近期图录" /></h2>
+    </div>
+    <div class="heading-note">
+      <span><ThemeCopy minimal={`${images.length} 张近期影像`} trace={`${images.length} 件近期入藏`} /></span>
+      <a href="/gallery/"><ThemeCopy minimal="查看全部" trace="完整图志" /> →</a>
+    </div>
+  </div>
+
+  <ul class="home-gallery-grid">
+    {images.map((img) => (
+      <li>
+        <a href="/gallery/" aria-label={img.title || img.alt || '图志图片'}>
+          <img src={img.thumb ?? img.src} alt={img.alt || img.title} loading="lazy" decoding="async" />
+          {img.title && <span class="home-gallery-title">{img.title}</span>}
+        </a>
+      </li>
+    ))}
+  </ul>
+</section>

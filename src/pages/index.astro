@@ -1,19 +1,36 @@
 ---
-import { getCollection } from 'astro:content';
+import { getPublicPosts } from '../lib/posts';
+import { sortNewestFirst, thumbOf, type GalleryImageBrief } from '../lib/gallery';
+import { buildWordCloud } from '../lib/wordcloud';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import PostCatalog from '../components/PostCatalog.astro';
+import WordCloud from '../components/WordCloud.astro';
+import GalleryTeaser from '../components/GalleryTeaser.astro';
+import AboutTeaser from '../components/AboutTeaser.astro';
 import SpecimenPlate from '../components/SpecimenPlate.astro';
 import ThemeCopy from '../components/ThemeCopy.astro';
 import { safeLink } from '../lib/safe-link';
 import frontend from '../data/frontend.json';
+import about from '../data/about.json';
+import standaloneGallery from '../data/gallery.json';
 
-const posts = (await getCollection('blog', ({ data }) => !data.draft && data.access !== 'admin'))
-  .sort((a, b) =>
-    b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
-    || (b.data.dayIndex ?? 0) - (a.data.dayIndex ?? 0)
-    || b.id.localeCompare(a.id));
+const posts = await getPublicPosts();
 const primaryCtaHref = safeLink(frontend.primaryCtaHref, '/blog/');
 
+// 首页精选：最新 5 篇
+const recentPosts = posts.slice(0, 5);
+
+// 全站正文词频统计,生成词云数据
+const cloudWords = buildWordCloud(
+  posts.map((p) => ({ title: p.data.title, body: p.body ?? '' })),
+);
+
+// 图志精选：独立图集最新 4 张
+const galleryTeaserImages: GalleryImageBrief[] = sortNewestFirst(
+  standaloneGallery as GalleryImageBrief[],
+)
+  .slice(0, 4)
+  .map((img) => ({ ...img, thumb: img.thumb ?? thumbOf(img.src) }));
 ---
 
 <BaseLayout>
@@ -80,8 +97,19 @@ const primaryCtaHref = safeLink(frontend.primaryCtaHref, '/blog/');
       </div>
     </div>
 
-    <PostCatalog posts={posts} />
+    <PostCatalog posts={recentPosts} toolbar={false} />
   </section>
+
+  <WordCloud words={cloudWords} title="关键词" traceTitle="关键词索引" />
+
+  <GalleryTeaser images={galleryTeaserImages} />
+
+  <AboutTeaser
+    avatar={about.avatar}
+    lead={about.lead}
+    paragraphs={about.paragraphs}
+    quoteText={about.quoteText}
+  />
 
   <section class="index-coda">
     <img class="archive-seal coda-seal" src="/logo.webp" alt="" width="132" height="132" loading="lazy" />

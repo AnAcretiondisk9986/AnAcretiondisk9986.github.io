@@ -1,0 +1,33 @@
+---
+import ThemeCopy from './ThemeCopy.astro';
+
+interface Props {
+  avatar: string;
+  lead: string;
+  paragraphs: string[];
+  quoteText: string;
+}
+
+const { avatar, lead, paragraphs, quoteText } = Astro.props;
+---
+
+<section class="archive-section">
+  <div class="section-heading codex-heading">
+    <div>
+      <p class="eyebrow">DOSSIER OF THE KEEPER</p>
+      <h2><ThemeCopy minimal="编目者档案" trace="编目者档案" /></h2>
+    </div>
+    <div class="heading-note">
+      <a href="/about/"><ThemeCopy minimal="了解我" trace="阅览档案" /> →</a>
+    </div>
+  </div>
+
+  <div class="dossier-teaser">
+    <img class="dossier-teaser-avatar" src={avatar} alt="" width="160" height="160" loading="lazy" />
+    <div class="dossier-teaser-copy">
+      <p class="dossier-teaser-lead">{lead}</p>
+      {paragraphs[0] && <p>{paragraphs[0]}</p>}
+      <blockquote>{quoteText}</blockquote>
+    </div>
+  </div>
+</section>

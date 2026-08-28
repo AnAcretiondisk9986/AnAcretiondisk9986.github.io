@@ -4576,3 +4576,118 @@ main {
     break-inside: avoid-page;
   }
 }
+
+/* —— 首页「档案中枢」版块（图志精选 / 编目者档案） —— */
+
+.home-gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  width: var(--content-width);
+  margin: 0 auto;
+  padding: 0;
+  list-style: none;
+}
+
+.home-gallery-grid li {
+  margin: 0;
+}
+
+.home-gallery-grid a {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  border: 1px solid var(--rule);
+  border-radius: var(--liquid-radius, 6px);
+  background: var(--paper-light);
+  text-decoration: none;
+}
+
+.home-gallery-grid img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  transition: transform 320ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.home-gallery-grid a:hover img,
+.home-gallery-grid a:focus-visible img {
+  transform: scale(1.05);
+}
+
+.home-gallery-title {
+  position: absolute;
+  inset: auto 0 0;
+  padding: 20px 12px 9px;
+  color: var(--paper-light);
+  font-family: var(--serif);
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  background: linear-gradient(transparent, color-mix(in srgb, var(--ink) 78%, transparent));
+  opacity: 0;
+  transition: opacity 180ms ease;
+}
+
+.home-gallery-grid a:hover .home-gallery-title,
+.home-gallery-grid a:focus-visible .home-gallery-title {
+  opacity: 1;
+}
+
+.dossier-teaser {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr);
+  gap: clamp(28px, 5vw, 64px);
+  align-items: start;
+  width: var(--content-width);
+  margin: 0 auto;
+}
+
+.dossier-teaser-avatar {
+  width: 160px;
+  height: 160px;
+  border: 1px solid var(--rule-strong);
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.dossier-teaser-copy p {
+  margin-bottom: 14px;
+  color: var(--ink-soft);
+  font-family: var(--serif);
+  font-size: 0.95rem;
+  line-height: 1.9;
+}
+
+.dossier-teaser-lead {
+  color: var(--ink) !important;
+  font-size: clamp(1.15rem, 2.2vw, 1.6rem) !important;
+  letter-spacing: 0.02em;
+}
+
+.dossier-teaser-copy blockquote {
+  margin: 20px 0 0;
+  padding-left: 18px;
+  border-left: 2px solid var(--gold);
+  color: var(--ink-soft);
+  font-family: var(--serif);
+  font-size: 0.92rem;
+  line-height: 1.8;
+}
+
+@media (max-width: 860px) {
+  .home-gallery-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .dossier-teaser {
+    grid-template-columns: 1fr;
+    gap: 22px;
+  }
+
+  .dossier-teaser-avatar {
+    width: 120px;
+    height: 120px;
+  }
+}

@@ -116,7 +116,12 @@ export function initCatalogLayout() {
       document.fonts.ready.then(() => fitTitles(list)).catch(() => {});
     }
 
-    applyLayout(readStoredLayout());
+    // 固定横栏（首页精选列表无工具栏）时不读 localStorage，始终横栏
+    if (list.hasAttribute('data-catalog-fixed')) {
+      applyLayout('rows', false);
+    } else {
+      applyLayout(readStoredLayout());
+    }
   }
 
   // 每次初始化（含 VT 导航）都重新适配标题字号
