@@ -116,9 +116,9 @@ export function initCatalogLayout() {
       document.fonts.ready.then(() => fitTitles(list)).catch(() => {});
     }
 
-    // 固定横栏（首页精选列表无工具栏）时不读 localStorage，始终横栏
+    // 固定卡片（首页精选列表无工具栏）时不读 localStorage，始终卡片式
     if (list.hasAttribute('data-catalog-fixed')) {
-      applyLayout('rows', false);
+      applyLayout('cards', false);
     } else {
       applyLayout(readStoredLayout());
     }

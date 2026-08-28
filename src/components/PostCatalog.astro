@@ -54,11 +54,13 @@ const covers = new Map(posts.map((post) => [
   </div>
   )}
 
+  {toolbar && (
   <div class="catalog-rule" data-catalog-rule aria-hidden="true">
     <span>INDEX</span><span>IMAGO</span><span>TITULUS</span><span>DATE</span><span></span>
   </div>
+  )}
 
-  <div class="catalog-list" data-catalog-list data-catalog-layout="rows" data-order-list data-catalog-fixed={toolbar ? undefined : ''}>
+  <div class="catalog-list" data-catalog-list data-catalog-layout={toolbar ? 'rows' : 'cards'} data-order-list data-catalog-fixed={toolbar ? undefined : ''}>
     {posts.map((post, index) => {
       const cover = covers.get(post.id) ?? '';
       const dayKey = post.data.pubDate.toISOString().slice(0, 10);
