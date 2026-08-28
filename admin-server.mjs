@@ -575,9 +575,15 @@ async function pushImageRepo() {  const run = (cmd) => new Promise((resolve, rej
     return { pushed: true };
   } catch (pushErr) {
     const msg = pushErr.message || '';
-    const err = new Error(msg.includes('Connection') || msg.includes('reset')
-      ? '图片已保存到本地图片仓库，但推送 GitHub 失败（网络问题），稍后可再次推送'
-      : '图片已保存到本地图片仓库，但推送 GitHub 失败，请检查网络后重试');
+    let friendly;
+    if (msg.includes('Connection') || msg.includes('reset') || msg.includes('Could not read from remote')) {
+      friendly = '图片已保存到本地图片仓库，但推送 GitHub 失败（网络问题），稍后可再次推送';
+    } else if (msg.includes('rejected') || msg.includes('fetch first') || msg.includes('non-fast-forward')) {
+      friendly = '图片已保存到本地图片仓库，但推送失败：远端有其它设备推送的更新（分支分叉）。请先在本地图片仓库执行 git fetch origin && git rebase origin/main 合并后再重试推送';
+    } else {
+      friendly = '图片已保存到本地图片仓库，但推送 GitHub 失败，请检查网络后重试';
+    }
+    const err = new Error(friendly);
     err.status = 500;
     err.detail = msg;
     throw err;
