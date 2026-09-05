@@ -1,0 +1,24 @@
+---
+import ThemeCopy from '../ThemeCopy.astro';
+
+interface Props {
+  siteName: string;
+  siteTagline: string;
+}
+
+const { siteName, siteTagline } = Astro.props;
+---
+
+<footer class="site-footer">
+  <div class="footer-mark">
+    <img class="footer-seal site-logo" src="/logo-primary.webp" alt={`${siteName} LOGO`} width="48" height="48" />
+    <p>
+      <strong>{siteName} · <ThemeCopy minimal="持续更新" trace="持续编目" /></strong>
+      <span>{siteTagline}</span>
+    </p>
+  </div>
+  <div class="footer-meta">
+    <span>© {new Date().getFullYear()} {siteName.toUpperCase()}</span>
+    <a href="https://github.com/AnAcretiondisk9986">GITHUB ↗</a>
+  </div>
+</footer>

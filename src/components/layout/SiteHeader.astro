@@ -1,0 +1,51 @@
+---
+import ThemeCopy from '../ThemeCopy.astro';
+
+interface Props {
+  siteName: string;
+  siteTagline: string;
+  pathname: string;
+}
+
+const { siteName, siteTagline, pathname } = Astro.props;
+const navigation = [
+  { href: '/', minimal: '首页', trace: '首页', index: 'I' },
+  { href: '/blog/', minimal: '文章', trace: '卷册', index: 'II' },
+  { href: '/gallery/', minimal: '照片', trace: '图志', index: 'III' },
+  { href: '/about/', minimal: '关于', trace: '关于', index: 'IV' },
+  { href: '/guestbook/', minimal: '留言', trace: '留言', index: 'V' },
+];
+---
+
+<header class="site-header">
+  <div class="header-register">
+    <span>ACR—LOG / PERSONAL CODEX</span>
+    <span>EST. MMXXVI</span>
+  </div>
+
+  <div class="header-main">
+    <a class="site-name" href="/" aria-label={`${siteName} 首页`}>
+      <img class="site-seal site-logo" src="/logo-primary.webp" alt={`${siteName} LOGO`} width="48" height="48" />
+      <span>
+        <b>{siteName}</b>
+        <small>{siteTagline}</small>
+      </span>
+    </a>
+
+    <nav aria-label="主导航">
+      {navigation.map((item) => {
+        const active = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
+        return (
+          <a href={item.href} aria-current={active ? 'page' : undefined}>
+            <span class="nav-index">{item.index}</span>
+            <ThemeCopy minimal={item.minimal} trace={item.trace} />
+          </a>
+        );
+      })}
+      <button class="theme-toggle" type="button" aria-label="切换明暗主题">
+        <span data-theme-icon aria-hidden="true">☀</span>
+        <span class="theme-toggle__label">昼夜</span>
+      </button>
+    </nav>
+  </div>
+</header>

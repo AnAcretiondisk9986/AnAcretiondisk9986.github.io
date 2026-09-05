@@ -4,6 +4,9 @@ import '../styles/minimal-theme.css';
 import '../styles/liquid-theme.css';
 import { ClientRouter } from 'astro:transitions';
 import ThemeCopy from '../components/ThemeCopy.astro';
+import EdgeNotes from '../components/layout/EdgeNotes.astro';
+import SiteHeader from '../components/layout/SiteHeader.astro';
+import SiteFooter from '../components/layout/SiteFooter.astro';
 import frontend from '../data/frontend.json';
 
 interface Props {
@@ -42,18 +45,10 @@ const frontendStyle = [
   `--liquid-art-font:${displayFont}`,
 ].join(';');
 const pageTitle = title === 'Acretiondisk' ? siteName : `${title} · ${siteName}`;
-const pathname = Astro.url.pathname;
-const navigation = [
-  { href: '/', minimal: '首页', trace: '首页', index: 'I' },
-  { href: '/blog/', minimal: '文章', trace: '卷册', index: 'II' },
-  { href: '/gallery/', minimal: '照片', trace: '图志', index: 'III' },
-  { href: '/about/', minimal: '关于', trace: '关于', index: 'IV' },
-  { href: '/guestbook/', minimal: '留言', trace: '留言', index: 'V' },
-];
 ---
 
 <!doctype html>
-<html lang="zh-CN" style={frontendStyle}>
+<html lang="zh-CN" data-default-visual-theme={defaultVisualTheme} style={frontendStyle}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width" />
@@ -61,146 +56,28 @@ const navigation = [
     <meta name="generator" content={Astro.generator} />
     <link rel="icon" type="image/png" href="/favicon.png" />
     <title>{pageTitle}</title>
-    <!-- data-astro-rerun:View Transitions 导航后需重新执行,恢复 data-theme/js/vt(swap 会移除 <html> 属性);IIFE 包裹防止重复执行时顶层 const 重复声明 -->
-    <script is:inline data-astro-rerun define:vars={{ defaultVisualTheme }}>
-      (() => {
-        const allowedVisualThemes = ['still', 'fluid', 'minimal', 'trace'];
-        const syncStoredAppearance = (root) => {
-          const savedTheme = localStorage.getItem('theme');
-          const savedVisualTheme = localStorage.getItem('visual-theme');
-          const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-          root.dataset.theme = savedTheme ?? (systemDark ? 'dark' : 'light');
-          root.dataset.visualTheme = allowedVisualThemes.includes(savedVisualTheme)
-            ? savedVisualTheme
-            : defaultVisualTheme;
-          // js = 允许脚本驱动的进入动画;vt = 支持 View Transitions(避免与路由过渡动画叠加)
-          root.classList.add('js');
-          if (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
-            root.classList.add('vt');
-          }
-        };
-
-        syncStoredAppearance(document.documentElement);
-
-        if (!window.__acrAppearanceSyncBound) {
-          window.__acrAppearanceSyncBound = true;
-          document.addEventListener('astro:before-swap', (event) => {
-            if (event.newDocument?.documentElement) {
-              syncStoredAppearance(event.newDocument.documentElement);
-            }
-          });
-          document.addEventListener('astro:after-swap', () => {
-            syncStoredAppearance(document.documentElement);
-          });
-          document.addEventListener('astro:page-load', () => {
-            syncStoredAppearance(document.documentElement);
-          });
-        }
-      })();
+    <script>
+      import '../scripts/appearance.ts';
     </script>
   </head>
   <body>
     <ClientRouter />
     <div class="paper-grain" aria-hidden="true"></div>
     <div class="site-shell">
-      <aside class="edge-note edge-note--left" aria-hidden="true">
-        <span>ARCHIVUM PERSONAE</span>
-        <span>31°14′ N · 121°29′ E</span>
-      </aside>
-      <aside class="edge-note edge-note--right" aria-hidden="true">
-        <span>CATALOGUS I</span>
-        <span>{new Date().getFullYear()}</span>
-      </aside>
-
-      <header class="site-header">
-        <div class="header-register">
-          <span>ACR—LOG / PERSONAL CODEX</span>
-          <span>EST. MMXXVI</span>
-        </div>
-
-        <div class="header-main">
-          <a class="site-name" href="/" aria-label={`${siteName} 首页`}>
-            <img class="site-seal site-logo" src="/logo-primary.webp" alt={`${siteName} LOGO`} width="48" height="48" />
-            <span>
-              <b>{siteName}</b>
-              <small>{siteTagline}</small>
-            </span>
-          </a>
-
-          <nav aria-label="主导航">
-            {navigation.map((item) => {
-              const active = item.href === '/'
-                ? pathname === '/'
-                : pathname.startsWith(item.href);
-              return (
-                <a href={item.href} aria-current={active ? 'page' : undefined}>
-                  <span class="nav-index">{item.index}</span>
-                  <ThemeCopy minimal={item.minimal} trace={item.trace} />
-                </a>
-              );
-            })}
-            <button class="theme-toggle" type="button" aria-label="切换明暗主题">
-              <span data-theme-icon aria-hidden="true">☀</span>
-              <span class="theme-toggle__label">昼夜</span>
-            </button>
-          </nav>
-        </div>
-      </header>
+      <EdgeNotes />
+      <SiteHeader siteName={siteName} siteTagline={siteTagline} pathname={Astro.url.pathname} />
 
       <main>
         <slot />
       </main>
 
-      <footer class="site-footer">
-        <div class="footer-mark">
-          <img class="footer-seal site-logo" src="/logo-primary.webp" alt={`${siteName} LOGO`} width="48" height="48" />
-          <p>
-            <strong>{siteName} · <ThemeCopy minimal="持续更新" trace="持续编目" /></strong>
-            <span>{siteTagline}</span>
-          </p>
-        </div>
-        <div class="footer-meta">
-          <span>© {new Date().getFullYear()} {siteName.toUpperCase()}</span>
-          <a href="https://github.com/AnAcretiondisk9986">GITHUB ↗</a>
-        </div>
-      </footer>
+      <SiteFooter siteName={siteName} siteTagline={siteTagline} />
     </div>
 
-    <!-- data-astro-rerun:VT 导航后 DOM 被替换,必须重新执行以绑定按钮监听器;内联脚本需为纯 JS 且用 IIFE 包裹(重复执行时顶层 const 会冲突) -->
-    <script is:inline data-astro-rerun>
-      (() => {
-        const button = document.querySelector('.theme-toggle');
-        const icon = button?.querySelector('[data-theme-icon]');
-        const syncThemeButton = () => {
-          const dark = document.documentElement.dataset.theme === 'dark';
-          if (icon) icon.textContent = dark ? '☾' : '☀';
-          button?.setAttribute('aria-label', dark ? '切换为浅色模式' : '切换为深色模式');
-          // 站点内切换主题时同步切换 favicon(站点主题由 data-theme 控制,与系统 prefers-color-scheme 无关)
-          const favicon = document.querySelector('link[rel="icon"]');
-          if (favicon) favicon.href = dark ? '/favicon-dark.png' : '/favicon.png';
-        };
-        syncThemeButton();
-        button?.addEventListener('click', () => {
-          const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
-          const apply = () => {
-            document.documentElement.dataset.theme = next;
-            localStorage.setItem('theme', next);
-            syncThemeButton();
-          };
-          // 支持 View Transitions 时以交叉淡化衔接明暗主题切换
-          if (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
-            document.startViewTransition(apply);
-          } else {
-            apply();
-          }
-        });
-
-        requestAnimationFrame(() => document.documentElement.classList.add('is-ready'));
-      })();
-    </script>
-    <!-- still/fluid 玻璃主题的实时明暗自适应反色（模块脚本,VT 导航后重新执行） -->
     <script>
       import '../scripts/invert-surface.ts';
     </script>
   </body>
 </html>
+
+
