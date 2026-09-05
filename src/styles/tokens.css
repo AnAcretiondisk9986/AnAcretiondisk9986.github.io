@@ -1,0 +1,58 @@
+@charset "UTF-8";
+
+:root {
+  color-scheme: light;
+  --paper: #e9e1cd;
+  --paper-deep: #dbceb0;
+  --paper-light: #f3eddf;
+  --ink: #221d17;
+  --ink-soft: #5f574a;
+  --ink-faint: #887e6c;
+  --rule: rgba(53, 44, 32, 0.28);
+  --rule-strong: rgba(53, 44, 32, 0.58);
+  --red: #8d302b;
+  --red-dark: #67221f;
+  --gold: #9a7b40;
+  --gold-light: #c0a66d;
+  --shadow: rgba(47, 37, 25, 0.14);
+  --serif: "Noto Serif SC", "Source Han Serif SC", "Songti SC", SimSun, Georgia, serif;
+  --sans: Inter, "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+  --latin: Georgia, "Times New Roman", serif;
+  --max-width: 1220px;
+  --content-width: min(80vw, var(--max-width));
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --paper: #191713;
+  --paper-deep: #100f0c;
+  --paper-light: #24211b;
+  --ink: #e7dcc2;
+  --ink-soft: #b7aa91;
+  --ink-faint: #857b68;
+  --rule: rgba(221, 204, 169, 0.2);
+  --rule-strong: rgba(221, 204, 169, 0.42);
+  --red: #b35249;
+  --red-dark: #d26b60;
+  --gold: #b99c60;
+  --gold-light: #dcc48e;
+  --shadow: rgba(0, 0, 0, 0.34);
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --paper: #191713;
+  --paper-deep: #100f0c;
+  --paper-light: #24211b;
+  --ink: #e7dcc2;
+  --ink-soft: #b7aa91;
+  --ink-faint: #857b68;
+  --rule: rgba(221, 204, 169, 0.2);
+  --rule-strong: rgba(221, 204, 169, 0.42);
+  --red: #b35249;
+  --red-dark: #d26b60;
+  --gold: #b99c60;
+  --gold-light: #dcc48e;
+  --shadow: rgba(0, 0, 0, 0.34);
+}
+
