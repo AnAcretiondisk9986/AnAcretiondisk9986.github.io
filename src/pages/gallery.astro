@@ -63,11 +63,11 @@ const journalImages: GalleryImage[] = posts.flatMap((post) => {
         sourceTitle: post.data.title,
       };
     });
-  }).map((img) => ({ ...img, thumb: img.thumb ?? thumbOf(img.src) }));
+  }).map((img) => ({ ...img, thumb: img.thumb || thumbOf(img.src) }));
 
 const standaloneImages: GalleryImage[] = sortNewestFirst(standaloneGallery as GalleryImage[]).map((img) => ({
     ...img,
-    thumb: img.thumb ?? thumbOf(img.src),
+    thumb: img.thumb || thumbOf(img.src),
     sourceUrl: safeLink(img.sourceUrl),
   }));
 assignDaySequence(journalImages);
@@ -178,7 +178,7 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
                 data-gallery-source-title={image.sourceTitle}
                 aria-label={`查看${image.title}中的${image.caption}`}
               >
-                <img src={image.thumb ?? image.src} alt={image.alt} loading={index < 3 ? 'eager' : 'lazy'} decoding="async" referrerpolicy="no-referrer" />
+                <img src={image.thumb || image.src} alt={image.alt} loading={index < 3 ? 'eager' : 'lazy'} fetchpriority={index < 3 ? 'high' : 'auto'} decoding="async" referrerpolicy="no-referrer" />
                 <span class="gallery-image-stamp">{String(index + 1).padStart(2, '0')}</span>
                 <span class="gallery-image-expand" aria-hidden="true">↗</span>
               </button>
@@ -234,7 +234,7 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
                       data-gallery-source-title={image.sourceTitle}
                       aria-label={`查看${image.title}中的${image.caption}`}
                     >
-                      <img src={image.thumb ?? image.src} alt={image.alt || image.title} loading="lazy" decoding="async" referrerpolicy="no-referrer" />
+                      <img src={image.thumb || image.src} alt={image.alt || image.title} loading="lazy" decoding="async" referrerpolicy="no-referrer" />
                       <span class="gallery-image-expand" aria-hidden="true">↗</span>
                       <span class="gallery-album-thumb-index">{String(imageIndex + 1).padStart(2, '0')}</span>
                     </button>
@@ -287,7 +287,7 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
                 data-gallery-source-title={image.sourceTitle || ''}
                 aria-label={`查看${image.title}`}
               >
-                <img src={image.thumb ?? image.src} alt={image.alt || image.title} loading="lazy" decoding="async" referrerpolicy="no-referrer" />
+                <img src={image.thumb || image.src} alt={image.alt || image.title} loading="lazy" decoding="async" referrerpolicy="no-referrer" />
                 <span class="gallery-image-stamp">{String(index + 1).padStart(2, '0')}</span>
                 <span class="gallery-image-expand" aria-hidden="true">↗</span>
               </button>
@@ -806,6 +806,9 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
         slide.setAttribute('aria-label', `查看${image.title}`);
         const img = document.createElement('img');
         img.src = image.thumb || image.src;
+        img.loading = 'lazy';
+        img.decoding = 'async';
+        img.referrerPolicy = 'no-referrer';
         img.alt = image.alt || image.title;
         img.loading = 'lazy';
         img.decoding = 'async';
@@ -1028,3 +1031,5 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
   selectGalleryTab(location.hash === '#independent' ? 'independent' : 'journal', false);
   });
 </script>
+
+
