@@ -56,6 +56,8 @@ const pageTitle = title === 'Acretiondisk' ? siteName : `${title} · ${siteName}
     <meta name="description" content={description} />
     <meta name="generator" content={Astro.generator} />
     <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <link rel="preconnect" href="https://fastly.jsdelivr.net" crossorigin />
     <title>{pageTitle}</title>
     <script>
       import '../scripts/appearance.ts';
@@ -80,6 +82,7 @@ const pageTitle = title === 'Acretiondisk' ? siteName : `${title} · ${siteName}
     </script>
   </body>
 </html>
+
 
 
 
