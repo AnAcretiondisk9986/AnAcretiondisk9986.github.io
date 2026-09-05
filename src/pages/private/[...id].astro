@@ -1,7 +1,6 @@
 ---
 import { getCollection, render, type CollectionEntry } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import PostComments from '../../components/PostComments.astro';
 import ThemeCopy from '../../components/ThemeCopy.astro';
 import WordCloud from '../../components/WordCloud.astro';
 import privateAccess from '../../data/private-access.json';
@@ -100,9 +99,7 @@ const fmtMinute = (d: Date) => {
         </footer>
       </template>
 
-      <div class="private-comments" data-private-comments hidden>
-        <PostComments />
-      </div>
+      
     </article>
   </div>
 </BaseLayout>
@@ -115,7 +112,6 @@ const fmtMinute = (d: Date) => {
     const form = root?.querySelector('[data-private-form]');
     const error = root?.querySelector('[data-private-error]');
     const body = root?.querySelector('template[data-private-body]');
-    const comments = root?.querySelector('[data-private-comments]');
     if (!root || !gate || !form || !error || !body) return;
     const isUnlocked = () => {
       try { return localStorage.getItem(unlockKey) === passwordHash; } catch { return false; }
@@ -125,7 +121,6 @@ const fmtMinute = (d: Date) => {
     };
     const reveal = () => {
       gate.replaceWith(body.content.cloneNode(true));
-      if (comments) comments.hidden = false;
       document.dispatchEvent(new CustomEvent('acr:private-revealed'));
     };
     if (isUnlocked()) reveal();
@@ -145,3 +140,5 @@ const fmtMinute = (d: Date) => {
   initSongPlayers();
   document.addEventListener('acr:private-revealed', () => initSongPlayers());
 </script>
+
+

@@ -1,7 +1,6 @@
 ---
 import { getCollection, render, type CollectionEntry } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import PostComments from '../../components/PostComments.astro';
 import ThemeCopy from '../../components/ThemeCopy.astro';
 import WordCloud from '../../components/WordCloud.astro';
 import { buildWordCloud } from '../../lib/wordcloud';
@@ -133,8 +132,6 @@ const fmtMinute = (d: Date) => {
         <span><ThemeCopy minimal="读完了" trace="FINIS" /></span>
         <p><ThemeCopy minimal="文章到这里结束" trace="本条目至此结束" /></p>
       </footer>
-
-      <PostComments />
     </article>
   </div>
 </BaseLayout>
@@ -294,3 +291,4 @@ const fmtMinute = (d: Date) => {
     }
   }
 </style>
+

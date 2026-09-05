@@ -8,8 +8,7 @@
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",
-    "admin": "node admin-server.mjs",
-    "mock:waline": "node scripts/mock-waline.mjs"
+    "admin": "node admin-server.mjs"
   },
   "dependencies": {
     "astro": "latest",
