@@ -1,4 +1,5 @@
 ---
+import Icon from './Icon.astro';
 import ThemeCopy from './ThemeCopy.astro';
 
 interface Props {
@@ -14,11 +15,11 @@ const { avatar, lead, paragraphs, quoteText } = Astro.props;
 <section class="archive-section">
   <div class="section-heading codex-heading">
     <div>
-      <p class="eyebrow">DOSSIER OF THE KEEPER</p>
+      <p class="eyebrow"><ThemeCopy minimal="DOSSIER OF THE KEEPER" trace="DOSSIER OF THE KEEPER" cyanotype="04 / BEHIND THE PRINT" /></p>
       <h2><ThemeCopy minimal="编目者档案" trace="编目者档案" /></h2>
     </div>
     <div class="heading-note">
-      <a href="/about/"><ThemeCopy minimal="了解我" trace="阅览档案" /> →</a>
+      <a href="/about/"><ThemeCopy minimal="了解我" trace="阅览档案" /> <Icon name="arrow-right" /></a>
     </div>
   </div>
 

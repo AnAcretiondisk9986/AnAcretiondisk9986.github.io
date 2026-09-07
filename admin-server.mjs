@@ -1264,7 +1264,7 @@ app.post('/api/about/resolve-title', express.json(), async (req, res) => {
 // ── Frontend customization API ──
 
 const FRONTEND_DEFAULTS = {
-  defaultVisualTheme: 'still',
+  defaultVisualTheme: 'cyanotype',
   siteName: 'Acretiondisk',
   siteTagline: '记录想法与生活',
   heroEyebrow: 'PERSONAL ARCHIVE · 2026',
@@ -1290,7 +1290,7 @@ const FRONTEND_DEFAULTS = {
   cardRadius: 8,
 };
 
-const VISUAL_THEMES = new Set(['still', 'fluid', 'minimal', 'trace']);
+const VISUAL_THEMES = new Set(['cyanotype', 'still', 'fluid', 'minimal', 'trace']);
 const IMAGE_POSITIONS = new Set(['center', 'center top', 'center bottom', 'left center', 'right center']);
 const DISPLAY_FONTS = new Set(['noto-serif', 'noto-sans', 'kaiti', 'songti', 'sans']);
 const HEX_COLOR_RE = /^#[0-9a-f]{6}$/i;

@@ -1,4 +1,5 @@
 ---
+import Icon from './Icon.astro';
 import type { CollectionEntry } from 'astro:content';
 import ThemeCopy from './ThemeCopy.astro';
 import { firstImageFromBody } from '../lib/post-cover';
@@ -36,18 +37,18 @@ const covers = new Map(posts.map((post) => [
     <div class="catalog-toolbar-actions">
       <div class="gallery-sort" role="group" aria-label="文章展示顺序">
         <button type="button" data-order-sort="newest" aria-pressed="true">
-          <span aria-hidden="true">↓</span>从新至旧
+          <span aria-hidden="true"><Icon name="arrow-down" /></span>从新至旧
         </button>
         <button type="button" data-order-sort="oldest" aria-pressed="false">
-          <span aria-hidden="true">↑</span>从旧至新
+          <span aria-hidden="true"><Icon name="arrow-up" /></span>从旧至新
         </button>
       </div>
       <div class="catalog-view-switch" role="group" aria-label="文章版式">
         <button type="button" data-catalog-view="cards" aria-pressed="false" title="卡片式">
-          <span aria-hidden="true">▦</span>卡片
+          <span aria-hidden="true"><Icon name="grid" /></span>卡片
         </button>
         <button type="button" data-catalog-view="rows" aria-pressed="true" title="横栏式">
-          <span aria-hidden="true">☷</span>横栏
+          <span aria-hidden="true"><Icon name="rows" /></span>横栏
         </button>
       </div>
     </div>
@@ -90,7 +91,7 @@ const covers = new Map(posts.map((post) => [
               <span class="catalog-day-index">DAY {String(post.data.dayIndex ?? 0).padStart(2, '0')}</span>
             )}
           </time>
-          <a class="catalog-open" href={href} aria-label={`阅读《${post.data.title}》`}><ThemeCopy minimal="阅读" trace="打开记录" /> ↗</a>
+          <a class="catalog-open" href={href} aria-label={`阅读《${post.data.title}》`}><ThemeCopy minimal="阅读" trace="打开记录" /> <Icon name="arrow-up-right" /></a>
         </article>
       );
     })}

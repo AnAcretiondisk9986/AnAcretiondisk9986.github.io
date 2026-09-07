@@ -1,4 +1,5 @@
 ---
+import Icon from '../../components/Icon.astro';
 import { getCollection, render, type CollectionEntry } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ThemeCopy from '../../components/ThemeCopy.astro';
@@ -56,13 +57,13 @@ const fmtMinute = (d: Date) => {
 <BaseLayout title={post.data.title} description={post.data.description}>
   <div class="article-shell">
     <aside class="article-margin">
-      <a class="back-link" href="/blog/">← <ThemeCopy minimal="返回文章" trace="返回卷册目录" /></a>
+      <a class="back-link" href="/blog/"><Icon name="arrow-left" /> <ThemeCopy minimal="返回文章" trace="返回卷册目录" /></a>
       <a class="private-channel" href="/private/">
         <span class="private-channel__copy"><ThemeCopy minimal="私密文章" trace="私密卷册" /><small>PRIVATE ARCHIVE</small></span>
-        <span class="private-channel__arrow" aria-hidden="true">↗</span>
+        <span class="private-channel__arrow" aria-hidden="true"><Icon name="arrow-up-right" /></span>
       </a>
       <button class="print-action" type="button" onclick="window.print()">
-        <span aria-hidden="true">⤓</span> 导出 PDF
+        <Icon name="download" /> 导出 PDF
       </button>
       <dl>
         <div><dt><ThemeCopy minimal="文章编号" trace="条目编号" /></dt><dd>{folioCode}</dd></div>
@@ -73,7 +74,7 @@ const fmtMinute = (d: Date) => {
 
       <div class="share-link" data-shortlink>
         <button class="print-action share-link__btn" type="button" data-shortlink-generate>
-          <span aria-hidden="true">⧉</span> 生成分享短链
+          <Icon name="copy" /> 生成分享短链
         </button>
         <div class="share-link__panel" data-shortlink-panel>
           <span class="share-link__title" data-shortlink-title>《{post.data.title}》</span>
@@ -90,7 +91,7 @@ const fmtMinute = (d: Date) => {
     <article class="article">
       <header class="article-header">
         <div class="article-register">
-          <span><ThemeCopy minimal={`ARTICLE ${folioCode}`} trace={`FOLIO ${folioCode}`} /></span>
+          <span><ThemeCopy cyanotype={`NOTE / ${folioCode}`} minimal={`ARTICLE ${folioCode}`} trace={`FOLIO ${folioCode}`} /></span>
           <span><ThemeCopy minimal="ACRETIONDISK" trace="ARCHIVUM PERSONAE" /></span>
         </div>
         <h1>{post.data.title}</h1>
@@ -110,7 +111,7 @@ const fmtMinute = (d: Date) => {
         </div>
       </header>
 
-      <div class="article-ornament" aria-hidden="true"><span>✦</span></div>
+      <div class="article-ornament" aria-hidden="true"><Icon name="aperture" /></div>
 
       {isAuthorized ? (
         <div class="access-gate" data-authorized-gate data-authorized-article={post.id}>

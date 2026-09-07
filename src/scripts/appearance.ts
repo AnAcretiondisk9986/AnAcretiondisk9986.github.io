@@ -1,10 +1,14 @@
 (() => {
-  const allowedVisualThemes = ['still', 'fluid', 'minimal', 'trace'];
+  const allowedVisualThemes = ['cyanotype', 'still', 'fluid', 'minimal', 'trace'];
   const syncStoredAppearance = (root: HTMLElement, defaultVisualTheme: string) => {
-    const savedTheme = localStorage.getItem('theme');
-    const savedVisualTheme = localStorage.getItem('visual-theme');
+    let savedTheme: string | null = null;
+    let savedVisualTheme: string | null = null;
+    try {
+      savedTheme = localStorage.getItem('theme');
+      savedVisualTheme = localStorage.getItem('visual-theme');
+    } catch { /* Storage can be disabled without disabling the theme controls. */ }
     const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    root.dataset.theme = savedTheme ?? (systemDark ? 'dark' : 'light');
+    root.dataset.theme = ['light', 'dark'].includes(savedTheme || '') ? savedTheme! : (systemDark ? 'dark' : 'light');
     root.dataset.visualTheme = allowedVisualThemes.includes(savedVisualTheme || '')
       ? savedVisualTheme || defaultVisualTheme
       : defaultVisualTheme;
@@ -16,9 +20,7 @@
 
   const syncThemeButton = () => {
     const button = document.querySelector<HTMLButtonElement>('.theme-toggle');
-    const icon = button?.querySelector<HTMLElement>('[data-theme-icon]');
     const dark = document.documentElement.dataset.theme === 'dark';
-    if (icon) icon.textContent = dark ? '☾' : '☀';
     button?.setAttribute('aria-label', dark ? '切换为浅色模式' : '切换为深色模式');
     const favicon = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
     if (favicon) favicon.href = dark ? '/favicon-dark.png' : '/favicon.png';
@@ -33,7 +35,7 @@
         const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
         const apply = () => {
           document.documentElement.dataset.theme = next;
-          localStorage.setItem('theme', next);
+          try { localStorage.setItem('theme', next); } catch {}
           syncThemeButton();
         };
         if (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
@@ -46,7 +48,7 @@
     requestAnimationFrame(() => document.documentElement.classList.add('is-ready'));
   };
 
-  const defaultVisualTheme = document.documentElement.dataset.defaultVisualTheme || 'still';
+  const defaultVisualTheme = document.documentElement.dataset.defaultVisualTheme || 'cyanotype';
   syncStoredAppearance(document.documentElement, defaultVisualTheme);
   bind();
 

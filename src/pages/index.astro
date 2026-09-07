@@ -1,4 +1,5 @@
 ---
+import Icon from '../components/Icon.astro';
 import { getPublicPosts } from '../lib/posts';
 import { sortNewestFirst, thumbOf, type GalleryImageBrief } from '../lib/gallery';
 import { buildWordCloud } from '../lib/wordcloud';
@@ -7,6 +8,7 @@ import PostCatalog from '../components/PostCatalog.astro';
 import WordCloud from '../components/WordCloud.astro';
 import GalleryTeaser from '../components/GalleryTeaser.astro';
 import AboutTeaser from '../components/AboutTeaser.astro';
+import CyanotypePlate from '../components/CyanotypePlate.astro';
 import SpecimenPlate from '../components/SpecimenPlate.astro';
 import ThemeCopy from '../components/ThemeCopy.astro';
 import { safeLink } from '../lib/safe-link';
@@ -42,8 +44,8 @@ const galleryTeaserImages: GalleryImageBrief[] = sortNewestFirst(
     </div>
     <div class="hero-copy-panel">
       <div class="folio-kicker">
-        <span>PERSONAL ARCHIVE</span>
-        <span>VOL. I · MMXXVI</span>
+        <span><ThemeCopy minimal="PERSONAL ARCHIVE" trace="PERSONAL ARCHIVE" cyanotype="FIELD NOTES / 个人观察集" /></span>
+        <span><ThemeCopy minimal="VOL. I · MMXXVI" trace="VOL. I · MMXXVI" cyanotype="NO. 001 — ONGOING" /></span>
       </div>
 
       <p class="eyebrow legacy-hero-copy"><ThemeCopy minimal="个人博客" trace="一份仍在书写的私人行记" /></p>
@@ -51,6 +53,7 @@ const galleryTeaserImages: GalleryImageBrief[] = sortNewestFirst(
       <h1 class="legacy-hero-copy">
         <ThemeCopy minimal="Acretiondisk">
           <Fragment slot="trace"><span>在生活之中，</span><em>留存我的观察。</em></Fragment>
+          <Fragment slot="cyanotype"><span>把日常，</span><em>慢慢显影。</em></Fragment>
         </ThemeCopy>
       </h1>
       <h1 class="liquid-hero-copy liquid-hero-title"><span>{frontend.heroTitleLine1}</span><em>{frontend.heroTitleLine2}</em></h1>
@@ -63,24 +66,25 @@ const galleryTeaserImages: GalleryImageBrief[] = sortNewestFirst(
         <a class="primary-link" href={primaryCtaHref}>
           <span class="legacy-hero-copy"><ThemeCopy minimal="浏览文章" trace="展开卷册" /></span>
           <span class="liquid-hero-copy">{frontend.primaryCtaLabel}</span>
-          <span aria-hidden="true">→</span>
+          <span aria-hidden="true"><Icon name="arrow-right" /></span>
         </a>
         <a class="primary-link private-link" href="/private/">
           <ThemeCopy minimal="私密文章" trace="私密卷册" />
-          <span aria-hidden="true">↗</span>
+          <span aria-hidden="true"><Icon name="arrow-up-right" /></span>
         </a>
         <a class="text-link" href="/about/"><ThemeCopy minimal="了解我" trace="阅览编目者档案" /></a>
       </div>
 
       <dl class="hero-register">
         <div><dt><ThemeCopy minimal="内容" trace="编目范围" /></dt><dd>医学 / 技术 / 艺术</dd></div>
-        <div><dt><ThemeCopy minimal="状态" trace="记录状态" /></dt><dd>持续更新</dd></div>
+        <div><dt><ThemeCopy minimal="状态" trace="记录状态" /></dt><dd><ThemeCopy minimal="持续更新" trace="持续更新" /></dd></div>
         <div><dt><ThemeCopy minimal="站点编号" trace="馆藏编号" /></dt><dd>ACR—001</dd></div>
       </dl>
     </div>
 
     <div class="hero-plate-panel">
       <SpecimenPlate />
+      <CyanotypePlate />
       <img class="archive-seal hero-seal" src="/logo.webp" alt="" width="240" height="240" loading="lazy" />
     </div>
   </section>
@@ -88,12 +92,12 @@ const galleryTeaserImages: GalleryImageBrief[] = sortNewestFirst(
   <section class="archive-section">
     <div class="section-heading codex-heading">
       <div>
-        <p class="eyebrow">RECENT FOLIOS</p>
+        <p class="eyebrow"><ThemeCopy minimal="RECENT FOLIOS" trace="RECENT FOLIOS" cyanotype="01 / FRESH EXPOSURES" /></p>
         <h2><ThemeCopy minimal="最新文章" trace="近期入藏" /></h2>
       </div>
       <div class="heading-note">
         <span>{String(posts.length).padStart(2, '0')} <ThemeCopy minimal="篇文章" trace="件记录" /></span>
-        <a href="/blog/"><ThemeCopy minimal="查看全部" trace="完整目录" /> →</a>
+        <a href="/blog/"><ThemeCopy minimal="查看全部" trace="完整目录" /> <Icon name="arrow-right" /></a>
       </div>
     </div>
 
@@ -114,6 +118,6 @@ const galleryTeaserImages: GalleryImageBrief[] = sortNewestFirst(
   <section class="index-coda">
     <img class="archive-seal coda-seal" src="/logo.webp" alt="" width="132" height="132" loading="lazy" />
     <blockquote><ThemeCopy minimal="“写下来，是为了更清楚地看见自己。”" trace="“记录并非为了留住一切，而是为了在时间中辨认自己。”" /></blockquote>
-    <p>FINIS PAGINAE · INITIUM SEQUENTIS</p>
+    <p><ThemeCopy minimal="FINIS PAGINAE · INITIUM SEQUENTIS" trace="FINIS PAGINAE · INITIUM SEQUENTIS" cyanotype="THE STUDY CONTINUES. / 下次观察见。" /></p>
   </section>
 </BaseLayout>

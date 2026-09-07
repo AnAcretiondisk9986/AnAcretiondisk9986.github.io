@@ -1,10 +1,6 @@
 ---
-interface Props {
-  minimal?: string;
-  trace?: string;
-}
-
-const { minimal = '', trace = '' } = Astro.props;
+import { cyanotypeCopy } from '../lib/cyanotype-copy';
+interface Props { minimal?: string; trace?: string; cyanotype?: string; }
+const { minimal = '', trace = '', cyanotype = cyanotypeCopy[minimal] ?? minimal } = Astro.props;
 ---
-
-<span class="theme-copy" data-theme-copy><span data-theme-copy-minimal><slot name="minimal">{minimal}</slot></span><span data-theme-copy-trace><slot name="trace">{trace}</slot></span></span>
+<span class="theme-copy" data-theme-copy><span data-theme-copy-minimal><slot name="minimal">{minimal}</slot></span><span data-theme-copy-trace><slot name="trace">{trace}</slot></span><span data-theme-copy-cyanotype><slot name="cyanotype">{cyanotype}</slot></span></span>

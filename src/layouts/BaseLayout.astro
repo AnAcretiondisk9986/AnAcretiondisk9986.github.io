@@ -3,6 +3,7 @@ import '../styles/tokens.css';
 import '../styles/global.css';
 import '../styles/minimal-theme.css';
 import '../styles/liquid-theme.css';
+import '../styles/cyanotype-theme.css';
 import { ClientRouter } from 'astro:transitions';
 import ThemeCopy from '../components/ThemeCopy.astro';
 import EdgeNotes from '../components/layout/EdgeNotes.astro';
@@ -22,10 +23,10 @@ const {
 
 const siteName = frontend.siteName || 'Acretiondisk';
 const siteTagline = frontend.siteTagline || '记录想法与生活';
-const visualThemes = ['still', 'fluid', 'minimal', 'trace'];
+const visualThemes = ['cyanotype', 'still', 'fluid', 'minimal', 'trace'];
 const defaultVisualTheme = visualThemes.includes(frontend.defaultVisualTheme)
   ? frontend.defaultVisualTheme
-  : 'still';
+  : 'cyanotype';
 const displayFonts = {
   'noto-serif': '"Noto Serif SC", "Source Han Serif SC", "Songti SC", STSong, SimSun, serif',
   'noto-sans': '"Noto Sans SC", "Source Han Sans SC", "Microsoft YaHei", system-ui, sans-serif',
@@ -49,7 +50,7 @@ const pageTitle = title === 'Acretiondisk' ? siteName : `${title} · ${siteName}
 ---
 
 <!doctype html>
-<html lang="zh-CN" data-default-visual-theme={defaultVisualTheme} style={frontendStyle}>
+<html lang="zh-CN" data-default-visual-theme={defaultVisualTheme} data-visual-theme={defaultVisualTheme} style={frontendStyle}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width" />

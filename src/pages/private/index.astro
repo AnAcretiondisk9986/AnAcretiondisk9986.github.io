@@ -22,9 +22,9 @@ const cloudWords = buildWordCloud(
   <main class="private-index">
     <header class="catalog-header">
       <div class="catalog-title">
-        <p class="eyebrow">PRIVATE ARCHIVE</p>
+        <p class="eyebrow"><ThemeCopy minimal="PRIVATE ARCHIVE" trace="PRIVATE ARCHIVE" cyanotype="UNPUBLISHED EXPOSURES" /></p>
         <h1><ThemeCopy minimal="私密文章" trace="私密卷册" /></h1>
-        <p>此处文章不会出现在公开文章目录中。</p>
+        <p><ThemeCopy minimal="此处文章不会出现在公开文章目录中。" trace="此处文章不会出现在公开文章目录中。" cyanotype="一些观察暂时收在暗房里，不列入公开手记。" /></p>
       </div>
       <div class="catalog-mark">
         <img class="archive-seal" src="/logo.webp" alt="" width="380" height="380" loading="lazy" />
@@ -36,8 +36,8 @@ const cloudWords = buildWordCloud(
       </div>
     </header>
     <div class="access-gate" data-private-index-gate>
-      <p class="access-gate__eyebrow">管理员级文章</p>
-      <h2>输入密码后查看私密目录</h2>
+      <p class="access-gate__eyebrow"><ThemeCopy minimal="管理员级文章" trace="管理员级文章" cyanotype="THE DARKROOM / 非公开区域" /></p>
+      <h2><ThemeCopy minimal="输入密码后查看私密目录" trace="输入密码后查看私密目录" cyanotype="持有口令，才能展开这些底片。" /></h2>
       <form data-private-index-form><input name="password" type="password" autocomplete="current-password" required placeholder="私密文章密码" aria-label="私密文章密码" /><button type="submit">验证并打开</button></form>
       <p class="access-gate__error" data-private-index-error role="alert"></p>
     </div>

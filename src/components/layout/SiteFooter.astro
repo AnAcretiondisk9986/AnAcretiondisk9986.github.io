@@ -1,4 +1,5 @@
 ---
+import Icon from '../Icon.astro';
 import ThemeCopy from '../ThemeCopy.astro';
 
 interface Props {
@@ -14,11 +15,11 @@ const { siteName, siteTagline } = Astro.props;
     <img class="footer-seal site-logo" src="/logo-primary.webp" alt={`${siteName} LOGO`} width="48" height="48" />
     <p>
       <strong>{siteName} · <ThemeCopy minimal="持续更新" trace="持续编目" /></strong>
-      <span>{siteTagline}</span>
+      <span><ThemeCopy minimal={siteTagline} trace={siteTagline} cyanotype="让路过的光，有迹可循。" /></span>
     </p>
   </div>
   <div class="footer-meta">
     <span>© {new Date().getFullYear()} {siteName.toUpperCase()}</span>
-    <a href="https://github.com/AnAcretiondisk9986">GITHUB ↗</a>
+    <a href="https://github.com/AnAcretiondisk9986">GITHUB <Icon name="arrow-up-right" /></a>
   </div>
 </footer>

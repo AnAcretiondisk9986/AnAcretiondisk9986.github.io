@@ -1,4 +1,5 @@
 ---
+import Icon from './Icon.astro';
 import ThemeCopy from './ThemeCopy.astro';
 import type { GalleryImageBrief } from '../lib/gallery';
 
@@ -12,12 +13,12 @@ const { images } = Astro.props;
 <section class="archive-section">
   <div class="section-heading codex-heading">
     <div>
-      <p class="eyebrow">IMAGO RECENTES</p>
+      <p class="eyebrow"><ThemeCopy minimal="IMAGO RECENTES" trace="IMAGO RECENTES" cyanotype="03 / LIGHT FRAGMENTS" /></p>
       <h2><ThemeCopy minimal="图志精选" trace="近期图录" /></h2>
     </div>
     <div class="heading-note">
-      <span><ThemeCopy minimal={`${images.length} 张近期影像`} trace={`${images.length} 件近期入藏`} /></span>
-      <a href="/gallery/"><ThemeCopy minimal="查看全部" trace="完整图志" /> →</a>
+      <span><ThemeCopy cyanotype={`${images.length} 张光的切片`} minimal={`${images.length} 张近期影像`} trace={`${images.length} 件近期入藏`} /></span>
+      <a href="/gallery/"><ThemeCopy minimal="查看全部" trace="完整图志" /> <Icon name="arrow-right" /></a>
     </div>
   </div>
 

@@ -13,6 +13,8 @@ interface GalleryImage {
   sourceTitle?: string;
   original?: string;
 }
+import { iconMarkup } from '../lib/icons';
+import { cyanotypeCopy } from '../lib/cyanotype-copy';
 import { captureFlip, playFlip } from './reorder-anim';
 
 // 独立收藏数据池(由上方 JSON 标签注入,避免 define:vars 内联导致 TS 语法残留)
@@ -40,7 +42,7 @@ import { captureFlip, playFlip } from './reorder-anim';
   // astro:page-load:整页加载与每次 VT 导航后触发,重新初始化(打包脚本只执行一次,事件驱动每次导航执行)
 
   const themeText = (minimal: string, trace: string) =>
-    document.documentElement.dataset.visualTheme === 'trace' ? trace : minimal;
+    document.documentElement.dataset.visualTheme === 'trace' ? trace : document.documentElement.dataset.visualTheme === 'cyanotype' ? (cyanotypeCopy[minimal] ?? minimal) : minimal;
 
   // 让容器内当前可见的卡片播放一次「轻盈升起」进入动画(翻页时使用)
   const animateCardsEntering = (container: HTMLElement | null) => {
@@ -91,6 +93,8 @@ import { captureFlip, playFlip } from './reorder-anim';
     if (minimalCopy && traceCopy) {
       minimalCopy.textContent = minimal;
       traceCopy.textContent = trace;
+      const cyanotype = label.querySelector<HTMLElement>('[data-theme-copy-cyanotype]');
+      if (cyanotype) cyanotype.textContent = `${label.dataset.gallerySequenceCyanotypePrefix || ''}${sequence}`;
     } else {
       label.textContent = themeText(minimal, trace);
     }
@@ -669,8 +673,9 @@ import { captureFlip, playFlip } from './reorder-anim';
     viewerSource.hidden = !source;
     viewerSource.href = source || '#';
     viewerSource.textContent = button.dataset.gallerySourceTitle
-      ? `${themeText('阅读', '阅览')}《${button.dataset.gallerySourceTitle}》 ↗`
-      : '查看来源 ↗';
+      ? `${themeText('阅读', '阅览')}《${button.dataset.gallerySourceTitle}》`
+      : themeText('查看来源', '查看来源');
+    viewerSource.insertAdjacentHTML('beforeend', iconMarkup('arrow-up-right'));
     if (viewerOriginalBtn) {
       viewerOriginalBtn.hidden = !originalUrl;
       viewerOriginalBtn.textContent = themeText('查看原图', '加载原图');

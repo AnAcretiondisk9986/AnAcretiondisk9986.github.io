@@ -15,6 +15,8 @@
  * 由文章页 <script> 引入，astro:page-load 驱动，每次 View Transitions 导航后重新增强。
  */
 
+import { iconMarkup } from '../lib/icons';
+
 interface SongConfig {
   src: string;
   title: string;
@@ -82,7 +84,7 @@ function setPlaying(host: HTMLElement | null, playing: boolean): void {
   host.classList.toggle('is-playing', playing);
   const btn = host.querySelector<HTMLButtonElement>('.song-player__toggle');
   if (btn) {
-    btn.textContent = playing ? '⏸' : '▶';
+    btn.innerHTML = iconMarkup(playing ? 'pause' : 'play');
     btn.setAttribute('aria-label', playing ? '暂停' : '播放');
   }
 }
@@ -105,8 +107,8 @@ function showError(host: HTMLElement, netease: boolean): void {
   const err = document.createElement('span');
   err.className = 'song-player__err';
   err.textContent = netease
-    ? '⚠ 无法加载音频：该网易云歌曲可能已下架 / 无版权，不支持外链播放'
-    : '⚠ 无法加载音频：请确认 data-src 是音频文件直链（mp3 / flac 等），而非网页链接';
+    ? '无法加载音频：该网易云歌曲可能已下架 / 无版权，不支持外链播放'
+    : '无法加载音频：请确认 data-src 是音频文件直链（mp3 / flac 等），而非网页链接';
   host.appendChild(err);
 }
 
@@ -157,7 +159,7 @@ function makeVolume(host: HTMLElement, audio: () => HTMLAudioElement): HTMLEleme
   const btn = document.createElement('button');
   btn.type = 'button';
   btn.className = 'song-player__volume-toggle';
-  btn.textContent = '🔊';
+  btn.innerHTML = iconMarkup('volume');
   btn.setAttribute('aria-label', '静音');
   const range = document.createElement('input');
   range.type = 'range';
@@ -169,7 +171,10 @@ function makeVolume(host: HTMLElement, audio: () => HTMLAudioElement): HTMLEleme
   let lastVolume = 1;
   const syncIcon = (): void => {
     const a = audio();
-    btn.textContent = a.muted || a.volume === 0 ? '🔇' : '🔊';
+    const muted = a.muted || a.volume === 0;
+    btn.innerHTML = iconMarkup(muted ? 'volume-off' : 'volume');
+    btn.setAttribute('aria-label', muted ? '取消静音' : '静音');
+    btn.setAttribute('aria-pressed', String(muted));
   };
   btn.addEventListener('click', () => {
     const a = audio();
@@ -217,7 +222,7 @@ function enhance(host: HTMLElement, cfg: SongConfig): void {
   const toggle = document.createElement('button');
   toggle.type = 'button';
   toggle.className = 'song-player__toggle';
-  toggle.textContent = '▶';
+  toggle.innerHTML = iconMarkup('play');
   toggle.setAttribute('aria-label', `播放 ${cfg.title}`);
   const track = document.createElement('div');
   track.className = 'song-player__track';

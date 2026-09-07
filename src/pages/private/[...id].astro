@@ -1,4 +1,5 @@
 ---
+import Icon from '../../components/Icon.astro';
 import { getCollection, render, type CollectionEntry } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ThemeCopy from '../../components/ThemeCopy.astro';
@@ -46,13 +47,13 @@ const fmtMinute = (d: Date) => {
 <BaseLayout title={`私密文章｜${post.data.title}`} description="管理员级文章。">
   <div class="article-shell private-article-shell" data-private-article={post.id}>
     <aside class="article-margin">
-      <a class="back-link" href="/private/">← <ThemeCopy minimal="返回私密文章" trace="返回私密卷册" /></a>
+      <a class="back-link" href="/private/"><Icon name="arrow-left" /> <ThemeCopy minimal="返回私密文章" trace="返回私密卷册" /></a>
       <div class="private-lock-note">
         <span>PRIVATE ARCHIVE</span>
         <small>管理员级文章 · 验证后阅览</small>
       </div>
       <button class="print-action" type="button" onclick="window.print()">
-        <span aria-hidden="true">⤓</span> 导出 PDF
+        <Icon name="download" /> 导出 PDF
       </button>
       <dl>
         <div><dt><ThemeCopy minimal="文章编号" trace="条目编号" /></dt><dd>{folioCode}</dd></div>
@@ -78,11 +79,11 @@ const fmtMinute = (d: Date) => {
         </div>
       </header>
 
-      <div class="article-ornament" aria-hidden="true"><span>✦</span></div>
+      <div class="article-ornament" aria-hidden="true"><Icon name="aperture" /></div>
 
       <div class="access-gate" data-private-gate>
-        <p class="access-gate__eyebrow">管理员级文章</p>
-        <h2>输入密码后查看</h2>
+        <p class="access-gate__eyebrow"><ThemeCopy minimal="管理员级文章" trace="管理员级文章" cyanotype="THE DARKROOM / 非公开区域" /></p>
+        <h2><ThemeCopy minimal="输入密码后查看" trace="输入密码后查看" cyanotype="这一页，留给持有口令的人。" /></h2>
         <p>密码由站长在管理系统中设置。</p>
         <form data-private-form>
           <input name="password" type="password" autocomplete="current-password" required placeholder="私密文章密码" aria-label="私密文章密码" />

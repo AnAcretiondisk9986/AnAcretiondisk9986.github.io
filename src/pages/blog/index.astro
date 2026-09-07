@@ -17,7 +17,7 @@ const cloudWords = buildWordCloud(
 <BaseLayout title="文章" description="Acretiondisk 的全部文章。">
   <header class="catalog-header">
     <div class="catalog-title">
-      <p class="eyebrow">CATALOGUS SCRIPTORUM</p>
+      <p class="eyebrow"><ThemeCopy minimal="CATALOGUS SCRIPTORUM" trace="CATALOGUS SCRIPTORUM" cyanotype="THE NOTEBOOK / 01" /></p>
       <h1><ThemeCopy minimal="全部文章" trace="卷册目录" /></h1>
       <p><ThemeCopy minimal="技术、医学、艺术，以及日常生活中的记录。" trace="技术、医学、艺术，以及生活里值得被编目的细节。" /></p>
     </div>
@@ -37,6 +37,6 @@ const cloudWords = buildWordCloud(
 
   <footer class="catalog-footer">
     <span><ThemeCopy minimal="所有文章均由我本人记录" trace="所有条目均由编目者亲自记录" /></span>
-    <span>ACR / CATALOGUS / {new Date().getFullYear()}</span>
+    <span><ThemeCopy minimal={`ACR / CATALOGUS / ${new Date().getFullYear()}`} trace={`ACR / CATALOGUS / ${new Date().getFullYear()}`} cyanotype={`ACR / FIELD NOTES / ${new Date().getFullYear()}`} /></span>
   </footer>
 </BaseLayout>

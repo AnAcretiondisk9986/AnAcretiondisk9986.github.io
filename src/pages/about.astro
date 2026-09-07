@@ -1,4 +1,5 @@
 ---
+import Icon from '../components/Icon.astro';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import ThemeCopy from '../components/ThemeCopy.astro';
 import { safeLink } from '../lib/safe-link';
@@ -33,16 +34,16 @@ function linkify(text = '') {
   <article class="dossier">
     <header class="dossier-header">
       <div>
-        <p class="eyebrow">{about.eyebrow}</p>
-        <h1>{about.title}</h1>
-        <p>{about.subtitle}</p>
+        <p class="eyebrow"><ThemeCopy minimal={about.eyebrow} trace={about.eyebrow} cyanotype="BEHIND THE PRINT / 04" /></p>
+        <h1><ThemeCopy minimal={about.title} trace={about.title} cyanotype="底片背面" /></h1>
+        <p><ThemeCopy minimal={about.subtitle} trace={about.subtitle} cyanotype="作品之外，还有一个不断观察、尝试、偶尔推翻自己的我。" /></p>
       </div>
       <img class="archive-seal dossier-seal" src="/logo.webp" alt="" width="260" height="260" loading="lazy" />
     </header>
 
     <a class="private-channel private-channel--dossier" href="/private/">
       <span class="private-channel__copy"><ThemeCopy minimal="私密文章" trace="私密卷册" /><small>PRIVATE ARCHIVE · 需要密码</small></span>
-      <span class="private-channel__arrow" aria-hidden="true">↗</span>
+      <span class="private-channel__arrow" aria-hidden="true"><Icon name="arrow-up-right" /></span>
     </a>
 
     <section class="appearance-settings" aria-labelledby="appearance-heading">
@@ -51,6 +52,9 @@ function linkify(text = '') {
         <h2 id="appearance-heading"><ThemeCopy minimal="外观" trace="界面主题" /></h2>
       </div>
       <div class="appearance-selector" role="group" aria-label="界面主题">
+        <button type="button" data-visual-theme-option="cyanotype" aria-pressed="false">
+          <span class="appearance-swatch appearance-swatch--cyanotype" aria-hidden="true"></span><span>蓝晒</span>
+        </button>
         <button type="button" data-visual-theme-option="still" aria-pressed="false">
           <span class="appearance-swatch appearance-swatch--still" aria-hidden="true"></span>
           <span>静澈</span>
@@ -135,7 +139,7 @@ function linkify(text = '') {
 </BaseLayout>
 
 <script>
-  type VisualTheme = 'still' | 'fluid' | 'minimal' | 'trace';
+  type VisualTheme = 'cyanotype' | 'still' | 'fluid' | 'minimal' | 'trace';
 
   const initializedThemeButtons = new WeakSet<HTMLButtonElement>();
 
@@ -148,13 +152,13 @@ function linkify(text = '') {
       buttons.forEach((button) => {
         button.setAttribute('aria-pressed', String(button.dataset.visualThemeOption === theme));
       });
-      const names: Record<VisualTheme, string> = { still: '静澈', fluid: '流形', minimal: '留白', trace: '行迹' };
+      const names: Record<VisualTheme, string> = { cyanotype: '蓝晒', still: '静澈', fluid: '流形', minimal: '留白', trace: '行迹' };
       if (status) status.textContent = `已切换为${names[theme]}主题`;
     };
 
-    const allowed: VisualTheme[] = ['still', 'fluid', 'minimal', 'trace'];
+    const allowed: VisualTheme[] = ['cyanotype', 'still', 'fluid', 'minimal', 'trace'];
     const currentValue = document.documentElement.dataset.visualTheme as VisualTheme;
-    const current = allowed.includes(currentValue) ? currentValue : 'still';
+    const current = allowed.includes(currentValue) ? currentValue : 'cyanotype';
     sync(current);
 
     buttons.forEach((button) => {
@@ -162,12 +166,12 @@ function linkify(text = '') {
       initializedThemeButtons.add(button);
       button.addEventListener('click', () => {
         const option = button.dataset.visualThemeOption as VisualTheme;
-        const theme: VisualTheme = allowed.includes(option) ? option : 'still';
+        const theme: VisualTheme = allowed.includes(option) ? option : 'cyanotype';
         if (document.documentElement.dataset.visualTheme === theme) return;
 
         const apply = () => {
           document.documentElement.dataset.visualTheme = theme;
-          localStorage.setItem('visual-theme', theme);
+          try { localStorage.setItem('visual-theme', theme); } catch {}
           sync(theme);
         };
 

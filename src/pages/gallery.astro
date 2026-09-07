@@ -1,4 +1,5 @@
 ---
+import Icon from '../components/Icon.astro';
 import { getPublicPosts } from '../lib/posts';
 import { sortNewestFirst, thumbOf } from '../lib/gallery';
 import BaseLayout from '../layouts/BaseLayout.astro';
@@ -97,7 +98,7 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
           <span>IMAGO / PERSONAL ARCHIVE</span>
           <span>VOL. I · {String(totalImages).padStart(2, '0')} IMAGES</span>
         </div>
-        <p class="eyebrow">CATALOGUS IMAGINUM</p>
+        <p class="eyebrow"><ThemeCopy minimal="CATALOGUS IMAGINUM" trace="CATALOGUS IMAGINUM" cyanotype="LIGHT FRAGMENTS / 03" /></p>
         <h1>
           <ThemeCopy minimal="照片">
             <Fragment slot="trace">图像<br /><em>档案</em></Fragment>
@@ -135,10 +136,10 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
       </div>
       <div class="gallery-sort" role="group" aria-label="照片展示顺序">
         <button type="button" data-gallery-sort="newest" aria-pressed="true">
-          <span aria-hidden="true">↓</span>从新至旧
+          <span aria-hidden="true"><Icon name="arrow-down" /></span>从新至旧
         </button>
         <button type="button" data-gallery-sort="oldest" aria-pressed="false">
-          <span aria-hidden="true">↑</span>从旧至新
+          <span aria-hidden="true"><Icon name="arrow-up" /></span>从旧至新
         </button>
       </div>
     </div>
@@ -146,7 +147,7 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
     <section class="gallery-panel" id="gallery-journal" role="tabpanel" aria-labelledby="tab-journal" data-gallery-panel="journal">
       <div class="gallery-index-bar">
         <span><ThemeCopy minimal="来自文章的图片" trace="IMAGES FOUND IN PUBLISHED FOLIOS" /></span>
-        <span><ThemeCopy minimal={`${journalImages.length} 张 · 自动整理`} trace={`${journalImages.length} ITEMS / AUTO INDEXED`} /></span>
+        <span><ThemeCopy cyanotype={`${journalImages.length} 次快门 · 随手记显影`} minimal={`${journalImages.length} 张 · 自动整理`} trace={`${journalImages.length} ITEMS / AUTO INDEXED`} /></span>
       </div>
       <div class="gallery-view-bar">
         <div class="gallery-view-label">
@@ -155,10 +156,10 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
         </div>
         <div class="gallery-view-switch" role="group" aria-label="随文图像展示方式">
           <button type="button" data-gallery-view="timeline" aria-pressed="false">
-            <span aria-hidden="true">▤</span>时间线
+            <span aria-hidden="true"><Icon name="rows" /></span>时间线
           </button>
           <button type="button" data-gallery-view="albums" aria-pressed="true">
-            <span aria-hidden="true">▦</span><ThemeCopy minimal="按文章" trace="文章图集" />
+            <span aria-hidden="true"><Icon name="grid" /></span><ThemeCopy minimal="按文章" trace="文章图集" />
           </button>
         </div>
       </div>
@@ -180,7 +181,7 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
               >
                 <img src={image.thumb || image.src} alt={image.alt} loading={index < 3 ? 'eager' : 'lazy'} fetchpriority={index < 3 ? 'high' : 'auto'} decoding="async" referrerpolicy="no-referrer" />
                 <span class="gallery-image-stamp">{String(index + 1).padStart(2, '0')}</span>
-                <span class="gallery-image-expand" aria-hidden="true">↗</span>
+                <span class="gallery-image-expand" aria-hidden="true"><Icon name="arrow-up-right" /></span>
               </button>
               <div class="gallery-card-meta">
                 <div>
@@ -188,18 +189,18 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
                   {image.daySequence && image.dayTotal && (
                     <span class="gallery-card-label" data-gallery-day>D.{String(image.daySequence).padStart(2, '0')}/{String(image.dayTotal).padStart(2, '0')}</span>
                   )}
-                  <span class="gallery-card-label" data-gallery-sequence data-gallery-sequence-minimal-prefix="图片 " data-gallery-sequence-trace-prefix="FOLIO "><ThemeCopy minimal={`图片 ${String(index + 1).padStart(2, '0')}`} trace={`FOLIO ${String(index + 1).padStart(2, '0')}`} /></span>
+                  <span class="gallery-card-label" data-gallery-sequence data-gallery-sequence-cyanotype-prefix="切片 " data-gallery-sequence-minimal-prefix="图片 " data-gallery-sequence-trace-prefix="FOLIO "><ThemeCopy cyanotype={`切片 ${String(index + 1).padStart(2, '0')}`} minimal={`图片 ${String(index + 1).padStart(2, '0')}`} trace={`FOLIO ${String(index + 1).padStart(2, '0')}`} /></span>
                 </div>
                 <h2>{image.caption}</h2>
-                <a href={image.sourceUrl}><ThemeCopy minimal={`阅读《${image.sourceTitle}》`} trace={`阅览《${image.sourceTitle}》`} /></a>
+                <a href={image.sourceUrl}><ThemeCopy cyanotype={`回到手记《${image.sourceTitle}》`} minimal={`阅读《${image.sourceTitle}》`} trace={`阅览《${image.sourceTitle}》`} /></a>
               </div>
             </article>
           ))}
         </div>
         <nav class="gallery-pager" data-gallery-pager aria-label="随文图像翻页" hidden>
-          <button type="button" data-gallery-page="prev" aria-label="上一页">←</button>
+          <button type="button" data-gallery-page="prev" aria-label="上一页"><Icon name="arrow-left" /></button>
           <span class="gallery-pager-status"><b data-gallery-page-current>01</b> / <b data-gallery-page-total>01</b></span>
-          <button type="button" data-gallery-page="next" aria-label="下一页">→</button>
+          <button type="button" data-gallery-page="next" aria-label="下一页"><Icon name="arrow-right" /></button>
         </nav>
         <div class="gallery-albums" data-gallery-albums>
           {journalGroups.map((group, groupIndex) => {
@@ -214,11 +215,11 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
               >
                 <header class="gallery-album-head">
                   <div>
-                    <span class="gallery-card-label" data-gallery-sequence data-gallery-sequence-minimal-prefix="文章 " data-gallery-sequence-trace-prefix="FOLIO "><ThemeCopy minimal={`文章 ${String(groupIndex + 1).padStart(2, '0')}`} trace={`FOLIO ${String(groupIndex + 1).padStart(2, '0')}`} /></span>
+                    <span class="gallery-card-label" data-gallery-sequence data-gallery-sequence-cyanotype-prefix="手记 " data-gallery-sequence-minimal-prefix="文章 " data-gallery-sequence-trace-prefix="FOLIO "><ThemeCopy cyanotype={`手记 ${String(groupIndex + 1).padStart(2, '0')}`} minimal={`文章 ${String(groupIndex + 1).padStart(2, '0')}`} trace={`FOLIO ${String(groupIndex + 1).padStart(2, '0')}`} /></span>
                     <span class="gallery-card-label">{lead.date} · {group.images.length} IMAGES</span>
                   </div>
                   <h2>{lead.sourceTitle}</h2>
-                  <a href={lead.sourceUrl}><ThemeCopy minimal="阅读全文" trace="阅览全文" /> ↗</a>
+                  <a href={lead.sourceUrl}><ThemeCopy minimal="阅读全文" trace="阅览全文" /> <Icon name="arrow-up-right" /></a>
                 </header>
                 <div class="gallery-album-grid">
                   {group.images.map((image, imageIndex) => (
@@ -235,7 +236,7 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
                       aria-label={`查看${image.title}中的${image.caption}`}
                     >
                       <img src={image.thumb || image.src} alt={image.alt || image.title} loading="lazy" decoding="async" referrerpolicy="no-referrer" />
-                      <span class="gallery-image-expand" aria-hidden="true">↗</span>
+                      <span class="gallery-image-expand" aria-hidden="true"><Icon name="arrow-up-right" /></span>
                       <span class="gallery-album-thumb-index">{String(imageIndex + 1).padStart(2, '0')}</span>
                     </button>
                   ))}
@@ -254,21 +255,21 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
         <div class="gallery-billboard" data-gallery-billboard>
           <div class="gallery-billboard-head">
             <span><ThemeCopy minimal="照片轮播" trace="BILLBOARD / FULL COLLECTION" /></span>
-            <span data-billboard-caption><ThemeCopy minimal={`共 ${standaloneImages.length} 张独立照片`} trace={`轮播全部 ${standaloneImages.length} 张独立收藏`} /></span>
+            <span data-billboard-caption><ThemeCopy cyanotype={`${standaloneImages.length} 张散页 · 逐一翻看`} minimal={`共 ${standaloneImages.length} 张独立照片`} trace={`轮播全部 ${standaloneImages.length} 张独立收藏`} /></span>
           </div>
           <div class="gallery-billboard-stage">
-            <button class="gallery-billboard-arrow" type="button" data-billboard-prev aria-label="上一张">←</button>
+            <button class="gallery-billboard-arrow" type="button" data-billboard-prev aria-label="上一张"><Icon name="arrow-left" /></button>
             <div class="gallery-billboard-viewport" data-billboard-viewport tabindex="0" aria-label="独立收藏随机广告牌,可横向滚动">
               <div class="gallery-billboard-track" data-billboard-track></div>
             </div>
-            <button class="gallery-billboard-arrow" type="button" data-billboard-next aria-label="下一张">→</button>
+            <button class="gallery-billboard-arrow" type="button" data-billboard-next aria-label="下一张"><Icon name="arrow-right" /></button>
           </div>
           <div class="gallery-billboard-dots" data-billboard-dots></div>
         </div>
       )}
       <div class="gallery-index-bar">
         <span><ThemeCopy minimal="独立照片" trace="INDEPENDENT IMAGE COLLECTION" /></span>
-        <span><ThemeCopy minimal={`${standaloneImages.length} 张`} trace={`${standaloneImages.length} ITEMS / CURATED`} /></span>
+        <span><ThemeCopy cyanotype={`${standaloneImages.length} 张散页影像`} minimal={`${standaloneImages.length} 张`} trace={`${standaloneImages.length} ITEMS / CURATED`} /></span>
       </div>
       {standaloneImages.length > 0 ? (
         <div class="gallery-masonry gallery-masonry--independent" data-independent-masonry>
@@ -289,7 +290,7 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
               >
                 <img src={image.thumb || image.src} alt={image.alt || image.title} loading="lazy" decoding="async" referrerpolicy="no-referrer" />
                 <span class="gallery-image-stamp">{String(index + 1).padStart(2, '0')}</span>
-                <span class="gallery-image-expand" aria-hidden="true">↗</span>
+                <span class="gallery-image-expand" aria-hidden="true"><Icon name="arrow-up-right" /></span>
               </button>
               <div class="gallery-card-meta">
                 <div>
@@ -297,7 +298,7 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
                   {image.daySequence && image.dayTotal && (
                     <span class="gallery-card-label" data-gallery-day>D.{String(image.daySequence).padStart(2, '0')}/{String(image.dayTotal).padStart(2, '0')}</span>
                   )}
-                  <span class="gallery-card-label" data-gallery-sequence data-gallery-sequence-minimal-prefix="照片 " data-gallery-sequence-trace-prefix="INDEPENDENT / "><ThemeCopy minimal={`照片 ${String(index + 1).padStart(2, '0')}`} trace={`INDEPENDENT / ${String(index + 1).padStart(2, '0')}`} /></span>
+                  <span class="gallery-card-label" data-gallery-sequence data-gallery-sequence-cyanotype-prefix="散页 " data-gallery-sequence-minimal-prefix="照片 " data-gallery-sequence-trace-prefix="INDEPENDENT / "><ThemeCopy cyanotype={`散页 ${String(index + 1).padStart(2, '0')}`} minimal={`照片 ${String(index + 1).padStart(2, '0')}`} trace={`INDEPENDENT / ${String(index + 1).padStart(2, '0')}`} /></span>
                 </div>
                 <h2>{image.title}</h2>
                 {image.caption && <p>{image.caption}</p>}
@@ -307,9 +308,9 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
           ))}
         </div>
         <nav class="gallery-pager" data-independent-pager aria-label="独立收藏翻页">
-          <button type="button" data-independent-page="prev" aria-label="上一页">←</button>
+          <button type="button" data-independent-page="prev" aria-label="上一页"><Icon name="arrow-left" /></button>
           <span class="gallery-pager-status"><b data-independent-page-current>01</b> / <b data-independent-page-total>01</b></span>
-          <button type="button" data-independent-page="next" aria-label="下一页">→</button>
+          <button type="button" data-independent-page="next" aria-label="下一页"><Icon name="arrow-right" /></button>
         </nav>
       ) : (
         <div class="gallery-empty gallery-empty--independent">
@@ -329,7 +330,7 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
 
 <dialog class="gallery-viewer" id="gallery-viewer" aria-labelledby="gallery-viewer-title">
   <div class="gallery-viewer-frame">
-    <button class="gallery-viewer-close" type="button" data-gallery-close aria-label="关闭图像预览">×</button>
+    <button class="gallery-viewer-close" type="button" data-gallery-close aria-label="关闭图像预览"><Icon name="close" /></button>
     <div class="gallery-viewer-media" id="gallery-viewer-media"><img id="gallery-viewer-image" alt="" referrerpolicy="no-referrer" draggable="false" /></div>
     <div class="gallery-viewer-tools">
       <button class="gallery-viewer-original" type="button" data-gallery-original-btn hidden>加载原图</button>
@@ -345,7 +346,7 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
         <span class="gallery-card-label" id="gallery-viewer-caption"></span>
         <h2 id="gallery-viewer-title"></h2>
       </div>
-      <a id="gallery-viewer-source" href="#" hidden>查看来源 ↗</a>
+      <a id="gallery-viewer-source" href="#" hidden>查看来源 <Icon name="arrow-up-right" /></a>
     </footer>
   </div>
 </dialog>

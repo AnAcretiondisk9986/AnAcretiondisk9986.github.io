@@ -37,11 +37,11 @@ const siteBase = Astro.site?.toString() ?? '';
   <section class="wordcloud-section">
   <div class="section-heading codex-heading">
     <div>
-      <p class="eyebrow">INDEX VERBORUM</p>
+      <p class="eyebrow"><ThemeCopy minimal="INDEX VERBORUM" trace="INDEX VERBORUM" cyanotype="02 / CONNECTING THOUGHTS" /></p>
       <h2><ThemeCopy minimal={title} trace={traceTitle} /></h2>
     </div>
     <div class="heading-note">
-      <span><ThemeCopy minimal={`${words.length} 个关键词 · 点击搜索`} trace={`${words.length} 个关键词 · 点击词语搜索站内相关内容`} /></span>
+      <span><ThemeCopy cyanotype={`${words.length} 条线索 · 点一个词，循迹阅读`} minimal={`${words.length} 个关键词 · 点击搜索`} trace={`${words.length} 个关键词 · 点击词语搜索站内相关内容`} /></span>
     </div>
   </div>
   {words.length === 0 ? (

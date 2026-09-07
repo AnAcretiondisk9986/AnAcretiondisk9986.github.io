@@ -1,4 +1,5 @@
 ---
+import Icon from '../Icon.astro';
 import ThemeCopy from '../ThemeCopy.astro';
 
 interface Props {
@@ -18,8 +19,8 @@ const navigation = [
 
 <header class="site-header">
   <div class="header-register">
-    <span>ACR—LOG / PERSONAL CODEX</span>
-    <span>EST. MMXXVI</span>
+    <span><ThemeCopy minimal="ACR—LOG / PERSONAL CODEX" trace="ACR—LOG / PERSONAL CODEX" cyanotype="ACR / 日常观察事务所" /></span>
+    <span><ThemeCopy minimal="EST. MMXXVI" trace="EST. MMXXVI" cyanotype="AN OPEN-ENDED STUDY · 2026" /></span>
   </div>
 
   <div class="header-main">
@@ -27,7 +28,7 @@ const navigation = [
       <img class="site-seal site-logo" src="/logo-primary.webp" alt={`${siteName} LOGO`} width="48" height="48" />
       <span>
         <b>{siteName}</b>
-        <small>{siteTagline}</small>
+        <small><ThemeCopy minimal={siteTagline} trace={siteTagline} cyanotype="个人手记 · 长期显影中" /></small>
       </span>
     </a>
 
@@ -42,7 +43,7 @@ const navigation = [
         );
       })}
       <button class="theme-toggle" type="button" aria-label="切换明暗主题">
-        <span data-theme-icon aria-hidden="true">☀</span>
+        <span data-theme-icon aria-hidden="true"><Icon name="sun" /><Icon name="moon" /></span>
         <span class="theme-toggle__label">昼夜</span>
       </button>
     </nav>
