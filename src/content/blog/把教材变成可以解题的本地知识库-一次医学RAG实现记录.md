@@ -1,8 +1,9 @@
 ---
-title: "把教材变成可以解题的本地知识库：一次医学 RAG 实现记录"
-description: "从图片型医学 PDF、OCR、页码引用，到题型识别和多轮检索，我把一个本地教材检索库推进成了可以交给 Agent 解题的证据层。"
+title: 把教材变成可以解题的本地知识库：一次医学 RAG 实现记录
+description: 从图片型医学 PDF、OCR、页码引用，到题型识别和多轮检索，我把一个本地教材检索库推进成了可以交给 Agent 解题的证据层。
 pubDate: "2026-09-09"
 dayIndex: 1
+cover: "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/cover_1788929882748_1788929882869.webp"
 tags:
   - AI Agent
   - RAG
@@ -21,7 +22,7 @@ access: public
 
 所以这次开发，我把它从一个教材检索层推进成了一个**面向医学题目的证据层**：它不擅自编造医学结论，但可以为 Codex 或其他 Agent 准备带页码、章节和原文的作答材料。
 
-![博客首页现场截图](/images/blog-home现场截图.png)
+
 
 ## 1. 第一个问题：PDF 看起来有 368 页，但其实没有文字
 
