@@ -3,11 +3,10 @@ title: "目前所做的最有用的一个产物——ClinMedAgent-RAG "
 description: 医学教材特化的AI Agent检索知识库
 pubDate: "2026-09-11"
 dayIndex: 1
+cover: "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/cover_1789144615442_1789144615444.webp"
 draft: false
 access: public
 ---
-
-
 
 # 这个项目是什么
 
