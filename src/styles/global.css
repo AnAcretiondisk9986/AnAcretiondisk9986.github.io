@@ -815,11 +815,11 @@ main {
   grid-template-columns: minmax(0, 1fr) auto;
   grid-template-areas:
     'index date'
+    'cover cover'
     'content content'
     'open open';
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
   gap: 16px;
-  height: 286px;
   min-width: 0;
   padding: 20px;
   border: 1px solid var(--rule);
@@ -871,7 +871,8 @@ main {
 }
 
 .catalog-list[data-catalog-layout='cards'] .catalog-cover {
-  display: none;
+  aspect-ratio: 16 / 9;
+  background: color-mix(in srgb, var(--paper-light) 90%, var(--ink) 10%);
 }
 
 .catalog-content {
@@ -3664,7 +3665,6 @@ main {
   }
 
   .catalog-list[data-catalog-layout='cards'] .catalog-entry {
-    height: 264px;
     padding: 18px;
   }
 }

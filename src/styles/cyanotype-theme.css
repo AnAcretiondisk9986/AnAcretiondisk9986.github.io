@@ -105,7 +105,7 @@
 :root[data-visual-theme='cyanotype'] .heading-note a { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; }
 :root[data-visual-theme='cyanotype'] .catalog-list { border: 0; }
 :root[data-visual-theme='cyanotype'] .catalog-list[data-catalog-layout='cards'] { gap: 16px; padding-top: 0; }
-:root[data-visual-theme='cyanotype'] .catalog-list[data-catalog-layout='cards'] .catalog-entry { border-radius: 0; border: 1px solid var(--rule); background: var(--paper-light); box-shadow: none; height: 265px; padding: 23px; }
+:root[data-visual-theme='cyanotype'] .catalog-list[data-catalog-layout='cards'] .catalog-entry { border-radius: 0; border: 1px solid var(--rule); background: var(--paper-light); box-shadow: none; padding: 23px; }
 :root[data-visual-theme='cyanotype'] .catalog-list[data-catalog-layout='cards'] .catalog-index span { font-size: 13px; color: var(--gold); }
 :root[data-visual-theme='cyanotype'] .catalog-list .catalog-content h2 { font-family: var(--serif); font-weight: 600; font-size: 20px; line-height: 1.55; }
 :root[data-visual-theme='cyanotype'] .catalog-content > p { font-family: var(--sans); font-size: 12px; line-height: 1.85; }
@@ -219,7 +219,7 @@
   :root[data-visual-theme='cyanotype'] .section-heading h2 { font-size: 25px; }
   :root[data-visual-theme='cyanotype'] .heading-note { flex-direction: row; align-items: center; text-align: left; font-size: 10px; }
   :root[data-visual-theme='cyanotype'] .catalog-list[data-catalog-layout='cards'] { grid-template-columns: minmax(0, 1fr); }
-  :root[data-visual-theme='cyanotype'] .catalog-list[data-catalog-layout='cards'] .catalog-entry { height: 248px; padding: 22px; }
+  :root[data-visual-theme='cyanotype'] .catalog-list[data-catalog-layout='cards'] .catalog-entry { padding: 22px; }
   :root[data-visual-theme='cyanotype'] .catalog-list[data-catalog-layout='rows'] .catalog-entry { grid-template-columns: 34px minmax(0, 1fr) 78px; grid-template-areas: 'index content date' 'index content open'; height: 192px; gap: 12px; padding: 18px 0; }
   :root[data-visual-theme='cyanotype'] .catalog-list[data-catalog-layout='rows'] .catalog-cover { display: none; }
   :root[data-visual-theme='cyanotype'] .catalog-list[data-catalog-layout='rows'] .catalog-content h2 { font-size: 17px; }
