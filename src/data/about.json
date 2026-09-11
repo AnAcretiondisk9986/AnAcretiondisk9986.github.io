@@ -80,6 +80,12 @@
       "name": "温医大课表",
       "url": "http://wmu.kb.acretiondisk.top/",
       "title": "温医大课表"
+    },
+    {
+      "index": "7",
+      "name": "ClinMedAgent-RAG",
+      "url": "https://github.com/AnAcretiondisk9986/ClinMedAgent-RAG",
+      "title": "ClinMedAgent-RAG：医学Agent知识库"
     }
   ]
 }
