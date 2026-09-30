@@ -95,6 +95,15 @@ input.invalid,select.invalid{border-color:#6a3030 !important}
 .media-empty{color:#6a6a70;font-size:11px;padding:20px;text-align:center}
 
 .media-usage-list{max-height:40vh;overflow:auto;font-size:11px;color:#9a9aa0;line-height:1.9}
+/* 上传自检结果 */
+.selfcheck-row{display:flex;gap:8px;align-items:baseline;padding:6px 0;border-bottom:1px solid #26262c;font-size:11px}
+.selfcheck-row:last-child{border-bottom:none}
+.selfcheck-icon{flex:0 0 14px;text-align:center}
+.selfcheck-icon.ok{color:#5aa06a}
+.selfcheck-icon.bad{color:#c85a5a}
+.selfcheck-label{flex:0 0 auto;color:#d8d8dc;min-width:120px}
+.selfcheck-detail{flex:1 1 auto;color:#8a8a90;word-break:break-all}
+.selfcheck-hint{color:#c9a15a;padding:2px 0 6px 22px}
 
 .sync-dot{width:8px;height:8px;border-radius:50%;background:#6a6a70;flex:0 0 auto;box-shadow:0 0 0 1px rgba(0,0,0,.4)}
 

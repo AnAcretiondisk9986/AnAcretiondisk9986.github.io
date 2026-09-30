@@ -89,6 +89,21 @@ page.on('request', (req) => {
     if (failNextUpload) { failNextUpload = false; return req.respond(json({ error: '模拟上传失败' }, 500)); }
     return req.respond(json({ success: true, url: 'https://cdn.example.com/image/uploaded.webp', originalUrl: 'https://cdn.example.com/image/original/uploaded.webp', type: 'image', pushed: false }, 201));
   }
+  if (path === '/api/upload/selfcheck') {
+    return req.respond(json({
+      ok: false,
+      checks: [
+        { id: 'repo_dir', label: '图库仓库目录存在', ok: true, detail: 'D:\\blog-images', hint: '' },
+        { id: 'image_dir', label: '图片目录可写', ok: false, detail: 'D:\\blog-images\\image（EPERM）', hint: '目录被占用 / 无权限 / 磁盘满：检查安全软件或磁盘空间' },
+        { id: 'sharp', label: 'sharp 转码可用', ok: true, detail: 'sharp 0.35.3 · webp 44B', hint: '' },
+      ],
+      counts: { images: 2, audios: 1 },
+      lastError: { stage: 'multer', code: 'UPLOAD_REJECTED', message: 'Unexpected field', detail: '' },
+      limits: { uploadMaxBytes: 52428800 },
+      config: { imgRepoDir: 'D:\\blog-images', imageDir: 'D:\\blog-images\\image', port: 4322 },
+      durationMs: 12,
+    }));
+  }
   if (path === '/api/sync/status') return req.respond(json({ ok: true, state: 'clean', stateLabel: '工作区干净', branch: 'main', hasUpstream: true, ahead: 0, behind: 0, dirtyCount: 0, dirty: false, files: [], autoPull: false }));
   return req.respond(json({ ok: true }));
 });
@@ -215,6 +230,23 @@ try {
   await sleep(300);
   check('画廊选择器回填 src', (await page.$eval('#fSrc', (el) => el.value)).includes('/image/'), await page.$eval('#fSrc', (el) => el.value));
   check('选择器关闭', (await page.$eval('#mediaPickerModal', (el) => el.style.display)) === 'none');
+
+  // 上传自检弹窗：阻塞项 + 建议 + 上次失败原因
+  await page.click('.mode-tab[data-mode="media"]');
+  await page.waitForSelector('#btnMediaSelfCheck', { timeout: 8000 });
+  await page.click('#btnMediaSelfCheck');
+  await page.waitForFunction(() => window.__uploadSelfCheck, { timeout: 8000 });
+  await sleep(200);
+  const scSummary = await page.$eval('#uploadSelfCheckSummary', (el) => el.textContent.trim());
+  check('自检汇总提示阻塞项', scSummary.includes('存在阻塞项'), scSummary);
+  const scRows = await page.$$eval('.selfcheck-row', (els) => els.map((e) => e.textContent.replace(/\s+/g, ' ').trim()));
+  check('自检渲染所有检查项', scRows.length === 3, String(scRows.length));
+  const scHint = await page.$eval('#uploadSelfCheckList', (el) => el.textContent);
+  check('自检给出可执行建议', scHint.includes('目录被占用'), scHint.replace(/\s+/g, ' ').trim().slice(0, 80));
+  check('自检展示上次上传失败原因', scHint.includes('Unexpected field'), scHint.replace(/\s+/g, ' ').trim().slice(0, 120));
+  const scCfg = await page.$eval('#uploadSelfCheckConfig', (el) => el.textContent);
+  check('自检展示环境配置', scCfg.includes('imgRepoDir'), scCfg.slice(0, 60).replace(/\s+/g, ' '));
+  await page.click('#uploadSelfCheckClose');
 
   check('全程无页面脚本错误', pageErrors.length === 0, pageErrors.join(' | '));
 } catch (err) {

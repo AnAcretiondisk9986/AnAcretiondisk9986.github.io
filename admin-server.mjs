@@ -1,9 +1,13 @@
 import express from 'express';
 import multer from 'multer';
 import sharp from 'sharp';
+
+// Windows 长驻进程：关闭 libvips 操作缓存与文件句柄复用。
+// 否则被 sharp 读过的图片会被进程持续占用，导致后续删除/覆盖报 EBUSY（Device or resource busy）。
+sharp.cache(false);
 import decodeHeic from 'heic-decode';
 import { getHeicOrientation } from './admin/heic-exif.mjs';
-import { readdir, readFile, writeFile, unlink, mkdir, access as fileAccess, copyFile, stat as statFile, rename } from 'node:fs/promises';
+import { readdir, readFile, writeFile, unlink, mkdir, access as fileAccess, copyFile, stat as statFile, rename, statfs } from 'node:fs/promises';
 import { exec } from 'node:child_process';
 import { lookup as dnsLookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
@@ -34,6 +38,7 @@ const GALLERY_JSON = resolve(DATA_DIR, 'gallery.json');
 const ABOUT_JSON = resolve(DATA_DIR, 'about.json');
 const FRONTEND_JSON = resolve(DATA_DIR, 'frontend.json');
 const PORT = parseInt(process.env.PORT, 10) || 4322;
+const SERVER_STARTED_AT = new Date().toISOString();
 const TOKEN_FILE = resolve(__dirname, '.admin-token');
 const ADMIN_HTML = resolve(__dirname, 'admin', 'index.html');
 const PRIVATE_ACCESS_FILE = resolve(DATA_DIR, 'private-access.json');
@@ -995,12 +1000,19 @@ async function pushImageRepo({ requestId = '' } = {}) {
   }
 }
 
+// 最近一次上传失败（供「上传自检」展示，重启后清空）
+let lastUploadError = null;
+
 // Image upload
 app.post('/api/upload', (req, res, next) => {
   // 使用 any() 接收任意字段名的文件（兼容 Vditor 默认的 file[] 与自建的 file），取第一个作为上传文件
   upload.any()(req, res, async (err) => {
     if (err) {
       console.error('Upload Error:', err.code || '', err.message);
+      lastUploadError = {
+        time: new Date().toISOString(), requestId: req.requestId, stage: 'multer',
+        code: err.code || 'UPLOAD_REJECTED', message: err.message,
+      };
       // multer 写入阶段的错误（如超限）可能已落下半成品，尽力清理
       if (req.file?.path) await unlink(req.file.path).catch(() => {});
       if (err.code === 'LIMIT_FILE_SIZE') {
@@ -1033,10 +1045,11 @@ app.post('/api/upload', (req, res, next) => {
       }
       filesSaved = true;
       const push = await pushImageRepo();
+      lastUploadError = null;
       const base = isAudio ? AUDIO_BASE_URL : IMG_BASE_URL;
       const publicUrl = `${base}${encodeURIComponent(filename)}`;
-      // 上传成功后预热 jsDelivr 缓存（等待最多 8 秒，让 CDN 就绪后返回，管理面板预览立即可见）
-      await warmJsDelivr(publicUrl, 8000);
+      // 上传成功后预热 jsDelivr 缓存（只等 2.5s 就返回，剩余在后台继续预热，上传更快、竞态窗口更小）
+      await warmJsDelivr(publicUrl, 2500);
       res.status(201).json({
         success: true,
         url: publicUrl,
@@ -1049,6 +1062,10 @@ app.post('/api/upload', (req, res, next) => {
       });
     } catch (e) {
       console.error('Upload Error:', e.message);
+      lastUploadError = {
+        time: new Date().toISOString(), requestId: req.requestId, stage: 'process',
+        code: e.code || 'UPLOAD_FAILED', message: e.message, detail: e.detail || '',
+      };
       // 转码/归档失败时清理已写入的文件（含半成品 webp），避免残留被 git add -A 推送到公开图片仓库；
       // 仅推送失败（filesSaved=true）则保留文件，供用户稍后重新推送
       if (!filesSaved) {
@@ -1188,8 +1205,8 @@ app.post('/api/import-url', async (req, res) => {
     const push = await pushImageRepo();
 
     const publicUrl = `${IMG_BASE_URL}${encodeURIComponent(savedName)}`;
-    // 预热 jsDelivr 缓存（等待最多 8 秒），让导入成功后管理面板预览立即可见
-    await warmJsDelivr(publicUrl, 8000);
+    // 预热 jsDelivr 缓存（只等 2.5s），让导入成功后管理面板预览尽快可见
+    await warmJsDelivr(publicUrl, 2500);
 
     res.status(201).json({
       success: true,
@@ -1925,6 +1942,104 @@ async function collectMediaUsage() {
   return plain;
 }
 
+// ── 上传链路自检：一次性定位上传失败的环境原因（目录/权限/sharp/git/远端/磁盘）──
+app.get('/api/upload/selfcheck', auth, async (req, res) => {
+  const startedAt = Date.now();
+  const checks = [];
+  const add = (id, label, ok, detail = '', hint = '') => checks.push({ id, label, ok: Boolean(ok), detail: String(detail), hint });
+
+  // 1) 图库仓库目录存在
+  let repoOk = false, repoDetail = IMG_REPO_DIR;
+  try { await fileAccess(IMG_REPO_DIR); repoOk = true; }
+  catch (e) { repoDetail = `${IMG_REPO_DIR}（${e.code || e.message}）`; }
+  add('repo_dir', '图库仓库目录存在', repoOk, repoDetail, repoOk ? '' : '检查 IMG_REPO_DIR 是否指向 blog-images 仓库（默认 ../blog-images）');
+
+  // 2) 图片目录可写（真实写入 + 删除）
+  let writable = false, writeDetail = IMAGE_DIR;
+  const probe = join(IMAGE_DIR, `.selfcheck-${Date.now()}.tmp`);
+  try {
+    await mkdir(IMAGE_DIR, { recursive: true });
+    await writeFile(probe, 'ok');
+    await unlink(probe);
+    writable = true;
+  } catch (e) {
+    writeDetail = `${IMAGE_DIR}（${e.code || e.message}）`;
+    await unlink(probe).catch(() => {});
+  }
+  add('image_dir', '图片目录可写', writable, writeDetail, writable ? '' : '目录被占用 / 无权限 / 磁盘满：检查安全软件、OneDrive 同步或磁盘空间');
+
+  // 3) sharp 转码可用
+  let sharpOk = false, sharpDetail = '';
+  try {
+    const out = await sharp({ create: { width: 8, height: 8, channels: 3, background: { r: 0, g: 0, b: 0 } } }).webp().toBuffer();
+    sharpOk = out.length > 0;
+    sharpDetail = `sharp ${sharp.versions?.sharp || ''} · webp ${out.length}B`;
+  } catch (e) { sharpDetail = e.message; }
+  add('sharp', 'sharp 转码可用', sharpOk, sharpDetail, sharpOk ? '' : 'sharp 原生依赖异常，尝试重新 npm install');
+
+  // 4) 图库是 Git 仓库且工作区状态可读
+  let gitOk = false, gitDetail = '';
+  try {
+    const st = await imageGit.status();
+    gitOk = true;
+    const bits = [st.branch || 'HEAD'];
+    bits.push(st.hasUpstream ? (st.upstream || '有上游') : '无上游');
+    if (st.dirtyCount) bits.push(`${st.dirtyCount} 个未提交`);
+    if (st.ahead) bits.push(`领先 ${st.ahead}`);
+    gitDetail = bits.join(' · ');
+  } catch (e) { gitDetail = e.message; }
+  add('git_repo', '图库 Git 仓库状态', gitOk, gitDetail, gitOk ? '' : '图库目录可能已被移动/删除，或不是 Git 仓库');
+
+  // 5) 远端可达（fetch 探测，超时 10s）
+  let remoteOk = false, remoteDetail = '';
+  try {
+    const r = await imageGit.fetchRemote({ timeoutMs: 10000 });
+    remoteOk = Boolean(r.ok);
+    remoteDetail = remoteOk ? 'origin 可达' : String(r.stderr || r.stdout || 'fetch 失败').trim().slice(0, 200);
+  } catch (e) { remoteDetail = e.message; }
+  add('git_remote', '图片仓库远端可达', remoteOk, remoteDetail, remoteOk ? '' : '网络/代理无法访问 GitHub：上传的文件会保留但推送失败，可稍后在发布中心补推');
+
+  // 6) 磁盘剩余空间
+  let freeGB = null;
+  try {
+    const st = await statfs(IMG_REPO_DIR);
+    freeGB = (st.bavail * st.bsize) / 1024 ** 3;
+  } catch { /* 忽略 */ }
+  add('disk', '磁盘剩余空间', freeGB === null || freeGB > 1,
+    freeGB === null ? '无法读取' : `${freeGB.toFixed(1)} GB`,
+    freeGB !== null && freeGB <= 1 ? '磁盘空间不足，清理后再上传' : '');
+
+  // 7) 媒体库可读（计数）
+  let counts = { images: 0, audios: 0 };
+  try {
+    counts = {
+      images: (await listMediaFiles(IMAGE_DIR, MEDIA_IMAGE_EXTS)).length,
+      audios: (await listMediaFiles(AUDIO_DIR, MEDIA_AUDIO_EXTS)).length,
+    };
+  } catch { /* 忽略 */ }
+  add('library', '媒体库目录可读', true, `图片 ${counts.images} · 音频 ${counts.audios}`);
+
+  res.json({
+    ok: checks.every((c) => c.ok),
+    checks,
+    counts,
+    lastError: lastUploadError,
+    limits: LIMITS,
+    config: {
+      imgRepoDir: IMG_REPO_DIR,
+      imageDir: IMAGE_DIR,
+      dataDir: DATA_DIR,
+      blogDir: BLOG_DIR,
+      port: PORT,
+      node: process.version,
+      pid: process.pid,
+      startedAt: SERVER_STARTED_AT,
+      tokenFromEnv: Boolean(process.env.ADMIN_TOKEN),
+    },
+    durationMs: Date.now() - startedAt,
+  });
+});
+
 app.get('/api/media', async (req, res) => {
   try {
     const [imageFiles, audioFiles, usage] = await Promise.all([
@@ -1984,6 +2099,23 @@ function resolveMediaTarget(type, name) {
   return { dir, name: safeName, isImage };
 }
 
+/** 删除文件（Windows 上被占用时重试几次，避免杀毒/索引/同步盘短暂锁定导致 EBUSY）*/
+async function unlinkWithRetry(filePath, attempts = 4) {
+  let lastErr = null;
+  for (let i = 0; i < attempts; i += 1) {
+    try {
+      await unlink(filePath);
+      return true;
+    } catch (err) {
+      lastErr = err;
+      if (err.code === 'ENOENT') throw err;
+      if (!['EBUSY', 'EPERM', 'EACCES', 'EMFILE'].includes(err.code)) throw err;
+      await new Promise((r) => setTimeout(r, 120 * (i + 1)));
+    }
+  }
+  throw lastErr;
+}
+
 app.delete('/api/media', async (req, res) => {
   try {
     const target = resolveMediaTarget(req.query.type, req.query.name);
@@ -1993,18 +2125,22 @@ app.delete('/api/media', async (req, res) => {
     if (usedBy.length) {
       return res.status(409).json({ code: 'MEDIA_IN_USE', error: `该资源仍被 ${usedBy.length} 处引用，未删除`, usedBy });
     }
-    await unlink(join(target.dir, target.name));
+    await unlinkWithRetry(join(target.dir, target.name));
     if (target.isImage) {
-      await unlink(join(THUMB_DIR, `${basename(target.name, extname(target.name))}.webp`)).catch(() => {});
-      await unlink(join(ORIGINAL_DIR, target.name)).catch(() => {});
+      await unlinkWithRetry(join(THUMB_DIR, `${basename(target.name, extname(target.name))}.webp`), 2).catch(() => {});
+      await unlinkWithRetry(join(ORIGINAL_DIR, target.name), 2).catch(() => {});
     }
     let pushed = false;
     try { pushed = (await pushImageRepo({ requestId: req.requestId })).pushed; } catch { /* 推送失败不影响本地删除 */ }
     res.json({ ok: true, deleted: target.name, pushed, requestId: req.requestId });
   } catch (err) {
     if (err.code === 'ENOENT') return res.status(404).json({ error: '文件不存在' });
+    if (['EBUSY', 'EPERM', 'EACCES'].includes(err.code)) {
+      console.error('Media Delete Error:', err.code, err.message);
+      return res.status(409).json({ code: 'FILE_LOCKED', error: '文件正被其它程序占用，请稍后重试（杀毒扫描 / 图片查看器 / 同步盘）' });
+    }
     console.error('Media Delete Error:', err.message);
-    res.status(500).json({ error: '删除媒体失败' });
+    res.status(500).json({ error: '删除媒体失败', detail: err.message });
   }
 });
 
@@ -2050,6 +2186,9 @@ app.listen(PORT, '127.0.0.1', () => {
   const url = `http://localhost:${PORT}/admin`;
   console.log(`\n📚 博客管理面板已启动: ${url}\n`);
   console.log(`   仅限本地使用 — 请勿暴露到公网`);
+  console.log(`   图库目录：${IMG_REPO_DIR}`);
+  console.log(`   数据目录：${DATA_DIR}`);
+  console.log(`   进程 PID：${process.pid} · Node ${process.version} · 启动于 ${SERVER_STARTED_AT}`);
   if (!process.env.ADMIN_TOKEN) {
     console.log(`   管理口令：自动生成并保存于 ${TOKEN_FILE}（重启后保持不变）`);
   }

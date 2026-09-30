@@ -1245,6 +1245,7 @@
             // 自建上传：Vditor 4 的 handler 返回字符串只会当作提示展示，不会插入图片，
             // 因此这里自行上传并调用 insertValue 插入，最后返回 null 告知已处理。
             handler: async (files) => {
+              const startedEditor = vditor; // 发起上传时的编辑器实例（上传期间可能被重建）
               const uploaded = [];
               for (const file of files) {
                 try {
@@ -1270,12 +1271,30 @@
                   toast(`上传失败：${file.name}（${e.message}）`);
                 }
               }
-              if (uploaded.length && vditor) {
+              if (uploaded.length) {
                 const md = uploaded
                   .map((u) => `![${u.name.replace(/\.[^.]+$/, '')}](${u.url})`)
                   .join('\n');
-                vditor.focus();
-                vditor.insertValue('\n' + md + '\n', true);
+                // 上传期间编辑器可能被重建（切模式 / 换文章）：不能盲目写入，否则图会丢失或插错文章
+                const live = vditor;
+                const liveEl = live && live.vditor && live.vditor.element;
+                if (live && liveEl && liveEl.isConnected && live === startedEditor) {
+                  live.focus();
+                  const before = String(live.getValue() || '');
+                  live.insertValue('\n' + md + '\n', true);
+                  // IR 模式下若光标/选区不在编辑器内，insertValue 会静默无效：校验后回退为追加到正文末尾
+                  if (!String(live.getValue() || '').includes(uploaded[0].url)) {
+                    const base = before.replace(/\s+$/, '');
+                    live.setValue(base ? `${base}\n\n${md}\n` : `${md}\n`, true);
+                    toast('图片已上传，已追加到正文末尾');
+                  }
+                } else if (live && liveEl && liveEl.isConnected) {
+                  const copied = await copyUploadedMarkdown(md);
+                  toast(copied ? '编辑器已切换，图片链接已复制，请粘贴到正文' : `编辑器已切换，请手动复制图片链接：${uploaded[0].url}`);
+                } else {
+                  const copied = await copyUploadedMarkdown(md);
+                  toast(copied ? '图片已上传，链接已复制（编辑器已关闭）' : `图片已上传，请手动复制链接：${uploaded[0].url}`);
+                }
               }
               return null;
             },
@@ -1852,6 +1871,22 @@
       const base = (data && data.error) || '上传失败';
       const detail = data && data.detail ? String(data.detail) : '';
       return detail ? base + '（' + detail + '）' : base;
+    }
+
+    /** 上传图片的 Markdown 链接置入剪贴板；返回是否真的成功（用户手势过期会被浏览器拒绝）*/
+    async function copyUploadedMarkdown(md) {
+      try { await navigator.clipboard.writeText(md); return true; } catch { /* 手势过期 / 无权限，走 execCommand 兜底 */ }
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = md;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        const ok = document.execCommand('copy');
+        ta.remove();
+        return ok;
+      } catch { return false; }
     }
 
     async function uploadImage(file, target = 'content') {

@@ -205,6 +205,16 @@ try {
   const ops = await (await api('/api/operations')).json();
   check('操作日志接口可用', ops.ok === true && Array.isArray(ops.operations));
 
+  // ── 上传自检 ──
+  const selfRes = await api('/api/upload/selfcheck');
+  const selfCheck = await selfRes.json();
+  check('上传自检接口可用且全部通过', selfRes.status === 200 && selfCheck.ok === true && Array.isArray(selfCheck.checks) && selfCheck.checks.length >= 6,
+    JSON.stringify((selfCheck.checks || []).filter((c) => !c.ok).map((c) => c.id)));
+  check('上传自检检出目录可写与 sharp 可用',
+    (selfCheck.checks || []).some((c) => c.id === 'image_dir' && c.ok) && (selfCheck.checks || []).some((c) => c.id === 'sharp' && c.ok), '');
+  check('上传自检返回环境配置与上限', Boolean(selfCheck.config?.imgRepoDir) && Number(selfCheck.limits?.uploadMaxBytes) > 0,
+    `dir=${selfCheck.config?.imgRepoDir} max=${selfCheck.limits?.uploadMaxBytes}`);
+
   // ── 备份 ──
   const { readdir } = await import('node:fs/promises');
   const backups = await readdir(backupDir).catch(() => []);

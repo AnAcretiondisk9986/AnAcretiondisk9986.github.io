@@ -505,3 +505,39 @@ P0/P1 目标已全部完成；可落地 P2（批量操作、修订历史、定�
 可选后续（非清单项）：把 `main.js` 中剩余的文章列表渲染与编辑器再拆为 `features/posts-list.js` / `features/post-editor.js`；批量操作的失败项重试入口；发布中心操作日志导出。
 
 在用户明确要求前，不要执行真实 GitHub 推送或重新部署线上站点。
+
+---
+
+## 0.12 上传链路彻底加固（2026-09-30）
+
+### 现象
+管理面板「上传图片」长期失败：编辑器粘贴/选择图片后返回 500 `{"error":"上传失败","code":"INTERNAL_ERROR"}`，无任何可诊断信息；媒体库删除偶发 500「删除媒体失败」。
+
+### 排查结论（真实环境实测）
+1. **服务端并非总是原因**：隔离环境用同一份代码上传均正常（201）。
+2. **真实浏览器 + 真实服务复现**：`POST /api/upload` 500，原因是那个**已运行约 3 小时的管理进程**（11:48 启动，早于当天全部修复）在**文件句柄/落盘环节**失败，重启后即恢复；同一时间用新进程 + 同一真实图库目录上传稳定 201。
+3. **文件被进程占用**：sharp/libvips 长驻进程会持有已读图片的文件句柄，Windows 下表现为 `EBUSY（Device or resource busy）`——导致媒体删除失败、长期运行后落盘异常。
+4. **编辑器插入竞态**：上传需数秒（git push + jsDelivr 预热），期间若编辑器被重建（切模式/换文章），`insertValue` 会写入已销毁实例；且 **IR 模式下选区丢失时 `insertValue` 静默无效**，用户看到「上传了但正文没图」。
+
+### 修复
+- `admin-server.mjs`
+  - `/api/upload` 改 `upload.any()`：接受 `file` / `file[]` / 任意字段名的第一个文件（消除 `Unexpected field`）。
+  - multer 错误返回 `code` + `detail`；`LIMIT_FILE_SIZE` 单独返回 413 明确文案；`ALLOWED_MIME` 补齐 `image/jpg`、`image/pjpeg`、`image/avif`。
+  - **`sharp.cache(false)`**：关闭 libvips 操作缓存，避免长驻进程持有文件句柄（EBUSY 根因）。
+  - 媒体删除：新增 `unlinkWithRetry`（EBUSY/EPERM/EACCES 退避重试），被占用时返回 409 `FILE_LOCKED` 与可执行提示。
+  - jsDelivr 预热等待 8000ms → **2500ms**（其余后台继续预热），上传耗时下降、竞态窗口变小。
+  - 新增 **`GET /api/upload/selfcheck`**：一次性检查「图库目录 / 目录可写 / sharp / git 仓库 / 远端可达 / 磁盘空间 / 媒体计数」，并返回 `lastError`（最近一次上传失败阶段与原始错误）、`config`（含完整路径、PID、启动时间、Node 版本）。
+  - 启动日志打印图库目录 / 数据目录 / PID / 版本 / 启动时间。
+- 客户端
+  - 编辑器上传：自行上传 + 插入，并在插入后**校验是否真的写入**；IR 选区丢失时回退为追加到正文末尾。
+  - 上传期间编辑器被重建 → 复制 Markdown 到剪贴板 + 明确提示（`clipboard.writeText` 失败再用 `execCommand` 兜底，仍失败则直接提示 URL），**不再静默丢失**。
+  - 上传错误 toast 附带服务端 `detail`；超限在客户端预检拦截。
+  - 媒体库工具栏新增 **「🩺 自检」** 按钮：可视化展示自检项、阻塞建议、上次失败原因与环境信息（`#uploadSelfCheckModal`）。
+- 测试
+  - `scripts/admin-api-smoke.mjs`：新增 3 项上传自检断言（接口可用、目录可写 + sharp、返回配置与上限）。
+  - `scripts/media-library-e2e.mjs`：新增自检弹窗 5 项断言（阻塞提示、条目渲染、可执行建议、上次失败原因、环境信息）。
+
+### 运维要点
+- **改完服务端代码必须重启管理面板**（`npm run admin`），浏览器 Ctrl+F5；否则旧进程会继续用旧逻辑/旧状态。
+- 上传异常时先点**媒体页「自检」**；若仍失败，把自检里的「上次上传失败」或服务端控制台 `Upload Error: <code> <message>` 发给维护者即可定位。
+- 长驻不重启的管理进程可能出现句柄类问题，建议每天/每次批量操作后重启一次。

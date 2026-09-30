@@ -310,6 +310,25 @@
     </div>
   </div>
 
+  <!-- 上传自检：一次性展示目录/权限/转码/git/远端/磁盘检查结果 -->
+  <div class="video-modal-mask" id="uploadSelfCheckModal" style="display:none">
+    <div class="video-modal sync-modal">
+      <h3>上传自检</h3>
+      <div class="sync-body">
+        <div id="uploadSelfCheckSummary" class="field-hint">正在检查…</div>
+        <div id="uploadSelfCheckList"></div>
+        <details style="margin-top:10px">
+          <summary class="field-hint" style="cursor:pointer">环境信息</summary>
+          <pre id="uploadSelfCheckConfig" class="field-hint" style="white-space:pre-wrap;word-break:break-all;margin:8px 0 0"></pre>
+        </details>
+      </div>
+      <div class="video-actions">
+        <button class="btn" id="uploadSelfCheckRerun">重新检查</button>
+        <button class="btn primary" id="uploadSelfCheckClose">关闭</button>
+      </div>
+    </div>
+  </div>
+
   <!-- 媒体引用 -->
   <div class="video-modal-mask" id="mediaUsageModal" style="display:none">
     <div class="video-modal">

@@ -124,6 +124,7 @@ const POSTS_API = '/api/posts';
             <span class="filter-count" id="mediaEditorCount"></span>
             <span style="flex:1"></span>
             <input type="file" id="fMediaUpload" multiple accept="image/*,audio/*" style="display:none" />
+            <button class="btn" id="btnMediaSelfCheck" title="检查上传链路（目录 / 权限 / 转码 / git / 网络）">🩺 自检</button>
             <button class="btn primary" id="btnMediaUpload">⬆ 上传</button>
           </div>
           <div class="media-queue" id="mediaQueue"></div>
@@ -141,6 +142,7 @@ const POSTS_API = '/api/posts';
       $('#fMediaUsage').addEventListener('change', (e) => { mediaFilter.usage = e.target.value; mediaVisible = 60; updateMediaGrid(); });
       $('#fMediaTargetPost').addEventListener('change', (e) => { mediaTargetSlug = e.target.value; });
       $('#btnMediaUpload').addEventListener('click', triggerMediaUpload);
+      $('#btnMediaSelfCheck').addEventListener('click', openUploadSelfCheck);
       $('#fMediaUpload').addEventListener('change', (e) => { enqueueMediaFiles([...e.target.files]); e.target.value = ''; });
       $('#mediaGrid').addEventListener('click', (e) => {
         const btn = e.target.closest('[data-maction]');
@@ -150,6 +152,7 @@ const POSTS_API = '/api/posts';
       });
       updateMediaGrid();
       renderMediaQueue();
+      bindUploadSelfCheck();
     }
 
     function renderMediaQueue() {
@@ -281,6 +284,65 @@ const POSTS_API = '/api/posts';
         return `文章：${p ? (p.title || slug) : slug}`;
       }
       return owner;
+    }
+
+    async function openUploadSelfCheck() {
+      const mask = $('#uploadSelfCheckModal');
+      if (!mask) return;
+      openModal(mask);
+      await runUploadSelfCheck();
+    }
+
+    async function runUploadSelfCheck() {
+      const summary = $('#uploadSelfCheckSummary');
+      const list = $('#uploadSelfCheckList');
+      const cfg = $('#uploadSelfCheckConfig');
+      if (summary) summary.textContent = '正在检查…';
+      if (list) list.innerHTML = '';
+      try {
+        const res = await apiFetch('/api/upload/selfcheck');
+        const data = await res.json();
+        if (!res.ok || data.error) {
+          if (summary) summary.textContent = `自检失败：${data.error || `HTTP ${res.status}`}`;
+          return;
+        }
+        const rows = (data.checks || []).map((c) => `
+          <div class="selfcheck-row">
+            <span class="selfcheck-icon ${c.ok ? 'ok' : 'bad'}">${c.ok ? '✔' : '✘'}</span>
+            <span class="selfcheck-label">${esc(c.label)}</span>
+            <span class="selfcheck-detail">${esc(c.detail || '')}</span>
+          </div>
+          ${c.ok || !c.hint ? '' : `<div class="selfcheck-hint field-hint">→ ${esc(c.hint)}</div>`}`).join('');
+        const last = data.lastError
+          ? `<div class="selfcheck-hint field-hint">上次上传失败：${esc(data.lastError.stage)} · ${esc(lastErrorMessage(data.lastError))}</div>`
+          : '';
+        if (list) list.innerHTML = rows + last;
+        if (summary) {
+          summary.textContent = data.ok
+            ? `✔ 上传链路正常（图片 ${data.counts?.images ?? 0} · 音频 ${data.counts?.audios ?? 0}，耗时 ${data.durationMs}ms）`
+            : '✘ 上传链路存在阻塞项，请按下方建议处理';
+        }
+        if (cfg) cfg.textContent = JSON.stringify({ ...data.config, limits: data.limits }, null, 2);
+        window.__uploadSelfCheck = data;
+      } catch (e) {
+        if (summary) summary.textContent = `自检失败：${e.message}`;
+      }
+    }
+
+    function lastErrorMessage(entry) {
+      if (!entry) return '';
+      const code = entry.code ? `${entry.code} ` : '';
+      const detail = entry.detail ? `（${entry.detail}）` : '';
+      return `${code}${entry.message || ''}${detail}`.trim();
+    }
+
+    function bindUploadSelfCheck() {
+      const mask = $('#uploadSelfCheckModal');
+      if (!mask || mask.dataset.bound === '1') return;
+      mask.dataset.bound = '1';
+      $('#uploadSelfCheckClose')?.addEventListener('click', () => closeModal(mask));
+      $('#uploadSelfCheckRerun')?.addEventListener('click', () => runUploadSelfCheck());
+      window.__openUploadSelfCheck = openUploadSelfCheck;
     }
 
     function showMediaUsage(name) {
