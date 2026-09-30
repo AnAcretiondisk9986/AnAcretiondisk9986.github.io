@@ -17,7 +17,8 @@
     "test:post-list": "node scripts/post-list-e2e.mjs",
     "test:admin-e2e": "node scripts/run-admin-e2e.mjs",
     "test:admin-all": "npm run test:admin && npm run test:admin-api && npm run test:admin-e2e",
-    "test:editor": "node scripts/editor-e2e.mjs"
+    "test:editor": "node scripts/editor-e2e.mjs",
+    "test:preflight": "node scripts/preflight-e2e.mjs"
   },
   "dependencies": {
     "@astrojs/markdown-satteri": "^0.4.2",

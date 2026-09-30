@@ -189,3 +189,17 @@
 /* 大纲面板定位（Vditor outline 插件） */
 .vditor-outline{max-height:60vh;overflow:auto;background:#1a1a1e}
 .vditor-outline__title{color:#c8b080}
+
+/* 发布前检查清单 */
+.preflight-list{display:flex;flex-direction:column;gap:6px;max-height:46vh;overflow:auto}
+.preflight-item{display:flex;gap:8px;align-items:flex-start;font-size:11.5px;line-height:1.6;padding:5px 8px;border-radius:3px;background:#1c1c22;border:1px solid #2a2a30}
+.preflight-item .pf-icon{flex:0 0 16px;text-align:center;font-weight:bold}
+.preflight-item b{flex:0 0 74px;color:#c8b080;font-weight:normal}
+.preflight-item span:last-child{color:#9a9aa0;word-break:break-word}
+.preflight-item.ok{border-color:#2a3a2a}
+.preflight-item.ok .pf-icon{color:#5aa06a}
+.preflight-item.warn{border-color:#4a4020}
+.preflight-item.warn .pf-icon{color:#c8b080}
+.preflight-item.error{border-color:#4a3030;background:#241a1a}
+.preflight-item.error .pf-icon{color:#c06050}
+.preflight-item.info .pf-icon{color:#8090c0}

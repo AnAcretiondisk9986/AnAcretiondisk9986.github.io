@@ -4,6 +4,7 @@
     import { createApiClient } from './api/client.js';
     import { store } from './state/store.js';
     import { openModal, closeModal, isModalOpen, installFocusTrap } from './ui/modal.js';
+    import { runPreflight } from './features/preflight.js';
 
     const API = '/api/posts';
     const PRIVATE_ACCESS_API = '/api/private-access';
@@ -650,6 +651,12 @@
       const storageKey = postDraftStorageKey(key);
       if (!storageKey) return;
       try { localStorage.removeItem(storageKey); } catch (e) { /* storage unavailable */ }
+      setPostDraftStatus('');
+    }
+
+    function setPostDraftStatus(text) {
+      const el = $('#postDraftStatus');
+      if (el) el.textContent = text || '';
     }
 
     function setPostEditorStatus(text, tone = '') {
@@ -691,6 +698,7 @@
           updatedAt: Date.now(),
           form: readPostFormState(),
         }));
+        setPostDraftStatus('本地草稿已保存 ' + new Date().toLocaleTimeString('zh-CN', { hour12: false }));
       } catch (e) {
         if (!postDraftStorageWarned) {
           postDraftStorageWarned = true;
@@ -801,6 +809,9 @@
       postDraftKey = null;
       postSaving = false;
       setPostEditorStatus('');
+      setPostDraftStatus('');
+      const pfBtn = $('#btnPreflight');
+      if (pfBtn) { pfBtn.style.display = 'none'; pfBtn.disabled = true; }
     }
 
     function canLeavePostEditor() {
@@ -1080,6 +1091,7 @@
                 </div>
               </div>
               <div class="post-stats" id="postStats"></div>
+              <div class="field-hint" id="postDraftStatus"></div>
               <div class="rich-status" id="richStatus" hidden></div>
               <div class="editor-body" id="editorBody">
                 <div id="vditorEditor"></div>
@@ -1103,6 +1115,8 @@
       setupCoverMediaButton();
       setupMediaInsertButton();
       setupEditorTools();
+      const pfBtn = $('#btnPreflight');
+      if (pfBtn) { pfBtn.style.display = ''; pfBtn.disabled = false; }
       if (!initVditorEditor(value.content || '')) finalizePostEditorInit();
       renderList();
       if (isNew) $('#fTitle')?.focus();
@@ -1830,6 +1844,28 @@
       try { if (localStorage.getItem('admin-focus-mode') === '1') document.body.classList.add('focus-mode'); } catch (e) { /* ignore */ }
     }
 
+    /* ── 发布前检查（preflight）── */
+    function showPreflight() {
+      if (!document.querySelector('#fTitle')) { toast('请先打开一篇文章'); return; }
+      const mask = $('#preflightModal');
+      if (!mask) return;
+      const form = readPostFormState();
+      const content = getEditorMarkdown();
+      const { results, errors, warns, blocked } = runPreflight({ form, content, posts, currentSlug });
+      const icons = { error: '✕', warn: '!', ok: '✓', info: 'i' };
+      const summary = $('#preflightSummary');
+      if (summary) {
+        summary.innerHTML = blocked
+          ? `<span class="sync-err">存在 ${errors} 个必须修复的问题</span>`
+          : (warns ? `<span class="sync-warn">可以发布，但有 ${warns} 条建议</span>` : '<span class="sync-ok">检查通过，可以发布</span>');
+      }
+      const list = $('#preflightList');
+      if (list) {
+        list.innerHTML = results.map((r) => `<div class="preflight-item ${r.level}"><span class="pf-icon">${icons[r.level] || '·'}</span><b>${esc(r.label)}</b><span>${esc(r.message)}</span></div>`).join('');
+      }
+      openModal(mask);
+    }
+
     /* ── 图片尺寸：生成带宽度样式的 <img> 插入（TOAST UI 无法读取光标处图片，预填正文第一张图） ── */
     function setupImgSize(){
       const btn=$('#btnInsertImgSize'); if(!btn) return;
@@ -2282,6 +2318,7 @@
     $('#btnNew').onclick = () => currentMode === 'media' ? triggerMediaUpload() : currentMode === 'gallery' ? newGalleryItem() : newPost();
     $('#btnRefresh').onclick = () => currentMode === 'gallery' ? loadGallery() : currentMode === 'media' ? loadMedia() : currentMode === 'about' ? loadAbout() : currentMode === 'frontend' ? loadFrontend() : currentMode === 'access' ? renderPrivateAccess() : currentMode === 'guestbook' ? loadGuestbookComments() : loadPosts();
     $('#btnSave').onclick = () => currentMode === 'gallery' ? saveGalleryItem() : currentMode === 'about' ? saveAbout() : currentMode === 'frontend' ? saveFrontend() : savePost();
+    $('#btnPreflight').onclick = showPreflight;
     $('#btnDelete').onclick = () => currentMode === 'gallery' ? (currentGalleryId && deleteGalleryItem(currentGalleryId)) : (currentSlug && deletePost(currentSlug));
     $('#btnPull').onclick = previewPullAction;
     $('#btnPush').onclick = () => previewPushAction('content');
@@ -2291,6 +2328,8 @@
     $('#syncCard').onclick = (e) => { if (!e.target.closest('button')) openSyncCenter(); };
     $('#syncModal').addEventListener('click', (e) => { if (e.target === $('#syncModal')) closeSyncModal(); });
     $('#previewClose').onclick = closePostPreview;
+    $('#preflightClose').onclick = () => closeModal($('#preflightModal'));
+    $('#preflightModal').addEventListener('click', (e) => { if (e.target === $('#preflightModal')) closeModal($('#preflightModal')); });
     $('#historyClose').onclick = () => closeModal($('#historyModal'));
     $('#historyRestore').onclick = restoreRevision;
     $('#historyModal').addEventListener('click', (e) => { if (e.target === $('#historyModal')) closeModal($('#historyModal')); });
@@ -2302,6 +2341,7 @@
       if (isModalOpen($('#mediaPickerModal'))) closeMediaPicker();
       else if (isModalOpen($('#mediaUsageModal'))) closeModal($('#mediaUsageModal'));
       else if (isModalOpen($('#syncModal'))) closeSyncModal();
+      else if (isModalOpen($('#preflightModal'))) closeModal($('#preflightModal'));
       else if (isModalOpen($('#historyModal'))) closeModal($('#historyModal'));
       else if (isModalOpen($('#previewModal'))) closePostPreview();
     });

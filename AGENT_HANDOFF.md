@@ -330,6 +330,23 @@
 最后更新：2026-08-03（全站极简重构 + 双视觉主题）
 
 
+## 2026-09-30（第六批）发布前检查与编辑器辅助
+
+### 本轮修改
+
+- 新增 `admin/src/features/preflight.js`（纯函数）：「发布前检查」静态体检——标题/描述长度、Slug 合法性与查重、发布日期、标签、封面、缺失 alt 图片、正文字数与预计阅读时长、归档/草稿/权限提示；返回 `error / warn / ok / info` 四级结果与汇总。
+- 编辑器头部新增「✓ 发布检查」按钮 + 弹窗（`#preflightModal`）：汇总必须修复项与建议，逐项展示；Esc / 点击遮罩关闭。
+- 本地草稿自动保存状态提示（`#postDraftStatus`：本地草稿已保存 HH:MM:SS）。
+- 新增 `scripts/preflight-e2e.mjs`；浏览器冒烟增至 **7 组**；`package.json` 新增 `test:preflight`。
+- 开始建立 `admin/src/features/` 目录（业务模块拆分的起点）。
+
+### 验证
+
+- `npm run test:admin-all` 全部通过（单元 21 + API 冒烟 + 7 组浏览器冒烟）。
+- `npm run build` 97 页。
+
+---
+
 ## 2026-09-30（第五批）测试补全与编辑器体验细化
 
 ### 本轮修改
@@ -542,6 +559,8 @@
 | `npm run test:admin-api` | 管理 API 冒烟（隔离临时目录 + 随机端口，30 项） |
 | `npm run test:admin-e2e` | 浏览器冒烟（自动复用/启动面板，共 5 组） |
 | `npm run test:post-list` | 文章列表浏览器冒烟（需先启动管理面板） |
+| `npm run test:editor` | 编辑器（Vditor）浏览器冒烟（需先启动管理面板） |
+| `npm run test:preflight` | 发布前检查浏览器冒烟（需先启动管理面板） |
 | `npm run test:admin-all` | 依次运行单元 + API 冒烟 + 浏览器冒烟 |
 | `git push origin main` | 推送（SSH，禁止 force push）                    |
 | 双击 `启动管理面板.bat`        | 一键启动管理面板 + 打开浏览器                         |

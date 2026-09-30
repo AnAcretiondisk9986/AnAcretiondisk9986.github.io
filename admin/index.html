@@ -111,6 +111,7 @@
     <div class="main-header">
       <div class="main-header-title"><h2 id="editorTitle">选择或创建一篇文章</h2><span id="postEditorStatus" class="editor-save-status" aria-live="polite"></span></div>
       <div class="header-actions">
+        <button class="btn" id="btnPreflight" style="display:none" disabled title="发布前检查：排版 / 元数据 / 缺 alt / 链接等">✓ 发布检查</button>
         <button class="btn primary" id="btnSave" disabled>💾 保存 (Ctrl+S)</button>
         <button class="btn danger" id="btnDelete" style="display:none">🗑 删除</button>
       </div>
@@ -240,6 +241,23 @@
       </div>
       <div class="video-actions">
         <button class="btn primary" id="previewClose">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 发布前检查 -->
+  <div class="video-modal-mask" id="preflightModal" style="display:none">
+    <div class="video-modal sync-modal">
+      <h3>✓ 发布前检查</h3>
+      <div class="sync-body">
+        <div class="sync-section"><div id="preflightSummary"></div></div>
+        <div class="sync-section">
+          <h4>检查项</h4>
+          <div class="preflight-list" id="preflightList"></div>
+        </div>
+      </div>
+      <div class="video-actions">
+        <button class="btn primary" id="preflightClose">关闭</button>
       </div>
     </div>
   </div>

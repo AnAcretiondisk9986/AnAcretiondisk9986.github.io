@@ -226,6 +226,20 @@
 
 ---
 
+## 0.6 本轮实施记录（2026-09-30 第六批）：发布前检查与编辑器辅助
+
+- 新增 `admin/src/features/preflight.js`（纯函数）：标题/描述长度、Slug 合法性与查重、发布日期、标签、封面、缺失 alt、字数与阅读时长、归档/草稿/权限提示，返回 error/warn/ok/info。
+- 编辑器头部新增「✓ 发布检查」按钮与弹窗（`#preflightModal`），Esc / 点遮罩关闭。
+- 本地草稿自动保存状态提示（`#postDraftStatus`）。
+- 新增 `scripts/preflight-e2e.mjs`；浏览器冒烟 7 组；`package.json` 新增 `test:preflight`。
+- 新增 `admin/src/features/` 目录（业务模块拆分起点）。
+
+### 验证
+
+- `npm run test:admin-all` 全部通过；`npm run build` 97 页。
+
+---
+
 ## 1. 执行摘要
 
 当前后台并不是功能不足，而是功能长期叠加后形成了“单页集成式管理台”：文章、画廊、关于页、前端定制、访问控制、留言管理、图片/音频上传、Markdown 编辑、远端导入和 Git 同步都已经具备，但状态管理、信息架构、错误恢复和发布安全没有同步升级。
