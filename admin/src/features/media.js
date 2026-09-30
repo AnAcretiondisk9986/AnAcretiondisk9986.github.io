@@ -197,15 +197,17 @@ const POSTS_API = '/api/posts';
     }
 
     function enqueueMediaFiles(files) {
+      const limit = mediaData?.limits?.uploadMaxBytes || 50 * 1024 * 1024;
       for (const file of files) {
         if (!file) continue;
+        const tooLarge = file.size > limit;
         mediaTasks.push({
           id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
           file,
           name: file.name,
-          status: 'queued',
+          status: tooLarge ? 'failed' : 'queued',
           progress: 0,
-          error: '',
+          error: tooLarge ? `文件超过 ${Math.round(limit / 1024 / 1024)}MB 上限，请先压缩` : '',
           duplicate: findDuplicateMedia(file),
         });
       }
@@ -244,7 +246,7 @@ const POSTS_API = '/api/posts';
         try {
           const data = JSON.parse(xhr.responseText || '{}');
           if (xhr.status >= 200 && xhr.status < 300 && !data.error) { task.status = 'ready'; task.progress = 100; task.result = data; }
-          else { task.status = 'failed'; task.error = data.error || `HTTP ${xhr.status}`; }
+          else { task.status = 'failed'; task.error = data.error ? (data.detail ? `${data.error}（${data.detail}）` : data.error) : `HTTP ${xhr.status}`; }
         } catch { task.status = 'failed'; task.error = `HTTP ${xhr.status}`; }
         renderMediaQueue();
         afterMediaQueueChange();

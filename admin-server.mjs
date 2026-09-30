@@ -199,7 +199,8 @@ const MAX_REDIRECTS = 5;
 
 // ── 集中配置：上传 / 请求 / 远程 / 超时 / 并发限制（UI 中展示）──
 const LIMITS = {
-  uploadMaxBytes: MAX_REMOTE_BYTES,
+  // 上传输入上限：手机照片 / 大截图可达数十 MB，压缩为 WebP 后体积会大幅下降
+  uploadMaxBytes: 50 * 1024 * 1024,
   remoteMaxBytes: MAX_REMOTE_BYTES,
   gitTimeoutMs: 60000,
   remoteFetchTimeoutMs: 30000,
@@ -575,7 +576,7 @@ function nextGalleryDayIndex(items, date) {
 }
 
 // ── Multer: image-only upload ──
-const ALLOWED_MIME = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml', 'image/x-icon', 'image/heic', 'image/heif', 'audio/mpeg', 'audio/flac', 'audio/ogg', 'audio/wav', 'audio/x-wav', 'audio/mp4', 'audio/aac', 'audio/x-m4a'];
+const ALLOWED_MIME = ['image/png', 'image/jpeg', 'image/jpg', 'image/pjpeg', 'image/gif', 'image/webp', 'image/avif', 'image/svg+xml', 'image/x-icon', 'image/heic', 'image/heif', 'audio/mpeg', 'audio/flac', 'audio/ogg', 'audio/wav', 'audio/x-wav', 'audio/mp4', 'audio/aac', 'audio/x-m4a'];
 // URL 导入支持的图片扩展名（与 MIME 校验互补；CDN/图床对 HEIC 等常返回 application/octet-stream）
 const IMAGE_EXTS = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.heic', '.heif'];
 const upload = multer({
@@ -996,14 +997,24 @@ async function pushImageRepo({ requestId = '' } = {}) {
 
 // Image upload
 app.post('/api/upload', (req, res, next) => {
-  upload.single('file')(req, res, async (err) => {
+  // 使用 any() 接收任意字段名的文件（兼容 Vditor 默认的 file[] 与自建的 file），取第一个作为上传文件
+  upload.any()(req, res, async (err) => {
     if (err) {
-      console.error('Upload Error:', err.message);
+      console.error('Upload Error:', err.code || '', err.message);
+      // multer 写入阶段的错误（如超限）可能已落下半成品，尽力清理
+      if (req.file?.path) await unlink(req.file.path).catch(() => {});
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(413).json({
+          code: 'FILE_TOO_LARGE',
+          error: `文件超过 ${Math.round(LIMITS.uploadMaxBytes / 1024 / 1024)}MB 上限，请先压缩图片后重试`,
+        });
+      }
       if (err.message && err.message.includes('仅支持')) {
         return res.status(400).json({ error: err.message });
       }
-      return res.status(500).json({ error: '上传失败' });
+      return res.status(500).json({ error: '上传失败', code: err.code || 'UPLOAD_REJECTED', detail: err.message });
     }
+    req.file = (req.files && req.files[0]) || req.file;
     if (!req.file) return res.status(400).json({ error: '未选择文件' });
     let filesSaved = false; // 转码/归档是否已成功落库（推送失败时保留文件，不清理）
     try {

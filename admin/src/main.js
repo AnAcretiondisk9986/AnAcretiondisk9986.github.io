@@ -37,6 +37,7 @@
     const POST_DRAFT_PREFIX = 'admin-post-draft:';
     let frontendUploadField = 'fStillHeroImage';
     let postUploadTarget = 'content';
+    let appUploadMaxBytes = 50 * 1024 * 1024;
 
     async function loadPosts() {
       try {
@@ -829,7 +830,7 @@
       try {
         const res = await apiFetch(`${API}/${slug}`, { method:'DELETE' });
         const data = await res.json();
-        if(data.error){toast(data.error);return}
+        if(data.error){toast(uploadErrorText(data));return}
         toast('已删除');
         if(currentSlug===slug){clearPostDraft();currentSlug=null;resetPostEditorTracking();$('#editorContainer').innerHTML='<div class="empty-state">← 从左侧列表选择文章，或点击「新建」</div>';$('#btnDelete').style.display='none';$('#btnSave').disabled=true;$('#editorTitle').textContent='选择或创建一篇文章'}
         await loadPosts();
@@ -1159,7 +1160,7 @@
       try{
         const res=await apiFetch('/api/upload',{method:'POST',body:fd});
         const data=await res.json();
-        if(data.error){toast(data.error);return}
+        if(data.error){toast(uploadErrorText(data));return}
         if(data.title){
           const r=musicEmbedHtml(data.url,data.title,data.artist||'',data.coverUrl||'');
           if(!r.error){
@@ -1247,13 +1248,20 @@
               const uploaded = [];
               for (const file of files) {
                 try {
+                  if (file.size > appUploadMaxBytes) {
+                    toast(`文件超过 ${Math.round(appUploadMaxBytes / 1024 / 1024)}MB 上限，请先压缩：${file.name}`);
+                    continue;
+                  }
                   const fd = new FormData();
                   fd.append('file', file, file.name);
                   const res = await apiFetch('/api/upload', { method: 'POST', body: fd });
                   let data = {};
                   try { data = await res.json(); } catch (e) { data = {}; }
                   if (!res.ok || data.error || !data.url) {
-                    toast(`${data.error || `上传失败（HTTP ${res.status}）`}：${file.name}`);
+                    const reason = data.detail
+                      ? `${data.error || '上传失败'}（${data.detail}）`
+                      : (data.error || `上传失败（HTTP ${res.status}）`);
+                    toast(`${reason}：${file.name}`);
                     continue;
                   }
                   uploaded.push({ url: data.url, name: file.name });
@@ -1595,7 +1603,7 @@
         const res = await apiFetch('/api/upload', { method:'POST', body:fd });
         data = await res.json();
       } catch(e) { toast('上传失败'); return; }
-      if(data.error){toast(data.error);return}
+      if(data.error){toast(uploadErrorText(data));return}
       openCoverCrop(file, data.url, url => {
         const coverInput = $('#fCover');
         if (coverInput) { coverInput.value = url; coverInput.focus(); syncPostCoverPreview(); }
@@ -1839,6 +1847,13 @@
       });
     }
 
+    /** 统一拼接上传错误文案：优先展示服务端 detail */
+    function uploadErrorText(data) {
+      const base = (data && data.error) || '上传失败';
+      const detail = data && data.detail ? String(data.detail) : '';
+      return detail ? base + '（' + detail + '）' : base;
+    }
+
     async function uploadImage(file, target = 'content') {
       if(!isImageFile(file)){toast('仅支持图片');return}
       if (target === 'cover') return uploadCover(file);
@@ -1847,7 +1862,7 @@
       try {
         const res = await apiFetch('/api/upload', { method:'POST', body:fd });
         const data = await res.json();
-        if(data.error){toast(data.error);return}
+        if(data.error){toast(uploadErrorText(data));return}
         if (currentMode === 'frontend') {
           const imageInput = $('#' + frontendUploadField);
           if (imageInput) { imageInput.value = data.url; imageInput.focus(); syncFrontendPreview(); }
@@ -1902,6 +1917,7 @@
     initGallery({ setupUpload, setupGalleryMediaButton });
     initMedia({ getPosts: () => posts, putPostFields });
     initAbout({ setupUpload });
+    fetchHealth();
     initFrontend({ setupUpload, setUploadField: (v) => { frontendUploadField = v; } });
     initPosts({
       getPosts: () => posts,
@@ -2031,7 +2047,11 @@
     async function fetchHealth() {
       try {
         const res = await apiFetch('/api/health');
-        return await res.json();
+        const data = await res.json();
+        if (data && data.limits && Number(data.limits.uploadMaxBytes) > 0) {
+          appUploadMaxBytes = Number(data.limits.uploadMaxBytes);
+        }
+        return data;
       } catch { return null; }
     }
 
