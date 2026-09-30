@@ -38,6 +38,7 @@ const mediaFixture = {
 let deleteCalls = [];
 let archiveCalls = [];
 let uploadCalls = 0;
+let failNextUpload = false;
 let putBody = null;
 let clipboard = [];
 
@@ -85,6 +86,7 @@ page.on('request', (req) => {
   }
   if (path === '/api/upload' && req.method() === 'POST') {
     uploadCalls += 1;
+    if (failNextUpload) { failNextUpload = false; return req.respond(json({ error: '模拟上传失败' }, 500)); }
     return req.respond(json({ success: true, url: 'https://cdn.example.com/image/uploaded.webp', originalUrl: 'https://cdn.example.com/image/original/uploaded.webp', type: 'image', pushed: false }, 201));
   }
   if (path === '/api/sync/status') return req.respond(json({ ok: true, state: 'clean', stateLabel: '工作区干净', branch: 'main', hasUpstream: true, ahead: 0, behind: 0, dirtyCount: 0, dirty: false, files: [], autoPull: false }));
@@ -171,6 +173,17 @@ try {
   check('上传队列完成任务', uploadCalls === 1, `uploads=${uploadCalls}`);
   const queueText = await page.$eval('#mediaQueue', (el) => el.textContent);
   check('上传队列显示完成状态', queueText.includes('完成'), queueText.replace(/\s+/g, ' ').trim());
+
+  // 上传失败 → 单项重试
+  failNextUpload = true;
+  const input2 = await page.$('#fMediaUpload');
+  await input2.uploadFile(pngPath);
+  await page.waitForFunction(() => document.querySelectorAll('#mediaQueue .media-task.failed').length > 0, { timeout: 8000 });
+  const failText = await page.$eval('#mediaQueue', (el) => el.textContent);
+  check('上传失败显示失败原因', failText.includes('失败'), failText.replace(/\s+/g, ' ').trim().slice(0, 80));
+  await page.click('#mediaQueue [data-mtask="retry"]');
+  await page.waitForFunction(() => document.querySelectorAll('#mediaQueue .media-task.failed').length === 0, { timeout: 10000 });
+  check('单项重试后成功', uploadCalls >= 3, `uploads=${uploadCalls}`);
 
   // 目标文章 + 插入正文
   await page.select('#fMediaTargetPost', 'HealthCN2030');

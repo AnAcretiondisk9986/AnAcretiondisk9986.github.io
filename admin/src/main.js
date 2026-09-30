@@ -1252,6 +1252,7 @@
                   const data = await res.json();
                   if (!res.ok || data.error) { errFiles.push(file.name); toast(`${data.error || '上传失败'}：${file.name}`); continue; }
                   succMap[file.name] = data.url;
+                  toast('图片已上传：' + file.name);
                 } catch (e) {
                   errFiles.push(file.name);
                 }
