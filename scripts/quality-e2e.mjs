@@ -141,6 +141,20 @@ try {
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   check('窄屏无横向溢出', overflow <= 2, `overflow=${overflow}`);
 
+  // 侧栏纵向滚动
+  const sidebarOverflow = await page.$eval('.sidebar', (el) => getComputedStyle(el).overflowY);
+  check('侧栏启用纵向滚动', sidebarOverflow === 'auto', sidebarOverflow);
+  await page.setViewport({ width: 1440, height: 420 });
+  await sleep(400);
+  const scrollInfo = await page.evaluate(() => {
+    const el = document.querySelector('.sidebar');
+    const before = el.scrollTop;
+    el.scrollTop = 200;
+    return { scrollable: el.scrollHeight > el.clientHeight, before, after: el.scrollTop };
+  });
+  check('短窗口下侧栏可上下滑动', scrollInfo.scrollable && scrollInfo.after > scrollInfo.before, JSON.stringify(scrollInfo));
+  await page.setViewport({ width: 1440, height: 950 });
+
   check('全程无页面脚本错误', pageErrors.length === 0, pageErrors.join(' | '));
 } catch (err) {
   check('测试流程未抛异常', false, err.stack || err.message);

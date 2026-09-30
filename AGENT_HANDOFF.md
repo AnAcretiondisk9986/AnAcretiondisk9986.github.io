@@ -330,6 +330,21 @@
 最后更新：2026-08-03（全站极简重构 + 双视觉主题）
 
 
+## 2026-09-30（第八批）侧栏滚动 + 发布中心拆分
+
+### 本轮修改
+
+- **侧栏可上下滚动**：`.sidebar` 改为整体纵向滚动容器（`overflow-y:auto` + 主题化细滚动条），顶部区域不再被挤压；`.post-list` 取消独立滚动，长列表随侧栏滚动；短窗口 / 窄屏下均可上下滑动。
+- **抽出 `admin/src/features/sync-center.js`**（发布中心：状态卡 / 推送预览 / 拉取预览 / 操作日志），通过 `initSyncCenter({ getMode, reloadPosts, reloadGallery })` 注入依赖，避免循环依赖；`main.js` 4006 → 约 3435 行。
+- `scripts/quality-e2e.mjs` 新增侧栏滚动检查（计算样式 + 短窗口下实际可滚动）。
+
+### 验证
+
+- `npm run test:admin-all` 全部通过（单元 21 + API 冒烟 + 7 组浏览器冒烟）。
+- `npm run build` 97 页。
+
+---
+
 ## 2026-09-30（第七批）拆分起始：共享模块与 features/access、features/guestbook
 
 ### 本轮修改

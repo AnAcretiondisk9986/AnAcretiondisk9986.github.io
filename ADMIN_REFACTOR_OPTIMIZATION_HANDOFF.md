@@ -253,6 +253,18 @@
 
 ---
 
+## 0.8 本轮实施记录（2026-09-30 第八批）：侧栏滚动 + 发布中心拆分
+
+- 侧栏改为整体纵向滚动容器（`overflow-y:auto` + 主题细滚动条），`.post-list` 取消独立滚动；短窗口/窄屏下可上下滑动。
+- 抽出 `features/sync-center.js`（发布中心），`initSyncCenter({getMode,reloadPosts,reloadGallery})` 注入依赖；`main.js` 4006 → 约 3435 行。
+- `quality-e2e` 补侧栏滚动检查。
+
+### 验证
+
+- `npm run test:admin-all` 全部通过；`npm run build` 97 页。
+
+---
+
 ## 1. 执行摘要
 
 当前后台并不是功能不足，而是功能长期叠加后形成了“单页集成式管理台”：文章、画廊、关于页、前端定制、访问控制、留言管理、图片/音频上传、Markdown 编辑、远端导入和 Git 同步都已经具备，但状态管理、信息架构、错误恢复和发布安全没有同步升级。

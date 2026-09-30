@@ -1,6 +1,11 @@
 /* 布局：侧栏 / 主区域 / 列表 / 同步卡 / 媒体库外壳 */
 
-.sidebar{width:300px;min-width:300px;background:#1a1a1e;border-right:1px solid #2a2a30;display:flex;flex-direction:column}
+.sidebar{width:300px;min-width:300px;background:#1a1a1e;border-right:1px solid #2a2a30;display:flex;flex-direction:column;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#3a3a40 transparent;min-height:0}
+.sidebar-header,.sidebar-toolbar,.sync-card,.list-controls,.batch-bar{flex:0 0 auto}
+.sidebar::-webkit-scrollbar{width:8px}
+.sidebar::-webkit-scrollbar-thumb{background:#3a3a40;border-radius:4px}
+.sidebar::-webkit-scrollbar-thumb:hover{background:#4a4a55}
+.sidebar::-webkit-scrollbar-track{background:transparent}
 
 .sidebar-header{padding:16px;border-bottom:1px solid #2a2a30}
 
@@ -10,7 +15,7 @@
 
 .sidebar-toolbar{padding:10px 16px;border-bottom:1px solid #2a2a30;display:flex;flex-wrap:wrap;gap:8px}
 
-.post-list{flex:1;overflow-y:auto;padding:8px}
+.post-list{flex:1 1 auto;overflow-y:visible;min-height:120px;padding:8px}
 
 .list-controls{padding:8px 12px;border-bottom:1px solid #2a2a30;background:#16161a;display:flex;flex-direction:column;gap:6px}
 
