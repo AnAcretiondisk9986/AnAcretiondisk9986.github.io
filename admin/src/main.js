@@ -1240,24 +1240,36 @@
           },
           upload: {
             accept: 'image/*',
-            multiple: false,
+            multiple: true,
+            // 自建上传：Vditor 4 的 handler 返回字符串只会当作提示展示，不会插入图片，
+            // 因此这里自行上传并调用 insertValue 插入，最后返回 null 告知已处理。
             handler: async (files) => {
-              const succMap = {};
-              const errFiles = [];
+              const uploaded = [];
               for (const file of files) {
                 try {
                   const fd = new FormData();
                   fd.append('file', file, file.name);
                   const res = await apiFetch('/api/upload', { method: 'POST', body: fd });
-                  const data = await res.json();
-                  if (!res.ok || data.error) { errFiles.push(file.name); toast(`${data.error || '上传失败'}：${file.name}`); continue; }
-                  succMap[file.name] = data.url;
+                  let data = {};
+                  try { data = await res.json(); } catch (e) { data = {}; }
+                  if (!res.ok || data.error || !data.url) {
+                    toast(`${data.error || `上传失败（HTTP ${res.status}）`}：${file.name}`);
+                    continue;
+                  }
+                  uploaded.push({ url: data.url, name: file.name });
                   toast('图片已上传：' + file.name);
                 } catch (e) {
-                  errFiles.push(file.name);
+                  toast(`上传失败：${file.name}（${e.message}）`);
                 }
               }
-              return JSON.stringify({ msg: '', code: 0, data: { errFiles, succMap } });
+              if (uploaded.length && vditor) {
+                const md = uploaded
+                  .map((u) => `![${u.name.replace(/\.[^.]+$/, '')}](${u.url})`)
+                  .join('\n');
+                vditor.focus();
+                vditor.insertValue('\n' + md + '\n', true);
+              }
+              return null;
             },
             error: (msg) => toast('上传失败：' + msg),
           },

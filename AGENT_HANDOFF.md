@@ -330,6 +330,24 @@
 最后更新：2026-08-03（全站极简重构 + 双视觉主题）
 
 
+## 2026-09-30（修复）编辑器上传：Vditor 4 handler 契约导致的「上传后不插入/报 errFiles」
+
+### 根因
+
+Vditor 4.0.0 的 `upload.handler` 若返回**字符串**，内部只会 `tip.show(字符串)` 后 `return`，**不会解析 succMap、也不会插入图片**（见 `node_modules/vditor/dist/index.min.js` 中 `if (typeof a === "string") { e.tip.show(a); return; }`）。旧实现返回 Vditor 格式 JSON 字符串，因此：上传成功时只在编辑器里弹出一段原始 JSON 且正文不变；上传失败时表现为 `errFiles:[...]`。
+
+### 修复
+
+- `admin/src/main.js`：编辑器上传改为自行上传 + `vditor.insertValue()` 插入，`handler` 返回 `null`（告知 Vditor 已自行处理）；错误时 toast 真实原因（含 `HTTP 状态码`），支持多文件。
+- `scripts/editor-e2e.mjs`：新增「粘贴图片上传后插入正文」回归用例（拦截 `/api/upload`）。
+
+### 验证
+
+- `npm run test:admin-all` 全绿；`npm run build` 97 页。
+- 隔离服务实测：粘贴 jpg → `/api/upload` 201 → 正文插入 `![…](https://cdn…webp)`。
+
+---
+
 ## 2026-09-30（第十批）模块拆分收尾 · 状态机 · 定时发布 · 测试补全
 
 ### 本轮完成（阶段 A–H）

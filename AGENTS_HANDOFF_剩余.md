@@ -193,6 +193,14 @@
 
 ---
 
+## 0.11 修复（2026-09-30）：编辑器上传后不插入 / errFiles
+
+- 根因：Vditor 4 的 upload.handler 返回字符串只当提示展示，不会插入图片。
+- 修复：改为自建上传 + insertValue 插入，handler 返回 null；错误 toast 含 HTTP 状态。
+- editor-e2e 新增粘贴上传插入回归；test:admin-all 全绿，build 97 页。
+
+---
+
 ## 1. 当前基线
 
 ### 1.1 已完成（含上一轮）

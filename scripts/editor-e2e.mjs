@@ -41,6 +41,7 @@ page.on('request', (req) => {
   }
   if (path.startsWith('/api/posts/') && req.method() === 'GET') return req.respond(json({ ...post, contentHash: 'a'.repeat(64), content: '# 标题\n\n正文', cover: '' }));
   if (path === '/api/sync/status') return req.respond(json({ ok: true, state: 'clean', stateLabel: '工作区干净', branch: 'main', hasUpstream: true, ahead: 0, behind: 0, dirtyCount: 0, dirty: false, files: [] }));
+  if (path === '/api/upload' && req.method() === 'POST') return req.respond(json({ success: true, url: 'https://cdn.example.com/image/pasted.webp' }, 201));
   return req.respond(json({ ok: true }));
 });
 
@@ -108,6 +109,18 @@ try {
   check('源码模式隐藏预览', await page.$eval('#editorBody', (el) => el.classList.contains('acr-source-only')));
   await page.click('#viewSwitch [data-view="ir"]');
   await sleep(400);
+
+  // 粘贴图片上传后应插入正文（Vditor 4 handler 契约回归防护）
+  await page.evaluate(() => {
+    const file = new File([new Uint8Array([1, 2, 3])], 'paste-test.jpg', { type: 'image/jpeg' });
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    const target = document.querySelector('#editorBody .vditor-ir .vditor-reset') || document.querySelector('.vditor-reset');
+    target.focus();
+    target.dispatchEvent(new ClipboardEvent('paste', { bubbles: true, cancelable: true, clipboardData: dt }));
+  });
+  await page.waitForFunction(() => (window.editor.getMarkdown() || '').includes('pasted.webp'), { timeout: 12000 });
+  check('粘贴图片上传后插入正文', (await page.evaluate(() => window.editor.getMarkdown())).includes('pasted.webp'));
 
   // 插入视频 / 音乐
   await page.click('#btnInsertVideo');
