@@ -344,4 +344,4 @@ export function initSyncCenter(options = {}) {
 }
 
 export function isSyncModalOpen() { return isModalOpen($('#syncModal')); }
-export { closeSyncModal };
+export { closeSyncModal, refreshSyncStatus };
