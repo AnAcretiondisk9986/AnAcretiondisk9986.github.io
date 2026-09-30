@@ -30,11 +30,19 @@ const covers = new Map(posts.map((post) => [
 <div class="catalog-collection">
   {toolbar && (
   <div class="gallery-order-bar catalog-toolbar" aria-label="文章显示设置">
-    <div class="gallery-order-label">
-      <span>DISPLAY</span>
-      <strong><span data-order-status>从新至旧</span><span aria-hidden="true"> / </span><span data-catalog-view-status>横栏</span></strong>
+    <div class="catalog-toolbar__search">
+      <label class="catalog-search" id="catalog-search">
+        <span class="sr-only">搜索文章</span>
+        <Icon name="search" />
+        <input type="search" data-catalog-search placeholder="搜索标题、摘要或标签" autocomplete="off" />
+      </label>
+      <span class="catalog-results" data-catalog-results>{posts.length} 篇文章</span>
     </div>
     <div class="catalog-toolbar-actions">
+      <div class="gallery-order-label">
+        <span>排序</span>
+        <strong><span data-order-status>从新至旧</span><span aria-hidden="true"> / </span><span data-catalog-view-status>横栏</span></strong>
+      </div>
       <div class="gallery-sort" role="group" aria-label="文章展示顺序">
         <button type="button" data-order-sort="newest" aria-pressed="true">
           <span aria-hidden="true"><Icon name="arrow-down" /></span>从新至旧
@@ -67,7 +75,7 @@ const covers = new Map(posts.map((post) => [
       const dayKey = post.data.pubDate.toISOString().slice(0, 10);
       const href = `${normalizedBasePath}${post.id}/`;
       return (
-        <article class="catalog-entry" data-order-card data-order-date={dayKey} data-order-day-index={post.data.dayIndex ?? 0} data-order-position={index}>
+        <article class="catalog-entry" data-order-card data-order-date={dayKey} data-order-day-index={post.data.dayIndex ?? 0} data-order-position={index} data-catalog-search-text={`${post.data.title} ${post.data.description} ${post.data.tags.join(' ')}`}>
           <div class="catalog-index">
             <span data-order-sequence data-order-pad="2">{String(index + 1).padStart(2, '0')}</span>
           </div>
@@ -96,16 +104,20 @@ const covers = new Map(posts.map((post) => [
       );
     })}
   </div>
+  {toolbar && <p class="catalog-empty" data-catalog-empty hidden>没有找到匹配的文章。试试更换关键词。</p>}
 </div>
 
 <script>
   import { initCatalogLayout } from '../scripts/catalog-layout';
   import { initOrderToggle } from '../scripts/order-toggle';
+  import { initCatalogSearch } from '../scripts/catalog-search';
 
   initCatalogLayout();
   initOrderToggle();
+  initCatalogSearch();
   document.addEventListener('astro:page-load', () => {
     initCatalogLayout();
     initOrderToggle();
+    initCatalogSearch();
   });
 </script>

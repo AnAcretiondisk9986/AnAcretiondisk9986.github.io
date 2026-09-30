@@ -3,9 +3,7 @@ import Icon from '../../components/Icon.astro';
 import { getCollection, render, type CollectionEntry } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ThemeCopy from '../../components/ThemeCopy.astro';
-import WordCloud from '../../components/WordCloud.astro';
 import privateAccess from '../../data/private-access.json';
-import { buildWordCloud } from '../../lib/wordcloud';
 
 export async function getStaticPaths() {
   const posts = await getCollection('blog', ({ data }) => !data.draft && data.access === 'admin');
@@ -32,10 +30,6 @@ interface Props {
 const { post, folioCode } = Astro.props;
 const { Content } = await render(post);
 const passwordHash = privateAccess.passwordHash;
-const articleWords = buildWordCloud(
-  [{ title: post.data.title, body: post.body ?? '' }],
-  { maxWords: 24, minCount: 2 },
-);
 const pad2 = (n: number) => String(n).padStart(2, '0');
 const fmtMinute = (d: Date) => {
   const date = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
@@ -61,7 +55,6 @@ const fmtMinute = (d: Date) => {
         <div><dt><ThemeCopy minimal="作者" trace="记录者" /></dt><dd>Acretiondisk</dd></div>
         <div><dt>状态</dt><dd><ThemeCopy minimal="管理员级" trace="PRIVATE ACCESS" /></dd></div>
       </dl>
-      <WordCloud words={articleWords} compact title="关键词" traceTitle="本篇关键词" />
       <p class="margin-note"><ThemeCopy minimal="私密内容仅在验证后展开。" trace="本条目受访问控制保护，验证后展开全文。" /></p>
     </aside>
 
@@ -141,5 +134,4 @@ const fmtMinute = (d: Date) => {
   initSongPlayers();
   document.addEventListener('acr:private-revealed', () => initSongPlayers());
 </script>
-
 

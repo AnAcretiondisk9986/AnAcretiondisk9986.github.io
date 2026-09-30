@@ -3,9 +3,7 @@ import { getCollection } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import PostCatalog from '../../components/PostCatalog.astro';
 import ThemeCopy from '../../components/ThemeCopy.astro';
-import WordCloud from '../../components/WordCloud.astro';
 import privateAccess from '../../data/private-access.json';
-import { buildWordCloud } from '../../lib/wordcloud';
 
 const posts = (await getCollection('blog', ({ data }) => !data.draft && data.access === 'admin'))
   .sort((a, b) =>
@@ -13,9 +11,6 @@ const posts = (await getCollection('blog', ({ data }) => !data.draft && data.acc
     || (b.data.dayIndex ?? 0) - (a.data.dayIndex ?? 0)
     || b.id.localeCompare(a.id));
 const passwordHash = privateAccess.passwordHash;
-const cloudWords = buildWordCloud(
-  posts.map((p) => ({ title: p.data.title, body: p.body ?? '' })),
-);
 ---
 
 <BaseLayout title="私密文章" description="管理员级文章入口。">
@@ -42,7 +37,6 @@ const cloudWords = buildWordCloud(
       <p class="access-gate__error" data-private-index-error role="alert"></p>
     </div>
     <div data-private-index-body hidden>
-      <WordCloud words={cloudWords} title="关键词" traceTitle="私密关键词索引" />
       {posts.length ? <PostCatalog posts={posts} basePath="/private/" private /> : <p class="private-empty">暂无私密文章。</p>}
       <footer class="catalog-footer">
         <span><ThemeCopy minimal="私密文章仅在验证后展示" trace="受权限控制的私密卷册" /></span>
