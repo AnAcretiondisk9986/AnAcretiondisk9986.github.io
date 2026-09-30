@@ -90,18 +90,35 @@
       box.appendChild(btn);
     }
 
+    let privateAccessHash = '';
+
+    async function loadPrivateAccess() {
+      try {
+        const res = await apiFetch(PRIVATE_ACCESS_API);
+        const data = await res.json();
+        if (res.ok && !data.error) privateAccessHash = data.contentHash || '';
+      } catch (e) { /* 读取失败不阻断，保存时仍会做版本校验 */ }
+    }
+
     function renderPrivateAccess() {
       $('#editorContainer').innerHTML = `<div class="editor" style="max-width:640px"><div class="form-group"><label>管理员级文章密码</label><input id="fPrivatePassword" type="password" autocomplete="new-password" placeholder="输入新密码（至少 4 个字符）" /></div><button class="btn primary" id="btnPrivatePassword">保存密码</button><p style="color:#6a6a70;font-size:11px;line-height:1.7;margin-top:12px">密码以 SHA-256 哈希保存。修改后需要重新构建并发布博客，线上私密文章页面才会使用新密码。</p></div>`;
       $('#btnPrivatePassword').onclick = savePrivateAccess;
+      loadPrivateAccess();
     }
 
     async function savePrivateAccess() {
       const password = $('#fPrivatePassword')?.value || '';
       if (password.length < 4) { toast('密码至少需要 4 个字符'); return; }
       try {
-        const res = await apiFetch(PRIVATE_ACCESS_API, { method: 'PUT', body: new URLSearchParams({ password }), headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
+        const body = new URLSearchParams({ password, expectedHash: privateAccessHash });
+        const res = await apiFetch(PRIVATE_ACCESS_API, { method: 'PUT', body, headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
         const data = await res.json();
-        if (data.error) { toast(data.error); return; }
+        if (!res.ok || data.error) {
+          if (res.status === 409) { toast('密码已在其他位置被修改，请刷新后重试'); await loadPrivateAccess(); return; }
+          toast(data.error || '保存失败');
+          return;
+        }
+        privateAccessHash = data.contentHash || privateAccessHash;
         $('#fPrivatePassword').value = ''; toast('私密文章密码已保存');
       } catch (e) { toast('保存失败: ' + e.message); }
     }
@@ -881,7 +898,8 @@
       const stats = countPostStats(state.content);
       const statsEl = $('#postStats');
       if (statsEl) {
-        statsEl.innerHTML = `正文 <b>${stats.chars}</b> 字 · 图片 <b>${stats.images}</b>${stats.missingAlt ? `（缺 alt <b>${stats.missingAlt}</b>）` : ''} · 外链 <b>${stats.links}</b>`;
+        const minutes = Math.max(1, Math.round(stats.chars / 300));
+        statsEl.innerHTML = `正文 <b>${stats.chars}</b> 字（约 <b>${minutes}</b> 分钟） · 图片 <b>${stats.images}</b>${stats.missingAlt ? `（缺 alt <b>${stats.missingAlt}</b>）` : ''} · 外链 <b>${stats.links}</b>`;
       }
       updateRichStatus();
       return errors;
@@ -1051,6 +1069,9 @@
                 <button class="btn small" data-align="left" title="将选中段落设为居左">⇤</button>
                 <button class="btn small" data-align="center" title="将选中段落设为居中">⇔</button>
                 <button class="btn small" data-align="right" title="将选中段落设为居右">⇥</button>
+                <span class="fmt-sep"></span>
+                <button class="btn small" id="btnOutline" title="显示 / 隐藏大纲">☰ 大纲</button>
+                <button class="btn small" id="btnFocusMode" title="专注模式：隐藏侧栏">⤢ 专注</button>
                 <div class="view-switch" id="viewSwitch">
                   <button data-view="ir" class="active" title="即时渲染：直接编辑排版结果，原始 HTML 保持不变">即时渲染</button>
                   <button data-view="sv" title="左侧 Markdown 源码 + 右侧实时预览">分屏</button>
@@ -1081,6 +1102,7 @@
       setupShareInfo(isNew ? null : value);
       setupCoverMediaButton();
       setupMediaInsertButton();
+      setupEditorTools();
       if (!initVditorEditor(value.content || '')) finalizePostEditorInit();
       renderList();
       if (isNew) $('#fTitle')?.focus();
@@ -1783,6 +1805,31 @@
       });
     }
 
+    /* ── 编辑器辅助：大纲开关 / 专注模式 ── */
+    function setupEditorTools() {
+      const outline = $('#btnOutline');
+      if (outline) outline.onclick = () => {
+        const item = vditor && vditor.vditor && vditor.vditor.toolbar ? vditor.vditor.toolbar.elements['outline'] : null;
+        const btn = item ? (item.querySelector('button') || item) : null;
+        if (btn && typeof btn.click === 'function') btn.click();
+        else toast('大纲面板不可用');
+      };
+      const focus = $('#btnFocusMode');
+      if (focus) {
+        focus.classList.toggle('primary', document.body.classList.contains('focus-mode'));
+        focus.onclick = () => {
+          const on = document.body.classList.toggle('focus-mode');
+          focus.classList.toggle('primary', on);
+          try { localStorage.setItem('admin-focus-mode', on ? '1' : '0'); } catch (e) { /* ignore */ }
+          window.dispatchEvent(new Event('resize'));
+        };
+      }
+    }
+
+    function applySavedFocusMode() {
+      try { if (localStorage.getItem('admin-focus-mode') === '1') document.body.classList.add('focus-mode'); } catch (e) { /* ignore */ }
+    }
+
     /* ── 图片尺寸：生成带宽度样式的 <img> 插入（TOAST UI 无法读取光标处图片，预填正文第一张图） ── */
     function setupImgSize(){
       const btn=$('#btnInsertImgSize'); if(!btn) return;
@@ -2144,6 +2191,7 @@
     installFocusTrap();
     setupSessionControls();
     setupBatchControls();
+    applySavedFocusMode();
     initListControls();
     loadPosts();
 

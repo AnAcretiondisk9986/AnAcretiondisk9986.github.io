@@ -54,6 +54,15 @@ try {
   check('Vditor 初始化并进入即时渲染', (await page.evaluate(() => window.vditor.getCurrentMode())) === 'ir');
   check('内置工具栏已渲染', (await page.$$('#vditorEditor .vditor-toolbar__item')).length > 10);
 
+  // 专注模式 / 大纲
+  await page.click('#btnFocusMode');
+  await sleep(300);
+  check('专注模式隐藏侧栏', await page.$eval('body', (el) => el.classList.contains('focus-mode')));
+  await page.click('#btnFocusMode');
+  await sleep(300);
+  check('退出专注模式', !(await page.$eval('body', (el) => el.classList.contains('focus-mode'))));
+  check('大纲按钮存在', Boolean(await page.$('#btnOutline')));
+
   // 原始 HTML 保真：IR 模式渲染 div 对齐 / song-player / iframe，且源码不被改写
   const md = [
     '## 小标题',

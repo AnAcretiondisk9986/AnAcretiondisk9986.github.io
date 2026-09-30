@@ -66,3 +66,7 @@
 /* 批量操作栏 */
 .batch-bar{display:flex;gap:5px;align-items:center;padding:7px 12px;background:#20201a;border-bottom:1px solid #3a3420;font-size:11px;color:#c8b080}
 .batch-bar .btn.small{padding:2px 7px;font-size:10px}
+
+/* 专注模式：隐藏侧栏，编辑区独占 */
+body.focus-mode .sidebar{display:none}
+body.focus-mode .main{width:100%}

@@ -81,6 +81,19 @@ try {
   await sleep(400);
   check('富文本不兼容格式显示持续状态', !(await page.$eval('#richStatus', (el) => el.hidden)), await page.$eval('#richStatus', (el) => el.textContent));
 
+  // 刷新后恢复本地草稿
+  await page.evaluate(() => { const t = document.querySelector('#fTitle'); t.value = '草稿恢复测试'; t.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.evaluate(() => editor.setMarkdown('草稿正文内容'));
+  await sleep(900);
+  check('未保存内容写入本地草稿', await page.evaluate(() => Boolean(localStorage.getItem('admin-post-draft:__new__'))) === true);
+  await page.reload({ waitUntil: 'networkidle0' });
+  await page.waitForSelector('#postList .post-item', { timeout: 15000 });
+  await page.click('#btnNew');
+  await page.waitForSelector('.vditor', { timeout: 15000 });
+  await sleep(1800);
+  check('刷新后恢复标题', (await page.$eval('#fTitle', (el) => el.value)) === '草稿恢复测试', await page.$eval('#fTitle', (el) => el.value));
+  check('刷新后恢复正文', (await page.evaluate(() => window.editor.getMarkdown())).includes('草稿正文内容'));
+
   check('全程无页面脚本错误', pageErrors.length === 0, pageErrors.join(' | '));
 } catch (err) {
   check('测试流程未抛异常', false, err.stack || err.message);

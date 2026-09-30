@@ -831,18 +831,21 @@ app.route('/api/private-access')
   .get(async (_req, res) => {
     try {
       const settings = await readPrivateAccess();
-      res.json({ configured: Boolean(settings.passwordHash) });
+      const { contentHash } = await privateAccessStore.read();
+      res.json({ configured: Boolean(settings.passwordHash), contentHash: contentHash || '' });
     } catch (err) {
-      res.status(500).json({ error: '读取私密文章设置失败' });
+      respondStoreError(res, err, 'Private access');
     }
   })
   .put(upload.none(), async (req, res) => {
     const password = String(req.body.password || '');
     if (password.length < 4 || password.length > 200) return res.status(400).json({ error: '密码长度需为 4-200 个字符' });
+    const hashCheck = readExpectedHash(res, req.body.expectedHash);
+    if (!hashCheck.ok) return;
     try {
       await mkdir(dirname(PRIVATE_ACCESS_FILE), { recursive: true });
-      await privateAccessStore.write({ passwordHash: privatePasswordHash(password) }, { expectedHash: null });
-      res.json({ success: true });
+      const written = await privateAccessStore.write({ passwordHash: privatePasswordHash(password) }, { expectedHash: hashCheck.hash });
+      res.json({ success: true, contentHash: written.contentHash });
     } catch (err) {
       respondStoreError(res, err, 'Private access');
     }

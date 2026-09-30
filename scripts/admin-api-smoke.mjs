@@ -165,9 +165,35 @@ try {
   const feSaved = await fePut.json();
   check('前端定制保存成功', fePut.status === 200 && feSaved.frontend?.siteName === '冒烟站点');
 
-  // ── 访问控制 ──
-  const paPut = await apiForm('/api/private-access', 'PUT', { password: 'smoke-pass' });
-  check('访问控制密码保存成功', paPut.status === 200, paPut.status);
+  // ── 访问控制（含版本冲突校验）──
+  const pa0 = await (await api('/api/private-access')).json();
+  check('访问控制 GET 返回 contentHash', HASH_RE.test(pa0.contentHash || ''), pa0.contentHash);
+  const paPut = await apiForm('/api/private-access', 'PUT', { password: 'smoke-pass', expectedHash: pa0.contentHash });
+  const paSaved = await paPut.json();
+  check('访问控制密码保存成功', paPut.status === 200 && HASH_RE.test(paSaved.contentHash || ''), paPut.status);
+  const paNoHash = await apiForm('/api/private-access', 'PUT', { password: 'another-pass' });
+  check('访问控制缺少 hash 返回 428', paNoHash.status === 428, paNoHash.status);
+  const paConflict = await apiForm('/api/private-access', 'PUT', { password: 'another-pass', expectedHash: pa0.contentHash });
+  check('访问控制旧 hash 返回 409', paConflict.status === 409, paConflict.status);
+
+  // ── 上传 / 远程导入失败路径 ──
+  const emptyFd = new FormData();
+  const uploadNoFile = await fetch(`${base}/api/upload`, { method: 'POST', headers: { 'x-admin-token': TOKEN }, body: emptyFd });
+  check('上传未选文件返回 400', uploadNoFile.status === 400, uploadNoFile.status);
+
+  const badTypeFd = new FormData();
+  badTypeFd.append('file', new Blob(['not an image'], { type: 'text/plain' }), 'note.txt');
+  const uploadBadType = await fetch(`${base}/api/upload`, { method: 'POST', headers: { 'x-admin-token': TOKEN }, body: badTypeFd });
+  check('上传非法类型返回 400', uploadBadType.status === 400, uploadBadType.status);
+
+  const importMissing = await apiForm('/api/import-url', 'POST', {});
+  check('导入缺少 url 返回 400', importMissing.status === 400, importMissing.status);
+  const importBad = await apiForm('/api/import-url', 'POST', { url: 'not-a-url' });
+  check('导入非法 URL 返回 400', importBad.status === 400, importBad.status);
+  const importFtp = await apiForm('/api/import-url', 'POST', { url: 'ftp://example.com/a.png' });
+  check('导入非 http(s) 返回 400', importFtp.status === 400, importFtp.status);
+  const importLocal = await apiForm('/api/import-url', 'POST', { url: 'http://127.0.0.1:1/a.png' });
+  check('导入本机地址被拒绝', importLocal.status >= 400, importLocal.status);
 
   // ── 同步状态 / 操作日志 ──
   const status = await (await api('/api/sync/status')).json();
