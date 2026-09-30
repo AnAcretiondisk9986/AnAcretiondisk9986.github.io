@@ -3,6 +3,9 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [main]
+  schedule:
+    # 每小时重建一次：让 scheduledAt 到期的定时文章自动上线（cron 为 UTC）
+    - cron: '0 * * * *'
   workflow_dispatch:
 
 permissions:

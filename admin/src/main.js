@@ -697,7 +697,7 @@
                 <div class="form-group" style="flex:1"><label>访问权限</label><select id="fAccess"><option value="public" ${value.access==='public'?'selected':''}>访客级 · 公开查看</option><option value="authorized" ${value.access==='authorized'?'selected':''}>授权级 · 验证站长网名</option><option value="admin" ${value.access==='admin'?'selected':''}>管理员级 · 私密文章密码</option></select></div>
               </div>
               <input type="hidden" id="fArchived" value="${value.archived ? 'true' : 'false'}" />
-              <div class="form-group"><label>定时发布（可留空）</label><input id="fScheduledAt" type="datetime-local" value="${toLocalInput(value.scheduledAt)}" /><span class="field-hint">到时间后需一次构建/推送才会出现在线上；未到时间不会加入公开列表。</span></div>
+              <div class="form-group"><label>定时发布（可留空）</label><input id="fScheduledAt" type="datetime-local" value="${toLocalInput(value.scheduledAt)}" /><span class="field-hint">到时间后由 GitHub Actions 每小时自动重建上线（手动推送可立即生效）；未到时间不会加入公开列表。</span></div>
             </div>
           </section>
 
