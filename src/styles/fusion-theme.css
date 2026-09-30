@@ -379,6 +379,18 @@
   font-size: inherit;
 }
 
+/* 首页「最新文章」底部的「查看更多」按钮 */
+:root[data-visual-theme] .fusion-section__more {
+  display: flex;
+  justify-content: center;
+  margin-top: 34px;
+}
+
+:root[data-visual-theme] .fusion-section__more .fusion-button {
+  min-width: 168px;
+  justify-content: center;
+}
+
 /* 目录页 */
 :root[data-visual-theme] .fusion-catalog-header {
   grid-template-columns: minmax(0, 1.2fr) minmax(260px, 0.8fr);

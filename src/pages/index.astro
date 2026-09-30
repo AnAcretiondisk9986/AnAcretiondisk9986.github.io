@@ -15,8 +15,8 @@ import standaloneGallery from '../data/gallery.json';
 const posts = await getPublicPosts();
 const primaryCtaHref = safeLink(frontend.primaryCtaHref, '/blog/');
 
-// 首页精选：最新 5 篇
-const recentPosts = posts.slice(0, 5);
+// 首页精选：最新 9 篇（3 列卡片正好 3×3）
+const recentPosts = posts.slice(0, 9);
 
 // 图志精选：独立图集最新 4 张
 const galleryTeaserImages: GalleryImageBrief[] = sortNewestFirst(
@@ -61,6 +61,12 @@ const galleryTeaserImages: GalleryImageBrief[] = sortNewestFirst(
     </div>
 
     <PostCatalog posts={recentPosts} toolbar={false} />
+
+    <div class="fusion-section__more">
+      <a class="fusion-button fusion-button--primary" href="/blog/">
+        <ThemeCopy minimal="查看更多" trace="查看更多" cyanotype="查看更多" /><Icon name="arrow-right" />
+      </a>
+    </div>
   </section>
 
   <GalleryTeaser images={galleryTeaserImages} />
