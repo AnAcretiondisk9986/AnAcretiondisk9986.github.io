@@ -1025,6 +1025,7 @@
                 <button class="btn small" data-align="right" title="将选中段落设为居右">⇥</button>
                 <span class="fmt-sep"></span>
                 <button class="btn small" id="btnOutline" title="显示 / 隐藏大纲">☰ 大纲</button>
+                <button class="btn small" id="btnTypewriter" title="打字机模式：光标始终居中">⌨ 打字机</button>
                 <button class="btn small" id="btnFocusMode" title="专注模式：隐藏侧栏">⤢ 专注</button>
                 <div class="view-switch" id="viewSwitch">
                   <button data-view="ir" class="active" title="即时渲染：直接编辑排版结果，原始 HTML 保持不变">即时渲染</button>
@@ -1520,7 +1521,7 @@
           counter: { enable: false },
           outline: { enable: false },
           resize: { enable: true },
-          typewriterMode: false,
+          typewriterMode: localStorage.getItem('admin-typewriter') === '1',
           toolbarConfig: { pin: true },
           toolbar: [
             'headings', 'bold', 'italic', 'strike', '|',
@@ -1528,7 +1529,7 @@
             'quote', 'line', 'code', 'inline-code', 'link', 'table', '|',
             'upload', 'forecolor', 'backcolor', '|',
             'undo', 'redo', '|',
-            'fullscreen', 'outline', 'edit-mode', 'both', 'preview',
+            'fullscreen', 'outline', 'edit-mode', 'both', 'preview', 'help',
           ],
           preview: {
             markdown: {
@@ -1782,6 +1783,17 @@
           focus.classList.toggle('primary', on);
           try { localStorage.setItem('admin-focus-mode', on ? '1' : '0'); } catch (e) { /* ignore */ }
           window.dispatchEvent(new Event('resize'));
+        };
+      }
+      const typewriter = $('#btnTypewriter');
+      if (typewriter) {
+        typewriter.classList.toggle('primary', localStorage.getItem('admin-typewriter') === '1');
+        typewriter.onclick = () => {
+          const on = !(vditor && vditor.vditor && vditor.vditor.options && vditor.vditor.options.typewriterMode);
+          typewriter.classList.toggle('primary', on);
+          if (vditor && vditor.vditor && vditor.vditor.options) vditor.vditor.options.typewriterMode = on;
+          try { localStorage.setItem('admin-typewriter', on ? '1' : '0'); } catch (e) { /* ignore */ }
+          try { if (vditor) vditor.focus(); } catch (e) { /* ignore */ }
         };
       }
     }

@@ -174,6 +174,14 @@
 
 ---
 
+## 0.9 本轮更新（2026-09-30 第九批）：编辑器打字机与 Markdown 帮助
+
+- 新增「⌨ 打字机」开关（光标居中，localStorage 记忆）。
+- Vditor 工具栏加入 `help`。
+- 验证：`npm run test:admin-all` 全绿；`npm run build` 97 页。
+
+---
+
 ## 1. 当前基线
 
 ### 1.1 已完成（含上一轮）

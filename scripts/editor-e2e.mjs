@@ -63,6 +63,12 @@ try {
   await sleep(300);
   check('退出专注模式', !(await page.$eval('body', (el) => el.classList.contains('focus-mode'))));
   check('大纲按钮存在', Boolean(await page.$('#btnOutline')));
+  await page.click('#btnTypewriter');
+  await sleep(250);
+  check('打字机模式可开启', await page.$eval('#btnTypewriter', (el) => el.classList.contains('primary')));
+  await page.click('#btnTypewriter');
+  await sleep(250);
+  check('打字机模式可关闭', !(await page.$eval('#btnTypewriter', (el) => el.classList.contains('primary'))));
 
   // 原始 HTML 保真：Vditor 以 Markdown 为事实来源，块级 HTML 不被改写
   const md = [

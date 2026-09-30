@@ -330,6 +330,15 @@
 最后更新：2026-08-03（全站极简重构 + 双视觉主题）
 
 
+## 2026-09-30（第九批）编辑器：打字机模式与 Markdown 帮助
+
+- 新增「⌨ 打字机」开关（光标居中，localStorage 记忆，运行时切换 Vditor `typewriterMode`）。
+- Vditor 工具栏加入 `help`（Markdown 语法帮助）。
+- `editor-e2e` 补打字机开关检查。
+- 验证：`npm run test:admin-all` 全绿；`npm run build` 97 页。
+
+---
+
 ## 2026-09-30（第八批）侧栏滚动 + 发布中心拆分
 
 ### 本轮修改
