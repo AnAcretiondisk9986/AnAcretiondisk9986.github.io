@@ -1,160 +1,122 @@
+/**
+ * 编辑器（Vditor）冒烟测试：初始化、四种视图切换、原始 HTML 保真、视频/音乐插入。
+ *
+ * 前置：管理面板已在 http://localhost:4322 运行。测试拦截 /api/，不写文件。
+ */
 import puppeteer from 'puppeteer-core';
 
-const CHROME = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
-const sleep = ms => new Promise(r => setTimeout(r, ms));
+const CHROME = process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe';
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let failures = 0;
 const check = (name, cond, extra = '') => {
-  console.log((cond ? 'PASS' : 'FAIL') + '  ' + name + (extra ? '  [' + extra + ']' : ''));
-  if (!cond) failures++;
+  console.log((cond ? 'PASS' : 'FAIL') + '  ' + name + (extra ? '  [' + String(extra).slice(0, 160) + ']' : ''));
+  if (!cond) failures += 1;
+};
+const json = (body, status = 200) => ({ status, contentType: 'application/json; charset=utf-8', body: JSON.stringify(body) });
+
+const post = {
+  slug: 'EditorSmoke', title: '编辑器冒烟', description: '', pubDate: '2026-09-30', dayIndex: 1,
+  tags: [], draft: false, access: 'public', archived: false, excerpt: '', astroId: 'editorsmoke',
+  hasPublicPage: true, publicUrl: 'https://blog.acretiondisk.top/blog/editorsmoke/', shortUrl: 'https://blog.acretiondisk.top/s/abc',
 };
 
-const browser = await puppeteer.launch({
-  executablePath: CHROME, headless: 'new', args: ['--no-sandbox', '--disable-gpu'],
-});
+let savedBody = null;
+
+const browser = await puppeteer.launch({ executablePath: CHROME, headless: 'new', args: ['--no-sandbox', '--disable-gpu'] });
 const page = await browser.newPage();
-await page.setViewport({ width: 1500, height: 950 });
-
-// 拦截上传与保存，避免真实 git push / 写文件
-let uploadCount = 0, savedBody = null;
-await page.setRequestInterception(true);
-page.on('request', req => {
-  const u = req.url();
-  if (u.endsWith('/api/upload') && req.method() === 'POST') {
-    uploadCount++;
-    req.respond({ status: 201, contentType: 'application/json',
-      body: JSON.stringify({ success: true, url: `https://cdn.example.com/img/${uploadCount}.webp`, pushed: true }) });
-  } else if (u.endsWith('/api/posts') && req.method() === 'POST') {
-    try { savedBody = new URLSearchParams(req.postData() || ''); } catch(e) {}
-    req.respond({ status: 201, contentType: 'application/json', body: JSON.stringify({ slug: 'test-post' }) });
-  } else req.continue();
-});
-
+await page.setViewport({ width: 1500, height: 1000 });
 const pageErrors = [];
-page.on('pageerror', e => pageErrors.push(String(e)));
-page.on('console', m => { if (m.text().includes('COLOR_DBG')) console.log('页面:', m.text()); if (m.type() === 'error' && !m.text().includes('Failed to load resource')) pageErrors.push('console: ' + m.text()); });
-page.on('dialog', d => d.dismiss()); // 模式切换确认框：headless 下自动取消
+page.on('pageerror', (e) => pageErrors.push(String(e)));
+page.on('dialog', (d) => d.accept());
 
-await page.goto('http://localhost:4322/admin', { waitUntil: 'networkidle0' });
-await page.click('#btnNew');
-await page.waitForSelector('.toastui-editor-defaultUI', { timeout: 15000 });
-check('TOAST UI 编辑器渲染', true);
+await page.setRequestInterception(true);
+page.on('request', (req) => {
+  const url = new URL(req.url());
+  const path = url.pathname;
+  if (!path.startsWith('/api/')) return req.continue();
+  if (path === '/api/posts' && req.method() === 'GET') return req.respond(json([post]));
+  if (path === '/api/posts' && req.method() === 'POST') {
+    try { savedBody = new URLSearchParams(req.postData() || ''); } catch { savedBody = null; }
+    return req.respond(json({ success: true, slug: 'EditorSmoke', contentHash: 'b'.repeat(64) }));
+  }
+  if (path.startsWith('/api/posts/') && req.method() === 'GET') return req.respond(json({ ...post, contentHash: 'a'.repeat(64), content: '# 标题\n\n正文', cover: '' }));
+  if (path === '/api/sync/status') return req.respond(json({ ok: true, state: 'clean', stateLabel: '工作区干净', branch: 'main', hasUpstream: true, ahead: 0, behind: 0, dirtyCount: 0, dirty: false, files: [] }));
+  return req.respond(json({ ok: true }));
+});
 
-// ── 场景 1: Markdown 模式 + 标准解析(HTML 内 Markdown) ──
-const md = '这是**加粗**文字。\n\n<span style="color: red">**红色粗体**</span>\n\n![测试图](https://cdn.example.com/x.png)';
-await page.evaluate(mdText => { editor.setMarkdown(mdText); }, md);
-await sleep(800);
-const previewHtml = await page.evaluate(() => {
-  const pv = document.querySelector('.toastui-editor-md-preview .toastui-editor-contents') ||
-             document.querySelector('.toastui-editor-contents');
-  return pv ? pv.innerHTML : '';
-});
-console.log('预览内容:', previewHtml.slice(0, 400));
-check('预览渲染 <strong>', /<strong[^>]*>加粗<\/strong>/.test(previewHtml), previewHtml.slice(0, 120));
-check('span 内 Markdown 按标准解析(strong)', /<span[^>]*style="color:[^"]*"[^>]*>[\s\S]*?<strong[^>]*>红色粗体<\/strong>/.test(previewHtml), previewHtml.match(/<span[^>]*>.*?红色粗体<\/strong>/)?.slice(0, 90) || '无');
-check('markdown 图片渲染', /<img[^>]*x\.png/.test(previewHtml), (previewHtml.match(/<img[^>]*>/) || ['无'])[0].slice(0, 90));
+try {
+  await page.goto('http://localhost:4322/admin', { waitUntil: 'networkidle0' });
+  await page.waitForSelector('#postList .post-item', { timeout: 15000 });
+  await page.click('#btnNew');
+  await page.waitForSelector('.vditor', { timeout: 15000 });
+  await sleep(800);
 
-// ── 场景 2: 颜色按钮(富文本模式真实交互:选中文字 → 点颜色) ──
-await page.evaluate(() => { editor.setMarkdown('待着色文字测试'); });
-await sleep(800);
-await page.click('#viewSwitch button[data-view="wysiwyg"]');
-await sleep(800);
-const wwBox = await page.evaluate(() => {
-  const el = document.querySelector('.toastui-editor-ww-container');
-  const r = el.getBoundingClientRect();
-  return { x: r.x + 50, y: r.y + 30 };
-});
-await page.mouse.click(wwBox.x, wwBox.y);
-await sleep(300);
-await page.keyboard.down('Control');
-await page.keyboard.press('KeyA');
-await page.keyboard.up('Control');
-await sleep(300);
-const selText = await page.evaluate(() => (window.getSelection() || {}).toString() || '');
-check('富文本全选生效', selText.length > 0, selText);
-const btnInfo = await page.evaluate(() => {
-  const b = document.querySelector('[data-fmt="color"][data-color="#c06050"]');
-  if (!b) return { exists: false };
-  const r = b.getBoundingClientRect();
-  const top = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
-  return { exists: true, onclickType: typeof b.onclick, rect: { x: r.x, y: r.y, w: r.width, h: r.height }, topEl: top ? top.className.toString().slice(0, 60) : '' };
-});
-console.log('按钮诊断:', JSON.stringify(btnInfo));
-await page.click('[data-fmt="color"][data-color="#c06050"]');
-await sleep(800);
-const colorDiag = await page.evaluate(() => {
-  const sel = window.getSelection();
-  return {
-    md: editor.getMarkdown().slice(0, 200),
-    html: editor.getHTML().slice(0, 200),
-    mode: document.querySelector('#viewSwitch button.active')?.dataset.view,
-    selAfter: sel ? sel.toString() : '',
-    activeEl: document.activeElement ? document.activeElement.className.toString().slice(0, 60) : '',
-  };
-});
-check('颜色命令生成 span 样式', /<span[^>]*color[^>]*>[\s\S]*<\/span>/.test(colorDiag.md), JSON.stringify(colorDiag));
-await page.click('#viewSwitch button[data-view="split"]');
-await sleep(500);
+  check('Vditor 初始化并进入即时渲染', (await page.evaluate(() => window.vditor.getCurrentMode())) === 'ir');
+  check('内置工具栏已渲染', (await page.$$('#vditorEditor .vditor-toolbar__item')).length > 10);
 
-// ── 场景 3: 富文本模式切换 ──
-await page.click('#viewSwitch button[data-view="wysiwyg"]');
-await sleep(800);
-const isWysiwyg = await page.evaluate(() => {
-  const act = document.querySelector('#viewSwitch button.active');
-  const ww = document.querySelector('.toastui-editor-ww-container');
-  return {
-    active: act ? act.dataset.view : '无',
-    wwVisible: ww ? getComputedStyle(ww).display : '无容器',
-    mdVisible: (() => { const m = document.querySelector('.toastui-editor-md-container'); return m ? getComputedStyle(m).display : '无'; })(),
-  };
-});
-check('切换到富文本模式', isWysiwyg.active === 'wysiwyg', JSON.stringify(isWysiwyg));
-await page.click('#viewSwitch button[data-view="split"]');
-await sleep(800);
-const backMd = await page.evaluate(() => {
-  const act = document.querySelector('#viewSwitch button.active');
-  return act && act.dataset.view === 'split';
-});
-check('切回分屏(源码)模式', backMd);
+  // 原始 HTML 保真：IR 模式渲染 div 对齐 / song-player / iframe，且源码不被改写
+  const md = [
+    '## 小标题',
+    '',
+    '<div style="text-align:center">居中段落</div>',
+    '',
+    '<div class="video-embed"><iframe src="https://player.bilibili.com/player.html?bvid=BV1GJ411x7h7"></iframe></div>',
+    '',
+    '<div class="song-player" data-src="https://cdn.example.com/audio/a.mp3" data-title="测试曲"><a href="https://cdn.example.com/audio/a.mp3">♪ 播放音频</a></div>',
+    '',
+    '正文含 <mark>高亮</mark> 与 <u>下划线</u>。',
+  ].join('\n');
+  await page.evaluate((text) => window.editor.setMarkdown(text), md);
+  await sleep(1200);
+  const srcBack = await page.evaluate(() => window.editor.getMarkdown());
+  check('Markdown 源码保持原样', srcBack.includes('<div style="text-align:center">') && srcBack.includes('song-player') && srcBack.includes('<mark>'), srcBack.slice(0, 80).replace(/\n/g, ' '));
+  const rendered = await page.evaluate(() => ({
+    centered: !!document.querySelector('#editorBody .vditor-reset div[style*="text-align"]'),
+    iframe: !!document.querySelector('#editorBody .vditor-reset iframe'),
+    songPlayer: !!document.querySelector('#editorBody .vditor-reset .song-player'),
+    mark: !!document.querySelector('#editorBody .vditor-reset mark'),
+  }));
+  check('原始 HTML 块在编辑区正确渲染', rendered.centered && rendered.iframe && rendered.songPlayer, JSON.stringify(rendered));
 
-// ── 场景 4: 视频插入(自动切回源码模式) ──
-await page.click('#viewSwitch button[data-view="wysiwyg"]');
-await sleep(500);
-await page.click('#btnInsertVideo');
-await page.waitForSelector('#videoModal[style*="flex"]', { timeout: 3000 }).catch(() => {});
-await page.type('#fVideoInput', 'https://www.bilibili.com/video/BV1GJ411x7h7');
-await page.click('#btnVideoInsert');
-await sleep(500);
-const mdWithVideo = await page.evaluate(() => editor.getMarkdown());
-check('视频插入 iframe 且已切回源码', mdWithVideo.includes('iframe') && mdWithVideo.includes('BV1GJ411x7h7'), mdWithVideo.slice(0, 100));
-const modeAfterVideo = await page.evaluate(() => {
-  const act = document.querySelector('#viewSwitch button.active');
-  return act && act.dataset.view === 'wysiwyg' ? 'wysiwyg' : 'markdown';
-});
-check('插入后自动回到源码模式', modeAfterVideo === 'markdown', modeAfterVideo);
+  // 视图切换
+  for (const [view, expected] of [['sv', 'sv'], ['wysiwyg', 'wysiwyg'], ['source', 'sv'], ['ir', 'ir']]) {
+    await page.click(`#viewSwitch [data-view="${view}"]`);
+    await sleep(500);
+    check(`切换到「${view}」`, (await page.evaluate(() => window.vditor.getCurrentMode())) === expected);
+  }
+  await page.click('#viewSwitch [data-view="source"]');
+  await sleep(400);
+  check('源码模式隐藏预览', await page.$eval('#editorBody', (el) => el.classList.contains('acr-source-only')));
+  await page.click('#viewSwitch [data-view="ir"]');
+  await sleep(400);
 
-// ── 场景 5: 图片上传插入(走现有上传管线) ──
-await page.click('#btnCoverUpload'); // 不行,这是封面;用 upload-area
-await page.click('#uploadArea');
-await sleep(100);
-const inputEl = await page.$('#fileInput');
-await inputEl.uploadFile('C:/Users/AnAcretiondisk/AppData/Local/Temp/crop-test.png');
-await sleep(1500);
-const mdWithImg = await page.evaluate(() => editor.getMarkdown());
-check('图片上传后插入编辑器', mdWithImg.includes('https://cdn.example.com/img/1.webp'), 'includes=' + mdWithImg.includes('https://cdn.example.com/img/1.webp') + ' tail=' + mdWithImg.slice(-120));
-check('上传请求发出', uploadCount >= 1, `uploads=${uploadCount}`);
+  // 插入视频 / 音乐
+  await page.click('#btnInsertVideo');
+  await sleep(300);
+  await page.type('#fVideoInput', 'https://www.bilibili.com/video/BV1GJ411x7h7');
+  await page.click('#btnVideoInsert');
+  await sleep(600);
+  check('插入视频写入 video-embed', (await page.evaluate(() => window.editor.getMarkdown())).includes('video-embed'));
 
-// ── 场景 6: 保存(getMarkdown 提交) ──
-await page.type('#fTitle', 'E2E 测试文章');
-await page.click('#btnSave');
-await sleep(1500);
-check('保存请求发出且 content 为 Markdown', !!savedBody, savedBody ? savedBody.get('content')?.slice(0, 60) : '未拦截');
-if (savedBody) {
-  const c = savedBody.get('content') || '';
-  check('保存内容含 markdown 语法', c.includes('**') || c.includes('!['), c.slice(0, 80));
+  await page.click('#btnInsertMusic');
+  await sleep(300);
+  await page.type('#fMusicSrc', 'https://cdn.example.com/audio/test.mp3');
+  await page.click('#btnMusicInsert');
+  await sleep(600);
+  check('插入音乐写入 song-player', (await page.evaluate(() => window.editor.getMarkdown())).includes('song-player'));
+
+  // 保存：提交 Markdown 源码
+  await page.type('#fTitle', '编辑器冒烟');
+  await page.click('#btnSave');
+  await sleep(1000);
+  check('保存提交 Markdown 源码', Boolean(savedBody) && (savedBody.get('content') || '').includes('video-embed') && (savedBody.get('content') || '').includes('song-player'), savedBody ? 'ok' : 'no save');
+
+  check('全程无页面脚本错误', pageErrors.length === 0, pageErrors.join(' | '));
+} catch (err) {
+  check('测试流程未抛异常', false, err.stack || err.message);
+} finally {
+  await browser.close();
 }
 
-check('全程无页面错误', pageErrors.length === 0, pageErrors.join(' | ').slice(0, 300));
-
-await browser.close();
 console.log(failures === 0 ? '\n=== 全部通过 ===' : `\n=== ${failures} 项失败 ===`);
 process.exit(failures === 0 ? 0 : 1);

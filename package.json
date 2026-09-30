@@ -19,6 +19,7 @@
     "test:admin-all": "npm run test:admin && npm run test:admin-api && npm run test:admin-e2e"
   },
   "dependencies": {
+    "@astrojs/markdown-satteri": "^0.4.2",
     "astro": "latest",
     "express": "^5.2.1",
     "github-slugger": "^2.0.0",
@@ -27,6 +28,9 @@
     "multer": "^2.2.0",
     "music-metadata": "^11.14.0",
     "sharp": "^0.35.3",
-    "turndown": "^7.2.4"
+    "vditor": "4.0.0"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^25.12.0"
   }
 }

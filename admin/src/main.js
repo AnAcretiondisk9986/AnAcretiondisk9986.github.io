@@ -421,7 +421,7 @@
         .catch((e) => toast('预览失败: ' + e.message));
     }
 
-    let previewViewer = null;
+    // 本地预览由 Vditor.preview 渲染，无需保留实例
 
     function openPostPreview(post) {
       const mask = $('#previewModal');
@@ -440,16 +440,18 @@
       mask.setAttribute('role', 'dialog');
       mask.setAttribute('aria-modal', 'true');
       const el = $('#previewBody');
-      el.innerHTML = '';
-      if (previewViewer) { try { previewViewer.destroy(); } catch { /* ignore */ } previewViewer = null; }
-      if (window.toastui && toastui.Editor) {
-        try {
-          previewViewer = new toastui.Editor({ el, viewer: true, initialValue: post.content || '', height: 'auto' });
-        } catch {
-          el.textContent = post.content || '';
-        }
+      el.innerHTML = '<div class="vditor-reset acr-site-preview"></div>';
+      const target = el.firstElementChild;
+      if (window.Vditor && Vditor.preview) {
+        Vditor.preview(target, post.content || '', {
+          cdn: '/admin/vendor/vditor',
+          mode: 'dark',
+          theme: { current: 'dark', path: '/admin/vendor/vditor/dist/css/content-theme' },
+          hljs: { lineNumber: true, style: 'github-dark' },
+          markdown: { toc: true },
+        }).catch(() => { target.textContent = post.content || ''; });
       } else {
-        el.textContent = post.content || '';
+        target.textContent = post.content || '';
       }
     }
 
@@ -457,7 +459,6 @@
       const mask = $('#previewModal');
       mask.style.display = 'none';
       mask.removeAttribute('aria-modal');
-      if (previewViewer) { try { previewViewer.destroy(); } catch { /* ignore */ } previewViewer = null; }
     }
 
     async function duplicatePost(slug) {
@@ -735,7 +736,7 @@
           const status = $('#draftStatus');
           if (status) status.textContent = state.draft ? '当前为草稿' : '已发布';
         }
-        if (editor && typeof editor.setMarkdown === 'function') editor.setMarkdown(state.content || '');
+        if (vditor && typeof vditor.setValue === 'function') vditor.setValue(state.content || '');
         syncPostCoverPreview();
       } finally {
         postHydrating = false;
@@ -895,8 +896,8 @@
       el.hidden = false;
       el.className = 'rich-status warn';
       el.textContent = isWysiwygView()
-        ? '⚠ 当前为富文本模式：正文包含对齐 / 高亮 / 下划线 / 视频 / 播放条等富文本不支持的结构，保存或切回时可能被改写，建议切回源码模式编辑。'
-        : '◐ 正文包含富文本模式不支持的格式（对齐 / 高亮 / 下划线 / 视频 / 播放条）；切到富文本再切回可能改写这些标记。';
+        ? '⚠ 当前为「所见即所得」：正文含原始 HTML（对齐 / 高亮 / 下划线 / 视频 / 播放条），部分结构可能不渲染；建议切到「即时渲染」编辑，它不会改写原始 HTML。'
+        : '◐ 正文含原始 HTML（对齐 / 高亮 / 下划线 / 视频 / 播放条）：已用「即时渲染 / 分屏」原样保留，可放心编辑。';
     }
 
     function applyPostTemplate(key) {
@@ -904,7 +905,7 @@
       if (!tpl || currentSlug) return;
       if (tpl.tags) $('#fTags').value = tpl.tags;
       if (tpl.description) $('#fDesc').value = tpl.description;
-      if (!getEditorMarkdown().trim() && tpl.content && editor) editor.setMarkdown(tpl.content);
+      if (!getEditorMarkdown().trim() && tpl.content && vditor) vditor.setValue(tpl.content);
       const title = $('#fTitle')?.value || '';
       if (!($('#fSlug')?.value || '').trim() && title) $('#fSlug').value = slugifyTitle(title);
       updatePostValidation();
@@ -964,6 +965,16 @@
       const wrap = $('#templateChips');
       if (!wrap) return;
       wrap.querySelectorAll('[data-template]').forEach((btn) => { btn.onclick = () => applyPostTemplate(btn.dataset.template); });
+    }
+
+    /** 编辑器就绪后：锁定基线、计算状态、尝试恢复本地草稿 */
+    function finalizePostEditorInit() {
+      postBaselineSnapshot = serializePostForm(readPostFormState());
+      postDirty = false;
+      postHydrating = false;
+      updatePostEditorStatus();
+      updatePostValidation();
+      restorePostDraftIfAvailable();
     }
 
     function renderPostEditor(post, { isNew = false } = {}) {
@@ -1032,39 +1043,31 @@
             <button class="form-section-head" type="button" data-collapse="body"><span class="caret">▾</span>正文</button>
             <div class="form-section-body">
               <div class="editor-toolbar">
-                <button class="btn small" id="btnInsertVideo" title="插入 B站 / YouTube 等流媒体视频（自动切回源码模式）">▶ 视频</button>
+                <button class="btn small" id="btnInsertVideo" title="插入 B站 / YouTube 等流媒体视频">▶ 视频</button>
                 <button class="btn small" id="btnInsertMusic" title="插入音乐播放条（自托管音频直链）">♪ 音乐</button>
                 <button class="btn small" id="btnInsertMedia" title="从媒体库插入图片 / 音频">▤ 媒体库</button>
                 <button class="btn small" id="btnInsertImgSize" title="设置图片宽度">⛶ 图宽</button>
                 <span class="fmt-sep"></span>
-                <button class="btn small" data-align="left" title="居左（自动切回源码模式）">⇤</button>
-                <button class="btn small" data-align="center" title="居中（自动切回源码模式）">⇔</button>
-                <button class="btn small" data-align="right" title="居右（自动切回源码模式）">⇥</button>
-                <span class="fmt-sep"></span>
-                <span class="fmt-colors">
-                  <button class="btn small fmt-color" data-fmt="color" data-color="#c06050" title="红色" style="color:#e07a68">A</button>
-                  <button class="btn small fmt-color" data-fmt="color" data-color="#b99c60" title="金色" style="color:#d9b96e">A</button>
-                  <button class="btn small fmt-color" data-fmt="color" data-color="#5a8f5a" title="绿色" style="color:#7fc07f">A</button>
-                  <button class="btn small fmt-color" data-fmt="color" data-color="#5a7fa0" title="蓝色" style="color:#7fa8cc">A</button>
-                  <button class="btn small fmt-color" data-fmt="color" data-color="#8a8a90" title="灰色" style="color:#a8a8b0">A</button>
-                  <input type="color" id="fmtColorPick" title="自定义颜色" />
-                </span>
+                <button class="btn small" data-align="left" title="将选中段落设为居左">⇤</button>
+                <button class="btn small" data-align="center" title="将选中段落设为居中">⇔</button>
+                <button class="btn small" data-align="right" title="将选中段落设为居右">⇥</button>
                 <div class="view-switch" id="viewSwitch">
-                  <button data-view="edit">源码</button>
-                  <button data-view="split" class="active">分屏</button>
-                  <button data-view="wysiwyg">富文本</button>
+                  <button data-view="ir" class="active" title="即时渲染：直接编辑排版结果，原始 HTML 保持不变">即时渲染</button>
+                  <button data-view="sv" title="左侧 Markdown 源码 + 右侧实时预览">分屏</button>
+                  <button data-view="wysiwyg" title="所见即所得">所见即所得</button>
+                  <button data-view="source" title="仅 Markdown 源码">源码</button>
                 </div>
               </div>
               <div class="post-stats" id="postStats"></div>
               <div class="rich-status" id="richStatus" hidden></div>
               <div class="editor-body" id="editorBody">
-                <div id="toastEditor"></div>
+                <div id="vditorEditor"></div>
               </div>
             </div>
           </section>
         </div>`;
       setupUpload();
-      initToastEditor(value.content || '');
+      initVditorEditor(value.content || '');
       setupPostCover();
       setupVideoInsert();
       setupMusicInsert();
@@ -1078,12 +1081,7 @@
       setupShareInfo(isNew ? null : value);
       setupCoverMediaButton();
       setupMediaInsertButton();
-      postBaselineSnapshot = serializePostForm(readPostFormState());
-      postDirty = false;
-      postHydrating = false;
-      updatePostEditorStatus();
-      updatePostValidation();
-      restorePostDraftIfAvailable();
+      if (!initVditorEditor(value.content || '')) finalizePostEditorInit();
       renderList();
       if (isNew) $('#fTitle')?.focus();
     }
@@ -1227,8 +1225,8 @@
       area.ondragleave = ()=>area.classList.remove('dragover');
       area.ondrop = async e=>{e.preventDefault();area.classList.remove('dragover');const f=e.dataTransfer.files[0];if(!f)return;if(f.type.startsWith('audio/')){await uploadAudioTrack(f)}else{await uploadImage(f,'content')}};
 
-      // 编辑器区拖放：图片交给 TOAST UI 的 addImageBlobHook（光标处插入）；音频由我们处理
-      const editorBox = $('#toastEditor');
+      // 编辑器区拖放：图片由 Vditor 的 upload 处理（光标处插入）；音频由我们处理
+      const editorBox = $('#vditorEditor');
       if(editorBox){
         editorBox.ondragover = e=>{e.preventDefault();e.dataTransfer.dropEffect='copy'};
         editorBox.ondrop = async e=>{
@@ -1508,116 +1506,208 @@
       }catch(e){toast('上传失败：'+e.message)}
     }
 
-    /* ── TOAST UI 富文本编辑器（Markdown / 富文本双模式，底层 markdown-it 标准解析） ── */
-    let editor = null;
+    /* ── Vditor（开源 Markdown 编辑器）：即时渲染 IR / 分屏 SV / 所见即所得 / 源码 ── */
+    let vditor = null;
+    let editorView = 'ir';
 
-    // 创建/重建编辑器（每次渲染编辑器区域时调用；initialValue 为 Markdown 源码，
-    // 兼容老文章（纯 Markdown / Markdown+HTML 混合）与新的富文本内容）
-    function initToastEditor(content) {
-      const el = $('#toastEditor');
-      if (!el) return;
-      if (editor) { try { editor.destroy(); } catch(e) {} editor = null; window.editor = null; }
-      if (!window.toastui || !toastui.Editor) { toast('编辑器组件加载失败，请检查 /admin/vendor/toastui/'); return; }
+    const VDITOR_CDN = '/admin/vendor/vditor';
+    const EDITOR_VIEWS = new Set(['ir', 'sv', 'wysiwyg', 'source']);
+
+    function normalizeEditorView(view) {
+      // 兼容旧版本的视图取值
+      if (view === 'split') return 'ir';
+      if (view === 'edit') return 'source';
+      return EDITOR_VIEWS.has(view) ? view : 'ir';
+    }
+
+    // 创建/重建编辑器（每次渲染编辑器区域时调用；value 为 Markdown 源码，
+    // 兼容纯 Markdown / Markdown+HTML 混合内容）
+    function initVditorEditor(content) {
+      const el = $('#vditorEditor');
+      if (!el) return null;
+      if (vditor) { try { vditor.destroy(); } catch (e) { /* ignore */ } vditor = null; window.editor = null; }
+      if (!window.Vditor) { toast('编辑器组件加载失败，请检查 /admin/vendor/vditor/'); return null; }
       try {
-        const { Editor } = toastui;
-        const colorSyntax = Editor.plugin && Editor.plugin.uml;
-        el.classList.add('toastui-editor-dark');
-        editor = new Editor({
-          el,
-          initialValue: String(content || ''),
-          initialEditType: 'markdown',
-          previewStyle: 'vertical',
-          height: '540px',
-          language: 'zh-CN',
-          plugins: colorSyntax ? [colorSyntax, buildMediaPlugin] : [buildMediaPlugin],
-          hooks: {
-            addImageBlobHook: async (blob, callback) => {
-              try {
-                const fd = new FormData();
-                fd.set('file', blob, blob.name || 'image.png');
-                const res = await apiFetch('/api/upload', { method: 'POST', body: fd });
-                const data = await res.json();
-                if (data.error) { toast(data.error); return; }
-                callback(data.url, blob.name || 'image');
-                toast('图片已上传: ' + data.url);
-              } catch(e) { toast('图片上传失败: ' + e.message); }
-            }
-          }
+        vditor = new Vditor(el, {
+          cdn: VDITOR_CDN,
+          lang: 'zh_CN',
+          theme: 'dark',
+          mode: 'ir',
+          height: '100%',
+          minHeight: 380,
+          value: String(content || ''),
+          placeholder: '开始写作… 支持 Markdown 与原始 HTML',
+          cache: { enable: false },
+          counter: { enable: false },
+          outline: { enable: false },
+          resize: { enable: true },
+          typewriterMode: false,
+          toolbarConfig: { pin: true },
+          toolbar: [
+            'headings', 'bold', 'italic', 'strike', '|',
+            'list', 'ordered-list', 'check', 'outdent', 'indent', '|',
+            'quote', 'line', 'code', 'inline-code', 'link', 'table', '|',
+            'upload', 'forecolor', 'backcolor', '|',
+            'undo', 'redo', '|',
+            'fullscreen', 'outline', 'edit-mode', 'both', 'preview',
+          ],
+          preview: {
+            markdown: {
+              toc: true,
+              markdown: {},
+              hljs: { lineNumber: true, style: 'github-dark' },
+              theme: { current: 'dark', path: `${VDITOR_CDN}/dist/css/content-theme` },
+            },
+          },
+          upload: {
+            accept: 'image/*',
+            multiple: false,
+            handler: async (files) => {
+              const succMap = {};
+              const errFiles = [];
+              for (const file of files) {
+                try {
+                  const fd = new FormData();
+                  fd.append('file', file, file.name);
+                  const res = await apiFetch('/api/upload', { method: 'POST', body: fd });
+                  const data = await res.json();
+                  if (!res.ok || data.error) { errFiles.push(file.name); toast(`${data.error || '上传失败'}：${file.name}`); continue; }
+                  succMap[file.name] = data.url;
+                } catch (e) {
+                  errFiles.push(file.name);
+                }
+              }
+              return JSON.stringify({ msg: '', code: 0, data: { errFiles, succMap } });
+            },
+            error: (msg) => toast('上传失败：' + msg),
+          },
+          input: () => { syncPostCoverPreview(); markPostDirty(); updatePostValidation(); },
+          after: () => { setupEditorImgRetry(el); setupEditorInputTracking(el); scheduleEditorReady(); },
         });
-        window.editor = editor;
-      } catch(e) {
-        console.error('TOAST UI 初始化失败:', e);
+        window.editor = createEditorShim();
+        window.vditor = vditor;
+      } catch (e) {
+        console.error('Vditor 初始化失败:', e);
         toast('编辑器初始化失败: ' + e.message);
-        editor = null;
-        return;
+        vditor = null;
+        return null;
       }
-      editor.on('change', () => { syncPostCoverPreview(); markPostDirty(); updatePostValidation(); });
-      setupEditorImgRetry(el);
-      const savedView = localStorage.getItem('admin-editor-view') || 'split';
+      return vditor;
+    }
+
+    /** Vditor 首屏渲染后 Lute 仍在异步加载：等待就绪再应用视图与基线 */
+    function scheduleEditorReady() {
+      let attempts = 0;
+      const run = () => {
+        if (!vditor) return;
+        const luteReady = Boolean(vditor.vditor && vditor.vditor.lute);
+        if (!luteReady && attempts < 40) { attempts += 1; setTimeout(run, 100); return; }
+        applyEditorInitialView();
+        finalizePostEditorInit();
+      };
+      run();
+    }
+
+    /** 首次渲染完成后应用上次使用的视图 */
+    function applyEditorInitialView() {
+      const savedView = normalizeEditorView(localStorage.getItem('admin-editor-view') || 'ir');
       applyView(savedView, true);
       const vs = $('#viewSwitch');
-      if (vs) vs.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.view === savedView));
-      return editor;
+      if (vs) vs.querySelectorAll('button').forEach((b) => b.classList.toggle('active', b.dataset.view === savedView));
+      updateRichStatus();
     }
 
-    // 保存 / 封面提取等统一取 Markdown 源码（富文本模式下 TOAST UI 自动转换）
+    /** 兼容层：测试与旧代码通过 editor.getMarkdown() / setMarkdown() 读写正文 */
+    function createEditorShim() {
+      return {
+        getMarkdown: () => getEditorMarkdown(),
+        setMarkdown: (v) => { if (vditor) { vditor.setValue(String(v || '')); syncPostCoverPreview(); markPostDirty(); updatePostValidation(); } },
+        getValue: () => getEditorMarkdown(),
+        setValue: (v) => { if (vditor) vditor.setValue(String(v || '')); },
+        getHTML: () => (vditor ? vditor.getHTML() : ''),
+        insertValue: (v, render = true) => { if (vditor) vditor.insertValue(v, render); },
+        focus: () => { if (vditor) vditor.focus(); },
+      };
+    }
+
+    // 保存 / 封面提取等统一取 Markdown 源码（Vditor 始终以 Markdown 为事实来源）
     function getEditorMarkdown() {
-      try { return editor ? editor.getMarkdown() : ''; } catch(e) { return ''; }
+      try { return vditor ? vditor.getValue() : ''; } catch (e) { return ''; }
     }
 
-    // 当前是否富文本视图（TOAST UI 3.x 无模式查询 API，用我们自己的视图状态判断）
+    // 是否「所见即所得」（Vditor 的即时渲染 ir 同样保留原始 HTML，可安全编辑）
     function isWysiwygView() {
-      const act = document.querySelector('#viewSwitch button.active');
-      return !!act && act.dataset.view === 'wysiwyg';
+      return editorView === 'wysiwyg';
     }
 
-    // 在光标处插入 Markdown / HTML 片段（视频 / 音乐 / 图宽；自动切回源码模式）
+    // 在光标处插入 Markdown / HTML 片段（视频 / 音乐 / 图宽 / 图片）
     function insertMarkdownBlock(md) {
-      if (!editor) { toast('编辑器未就绪'); return; }
-      ensureMarkdownMode();
-      editor.insertText('\n' + md + '\n');
-      editor.focus();
+      if (!vditor) { toast('编辑器未就绪'); return; }
+      const text = (md.startsWith('\n') ? '' : '\n') + md + '\n';
+      vditor.focus();
+      vditor.insertValue(text, true);
     }
 
-    // 插入图片：富文本模式用 insertImage 命令，源码模式用 Markdown 语法
     function insertImageIntoEditor(url, alt) {
-      if (!editor) { toast('编辑器未就绪'); return; }
-      if (isWysiwygView()) {
-        editor.exec('insertImage', { imageUrl: url, altText: alt || '图片' });
-      } else {
-        editor.insertText(`![${alt || '图片'}](${url})`);
-      }
-      editor.focus();
+      insertMarkdownBlock(`![${alt || '图片'}](${url})`);
     }
 
-    // 视频 / 音乐 / 图宽 / 颜色等标记仅以 HTML 形态存在于源码中：非源码模式自动切回
+    // 视频 / 音乐 / 图宽等标记以 HTML 形态存在：Vditor 的即时渲染 / 分屏会原样保留
     function ensureMarkdownMode() {
-      if (!editor) return;
-      if (isWysiwygView()) {
-        editor.changeMode('markdown');
-        editor.changePreviewStyle('tab');
-        const vs = $('#viewSwitch');
-        if (vs) vs.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.view === 'edit'));
-      }
+      if (!vditor) return;
+      if (editorView === 'wysiwyg') applyView('ir', true);
     }
 
-    // 视图切换：源码（纯 Markdown）/ 分屏（源码+预览）/ 富文本（所见即所得）；成功返回 true
+    // Vditor 4 未提供公开的 setMode；通过内置 edit-mode 工具栏按钮切换（固定版本 4.0.0）
+    function switchVditorMode(mode) {
+      if (!vditor) return false;
+      const target = mode === 'source' ? 'sv' : mode;
+      const toolbar = vditor.vditor && vditor.vditor.toolbar;
+      const item = toolbar && toolbar.elements ? toolbar.elements['edit-mode'] : null;
+      const btn = item ? item.querySelector(`button[data-mode="${target}"]`) : null;
+      if (!btn) return false;
+      btn.click();
+      return true;
+    }
+
+    // 视图切换：即时渲染 ir / 分屏 sv / 所见即所得 wysiwyg / 源码 source；成功返回 true
     function applyView(view, silent) {
-      if (!editor) return false;
-      if (view === 'wysiwyg') {
-        // 富文本模式不支持部分老文章 HTML（对齐 div / 高亮 mark / 下划线 / 视频 / 播放条等），
-        // 切换后这些标记可能被 TOAST UI 规范化改写，先提示用户
-        const md = editor.getMarkdown() || '';
-        if (!silent && /<(?:div|mark|center|u|iframe|song-player)\b/i.test(md)) {
-          if (!confirm('当前正文含富文本模式不支持的格式（对齐 / 高亮 / 下划线 / 视频 / 播放条等），切换到富文本再切回时这些格式可能被改写。\n\n继续切换？')) return false;
+      if (!vditor) return false;
+      const wasDirty = postDirty;
+      const next = normalizeEditorView(view);
+      try {
+        const currentMode = vditor.getCurrentMode();
+        const targetMode = next === 'source' ? 'sv' : next;
+        if (currentMode !== targetMode) {
+          if (!switchVditorMode(next)) return false;
         }
-        editor.changeMode('wysiwyg');
-      } else {
-        editor.changeMode('markdown');
-        // 源码 = tab 模式（默认停在 Write，可点开预览标签）；分屏 = vertical 左右分栏
-        editor.changePreviewStyle(view === 'edit' ? 'tab' : 'vertical');
+        if (next === 'sv' || next === 'source') {
+          vditor.setPreviewMode(next === 'source' ? 'editor' : 'both');
+        } else {
+          try { vditor.setPreviewMode('both'); } catch (e) { /* ir/wysiwyg 下可能不适用 */ }
+        }
+      } catch (e) { return false; }
+      editorView = next;
+      const container = $('#editorBody');
+      if (container) {
+        container.classList.toggle('acr-source-only', next === 'source');
+        container.classList.toggle('acr-mode-ir', next === 'ir');
+        container.classList.toggle('acr-mode-wysiwyg', next === 'wysiwyg');
+      }
+      if (!silent && next === 'wysiwyg') {
+        const md = getEditorMarkdown() || '';
+        if (/<(?:div|mark|center|u|iframe|song-player)\b/i.test(md)) {
+          toast('正文含原始 HTML（对齐 / 高亮 / 视频 / 播放条等）：所见即所得下部分结构可能不渲染，建议用「即时渲染」编辑');
+        }
       }
       if (typeof updateRichStatus === 'function') updateRichStatus();
+      // 模式切换时 Vditor 可能会对 Markdown 做等价的空白/结构归一化：若切换前没有未保存修改，
+      // 则重新锁定基线，避免把「只是换了视图」误报为未保存修改。
+      if (!silent && !wasDirty && postBaselineSnapshot) {
+        postBaselineSnapshot = serializePostForm(readPostFormState());
+        postDirty = false;
+        updatePostEditorStatus();
+      }
       return true;
     }
 
@@ -1627,16 +1717,32 @@
       vs.querySelectorAll('button').forEach(btn => {
         btn.onclick = () => {
           const v = btn.dataset.view;
-          if (!applyView(v)) return; // 用户取消切换时保持原状态
+          if (!applyView(v)) return; // 切换失败时保持原状态
           vs.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
           try { localStorage.setItem('admin-editor-view', v); } catch(e) {}
         };
       });
     }
 
+    // 原生输入监听兜底：确保任何输入路径（键盘 / 粘贴 / 拖放）都能触发脏状态与统计更新
+    function setupEditorInputTracking(root) {
+      if (!root || root.dataset.acrInputTracked) return;
+      root.dataset.acrInputTracked = '1';
+      let timer = null;
+      const onChange = () => {
+        clearTimeout(timer);
+        timer = setTimeout(() => { syncPostCoverPreview(); markPostDirty(); updatePostValidation(); }, 250);
+      };
+      root.addEventListener('input', onChange, true);
+      root.addEventListener('keyup', onChange, true);
+      root.addEventListener('paste', onChange, true);
+      root.addEventListener('drop', onChange, true);
+    }
+
     // 预览图片加载失败自动重试：jsDelivr CDN 首次访问可能未生效（上传后立即预览）
     function setupEditorImgRetry(root) {
-      root.addEventListener('error', e => {
+      if (!root || root.dataset.acrImgRetry) return;
+      root.dataset.acrImgRetry = '1';      root.addEventListener('error', e => {
         const img = e.target;
         if (!(img instanceof HTMLImageElement) || !img.src || img.dataset.retryDone) return;
         const n = parseInt(img.dataset.retryCount || '0', 10);
@@ -1653,154 +1759,28 @@
       }, true);
     }
 
-    // ── 段落对齐（源码模式）：把光标所在段落包成 <div style="text-align:…">，重复点击剥除旧 div ──
-    // TOAST UI 富文本模式不支持段落对齐（schema 无 textAlign），对齐仅以 HTML 形态存在于源码中
-    function mdPosToOffset(md, pos) {
-      const lines = md.split('\n');
-      let off = 0;
-      for (let i = 0; i < (pos[0] - 1) && i < lines.length; i++) off += lines[i].length + 1;
-      const col = pos[1] || 0;
-      return off + Math.min(col, (lines[pos[0] - 1] || '').length);
-    }
-
-    function offsetToMdPos(md, off) {
-      const lines = md.split('\n');
-      let remain = off;
-      for (let i = 0; i < lines.length; i++) {
-        if (remain <= lines[i].length) return [i + 1, remain];
-        remain -= lines[i].length + 1;
-      }
-      return [lines.length, 0];
-    }
-
+    // ── 段落对齐：把选中段落包成 <div style="text-align:…">（Vditor 保留原始 HTML）──
     function applyAlignToMarkdown(align) {
-      if (!editor) { toast('编辑器未就绪'); return; }
-      ensureMarkdownMode();
-      const md = editor.getMarkdown() || '';
-      const sel = editor.getSelection();
-      let from = 0, to = md.length;
-      if (Array.isArray(sel) && Array.isArray(sel[0]) && Array.isArray(sel[1])) {
-        from = mdPosToOffset(md, sel[0]);
-        to = mdPosToOffset(md, sel[1]);
-        if (to < from) { const t = from; from = to; to = t; }
+      if (!vditor) { toast('编辑器未就绪'); return; }
+      const selected = vditor.getSelection();
+      if (!selected || !selected.trim()) {
+        toast('请先选中要设置对齐的段落，再点击对齐按钮');
+        return;
       }
-      const ls = md.lastIndexOf('\n', from - 1) + 1;
-      let le = md.indexOf('\n', to); if (le === -1) le = md.length;
-      const block = md.slice(ls, le);
-      const m = block.match(/^<div[^>]*>([\s\S]*)<\/div>$/);
-      const inner = m ? m[1] : block;
-      const tag = '<div style="text-align: ' + align + '">' + (inner || ' ') + '</div>';
-      editor.setMarkdown(md.slice(0, ls) + tag + md.slice(le));
-      // 恢复光标到原位置（markdown 模式的 setSelection 需 MdPos=[line,col]，数字偏移会失效）
-      try {
-        const pos = offsetToMdPos(md, from);
-        editor.setSelection([pos[0], pos[1]], [pos[0], pos[1]]);
-      } catch(e) { /* 选区恢复失败不影响功能 */ }
-      editor.focus();
+      const m = selected.match(/^<div[^>]*>([\s\S]*)<\/div>$/);
+      const inner = m ? m[1] : selected;
+      vditor.updateValue(`<div style="text-align: ${align}">\n\n${inner}\n\n</div>`);
+      vditor.focus();
       toast('已设为' + (align === 'left' ? '居左' : align === 'center' ? '居中' : '居右'));
     }
 
-    /* ── 多媒体预览插件：恢复 iframe 视频与 song-player 播放条 ──
-       TOAST UI 3.x 的 markdown 预览默认过滤 div 内嵌的 iframe(视频预览变空 div)，
-       song-player 仅显示链接文本。此插件在 htmlBlock 渲染层恢复两者。
-       注意：必须用 openTag/closeTag 形式返回 —— {type:'html'} 形式在预览
-       增量更新时渲染器被调用但 DOM 不更新(TOAST UI 3.2.2 行为)。 */
-    function buildMediaPlugin() {
-      const safeAttrs = attrs => {
-        const out = {};
-        for (const [k, v] of Object.entries(attrs || {})) {
-          if (/^on/i.test(k) || k === 'srcdoc' || k === 'data-nodeid') continue;
-          out[k] = v;
-        }
-        return out;
-      };
-      return {
-        toHTMLRenderers: {
-          htmlBlock: {
-            iframe(node, { entering }) {
-              if (!entering) return null;
-              const src = node.attrs && node.attrs.src;
-              if (!src || !/^(https?:)?\/\//i.test(src)) return { type: 'text', content: '' };
-              return { type: 'openTag', tagName: 'iframe', attributes: safeAttrs(node.attrs) };
-            },
-            div(node, { entering }) {
-              const cls = (node.attrs && node.attrs.class) || '';
-              if (cls.includes('video-embed')) {
-                if (!entering) return null;
-                // childrenHTML 含原始子 HTML(默认渲染会过滤掉内嵌 iframe)
-                const m = String(node.childrenHTML || '').match(/<iframe[^>]*\bsrc\s*=\s*["']([^"']+)["'][^>]*>/i);
-                if (!m || !/^(https?:)?\/\//i.test(m[1])) {
-                  return { type: 'openTag', tagName: 'div', attributes: safeAttrs(node.attrs) };
-                }
-                return [
-                  { type: 'openTag', tagName: 'div', attributes: safeAttrs(node.attrs) },
-                  { type: 'openTag', tagName: 'iframe', attributes: { src: m[1], loading: 'lazy' } },
-                  { type: 'closeTag', tagName: 'iframe' },
-                  { type: 'closeTag', tagName: 'div' },
-                ];
-              }
-              if (cls.includes('song-player')) {
-                if (!entering) return null;
-                const a = node.attrs || {};
-                const src = a['data-src'] || '';
-                if (!/^(https?:)?\/\//i.test(src)) {
-                  return { type: 'text', content: '⚠ song-player 缺少有效 src，未渲染' };
-                }
-                const meta = '♪ ' + (a['data-title'] || '未命名曲目') + (a['data-artist'] ? ' — ' + a['data-artist'] : '');
-                return [
-                  { type: 'openTag', tagName: 'div', attributes: { class: 'song-player' } },
-                  { type: 'openTag', tagName: 'div', attributes: { class: 'music-embed-meta' } },
-                  { type: 'text', content: meta },
-                  { type: 'closeTag', tagName: 'div' },
-                  { type: 'openTag', tagName: 'audio', attributes: { controls: '', preload: 'none', src } },
-                  { type: 'closeTag', tagName: 'audio' },
-                  { type: 'closeTag', tagName: 'div' },
-                ];
-              }
-              return entering
-                ? { type: 'openTag', tagName: 'div', attributes: safeAttrs(node.attrs) }
-                : { type: 'closeTag', tagName: 'div' };
-            },
-          },
-        },
-      };
-    }
+    
 
-    /* ── 格式工具栏（加粗/标题/列表等已由 TOAST UI 内置工具栏提供；此处只保留其没有的：颜色） ── */
+    /* ── 格式工具栏（加粗/标题/列表/颜色等已由 Vditor 内置工具栏提供；此处只保留对齐） ── */
     function setupFmtToolbar(){
-      // 对齐按钮：富文本模式不支持，点击自动切回源码模式后包裹 div
       document.querySelectorAll('[data-align]').forEach(btn=>{
-        btn.onclick=()=>{
-          if(!editor){toast('编辑器未就绪');return}
-          if (isWysiwygView()) {
-            ensureMarkdownMode();
-            toast('对齐在源码模式执行，已自动切换');
-          }
-          applyAlignToMarkdown(btn.dataset.align);
-        };
+        btn.onclick=()=>applyAlignToMarkdown(btn.dataset.align);
       });
-      // 颜色按钮不再包在 #fmtBar 容器中（已随旧工具栏移除），直接按 data-fmt 查询
-      document.querySelectorAll('[data-fmt="color"]').forEach(btn=>{
-        // 阻止 mousedown 默认行为：避免点击按钮时编辑器失焦丢失选区
-        btn.addEventListener('mousedown', e => e.preventDefault());
-        btn.onclick=()=>{
-          if(!editor){toast('编辑器未就绪');return}
-          // 颜色在源码/富文本两种模式下 color-syntax 都支持，无需切换模式（切换会丢失选区）
-          editor.exec('color', { selectedColor: btn.dataset.color });
-          editor.focus();
-        };
-      });
-      const pick=$('#fmtColorPick');
-      // 用 onchange 而非 oninput：oninput 在拖动/长按时连续触发，每次都会应用颜色，
-      // 瞬间生成大量 <span style="color:…">；onchange 只在选定颜色（松手/确认）后触发一次
-      if(pick) {
-        pick.addEventListener('mousedown', e => e.preventDefault());
-        pick.onchange=()=>{
-          if(!editor){toast('编辑器未就绪');return}
-          editor.exec('color', { selectedColor: pick.value });
-          editor.focus();
-        };
-      }
     }
 
     /* ── 图片尺寸：生成带宽度样式的 <img> 插入（TOAST UI 无法读取光标处图片，预填正文第一张图） ── */

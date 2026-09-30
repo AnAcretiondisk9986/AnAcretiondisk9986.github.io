@@ -121,6 +121,19 @@
 - 修订历史为整文件快照 + 行级 diff，非三方合并。
 - 留言凭据可“记住到本机”时仍以明文存于浏览器 localStorage（已提供清除入口）。
 
+## 0.4 本轮更新（2026-09-30 第四批）：编辑器升级为 Vditor
+
+- 引入开源 **Vditor 4.0.0**（vendor 到 `admin/vendor/vditor/`），替换 Toast UI：
+  - 四视图：**即时渲染 IR（默认）/ 分屏 SV / 所见即所得 / 源码**，均以 Markdown 为事实来源。
+  - **原始 HTML 保真**：IR/SV 原样保留 `<div align>`、`<mark>`、`<u>`、iframe、`song-player`（旧 Toast UI 会改写）。
+  - 内置工具栏（标题/加粗/斜体/删除线/列表/任务/缩进/引用/分割线/代码/链接/表格/上传/前景色/背景色/撤销重做/全屏/大纲）。
+  - 保留博客专属按钮：视频/音乐/媒体库/图宽/对齐；图片/音频上传仍走原 `/api/upload` 与媒体库。
+- **排版体验**：新增 `admin/styles/preview-site.css`，编辑区与本地预览统一使用贴近线上 `.prose` 的排版；本地预览改用 `Vditor.preview`。
+- 兼容层：`window.editor.getMarkdown()/setMarkdown()`，测试与旧调用无感迁移。
+- 清理：删除 `admin/vendor/toastui/`、`admin/vendor/turndown.js` 与 `turndown` 依赖；新增 devDependency `puppeteer-core`（之前为隐式依赖）。
+- 测试：`scripts/editor-e2e.mjs` 重写；`run-admin-e2e.mjs` 现跑 **6 组**浏览器冒烟。
+- 验证：`npm run test:admin-all` 全绿；`npm run build` 97 页。
+
 ---
 
 ## 1. 当前基线
@@ -339,7 +352,7 @@ src/content/blog/*.md
 
 ## 8. P1：前端拆分和状态管理
 
-已完成：CSS 拆为 `admin/styles/{tokens,layout,components,editor}.css`；JS 拆为 `admin/src/{main.js,api/client.js,api/errors.js,state/store.js,ui/dom.js,ui/toast.js,ui/modal.js}`；建立全局 store、统一 API 客户端、模态焦点锁定与 aria，列表提供 loading/empty/error/retry 视图。
+已完成：CSS 拆为 `admin/styles/{tokens,layout,components,editor,preview-site}.css`；JS 拆为 `admin/src/{main.js,api/client.js,api/errors.js,state/store.js,ui/dom.js,ui/toast.js,ui/modal.js}`；建立全局 store、统一 API 客户端、模态焦点锁定与 aria，列表提供 loading/empty/error/retry 视图。编辑器已从 Toast UI 升级为 Vditor（IR/SV/WYSIWYG/源码）。
 
 ```text
 页面：loading | ready | empty | error

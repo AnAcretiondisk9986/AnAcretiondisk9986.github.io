@@ -25,7 +25,7 @@ try {
   await page.waitForSelector('#postList .post-item', { timeout: 15000 });
 
   await page.click('#btnNew');
-  await page.waitForSelector('.toastui-editor-defaultUI', { timeout: 15000 });
+  await page.waitForSelector('.vditor', { timeout: 15000 });
   await sleep(400);
 
   // 分组结构

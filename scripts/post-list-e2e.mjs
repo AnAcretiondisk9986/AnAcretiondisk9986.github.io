@@ -174,6 +174,7 @@ try {
     card.querySelector('[data-action="preview"]').click();
   });
   await page.waitForFunction(() => document.querySelector('#previewModal')?.style.display === 'flex', { timeout: 5000 });
+  await page.waitForFunction(() => (document.querySelector('#previewBody')?.textContent || '').includes('正文'), { timeout: 10000 });
   check('预览弹窗打开并渲染正文', (await page.$eval('#previewBody', (el) => el.textContent)).includes('正文'), await page.$eval('#previewTitle', (el) => el.textContent));
   const linkHidden = await page.$eval('#previewOpenLink', (el) => el.style.display === 'none');
   check('无线上页面的文章隐藏「打开线上页面」', linkHidden === true);

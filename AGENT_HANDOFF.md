@@ -330,6 +330,35 @@
 最后更新：2026-08-03（全站极简重构 + 双视觉主题）
 
 
+## 2026-09-30（第四批）编辑器升级：Toast UI → Vditor
+
+### 当前状态
+
+已完成**文本编辑器重写**：引入开源 [Vditor 4.0.0](https://github.com/Vanessa219/vditor)，彻底解决旧 Toast UI「切到富文本再切回会改写原始 HTML」的问题；同步优化了编辑区与预览的排版（贴近线上 `.prose`）。
+
+### 本轮修改 / 新增文件
+
+- `admin/vendor/vditor/`（新增，vendor 精简版，约 7.8MB）：保留 `lute`（Markdown 引擎）、`highlight.js`、`katex`、`i18n`、`icons`、`css`、`images`；删除 mermaid/mathjax/echarts 等未用的大体积可选资源。
+- `admin/index.html`：改为加载 `admin/vendor/vditor/dist/index.min.js` + `index.css`；新增 `preview-site.css`。
+- `admin/src/main.js`：`initVditorEditor()`（IR/SV/WYSIWYG/源码四视图、内置工具栏、上传 handler、outline/counter/resize）、模式切换（通过内置 edit-mode，固定 4.0.0）、`insertMarkdownBlock`/`insertImageIntoEditor`、`applyAlignToMarkdown`（选中段落包裹 div）、`window.editor` 兼容层（getMarkdown/setMarkdown）、本地预览改用 `Vditor.preview`、原生输入监听兜底脏状态。
+- `admin/src/ui/modal.js` 等不变；`admin/styles/editor.css` 增加 Vditor 布局；`admin/styles/preview-site.css`（新增）统一排版。
+- 删除 `admin/vendor/toastui/`、`admin/vendor/turndown.js`；`package.json` 移除 `turndown`，新增 `vditor@4.0.0` 与 devDependency `puppeteer-core`。
+- `scripts/editor-e2e.mjs` 重写为 Vditor 版（初始化 / 四视图 / 原始 HTML 保真 / 视频·音乐插入 / 保存）；删除已失效的 `align-e2e.mjs`、`media-e2e.mjs`（覆盖并入）；`run-admin-e2e.mjs` 现跑 6 组浏览器冒烟。
+
+### 验证结果
+
+- `npm run test:admin-all`：单元 21 项 + API 冒烟 + 6 组浏览器冒烟全部通过。
+- `npm run build`：97 页面通过。
+- 真实服务回归：48 篇文章加载正常，IR 模式保留 `<div align>` / iframe / `song-player` / `mark`，字数统计与脏状态正确，无控制台错误。
+
+### 后续注意事项
+
+1. Vditor 4 无公开 `setMode`，模式切换依赖内置 `edit-mode` 按钮；已将 `vditor` 锁定为 `4.0.0`，升级前需重测模式切换。
+2. 所见即所得（Vditor WYSIWYG）对原始 HTML 块的支持有限，推荐默认用「即时渲染（IR）」。
+3. `align-e2e.mjs` / `media-e2e.mjs` 已删除，对齐与媒体渲染改由 `editor-e2e.mjs` 覆盖。
+
+---
+
 ## 2026-09-30（第三批）全量完成 P1 与可落地 P2
 
 ### 当前状态

@@ -1,8 +1,8 @@
 # 个人博客后台管理系统重构优化报告与实施方案
 
 > **文档类型**：临时交接文档
-> **生成日期**：2026-09-29（2026-09-30 三次更新）
-> **当前阶段**：P0 与 P1 目标（含可落地 P2）已全部完成，待用户验收
+> **生成日期**：2026-09-29（2026-09-30 四次更新）
+> **当前阶段**：P0/P1 与可落地 P2 已完成；编辑器已升级为 Vditor，待用户验收
 > **适用范围**：博客管理面板、管理面板后端、媒体上传与 Git 同步流程
 
 ---
@@ -180,6 +180,34 @@
 
 - 未迁移 SPA、未引入数据库、未实现多人协作。
 - 定时发布需到点后一次构建；修订历史为整文件快照 + 行级 diff。
+
+---
+
+## 0.4 本轮实施记录（2026-09-30 第四批）：编辑器升级（Toast UI → Vditor）
+
+### 动机
+
+旧 Toast UI 的富文本模式不支持对齐 / 高亮 / 下划线 / 视频 / 播放条等原始 HTML，切换后会被规范化改写。引入开源 **Vditor 4.0.0**：以 Markdown 为事实来源，即时渲染（IR）与分屏（SV）原样保留原始 HTML，同时提供所见即所得与源码模式。
+
+### 已修改 / 新增
+
+- `admin/vendor/vditor/`：vendor 精简版（保留 lute / highlight.js / katex / i18n / icons / css / images）。
+- `admin/index.html`：加载 Vditor 资源，移除 Toast UI；新增 `styles/preview-site.css`。
+- `admin/src/main.js`：Vditor 初始化与四视图切换、内置工具栏、上传 handler、媒体/视频/音乐/图宽/对齐按钮、本地预览改用 `Vditor.preview`、原生输入监听兜底脏状态、`window.editor` 兼容层。
+- `admin/styles/editor.css`：Vditor 布局与暗色主题微调。
+- `admin/styles/preview-site.css`（新增）：编辑区与预览统一使用贴近线上 `.prose` 的排版（§标题、引文、图片边框、iframe 16:9、song-player、表格/代码等）。
+- 删除 `admin/vendor/toastui/`、`admin/vendor/turndown.js`；`package.json` 新增 `vditor@4.0.0`、devDependency `puppeteer-core`，移除 `turndown`。
+- `scripts/editor-e2e.mjs` 重写；删除 `align-e2e.mjs`、`media-e2e.mjs`；`run-admin-e2e.mjs` 跑 6 组。
+
+### 验证
+
+- `npm run test:admin-all` 全部通过；`npm run build` 97 页。
+- 真实 48 篇文章加载与 IR 渲染正常，无控制台错误。
+
+### 边界
+
+- Vditor 4 无公开 setMode，切换依赖内置 `edit-mode`，已将版本锁定为 4.0.0。
+- 所见即所得对原始 HTML 块支持有限，默认用「即时渲染」。
 
 ---
 

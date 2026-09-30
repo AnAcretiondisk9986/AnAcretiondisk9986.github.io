@@ -123,7 +123,7 @@ try {
 
   // 4. 模态焦点锁定与 aria
   await page.click('#postList .post-item .title');
-  await page.waitForSelector('.toastui-editor-defaultUI', { timeout: 15000 });
+  await page.waitForSelector('.vditor', { timeout: 15000 });
   await page.click('#btnInsertMedia');
   await page.waitForSelector('#mediaPickerModal[style*="flex"]', { timeout: 8000 });
   const aria = await page.$eval('#mediaPickerModal', (el) => ({ role: el.getAttribute('role'), modal: el.getAttribute('aria-modal') }));

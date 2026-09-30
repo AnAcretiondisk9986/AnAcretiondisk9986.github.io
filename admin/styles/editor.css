@@ -172,3 +172,16 @@
 .frontend-editor{max-width:1080px;width:100%;margin-inline:auto}
 
 @media(max-width:900px){.frontend-preview-grid,.frontend-image-grid,.post-cover-editor{grid-template-columns:1fr}.post-cover-preview{max-width:360px}}
+
+/* ── Vditor 集成 ── */
+#vditorEditor{flex:1;min-width:0;height:100%;display:flex}
+#vditorEditor .vditor{flex:1;min-width:0;height:100%!important;border:1px solid #2a2a30;border-radius:2px;background:#141418}
+#vditorEditor .vditor-toolbar{border-bottom:1px solid #2a2a30;background:#1a1a1e}
+#vditorEditor .vditor-toolbar__item svg{fill:#a09a80}
+#vditorEditor .vditor-reset{background:#141418}
+/* 源码模式：隐藏预览，只留 Markdown 源码 */
+#editorBody.acr-source-only .vditor-preview{display:none!important}
+#editorBody.acr-source-only .vditor-sv{width:100%!important}
+#editorBody.acr-source-only .vditor-resize{display:none}
+/* 工具栏提示与弹层在暗色下更清晰 */
+.vditor-tip{background:#20202a;color:#d4d0c8}
