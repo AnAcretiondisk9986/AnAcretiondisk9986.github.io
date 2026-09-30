@@ -274,6 +274,24 @@
 
 ---
 
+## 0.10 本轮实施记录（2026-09-30 第十批）：模块拆分收尾 · 状态机 · 定时发布 · 测试补全
+
+- features 拆分完成：`gallery` / `media` / `about` / `frontend` / `posts` / `preflight` / `access` / `guestbook` / `sync-center`；共享模块 `api/app-client`、`ui/app-toast`、`util/format`、`util/slug`。`main.js` 3435 → 约 2064 行。
+- `state/store.js` 覆盖 page/editor/upload/mode/syncStatus 状态机并在关键路径同步。
+- `deploy.yml` 每小时 `schedule`：定时发布自动上线。
+- 测试：`store.test.mjs`；上传失败重试；store 断言；单元 25 项 + 7 组浏览器冒烟。
+- 修复拆分后若干未导入引用（refreshSyncStatus/refreshAvatarPreview/syncFrontendPreview/restoreRevision/slugifyTitle）。
+
+### 验证
+
+- `npm run test:admin-all` 全部通过；`npm run build` 97 页。
+
+### 未做
+
+- SPA 迁移 / 数据库 / 多人协作（需确认后再设计）。
+
+---
+
 ## 1. 执行摘要
 
 当前后台并不是功能不足，而是功能长期叠加后形成了“单页集成式管理台”：文章、画廊、关于页、前端定制、访问控制、留言管理、图片/音频上传、Markdown 编辑、远端导入和 Git 同步都已经具备，但状态管理、信息架构、错误恢复和发布安全没有同步升级。

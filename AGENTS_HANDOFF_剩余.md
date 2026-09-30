@@ -182,6 +182,17 @@
 
 ---
 
+## 0.10 本轮更新（2026-09-30 第十批）：模块拆分收尾 · 状态机 · 定时发布 · 测试补全
+
+- features 拆分完成：`gallery` / `media` / `about` / `frontend` / `posts` / `preflight` / `access` / `guestbook` / `sync-center`；共享模块 `api/app-client`、`ui/app-toast`、`util/format`、`util/slug`。`main.js` 3435 → 约 2064 行。
+- `state/store.js` 覆盖 page/editor/upload/mode/syncStatus 状态机。
+- `deploy.yml` 每小时 `schedule`：定时发布自动上线。
+- 测试：单元 25 项 + 7 组浏览器冒烟（含上传失败重试、store 断言）。
+- 修复拆分后若干未导入引用。
+- 验证：`npm run test:admin-all` 全绿；`npm run build` 97 页。
+
+---
+
 ## 1. 当前基线
 
 ### 1.1 已完成（含上一轮）
@@ -398,7 +409,7 @@ src/content/blog/*.md
 
 ## 8. P1：前端拆分和状态管理
 
-已完成：CSS 拆为 `admin/styles/{tokens,layout,components,editor,preview-site}.css`；JS 拆为 `admin/src/{main.js,api/client.js,api/errors.js,state/store.js,ui/dom.js,ui/toast.js,ui/modal.js}`；建立全局 store、统一 API 客户端、模态焦点锁定与 aria，列表提供 loading/empty/error/retry 视图。编辑器已从 Toast UI 升级为 Vditor（IR/SV/WYSIWYG/源码）。
+已完成：CSS 拆为 `admin/styles/{tokens,layout,components,editor,preview-site}.css`；JS 拆为 `admin/src/{main.js,api/{client,app-client,errors}.js,state/store.js,ui/{dom,toast,app-toast,modal}.js,util/{format,slug}.js,features/{preflight,access,guestbook,sync-center,gallery,media,about,frontend,posts}.js}`；建立全局 store（page/editor/upload/mode/syncStatus 状态机）、统一 API 客户端、模态焦点锁定与 aria，列表提供 loading/empty/error/retry 视图。编辑器为 Vditor（IR/SV/WYSIWYG/源码）。
 
 ```text
 页面：loading | ready | empty | error
@@ -442,7 +453,7 @@ src/content/blog/*.md
 
 - [x] 批量编辑和批量发布（批量发布/撤回/归档/删除）。
 - [x] 文章修订历史和可视化 diff（整文件快照 + 行级 diff + 恢复）。
-- [x] 定时发布（`scheduledAt` 元数据 + 公开列表过滤；需到点后一次构建）。
+- [x] 定时发布（`scheduledAt` 元数据 + 公开列表过滤 + GitHub Actions 每小时自动重建）。
 - [ ] 完整迁移到 React、Vue 或其他 SPA 框架。
 - [ ] 引入数据库。
 - [ ] 多人协作和复杂权限系统。
@@ -476,11 +487,13 @@ P0/P1 目标已全部完成；可落地 P2（批量操作、修订历史、定�
 
 原始目标（P0 + P1，以及可落地的 P2）已全部完成并通过测试。后续如需继续，建议按以下优先级：
 
-1. ~~补全测试覆盖：上传失败路径、远程导入失败路径、刷新恢复本地草稿~~（已完成）。可继续补：编辑器上传队列失败重试、批量操作失败回滚。
-2. 继续拆分 `admin/src/main.js` 为 `features/{posts,gallery,media,about,frontend}.js`（已完成 `preflight.js`、`access.js`、`guestbook.js`、`sync-center.js`），并把剩余状态迁入 `state/store.js`。
+1. ~~测试覆盖：上传 / 远程导入失败路径、刷新恢复本地草稿、上传队列失败重试~~（已完成）。
+2. ~~拆分 `admin/src/main.js` 为 features/* 并把状态迁入 `state/store.js`~~（已完成：features/{preflight,access,guestbook,sync-center,gallery,media,about,frontend,posts}.js + store 状态机）。
 3. ~~私密文章密码保存接入 `expectedHash` 冲突校验~~（已完成）。
-4. ~~编辑器体验（大纲 / 专注模式 / 阅读时长）~~（已完成）。可继续：打字机模式开关、Markdown 快捷键提示、粘贴图片自动上传反馈。
-5. 定时发布若需要真正“到点自动上线”，需要 CI 定时重建（GitHub Actions schedule）或服务端排程；当前为元数据 + 到点后一次构建。
-6. 只有在确认需要多人协作 / 线上后台时，再评估身份系统、数据库与 SPA 迁移（当前仍为本地单用户 + Markdown/JSON/Git 事实来源）。
+4. ~~编辑器体验（大纲 / 专注模式 / 阅读时长 / 打字机 / Markdown 帮助 / 粘贴上传反馈）~~（已完成）。
+5. ~~定时发布“到点自动上线”~~（已完成：GitHub Actions 每小时重建）。
+6. 仅在确认需要多人协作 / 线上后台时，再评估身份系统、数据库与 SPA 迁移（当前仍为本地单用户 + Markdown/JSON/Git 事实来源）。
+
+可选后续（非清单项）：把 `main.js` 中剩余的文章列表渲染与编辑器再拆为 `features/posts-list.js` / `features/post-editor.js`；批量操作的失败项重试入口；发布中心操作日志导出。
 
 在用户明确要求前，不要执行真实 GitHub 推送或重新部署线上站点。

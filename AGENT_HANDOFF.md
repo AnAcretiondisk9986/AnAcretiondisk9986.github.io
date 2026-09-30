@@ -330,6 +330,30 @@
 最后更新：2026-08-03（全站极简重构 + 双视觉主题）
 
 
+## 2026-09-30（第十批）模块拆分收尾 · 状态机 · 定时发布 · 测试补全
+
+### 本轮完成（阶段 A–H）
+
+- **模块拆分**（`admin/src/features/`）：
+  - `gallery.js` / `media.js` / `about.js` / `frontend.js` / `posts.js` 已抽出；`preflight.js` / `access.js` / `guestbook.js` / `sync-center.js` 为前几批产物。
+  - 新增共享模块：`api/app-client.js`、`ui/app-toast.js`、`util/format.js`、`util/slug.js`。
+  - `admin/src/main.js` 由 3435 行降至 **约 2064 行**（现保留文章列表渲染、文章编辑器、会话/锁定等）。
+- **状态机**：`state/store.js` 覆盖文档中的 `page(loading/ready/empty/error)`、`editor(pristine/dirty/saving/saved/save-error)`、`upload(active/failed)`、`mode`、`syncStatus`；主模块与媒体模块在关键路径同步。
+- **定时发布自动上线**：`deploy.yml` 增加每小时 `schedule`（cron UTC），`scheduledAt` 到期的文章随重建自动上线；编辑器提示同步更新。
+- **测试补全**：新增 `scripts/store.test.mjs`（4 项）；`test:admin` 共 **25 项**；`media-library-e2e` 增加上传失败→单项重试；`post-form-e2e` / `quality-e2e` 增加 store 状态断言；浏览器冒烟 **7 组**。
+- **修复**：拆分后 `refreshSyncStatus` / `refreshAvatarPreview` / `syncFrontendPreview` / `restoreRevision` / `slugifyTitle` 的导入或共享问题（均由冒烟测试捕获）。
+
+### 验证
+
+- `npm run test:admin-all`：单元 25 + API 冒烟 + 7 组浏览器冒烟全部通过。
+- `npm run build`：97 页。
+
+### 仍未做（需用户确认）
+
+- 完整 SPA 迁移（React/Vue/Vite）、数据库、多人协作与权限体系（架构级变更）。
+
+---
+
 ## 2026-09-30（第九批）编辑器：打字机模式与 Markdown 帮助
 
 - 新增「⌨ 打字机」开关（光标居中，localStorage 记忆，运行时切换 Vditor `typewriterMode`）。
