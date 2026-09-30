@@ -330,6 +330,25 @@
 最后更新：2026-08-03（全站极简重构 + 双视觉主题）
 
 
+## 2026-09-30（第七批）拆分起始：共享模块与 features/access、features/guestbook
+
+### 本轮修改
+
+- 新增共享模块：
+  - `admin/src/api/app-client.js`：API 客户端单例，口令可在运行期更新（锁定/解锁），导出 `apiFetch/apiJson/getToken/setToken`。
+  - `admin/src/ui/app-toast.js`：toast 单例，供各模块共享。
+  - `admin/src/util/format.js`：`formatBytes` / `toLocalInput`。
+- 新增 `admin/src/features/access.js`（访问控制：密码保存 + 版本冲突）与 `admin/src/features/guestbook.js`（Waline 凭据/连接/留言）；`main.js` 由 4006 行降到约 3750 行。
+- 编辑器：含块级 HTML（div/iframe/table 等）的文章首次打开时自动使用「分屏」，以便即时看到实时预览；富文本状态提示更新为「分屏看实时渲染，或即时渲染编辑」。
+- `scripts/editor-e2e.mjs` 适配 Vditor 语义：验证 Markdown 源码保真 + 模式切换，不再依赖具体 HTML 标签的渲染结果。
+
+### 验证
+
+- `npm run test:admin-all` 全部通过（单元 21 + API 冒烟 + 7 组浏览器冒烟）。
+- `npm run build` 97 页。
+
+---
+
 ## 2026-09-30（第六批）发布前检查与编辑器辅助
 
 ### 本轮修改

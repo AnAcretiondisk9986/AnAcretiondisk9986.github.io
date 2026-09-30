@@ -1,16 +1,15 @@
 
     import { $, esc, escAttr } from './ui/dom.js';
-    import { createToast } from './ui/toast.js';
-    import { createApiClient } from './api/client.js';
+    import { toast } from './ui/app-toast.js';
+    import { apiFetch, apiJson, getToken, setToken } from './api/app-client.js';
+    import { formatBytes } from './util/format.js';
     import { store } from './state/store.js';
     import { openModal, closeModal, isModalOpen, installFocusTrap } from './ui/modal.js';
     import { runPreflight } from './features/preflight.js';
+    import { renderPrivateAccess, savePrivateAccess } from './features/access.js';
+    import { renderGuestbookList, loadGuestbookComments, clearCredentials } from './features/guestbook.js';
 
     const API = '/api/posts';
-    const PRIVATE_ACCESS_API = '/api/private-access';
-    let TOKEN = window.__ADMIN_TOKEN__ || '';
-    const { apiFetch, apiJson } = createApiClient({ getToken: () => TOKEN });
-    const toast = createToast();
     let currentSlug = null, posts = [];
     let currentMode = 'posts', galleryItems = [], currentGalleryId = null;
     let currentPostHash = '';
@@ -35,30 +34,6 @@
     const POST_DRAFT_PREFIX = 'admin-post-draft:';
     let frontendUploadField = 'fStillHeroImage';
     let postUploadTarget = 'content';
-    // ── 留言（Waline）凭据：默认仅存本次会话，可选择「记住到本机」──
-    const WALINE_CRED_KEYS = ['waline-server', 'waline-token', 'waline-email'];
-    function walineRemember() { return localStorage.getItem('waline-remember') === '1'; }
-    function readCredential(key) {
-      return (walineRemember() ? localStorage.getItem(key) : sessionStorage.getItem(key)) || '';
-    }
-    function saveCredentials(values, { remember = false } = {}) {
-      localStorage.setItem('waline-remember', remember ? '1' : '0');
-      for (const [key, value] of Object.entries(values)) {
-        const v = value || '';
-        sessionStorage.setItem(key, v);
-        if (remember) localStorage.setItem(key, v);
-        else localStorage.removeItem(key);
-      }
-    }
-    function clearCredentials() {
-      for (const key of WALINE_CRED_KEYS) { localStorage.removeItem(key); sessionStorage.removeItem(key); }
-      localStorage.removeItem('waline-remember');
-      walineServer = ''; walineToken = ''; walineEmail = '';
-    }
-    let walineServer = readCredential('waline-server');
-    let walineToken = readCredential('waline-token');
-    let walineEmail = readCredential('waline-email');
-    let walineComments = [];
     const GALLERY_API = '/api/gallery';
 
     async function loadPosts() {
@@ -89,39 +64,6 @@
       btn.onclick = () => loadPosts();
       box.appendChild(document.createElement('br'));
       box.appendChild(btn);
-    }
-
-    let privateAccessHash = '';
-
-    async function loadPrivateAccess() {
-      try {
-        const res = await apiFetch(PRIVATE_ACCESS_API);
-        const data = await res.json();
-        if (res.ok && !data.error) privateAccessHash = data.contentHash || '';
-      } catch (e) { /* 读取失败不阻断，保存时仍会做版本校验 */ }
-    }
-
-    function renderPrivateAccess() {
-      $('#editorContainer').innerHTML = `<div class="editor" style="max-width:640px"><div class="form-group"><label>管理员级文章密码</label><input id="fPrivatePassword" type="password" autocomplete="new-password" placeholder="输入新密码（至少 4 个字符）" /></div><button class="btn primary" id="btnPrivatePassword">保存密码</button><p style="color:#6a6a70;font-size:11px;line-height:1.7;margin-top:12px">密码以 SHA-256 哈希保存。修改后需要重新构建并发布博客，线上私密文章页面才会使用新密码。</p></div>`;
-      $('#btnPrivatePassword').onclick = savePrivateAccess;
-      loadPrivateAccess();
-    }
-
-    async function savePrivateAccess() {
-      const password = $('#fPrivatePassword')?.value || '';
-      if (password.length < 4) { toast('密码至少需要 4 个字符'); return; }
-      try {
-        const body = new URLSearchParams({ password, expectedHash: privateAccessHash });
-        const res = await apiFetch(PRIVATE_ACCESS_API, { method: 'PUT', body, headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
-        const data = await res.json();
-        if (!res.ok || data.error) {
-          if (res.status === 409) { toast('密码已在其他位置被修改，请刷新后重试'); await loadPrivateAccess(); return; }
-          toast(data.error || '保存失败');
-          return;
-        }
-        privateAccessHash = data.contentHash || privateAccessHash;
-        $('#fPrivatePassword').value = ''; toast('私密文章密码已保存');
-      } catch (e) { toast('保存失败: ' + e.message); }
     }
 
     function postBadges(p) {
@@ -925,8 +867,8 @@
       el.hidden = false;
       el.className = 'rich-status warn';
       el.textContent = isWysiwygView()
-        ? '⚠ 当前为「所见即所得」：正文含原始 HTML（对齐 / 高亮 / 下划线 / 视频 / 播放条），部分结构可能不渲染；建议切到「即时渲染」编辑，它不会改写原始 HTML。'
-        : '◐ 正文含原始 HTML（对齐 / 高亮 / 下划线 / 视频 / 播放条）：已用「即时渲染 / 分屏」原样保留，可放心编辑。';
+        ? '⚠ 当前为「所见即所得」：正文含原始 HTML（对齐 / 高亮 / 下划线 / 视频 / 播放条），部分结构可能不渲染；建议切到「分屏」看实时渲染，或用「即时渲染」编辑。'
+        : '◐ 正文含原始 HTML（对齐 / 高亮 / 下划线 / 视频 / 播放条）：即时渲染下以源码块展示、不会丢失；切到「分屏」右侧可看到与线上一致的实时渲染。';
     }
 
     function applyPostTemplate(key) {
@@ -1644,9 +1586,12 @@
       run();
     }
 
-    /** 首次渲染完成后应用上次使用的视图 */
+    /** 首次渲染完成后应用上次使用的视图；未设置时，含块级 HTML 的文章默认分屏（可实时预览） */
     function applyEditorInitialView() {
-      const savedView = normalizeEditorView(localStorage.getItem('admin-editor-view') || 'ir');
+      const saved = localStorage.getItem('admin-editor-view');
+      const md = getEditorMarkdown() || '';
+      const hasBlockHtml = /(^|\n)\s*<(div|iframe|video|audio|section|figure|table|center|details)\b/i.test(md);
+      const savedView = normalizeEditorView(saved || (hasBlockHtml ? 'sv' : 'ir'));
       applyView(savedView, true);
       const vs = $('#viewSwitch');
       if (vs) vs.querySelectorAll('button').forEach((b) => b.classList.toggle('active', b.dataset.view === savedView));
@@ -2518,13 +2463,6 @@
     let mediaActiveUploads = 0;
     let pickerState = null;
 
-    function formatBytes(n) {
-      const v = Number(n) || 0;
-      if (v < 1024) return `${v} B`;
-      if (v < 1024 * 1024) return `${(v / 1024).toFixed(1)} KB`;
-      return `${(v / 1024 / 1024).toFixed(2)} MB`;
-    }
-
     function allMediaItems() {
       if (!mediaData) return [];
       return [...(mediaData.images || []), ...(mediaData.audios || [])];
@@ -2728,7 +2666,7 @@
       const fd = new FormData();
       fd.append('file', task.file, task.name);
       xhr.open('POST', '/api/upload');
-      xhr.setRequestHeader('x-admin-token', TOKEN);
+      xhr.setRequestHeader('x-admin-token', getToken());
       xhr.upload.onprogress = (e) => {
         if (!e.lengthComputable) return;
         task.progress = Math.round((e.loaded / e.total) * 100);
@@ -3760,192 +3698,6 @@
     // 留言管理（Waline）
     // ═══════════════════════════════════════
 
-    function guestbookConfigured() {
-      return !!(walineServer && walineToken);
-    }
-
-    /** 侧边栏：连接状态提示 */
-    function renderGuestbookList() {
-      const el = $('#postList');
-      if (guestbookConfigured()) {
-        el.innerHTML = `
-          <div style="padding:12px 14px;font-size:11px;color:#6a6a70;line-height:1.8">
-            <div style="color:#80a080">● 已连接 Waline</div>
-            <div>服务：${esc(walineServer)}</div>
-            <div>账号：${esc(walineEmail || '-')}</div>
-            <div>留言：${walineComments.length} 条</div>
-            <div>凭据：${walineRemember() ? '已记住到本机' : '仅本次会话'}</div>
-          </div>`;
-      } else {
-        el.innerHTML = `
-          <div style="padding:12px 14px;font-size:11px;color:#6a6a70;line-height:1.8">
-            <div style="color:#a08040">○ 未连接 Waline 服务</div>
-            <div>在右侧填入服务地址与管理员账号。</div>
-          </div>`;
-      }
-    }
-
-    /** 右侧：连接表单 / 留言列表 */
-    function renderGuestbookPanel() {
-      if (!guestbookConfigured()) {
-        $('#editorTitle').textContent = '留言管理 — 连接 Waline';
-        $('#editorContainer').innerHTML = `
-          <div class="editor" style="max-width:640px">
-            <div class="form-group"><label>Waline 服务地址 (serverURL) *</label>
-              <input id="gServer" value="${escAttr(walineServer)}" placeholder="https://your-waline.vercel.app" />
-              <small style="color:#5a5a50;font-size:10px;margin-top:2px">部署见 docs/WALINE_DEPLOY.md；本地预览填 http://127.0.0.1:8765（需先运行 node scripts/mock-waline.mjs）</small>
-            </div>
-            <div class="form-row">
-              <div class="form-group"><label>管理员邮箱 *</label><input id="gEmail" type="email" value="${escAttr(walineEmail)}" placeholder="admin@example.com" /></div>
-              <div class="form-group"><label>管理员密码 *</label><input id="gPassword" type="password" placeholder="••••••••" /></div>
-            </div>
-            <label style="display:flex;align-items:center;gap:8px;font-size:11px;color:#8a8a90">
-              <input type="checkbox" id="gRemember"${walineRemember() ? ' checked' : ''} /> 记住到本机（否则仅在本次会话内存中保存）
-            </label>
-            <div style="display:flex;gap:8px;margin-top:6px">
-              <button class="btn primary" id="btnConnect">🔑 连接并加载留言</button>
-              <button class="btn" id="btnForget">断开并清除凭据</button>
-            </div>
-            <div class="tip-bar" style="margin-top:14px;border:1px solid #2a2a20">
-              <span>提示：Waline 部署后，第一个注册的账号即为管理员；此处使用该账号登录以获取管理令牌。凭据默认不写入本机存储。</span>
-            </div>
-          </div>`;
-        $('#btnConnect').onclick = connectGuestbook;
-        $('#btnForget').onclick = () => {
-          clearCredentials();
-          toast('已断开并清除留言凭据');
-          renderGuestbookPanel(); renderGuestbookList();
-        };
-        return;
-      }
-
-      $('#editorTitle').textContent = `留言管理 — ${walineComments.length} 条`;
-      $('#editorContainer').innerHTML = `
-        <div class="editor">
-          <div class="form-group" style="flex-direction:row;align-items:center;gap:10px">
-            <span style="font-size:11px;color:#80a080">● ${esc(walineServer)}</span>
-            <button class="btn small" id="btnReconnect">重新连接</button>
-            <button class="btn small" id="btnGRefresh">↻ 刷新</button>
-          </div>
-          <div id="gCommentList"></div>
-        </div>`;
-      $('#btnReconnect').onclick = () => {
-        walineToken = '';
-        sessionStorage.removeItem('waline-token');
-        localStorage.removeItem('waline-token');
-        renderGuestbookPanel(); renderGuestbookList();
-      };
-      $('#btnGRefresh').onclick = loadGuestbookComments;
-      renderGuestbookComments();
-    }
-
-    async function connectGuestbook() {
-      const server = $('#gServer')?.value?.trim().replace(/\/+$/, '') || '';
-      const email = $('#gEmail')?.value?.trim() || '';
-      const password = $('#gPassword')?.value || '';
-      if (!server || !email || !password) { toast('请填写服务地址、邮箱与密码'); return; }
-      const btn = $('#btnConnect');
-      btn.textContent = '⏳ 连接中...'; btn.disabled = true;
-      try {
-        const res = await fetch(`${server}/api/token`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password }),
-        });
-        const json = await res.json();
-        if (!res.ok || json.errno) throw new Error(json.errmsg || `HTTP ${res.status}`);
-        walineServer = server;
-        walineToken = json.data.token;
-        walineEmail = email;
-        const remember = Boolean($('#gRemember')?.checked);
-        saveCredentials({ 'waline-server': server, 'waline-token': walineToken, 'waline-email': email }, { remember });
-        toast(remember ? '已连接 Waline（凭据已记住到本机）' : '已连接 Waline（凭据仅保存在本次会话）');
-        await loadGuestbookComments();
-        renderGuestbookPanel();
-      } catch (e) {
-        toast('连接失败: ' + e.message);
-        btn.textContent = '🔑 连接并加载留言'; btn.disabled = false;
-      }
-    }
-
-    async function loadGuestbookComments() {
-      if (!guestbookConfigured()) { renderGuestbookPanel(); return; }
-      try {
-        const res = await fetch(`${walineServer}/api/comment?type=list&pageSize=100&page=1`, {
-          headers: { 'Authorization': `Bearer ${walineToken}` },
-        });
-        const json = await res.json();
-        if (!res.ok || json.errno) {
-          if (res.status === 401) {
-            walineToken = '';
-            localStorage.removeItem('waline-token');
-            renderGuestbookPanel();
-            toast('令牌已失效，请重新连接');
-          }
-          throw new Error(json.errmsg || `HTTP ${res.status}`);
-        }
-        walineComments = json.data?.data || [];
-        renderGuestbookList();
-        renderGuestbookPanel();
-      } catch (e) {
-        toast('加载留言失败: ' + e.message);
-      }
-    }
-
-    function stripHtml(html) {
-      const div = document.createElement('div');
-      div.innerHTML = html || '';
-      div.querySelectorAll('img, svg, script, iframe').forEach(el => el.remove());
-      return (div.textContent || '').replace(/\s+/g, ' ').trim();
-    }
-
-    function renderGuestbookComments() {
-      const el = $('#gCommentList');
-      if (!el) return;
-      if (!walineComments.length) {
-        el.innerHTML = '<div class="empty-state" style="padding:40px">暂无留言</div>';
-        return;
-      }
-      el.innerHTML = walineComments.map(c => {
-        const time = c.time ? new Date(c.time).toLocaleString('zh-CN', { hour12: false }) : (c.insertedAt || '');
-        const status = c.status === 'approved' ? '' : ` <span style="color:#a08040">[${esc(c.status || '?')}]</span>`;
-        const text = stripHtml(c.comment).slice(0, 120) + (stripHtml(c.comment).length > 120 ? '…' : '');
-        return `
-          <div style="padding:12px 14px;border-bottom:1px solid #222228;background:#16161a;margin-bottom:8px;border-radius:2px">
-            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px">
-              <b style="color:#c8b080">${esc(c.nick || '匿名')}</b>
-              <span style="color:#6a6a70">IP属地：${esc(c.addr || '未知')}</span>
-              <span style="color:#4a4a50" title="原始 IP">(${esc(c.ip || '')})</span>
-              <span style="color:#6a6a70">${esc(c.mail || '')}</span>
-              <span style="color:#4a4a50;margin-left:auto">${esc(time)}</span>${status}
-            </div>
-            <div style="font-size:12px;color:#d4d0c8;margin-top:6px;line-height:1.7">${esc(text || '(空)')}</div>
-            <div style="display:flex;gap:8px;margin-top:8px">
-              <button class="btn small danger" data-gb-delete="${escAttr(c.objectId)}">🗑 删除</button>
-            </div>
-          </div>`;
-      }).join('');
-      el.querySelectorAll('[data-gb-delete]').forEach(btn => {
-        btn.addEventListener('click', () => deleteGuestbookComment(btn.getAttribute('data-gb-delete') || ''));
-      });
-    }
-
-    async function deleteGuestbookComment(objectId) {
-      if (!confirm('确定删除这条留言？此操作不可撤销。')) return;
-      try {
-        const res = await fetch(`${walineServer}/api/comment/${objectId}`, {
-          method: 'DELETE',
-          headers: { 'Authorization': `Bearer ${walineToken}` },
-        });
-        const json = await res.json();
-        if (!res.ok || json.errno) throw new Error(json.errmsg || `HTTP ${res.status}`);
-        toast('已删除留言');
-        await loadGuestbookComments();
-      } catch (e) {
-        toast('删除失败: ' + e.message);
-      }
-    }
-
     // ── 会话：锁定 / 重新验证 / 退出并清除凭据 ──
     async function fetchHealth() {
       try {
@@ -3968,7 +3720,7 @@
       try {
         const res = await fetch('/api/health', { headers: { 'x-admin-token': value } });
         if (!res.ok) { toast('口令不正确'); return; }
-        TOKEN = value;
+        setToken(value);
         $('#lockOverlay').style.display = 'none';
         toast('已解锁');
         await refreshSyncStatus({ silent: true });
@@ -3978,7 +3730,7 @@
     function logoutPanel() {
       if (!confirm('退出管理面板？将清除留言凭据并停止当前会话。')) return;
       clearCredentials();
-      TOKEN = '';
+      setToken('');
       document.body.innerHTML = `
         <div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#141418;color:#c8b080;font-family:inherit">
           <h1 style="font-size:16px;letter-spacing:2px;font-weight:normal">已退出管理面板</h1>

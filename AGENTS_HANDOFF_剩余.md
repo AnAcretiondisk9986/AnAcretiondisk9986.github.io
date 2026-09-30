@@ -156,6 +156,15 @@
 
 ---
 
+## 0.7 本轮更新（2026-09-30 第七批）：拆分起始
+
+- 新增共享模块：`api/app-client.js`、`ui/app-toast.js`、`util/format.js`。
+- 抽出 `features/access.js`、`features/guestbook.js`；`main.js` 4006 → 约 3750 行。
+- 编辑器：含块级 HTML 的文章首次打开自动用「分屏」。
+- 验证：`npm run test:admin-all` 全绿；`npm run build` 97 页。
+
+---
+
 ## 1. 当前基线
 
 ### 1.1 已完成（含上一轮）
@@ -451,7 +460,7 @@ P0/P1 目标已全部完成；可落地 P2（批量操作、修订历史、定�
 原始目标（P0 + P1，以及可落地的 P2）已全部完成并通过测试。后续如需继续，建议按以下优先级：
 
 1. ~~补全测试覆盖：上传失败路径、远程导入失败路径、刷新恢复本地草稿~~（已完成）。可继续补：编辑器上传队列失败重试、批量操作失败回滚。
-2. 把 `admin/src/main.js` 继续拆为 `features/{posts,gallery,media,about,frontend,access,guestbook,sync}.js`（已建立 `features/` 与 `preflight.js` 作为样板），并把剩余状态迁入 `state/store.js`。
+2. 继续拆分 `admin/src/main.js` 为 `features/{posts,gallery,media,about,frontend,sync}.js`（已完成 `preflight.js`、`access.js`、`guestbook.js` 样板），并把剩余状态迁入 `state/store.js`。
 3. ~~私密文章密码保存接入 `expectedHash` 冲突校验~~（已完成）。
 4. ~~编辑器体验（大纲 / 专注模式 / 阅读时长）~~（已完成）。可继续：打字机模式开关、Markdown 快捷键提示、粘贴图片自动上传反馈。
 5. 定时发布若需要真正“到点自动上线”，需要 CI 定时重建（GitHub Actions schedule）或服务端排程；当前为元数据 + 到点后一次构建。

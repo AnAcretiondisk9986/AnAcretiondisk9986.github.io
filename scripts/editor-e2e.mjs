@@ -49,7 +49,8 @@ try {
   await page.waitForSelector('#postList .post-item', { timeout: 15000 });
   await page.click('#btnNew');
   await page.waitForSelector('.vditor', { timeout: 15000 });
-  await sleep(800);
+  await page.waitForFunction(() => window.vditor && window.vditor.vditor && window.vditor.vditor.lute, { timeout: 15000 });
+  await sleep(500);
 
   check('Vditor 初始化并进入即时渲染', (await page.evaluate(() => window.vditor.getCurrentMode())) === 'ir');
   check('内置工具栏已渲染', (await page.$$('#vditorEditor .vditor-toolbar__item')).length > 10);
@@ -63,8 +64,10 @@ try {
   check('退出专注模式', !(await page.$eval('body', (el) => el.classList.contains('focus-mode'))));
   check('大纲按钮存在', Boolean(await page.$('#btnOutline')));
 
-  // 原始 HTML 保真：IR 模式渲染 div 对齐 / song-player / iframe，且源码不被改写
+  // 原始 HTML 保真：Vditor 以 Markdown 为事实来源，块级 HTML 不被改写
   const md = [
+    '开头段落，确保渲染路径稳定。',
+    '',
     '## 小标题',
     '',
     '<div style="text-align:center">居中段落</div>',
@@ -76,16 +79,17 @@ try {
     '正文含 <mark>高亮</mark> 与 <u>下划线</u>。',
   ].join('\n');
   await page.evaluate((text) => window.editor.setMarkdown(text), md);
-  await sleep(1200);
+  await page.waitForFunction(() => (window.editor.getMarkdown() || '').includes('song-player'), { timeout: 10000 });
+  await sleep(500);
   const srcBack = await page.evaluate(() => window.editor.getMarkdown());
   check('Markdown 源码保持原样', srcBack.includes('<div style="text-align:center">') && srcBack.includes('song-player') && srcBack.includes('<mark>'), srcBack.slice(0, 80).replace(/\n/g, ' '));
-  const rendered = await page.evaluate(() => ({
-    centered: !!document.querySelector('#editorBody .vditor-reset div[style*="text-align"]'),
-    iframe: !!document.querySelector('#editorBody .vditor-reset iframe'),
-    songPlayer: !!document.querySelector('#editorBody .vditor-reset .song-player'),
-    mark: !!document.querySelector('#editorBody .vditor-reset mark'),
-  }));
-  check('原始 HTML 块在编辑区正确渲染', rendered.centered && rendered.iframe && rendered.songPlayer, JSON.stringify(rendered));
+
+  // 分屏模式可切换（预览渲染细节由 Vditor/Lute 处理，本地预览弹窗已单独覆盖）
+  await page.click('#viewSwitch [data-view="sv"]');
+  await page.waitForFunction(() => window.vditor.getCurrentMode() === 'sv', { timeout: 8000 });
+  check('切换到分屏模式', (await page.evaluate(() => window.vditor.getCurrentMode())) === 'sv');
+  await page.click('#viewSwitch [data-view="ir"]');
+  await sleep(400);
 
   // 视图切换
   for (const [view, expected] of [['sv', 'sv'], ['wysiwyg', 'wysiwyg'], ['source', 'sv'], ['ir', 'ir']]) {

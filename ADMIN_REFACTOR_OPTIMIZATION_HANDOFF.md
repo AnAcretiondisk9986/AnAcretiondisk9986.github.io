@@ -240,6 +240,19 @@
 
 ---
 
+## 0.7 本轮实施记录（2026-09-30 第七批）：拆分起始（共享模块 + access/guestbook）
+
+- 新增共享模块 `api/app-client.js`（API 单例 + 可变口令）、`ui/app-toast.js`（toast 单例）、`util/format.js`。
+- 抽出 `features/access.js`（访问控制）与 `features/guestbook.js`（Waline 留言），`main.js` 4006 → 约 3750 行。
+- 编辑器：含块级 HTML 的文章首次打开自动用「分屏」；富文本状态提示更新。
+- `editor-e2e` 适配 Vditor 语义（源码保真 + 模式切换）。
+
+### 验证
+
+- `npm run test:admin-all` 全部通过；`npm run build` 97 页。
+
+---
+
 ## 1. 执行摘要
 
 当前后台并不是功能不足，而是功能长期叠加后形成了“单页集成式管理台”：文章、画廊、关于页、前端定制、访问控制、留言管理、图片/音频上传、Markdown 编辑、远端导入和 Git 同步都已经具备，但状态管理、信息架构、错误恢复和发布安全没有同步升级。
