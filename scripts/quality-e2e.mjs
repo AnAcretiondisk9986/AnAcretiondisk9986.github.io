@@ -159,6 +159,7 @@ try {
   await page.click('.mode-tab[data-mode="about"]');
   await sleep(800);
   check('关于模式渲染表单', Boolean(await page.$('#fAvatar')), 'about');
+  check('store 记录当前模块', (await page.evaluate(() => window.__adminStore.get().mode)) === 'about', 'about');
   await page.evaluate(() => { const el = document.querySelector('#fAvatar'); if (el) { el.value = '/favicon.svg'; el.dispatchEvent(new Event('input', { bubbles: true })); } });
   await sleep(250);
   check('头像预览更新不报错', pageErrors.length === 0, pageErrors.join(' | '));

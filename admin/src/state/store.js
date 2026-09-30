@@ -24,6 +24,12 @@ export function createStore(initial = {}) {
 
 export const store = createStore({
   mode: 'posts',
+  // 页面：loading | ready | empty | error
+  page: 'loading',
+  // 编辑：pristine | dirty | saving | saved | save-error
+  editor: { status: 'pristine', dirty: false, saving: false, lastSavedAt: null, lastError: null },
   syncStatus: null,
+  // 上传：active 进行中数量，failed 失败数量
+  upload: { active: 0, failed: 0 },
   mediaStats: null,
 });

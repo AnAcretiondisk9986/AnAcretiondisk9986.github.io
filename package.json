@@ -11,7 +11,7 @@
     "admin": "node admin-server.mjs",
     "test:admin-storage": "node --test scripts/admin-storage.test.mjs",
     "test:admin-sync": "node --test scripts/admin-sync.test.mjs",
-    "test:admin": "node --test scripts/admin-storage.test.mjs scripts/admin-json-store.test.mjs scripts/admin-sync.test.mjs",
+    "test:admin": "node --test scripts/admin-storage.test.mjs scripts/admin-json-store.test.mjs scripts/admin-sync.test.mjs scripts/store.test.mjs",
     "test:admin-api": "node scripts/admin-api-smoke.mjs",
     "test:admin-ui": "node scripts/sync-center-e2e.mjs",
     "test:post-list": "node scripts/post-list-e2e.mjs",

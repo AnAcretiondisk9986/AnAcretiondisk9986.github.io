@@ -7,6 +7,7 @@ import { toast } from '../ui/app-toast.js';
 import { apiFetch, getToken } from '../api/app-client.js';
 import { formatBytes } from '../util/format.js';
 import { openModal, closeModal } from '../ui/modal.js';
+import { store } from '../state/store.js';
 
 let ctx = { getPosts: () => [], putPostFields: async () => false };
 
@@ -152,9 +153,15 @@ const POSTS_API = '/api/posts';
     }
 
     function renderMediaQueue() {
+      const updateUploadState = () => store.set({
+        upload: {
+          active: mediaActiveUploads,
+          failed: mediaTasks.filter((t) => t.status === 'failed').length,
+        },
+      });
       const el = $('#mediaQueue');
-      if (!el) return;
-      if (!mediaTasks.length) { el.innerHTML = ''; return; }
+      if (!el) { updateUploadState(); return; }
+      if (!mediaTasks.length) { el.innerHTML = ''; updateUploadState(); return; }
       const statusText = { queued: '等待', uploading: '上传中', ready: '完成', failed: '失败', cancelled: '已取消' };
       el.innerHTML = mediaTasks.map((t) => `
         <div class="media-task${t.status === 'failed' ? ' failed' : ''}">
@@ -175,6 +182,7 @@ const POSTS_API = '/api/posts';
           if (btn.dataset.mtask === 'remove') { mediaTasks = mediaTasks.filter((t) => t.id !== task.id); renderMediaQueue(); }
         };
       });
+      updateUploadState();
     }
 
     function findDuplicateMedia(file) {

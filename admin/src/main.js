@@ -43,14 +43,16 @@
         const res = await apiFetch(API);
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
+          store.set({ page: 'error' });
           renderListError(data.error || `加载失败（HTTP ${res.status}）`);
           return;
         }
         posts = await res.json();
-        if (!Array.isArray(posts)) { renderListError('返回数据格式不正确'); return; }
+        if (!Array.isArray(posts)) { store.set({ page: 'error' }); renderListError('返回数据格式不正确'); return; }
+        store.set({ page: posts.length ? 'ready' : 'empty' });
         refreshTagOptions();
         renderList();
-      } catch(e) { renderListError(e.message); }
+      } catch(e) { store.set({ page: 'error' }); renderListError(e.message); }
     }
 
     /** 列表加载失败：统一的 error + retry 视图 */
@@ -319,14 +321,17 @@
         btn.disabled = true;
         btn.textContent = '⏳ 保存中…';
         setPostEditorStatus('正在保存', 'saving');
+        store.set({ editor: { status: 'saving', dirty: true, saving: true } });
       } else if (postDirty) {
         btn.disabled = false;
         btn.textContent = '💾 保存 (Ctrl+S)';
         setPostEditorStatus('有未保存修改', 'dirty');
+        store.set({ editor: { status: 'dirty', dirty: true, saving: false } });
       } else {
         btn.disabled = true;
         btn.textContent = '✓ 已保存';
         setPostEditorStatus('已保存');
+        store.set({ editor: { status: 'saved', dirty: false, saving: false, lastSavedAt: Date.now() } });
       }
     }
 
@@ -455,6 +460,7 @@
       setPostDraftStatus('');
       const pfBtn = $('#btnPreflight');
       if (pfBtn) { pfBtn.style.display = 'none'; pfBtn.disabled = true; }
+      store.set({ editor: { status: 'pristine', dirty: false, saving: false, lastError: null } });
     }
 
     function canLeavePostEditor() {
@@ -810,6 +816,7 @@
         await selectPost(data.slug, { skipLeaveGuard: true });
       } catch(e) {
         setPostEditorStatus('保存失败', 'error');
+        store.set({ editor: { status: 'save-error', dirty: true, saving: false, lastError: e.message } });
         toast('保存失败: ' + e.message);
       } finally {
         postSaving = false;
@@ -1908,6 +1915,7 @@
       if (mode !== currentMode && !canLeavePostEditor()) return;
       if (mode !== 'posts') resetPostEditorTracking();
       currentMode = mode;
+      store.set({ mode });
       const listControls = $('#listControls');
       if (listControls) listControls.style.display = mode === 'posts' ? '' : 'none';
       document.querySelectorAll('.mode-tab').forEach(t => t.classList.toggle('active', t.dataset.mode === mode));

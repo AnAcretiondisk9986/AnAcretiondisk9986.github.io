@@ -52,6 +52,7 @@ try {
   await page.type('#fTitle', 'My New Post 2026');
   await sleep(200);
   check('标题自动生成 Slug', (await page.$eval('#fSlug', (el) => el.value)) === 'my-new-post-2026', await page.$eval('#fSlug', (el) => el.value));
+  check('store 记录编辑脏状态', (await page.evaluate(() => window.__adminStore.get().editor.status)) === 'dirty', await page.evaluate(() => window.__adminStore.get().editor.status));
 
   // 即时校验：Slug 重复
   await page.$eval('#fSlug', (el) => { el.value = 'HealthCN2030'; el.dispatchEvent(new Event('input', { bubbles: true })); });
