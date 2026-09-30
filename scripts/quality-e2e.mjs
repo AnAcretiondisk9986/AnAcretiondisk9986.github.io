@@ -155,6 +155,20 @@ try {
   check('短窗口下侧栏可上下滑动', scrollInfo.scrollable && scrollInfo.after > scrollInfo.before, JSON.stringify(scrollInfo));
   await page.setViewport({ width: 1440, height: 950 });
 
+  // 关于 / 前端定制模式可正常渲染
+  await page.click('.mode-tab[data-mode="about"]');
+  await sleep(800);
+  check('关于模式渲染表单', Boolean(await page.$('#fAvatar')), 'about');
+  await page.evaluate(() => { const el = document.querySelector('#fAvatar'); if (el) { el.value = '/favicon.svg'; el.dispatchEvent(new Event('input', { bubbles: true })); } });
+  await sleep(250);
+  check('头像预览更新不报错', pageErrors.length === 0, pageErrors.join(' | '));
+  await page.click('.mode-tab[data-mode="frontend"]');
+  await sleep(800);
+  check('前端定制模式渲染表单', Boolean(await page.$('#fSiteName')), 'frontend');
+  await page.evaluate(() => { const el = document.querySelector('#fSiteName'); if (el) { el.value = '预览测试'; el.dispatchEvent(new Event('input', { bubbles: true })); } });
+  await sleep(250);
+  check('前端预览更新不报错', pageErrors.length === 0, pageErrors.join(' | '));
+
   check('全程无页面脚本错误', pageErrors.length === 0, pageErrors.join(' | '));
 } catch (err) {
   check('测试流程未抛异常', false, err.stack || err.message);

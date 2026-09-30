@@ -247,4 +247,4 @@ export function initAbout(options = {}) { ctx = { ...ctx, ...options }; }
     // ═══════════════════════════════════════
 
 
-export { renderAboutList, loadAbout, saveAbout };
+export { renderAboutList, loadAbout, saveAbout, refreshAvatarPreview };
