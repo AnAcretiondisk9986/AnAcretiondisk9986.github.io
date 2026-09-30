@@ -8,11 +8,20 @@
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",
-    "admin": "node admin-server.mjs"
+    "admin": "node admin-server.mjs",
+    "test:admin-storage": "node --test scripts/admin-storage.test.mjs",
+    "test:admin-sync": "node --test scripts/admin-sync.test.mjs",
+    "test:admin": "node --test scripts/admin-storage.test.mjs scripts/admin-json-store.test.mjs scripts/admin-sync.test.mjs",
+    "test:admin-api": "node scripts/admin-api-smoke.mjs",
+    "test:admin-ui": "node scripts/sync-center-e2e.mjs",
+    "test:post-list": "node scripts/post-list-e2e.mjs",
+    "test:admin-e2e": "node scripts/run-admin-e2e.mjs",
+    "test:admin-all": "npm run test:admin && npm run test:admin-api && npm run test:admin-e2e"
   },
   "dependencies": {
     "astro": "latest",
     "express": "^5.2.1",
+    "github-slugger": "^2.0.0",
     "gray-matter": "^4.0.3",
     "heic-decode": "^2.1.0",
     "multer": "^2.2.0",

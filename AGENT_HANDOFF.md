@@ -329,6 +329,158 @@
 
 最后更新：2026-08-03（全站极简重构 + 双视觉主题）
 
+
+## 2026-09-30（第三批）全量完成 P1 与可落地 P2
+
+### 当前状态
+
+已完成：**文章表单升级、统一媒体库与上传队列、前端 ESM 拆分、安全与会话、可观测性与质量收尾、批量操作、修订历史、定时发布元数据**。未做 SPA 迁移 / 数据库 / 多人协作（架构级暂缓项）。本轮修改了公共站点 schema（新增 `archived` / `scheduledAt` 及其过滤），未执行真实推送。
+
+### 本轮修改 / 新增文件
+
+- `admin-server.mjs`：媒体库 API（`/api/media` 列表/删除/归档）、`/api/health` 集中限制、修订历史 API、文章 `archived`/`scheduledAt` 字段、统一错误码 + `requestId`、结构化 JSON 访问日志（脱敏）。
+- `admin/index.html`：仅保留页面壳与模态框。
+- `admin/styles/{tokens,layout,components,editor}.css`（新增）：原内联 CSS 拆为 4 份。
+- `admin/src/main.js` + `admin/src/{api/client.js,api/errors.js,state/store.js,ui/dom.js,ui/toast.js,ui/modal.js}`（新增）：ESM 模块化；模态焦点锁定/aria；编辑器本地预览；批量操作栏；修订历史 diff；定时发布输入；会话锁定/退出；凭据会话化。
+- `src/content.config.ts` / `src/lib/posts.ts` / `src/pages/blog/[...id].astro` / `src/pages/s/[id].astro`：新增 `archived` / `scheduledAt` 过滤。
+- `scripts/media-library-e2e.mjs`、`scripts/post-form-e2e.mjs`、`scripts/quality-e2e.mjs`（新增）；`scripts/run-admin-e2e.mjs` 运行 5 组浏览器冒烟；`scripts/admin-api-smoke.mjs` 补定时/修订断言。
+- `.gitignore`：新增 `.admin-revisions/`。
+
+### 验证结果
+
+- `npm run test:admin-all`：单元 21 项 + API 冒烟 + 5 组浏览器冒烟全部通过。
+- `npm run build`：97 页面通过。
+
+### 后续注意事项
+
+1. 未做 SPA 迁移 / 数据库 / 多人协作。
+2. 定时发布需到点后一次构建；修订历史为整文件快照 + 行级 diff。
+3. 留言凭据“记住到本机”时仍明文存于 localStorage（已提供清除入口）。
+4. 下一步可选：拆分 `features/*.js`、补上传/远程导入失败路径冒烟、GitHub Actions 定时重建。
+
+---
+
+## 2026-09-30（第二批）文章列表效率升级
+
+### 当前状态
+
+已完成：**文章列表搜索/筛选/排序/视图 + 快速操作（编辑/预览/复制公开链接/复制短链/发布撤回/删除）**，并为后端补充公开链接与短链字段。本轮未修改公共博客页面与真实 `src/` 数据，未执行真实推送。
+
+### 本轮修改 / 新增文件
+
+- `admin-server.mjs`：`/api/posts` 与 `/api/posts/:slug` 新增 `updatedAt`/`excerpt`/`astroId`/`hasPublicPage`/`publicUrl`/`shortUrl`；公开链接用 `github-slugger` 对齐 Astro 内容集合 id，短码与 `src/lib/shortlink.ts` 一致。
+- `admin/index.html`：侧栏列表控件（搜索、状态/权限/标签/日期筛选、7 种排序、紧凑/卡片视图、结果计数、清除筛选）、快速操作事件委托、偏好写入 `localStorage`；切出文章模块时隐藏列表控件。
+- `scripts/post-list-e2e.mjs`（新增，20 项浏览器冒烟）。
+- `scripts/run-admin-e2e.mjs`（新增，自动复用/启动管理面板后依次运行两组浏览器冒烟）。
+- `package.json` / `package-lock.json`：新增 `github-slugger@^2.0.0`；新增 `test:post-list`、`test:admin-e2e`，`test:admin-all` 现为单命令全量管理测试。
+
+### 验证结果
+
+- `npm run test:admin-all`：单元 21 项、API 冒烟 30 项、浏览器冒烟 31 项全部通过。
+- 真实服务 + 真实文章浏览器验证：48 篇加载、筛选/卡片/搜索正常，无页面错误。
+- `npm run build`：97 页面通过。
+
+### 后续注意事项
+
+1. 文章编辑表单尚未分组，未提供模板/默认元数据与即时校验。
+2. 快速操作尚未提供「复制文章」与「归档」。
+3. 预览仅打开线上页面，草稿/管理员级文章无本地预览。
+4. 下一步建议：文章编辑表单分组、模板与即时校验（见 `AGENTS_HANDOFF_剩余.md` 第 13 节）。
+
+---
+
+## 2026-09-30 最新交接：发布中心、配置写入安全与测试基线
+
+### 当前状态
+
+已完成：**P0 发布中心与 Git 同步透明化、P0 其余 JSON 配置原子写入/校验/备份/哈希冲突、P0 自动化测试基线（API 冒烟 + Git 服务 + 发布中心浏览器冒烟）**。本轮未修改公共博客页面，未修改工作区原有未跟踪图片，未执行真实推送。
+
+### 本轮修改 / 新增文件
+
+- `admin/git-service.mjs`（新增）：受控 Git 命令封装（白名单子命令、参数化 `execFile`、超时、输出上限、脱敏）。
+- `admin/json-store.mjs`（新增）：JSON 配置存储（原子写入、校验、轮换备份、`contentHash`/`expectedHash` 冲突检测、写入串行化）。
+- `admin-server.mjs`：新增 `/api/sync/status`、`/api/sync/preview`、`/api/sync/pull-preview`、`/api/operations`；`requestId`；操作日志；`ADMIN_AUTO_PULL` 默认关闭；重构 push/pull 为受控 Git 服务；画廊/关于/前端定制/访问控制改走 JSON 存储并加版本冲突。
+- `admin/index.html`：侧栏同步状态卡 + 发布中心弹窗（推送/拉取预览与确认、重试、复制错误、操作日志）；配置保存携带 `expectedHash`。
+- `scripts/admin-sync.test.mjs`（新增，11 项）。
+- `scripts/admin-json-store.test.mjs`（新增，7 项）。
+- `scripts/admin-api-smoke.mjs`（新增，隔离目录 + 随机端口，30 项）。
+- `scripts/sync-center-e2e.mjs`（新增，发布中心浏览器冒烟，拦截 `/api`）。
+- `package.json`：`test:admin-sync` / `test:admin` / `test:admin-api` / `test:admin-ui` / `test:admin-all`。
+- `.gitignore`：新增 `.admin-backups/`。
+
+### 验证结果
+
+- `node --check admin-server.mjs`：通过。
+- `npm run test:admin`：21 项通过。
+- `npm run test:admin-api`：30 项通过。
+- `npm run test:admin-ui`：11 项通过（需先启动 `npm run admin`）。
+- `npm run build`：通过，97 页面。
+- 隔离验证：测试使用 `ADMIN_DATA_DIR`/`ADMIN_BLOG_DIR`/`ADMIN_BACKUP_DIR` 临时目录，真实 `src/data` 与 `src/content` 未被修改。
+
+### 后续注意事项
+
+1. 自动拉取默认关闭；需要时设置 `ADMIN_AUTO_PULL=1`。
+2. 私密文章密码保存尚未强制 `expectedHash` 冲突校验。
+3. API 冒烟未覆盖上传失败、远程 URL 导入失败路径。
+4. `syncing` 由前端同步操作期展示，服务端状态接口不单独输出。
+5. 下一步建议：文章列表搜索/筛选/排序与快速操作（见 `AGENTS_HANDOFF_剩余.md` 第 13 节）。
+
+---
+
+## 2026-09-29 最新交接：文章编辑安全改造
+
+### 当前状态
+
+已完成第一组后台重构：**文章编辑 dirty 状态、本地恢复草稿、版本哈希校验、原子写入**。本轮未修改公共博客页面，也未修改工作区原有未跟踪图片。
+
+### 本轮修改文件
+
+- `admin/index.html`
+  - 文章字段和 Markdown 编辑器统一 dirty 检测。
+  - 切换文章、新建文章、切换后台模块、刷新/关闭页面时增加未保存保护。
+  - 使用浏览器 `localStorage` 保存本地恢复草稿。
+  - 重新打开文章时支持恢复草稿；旧版本草稿会提示风险。
+  - 顶部显示 `已保存 / 有未保存修改 / 正在保存 / 保存失败` 状态。
+  - 保存成功后清理对应本地草稿。
+
+- `admin-server.mjs`
+  - 文章列表和单篇文章 API 增加 `contentHash`。
+  - 文章更新必须携带 `expectedHash`。
+  - 版本不一致时返回 HTTP `409 VERSION_CONFLICT`，不覆盖当前文件。
+  - 文章新建、更新、删除增加串行写入队列。
+  - 文章 Markdown 使用原子写入。
+  - 新建文章增加 Slug 重复检查。
+
+- `admin/atomic-file.mjs`
+  - 新增 `sha256()` 和 `atomicWriteFile()` 工具。
+
+- `scripts/admin-storage.test.mjs`
+  - 新增 SHA-256、原子覆盖写入、失败保护测试。
+
+- `package.json`
+  - 新增 `npm run test:admin-storage`。
+
+- `ADMIN_REFACTOR_OPTIMIZATION_HANDOFF.md`
+  - 已同步完整优化报告、实施方案和本轮实施记录。
+
+### 验证结果
+
+- `node --check admin-server.mjs`：通过。
+- 管理后台内联脚本解析：通过。
+- `npm run test:admin-storage`：3 项通过。
+- 管理 API 创建、读取 hash、正常更新、删除：通过。
+- 错误 hash 更新现有文章：返回 HTTP `409`，原文章未被修改。
+- 浏览器级验证：未保存提示、本地草稿写入、文章切换后草稿恢复：通过。
+- `npm run build`：通过，97 个静态页面构建完成。
+
+### 后续注意事项
+
+1. 本地恢复草稿目前只覆盖文章编辑器，画廊、关于、前端定制等模块尚未接入统一 dirty 状态。
+2. 版本冲突目前只阻止覆盖并保留当前编辑内容，尚未提供可视化 diff 或三方合并。
+3. 本地草稿使用浏览器 `localStorage`，后续安全改造阶段再统一凭据与本地存储策略。
+4. 后续继续开发前，先重启管理后台：`npm run admin`。
+5. 第一组改造验收通过后，再进入文章列表搜索/筛选和发布中心阶段。
+
 ---
 
 ## 快速启动
@@ -340,6 +492,11 @@
 | `npm run build`        | 生产构建                                     |
 | `npm run preview`      | 预览构建结果                                   |
 | `npm run admin`        | 启动博客管理面板 → `http://localhost:4322/admin` |
+| `npm run test:admin`   | 管理端单元测试（存储 / JSON 存储 / Git 服务，21 项） |
+| `npm run test:admin-api` | 管理 API 冒烟（隔离临时目录 + 随机端口，30 项） |
+| `npm run test:admin-e2e` | 浏览器冒烟（自动复用/启动面板，共 5 组） |
+| `npm run test:post-list` | 文章列表浏览器冒烟（需先启动管理面板） |
+| `npm run test:admin-all` | 依次运行单元 + API 冒烟 + 浏览器冒烟 |
 | `git push origin main` | 推送（SSH，禁止 force push）                    |
 | 双击 `启动管理面板.bat`        | 一键启动管理面板 + 打开浏览器                         |
 

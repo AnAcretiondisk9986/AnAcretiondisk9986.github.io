@@ -20,6 +20,8 @@ const blog = defineCollection({
     dayIndex: z.number().int().min(1).optional(),
     tags: z.array(z.string()).default([]),
     draft: z.boolean().default(false),
+    archived: z.boolean().default(false),
+    scheduledAt: z.coerce.date().optional(),
     access: z.enum(['public', 'authorized', 'admin']).default('public'),
   }),
 });

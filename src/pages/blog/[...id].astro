@@ -8,7 +8,7 @@ import { buildWordCloud } from '../../lib/wordcloud';
 import { shortIdForPath } from '../../lib/shortlink';
 
 export async function getStaticPaths() {
-  const posts = await getCollection('blog', ({ data }) => !data.draft && data.access !== 'admin');
+  const posts = await getCollection('blog', ({ data }) => !data.draft && !data.archived && data.access !== 'admin' && (!data.scheduledAt || data.scheduledAt.getTime() <= Date.now()));
   const dayCounts = new Map<string, number>();
   for (const post of posts) {
     const key = post.data.pubDate.toISOString().slice(0, 10);

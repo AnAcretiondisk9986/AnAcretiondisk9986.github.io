@@ -1,0 +1,7 @@
+/* 设计令牌与基础重置 */
+
+*{margin:0;padding:0;box-sizing:border-box}
+
+body{font-family:'Noto Sans SC','Source Han Sans SC','Microsoft YaHei',system-ui,sans-serif;background:#0f0f11;color:#d4d0c8;height:100vh;display:flex}
+
+:focus-visible{outline:2px solid #c8b080;outline-offset:1px}

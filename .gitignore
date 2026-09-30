@@ -9,3 +9,5 @@ src/content/blog/.obsidian/
 .reasonix/
 .ssh-keys/
 .admin-token
+.admin-backups/
+.admin-revisions/
