@@ -3,6 +3,7 @@ title: 港深游记EP3：莅临香港🇭🇰
 description: ""
 pubDate: "2026-10-03"
 dayIndex: 1
+cover: "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/_DSC0641_1791211165777.webp"
 draft: false
 access: public
 ---
