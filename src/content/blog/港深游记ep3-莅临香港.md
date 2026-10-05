@@ -198,3 +198,4 @@ P3的話其實是半山扶梯的終點，我也不太明白這是什麼地方，
 
 ![image](https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/image_1791212683201.webp)
 # 多謝蒞臨香港！
+![ops-coffee-1791213169165_1791213175328](https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/ops-coffee-1791213169165_1791213175328.webp)

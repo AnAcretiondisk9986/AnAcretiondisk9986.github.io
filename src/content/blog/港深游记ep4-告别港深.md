@@ -3,10 +3,10 @@ title: 港深游记EP4：告别港深
 description: ""
 pubDate: "2026-10-04"
 dayIndex: 1
+cover: "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/cover_1791213567846_1791213567848.webp"
 draft: false
 access: public
 ---
-
 
 清晨起来，依旧是点了一份麦当劳做早餐，然后悠闲地玩了一会电脑，下载了长途火车路上看的动漫：《飙马野郎》的2、3集和《恋死》的7-13集
 ![ops-coffee-1791212931139](https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/ops-coffee-1791212931139_1791212941969.webp)
