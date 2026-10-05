@@ -3,6 +3,7 @@ title: 港深游记EP2：探索深圳
 description: ""
 pubDate: "2026-10-02"
 dayIndex: 1
+cover: "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/image_1791179669536.webp"
 draft: false
 access: public
 ---
@@ -101,7 +102,6 @@ access: public
 好在打到车然后坐到地铁站后，我扫了个充电宝，然后幸运地刚上车就遇到一个空缺位置，赶紧坐下，回到了酒店。
 
 回去之后我洗完澡在床上瘫坐，准备明天香港的八达通和过关后该怎么坐港铁
-
 
 ![image](https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/image_1791185228483.webp)
 （用Apple Pay居然还多收点钱，后面换成微信看了下实际上只有CNY 300.30）
