@@ -537,9 +537,11 @@
 ### 词云维护
 
 - 数据与参数：`src/lib/wordcloud.ts` 顶部——`MAX_WORDS`（词数上限）、`MIN_COUNT`（最低词频）、`MIN/MAX_SIZE`（字号范围）、`STOPWORDS`（停用词表，新增高频噪声词直接往里加）。
-- 渲染组件：`src/components/WordCloud.astro`——`rotateRatio`（旋转比例）、字号映射（`compact` 模式 8–24px）；已接入目录页（全站词云）与文章页侧栏（单篇词云），新页面接入只需传 `<WordCloud words={...} />`。
+- 渲染组件：`src/components/WordCloud.astro`——`rotateRatio`（旋转比例）、字号映射（`compact` 模式 8–24px）；当前站点接入点是个人页 `/about/`（全站词云），新页面接入只需传 `<WordCloud words={...} />`。
+- 个人页接入（`src/pages/about.astro`）：数据用 `getPublicPosts()` + `buildWordCloud()`（复用首页的公开文章过滤，草稿 / 归档 / 仅管理员可见不计入）；词云区块默认宽度取 `--content-width`（相对 `main` 再减 32px），直接嵌进 `.dossier` 会左右各内缩 16px，故该页用 `.dossier .dossier-wordcloud :global(.wordcloud-section){width:auto;margin-inline:0}` 铺满档案内容宽度。
 - 词云数据在构建时统计，新增 / 修改文章后需重新 `npm run build`（dev 模式自动）。
 - 调试：`node scripts/wc-test-page.mjs` 生成暗色主题测试页（含像素统计），配合 headless 浏览器截图验证。
+- 个人页回归验证：`npm run build` 后 `node scripts/static-server.mjs dist 8766`，再运行 `node scripts/verify-about-wordcloud.mjs`（断言结构位置、绘制像素 ≥2 万、与正文左对齐、hover 词频、五套视觉主题与暗色重绘、站内导航后重新渲染、无运行时报错；可选 `BLOG_SCREENSHOT_DIR` 存截图）。
 
 ### 常用命令
 

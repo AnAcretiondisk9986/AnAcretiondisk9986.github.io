@@ -2,11 +2,20 @@
 import Icon from '../components/Icon.astro';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import ThemeCopy from '../components/ThemeCopy.astro';
+import WordCloud from '../components/WordCloud.astro';
 import { safeLink } from '../lib/safe-link';
+import { getPublicPosts } from '../lib/posts';
+import { buildWordCloud } from '../lib/wordcloud';
 import about from '../data/about.json';
 
 // 头像已是图片仓库的 jsDelivr 外链，直接引用
 const avatarSrc = about.avatar ?? '';
+
+// 个人页词云：构建时统计全部公开文章（标题 + 正文）的词频，
+// 与卷册目录共用同一份数据链路，文章更新后重新构建即自动刷新。
+const cloudWords = buildWordCloud(
+  (await getPublicPosts()).map((post) => ({ title: post.data.title, body: post.body ?? '' })),
+);
 
 // 把文本中的 http(s) 链接转换为可点击 <a>。
 // 先转义再替换，防 HTML/属性注入；仅识别 http/https，其余原样输出。
@@ -135,8 +144,22 @@ function linkify(text = '') {
         }
       </section>
     </div>
+
+    <div class="dossier-wordcloud">
+      <WordCloud words={cloudWords} />
+    </div>
   </article>
 </BaseLayout>
+
+<style>
+  /* 词云区块默认宽度取 --content-width(相对 main 再减 32px),直接嵌进个人档案会
+     比上方正文左右各内缩 16px;这里让它铺满档案内容宽度,与标题左对齐。
+     用 .dossier 前缀提高特异性,避免被各视觉主题对 .wordcloud-section 的规则盖掉。 */
+  .dossier .dossier-wordcloud :global(.wordcloud-section) {
+    width: auto;
+    margin-inline: 0;
+  }
+</style>
 
 <script>
   type VisualTheme = 'cyanotype' | 'still' | 'fluid' | 'minimal' | 'trace';
