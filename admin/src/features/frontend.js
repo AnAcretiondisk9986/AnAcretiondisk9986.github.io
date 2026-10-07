@@ -52,15 +52,15 @@ export function initFrontend(options = {}) { ctx = { ...ctx, ...options }; }
       $('#btnSave').disabled = false;
       $('#editorContainer').innerHTML = `
         <div class="editor frontend-editor">
-          <div class="frontend-preview-grid" aria-label="主题预览">
-            <div class="frontend-preview" id="frontendStillPreview">
-              <span class="frontend-preview-badge">静澈</span>
-              <div class="frontend-preview-copy"><small id="previewStillEyebrow"></small><b id="previewStillTitle"></b></div>
+          <div class="frontend-preview" id="frontendHeroPreview" aria-label="首页首屏预览">
+            <img id="frontendPreviewImg" alt="" />
+            <span class="frontend-preview__scrim" id="frontendPreviewScrim"></span>
+            <div class="frontend-preview-copy">
+              <small id="frontendPreviewEyebrow"></small>
+              <b id="frontendPreviewTitle"></b>
+              <p id="frontendPreviewDesc"></p>
             </div>
-            <div class="frontend-preview" id="frontendFluidPreview">
-              <span class="frontend-preview-badge">流形</span>
-              <div class="frontend-preview-copy"><small id="previewFluidEyebrow"></small><b id="previewFluidTitle"></b></div>
-            </div>
+            <span class="frontend-preview-badge">首页首屏预览</span>
           </div>
 
           <section class="frontend-section">
@@ -99,29 +99,18 @@ export function initFrontend(options = {}) { ctx = { ...ctx, ...options }; }
           </section>
 
           <section class="frontend-section">
-            <h3>主题背景图片</h3>
-            <div class="frontend-image-grid">
-              <div>
-                <div class="upload-area" data-frontend-upload="fStillHeroImage">上传「静澈」背景图片</div>
-                <div class="form-group"><label>静澈图片地址</label><input id="fStillHeroImage" value="${escAttr(data.stillHeroImage || '')}" /></div>
-                <div class="form-row" style="margin-top:10px">
-                  <div class="form-group"><label>替代文字</label><input id="fStillHeroAlt" value="${escAttr(data.stillHeroAlt || '')}" /></div>
-                  <div class="form-group"><label>图片焦点</label><select id="fStillImagePosition">${frontendPositionOptions(data.stillImagePosition)}</select></div>
-                </div>
-              </div>
-              <div>
-                <div class="upload-area" data-frontend-upload="fFluidHeroImage">上传「流形」背景图片</div>
-                <div class="form-group"><label>流形图片地址</label><input id="fFluidHeroImage" value="${escAttr(data.fluidHeroImage || '')}" /></div>
-                <div class="form-row" style="margin-top:10px">
-                  <div class="form-group"><label>替代文字</label><input id="fFluidHeroAlt" value="${escAttr(data.fluidHeroAlt || '')}" /></div>
-                  <div class="form-group"><label>图片焦点</label><select id="fFluidImagePosition">${frontendPositionOptions(data.fluidImagePosition)}</select></div>
-                </div>
-              </div>
+            <h3>首页首屏背景图</h3>
+            <div class="upload-area" data-frontend-upload="fStillHeroImage">上传首屏背景图片（拖放或点击选择）</div>
+            <div class="form-row" style="margin-top:10px">
+              <div class="form-group"><label>图片地址</label><input id="fStillHeroImage" value="${escAttr(data.stillHeroImage || '')}" /></div>
+              <div class="form-group"><label>图片焦点</label><select id="fStillImagePosition">${frontendPositionOptions(data.stillImagePosition)}</select></div>
             </div>
+            <div class="field-hint">首页首屏共用这一张图，站内其它页面不使用。</div>
           </section>
 
           <section class="frontend-section">
             <h3>色彩与玻璃材质</h3>
+            <div class="field-hint" style="margin-bottom:8px">仅对「静澈 / 流形」两套视觉主题生效；蓝晒、留白、行迹不受影响。</div>
             <div class="form-row">
               <div class="form-group"><label>静澈强调色</label><input id="fStillAccent" type="color" value="${escAttr(data.stillAccent || 'var(--danger)')}" /></div>
               <div class="form-group"><label>流形主色</label><input id="fFluidPrimary" type="color" value="${escAttr(data.fluidPrimary || 'var(--ok)')}" /></div>
@@ -169,27 +158,34 @@ export function initFrontend(options = {}) { ctx = { ...ctx, ...options }; }
       // 此处曾二次覆盖这两个全局处理器，导致离开「前端定制」后的上传被静默吞掉。
     }
 
+    /**
+     * 预览：用与首页一致的渲染方式（<img> + object-position + 遮罩层 + 文案层级），
+     * 而不是此前那种 background-image 假预览——那时后台看到的和线上并不一样。
+     */
     function syncFrontendPreview() {
-      const still = $('#frontendStillPreview');
-      const fluid = $('#frontendFluidPreview');
-      const overlay = Number($('#fHeroOverlayOpacity')?.value || .34);
-      const setImage = (el, input, position) => {
-        if (!el) return;
-        const url = $(input)?.value?.trim() || '';
-        el.style.backgroundImage = url ? `url(${JSON.stringify(url)})` : '';
-        el.style.backgroundPosition = $(position)?.value || 'center';
-        el.style.setProperty('--preview-overlay', String(overlay));
-      };
-      setImage(still, '#fStillHeroImage', '#fStillImagePosition');
-      setImage(fluid, '#fFluidHeroImage', '#fFluidImagePosition');
+      const img = $('#frontendPreviewImg');
+      if (img) {
+        const url = $('#fStillHeroImage')?.value?.trim() || '';
+        if (url) img.src = url; else img.removeAttribute('src');
+        img.style.objectPosition = $('#fStillImagePosition')?.value || 'center';
+      }
+      const scrim = $('#frontendPreviewScrim');
+      if (scrim) scrim.style.opacity = String(Number($('#fHeroOverlayOpacity')?.value || .34));
+
       const eyebrow = $('#fHeroEyebrow')?.value || '';
       const title = [$('#fHeroTitleLine1')?.value || '', $('#fHeroTitleLine2')?.value || ''].filter(Boolean).join(' ');
-      ['previewStillEyebrow', 'previewFluidEyebrow'].forEach(id => { const el = $('#' + id); if (el) el.textContent = eyebrow; });
-      ['previewStillTitle', 'previewFluidTitle'].forEach(id => { const el = $('#' + id); if (el) el.textContent = title; });
+      const desc = $('#fHeroDescription')?.value || '';
+      const setText = (id, text) => { const el = $('#' + id); if (el) el.textContent = text; };
+      setText('frontendPreviewEyebrow', eyebrow);
+      setText('frontendPreviewTitle', title);
+      setText('frontendPreviewDesc', desc);
+
       const previewFont = $('#fDisplayFont')?.value === 'noto-sans'
         ? '"Noto Sans SC", "Source Han Sans SC", "Microsoft YaHei", system-ui, sans-serif'
         : '"Noto Serif SC", "Source Han Serif SC", "Songti SC", serif';
-      ['previewStillTitle', 'previewFluidTitle'].forEach(id => { const el = $('#' + id); if (el) el.style.fontFamily = previewFont; });
+      const titleEl = $('#frontendPreviewTitle');
+      if (titleEl) titleEl.style.fontFamily = previewFont;
+
       const outputs = [
         ['vStillGlassOpacity', 'fStillGlassOpacity', ''],
         ['vFluidGlassOpacity', 'fFluidGlassOpacity', ''],
@@ -205,8 +201,7 @@ export function initFrontend(options = {}) { ctx = { ...ctx, ...options }; }
         defaultVisualTheme: '#fDefaultVisualTheme', siteName: '#fSiteName', siteTagline: '#fSiteTagline',
         heroEyebrow: '#fHeroEyebrow', heroTitleLine1: '#fHeroTitleLine1', heroTitleLine2: '#fHeroTitleLine2',
         heroDescription: '#fHeroDescription', primaryCtaLabel: '#fPrimaryCtaLabel', primaryCtaHref: '#fPrimaryCtaHref',
-        stillHeroImage: '#fStillHeroImage', stillHeroAlt: '#fStillHeroAlt', stillImagePosition: '#fStillImagePosition',
-        fluidHeroImage: '#fFluidHeroImage', fluidHeroAlt: '#fFluidHeroAlt', fluidImagePosition: '#fFluidImagePosition',
+        stillHeroImage: '#fStillHeroImage', stillImagePosition: '#fStillImagePosition',
         displayFont: '#fDisplayFont', stillAccent: '#fStillAccent', fluidPrimary: '#fFluidPrimary', fluidSecondary: '#fFluidSecondary',
         stillGlassOpacity: '#fStillGlassOpacity', fluidGlassOpacity: '#fFluidGlassOpacity', heroOverlayOpacity: '#fHeroOverlayOpacity',
         glassBlur: '#fGlassBlur', cardRadius: '#fCardRadius',

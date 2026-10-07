@@ -1,7 +1,38 @@
 # Acretiondisk Blog — 更新日志
 
 > 使用 Astro 构建的个人博客，部署到 GitHub Pages（`https://blog.acretiondisk.top/`）。
-> 开发版本：**3.6.0**（2026-10-07）· 最新 Release：[v3.5.2](https://github.com/AnAcretiondisk9986/AnAcretiondisk9986.github.io/releases/latest)
+> 开发版本：**3.6.1**（2026-10-07）· 最新 Release：[v3.5.2](https://github.com/AnAcretiondisk9986/AnAcretiondisk9986.github.io/releases/latest)
+
+---
+
+## 3.6.1（2026-10-07）
+
+### 🧩「前端定制」重构：删掉不生效的字段，预览改为与线上一致
+
+#### 诊断：编辑了，但站点毫无效果
+
+逐字段核对站点侧消费情况（`grep` 全部 `frontend.*` 引用）后发现三类问题：
+
+- **`fluidHeroImage` / `fluidHeroAlt` / `fluidImagePosition`：零消费**。首页 `index.astro` 只读 `stillHeroImage`，后台却提供「流形背景图片」的上传区、地址栏与焦点选择——改了不起任何作用（两张图用户都已填了内容）。
+- **`stillHeroAlt`：未接入 `alt`**。首页是 `alt=""`（装饰性背景图的正确写法），该字段本就不该存在。
+- **预览是假的**：预览卡片用 `background-image` 渲染，而首页实际是 `<img>` + `object-position` + 遮罩层——后台看到的与线上不是一回事。
+
+#### 顺带修复：首屏图一直是坏链
+
+`stillHeroImage` 指向 `image/original/…webp`，但原图目录里是 `.jpg`，WebP 实际在 `image/` 根目录——该地址返回 **404**，首页首屏背景图一直是空白的。已修正为可达地址（HEAD 验证 HTTP 200）。
+
+#### 改动
+
+- **后台「外观」模块**：移除「流形背景图片」整块与「替代文字」字段，配置项从 24 个精简到 20 个；「主题背景图片」更名「首页首屏背景图」并注明仅首页使用。
+- **预览改为单张「首页首屏预览」**：用与线上一致的 `<img>` + `object-position` + 遮罩层 + eyebrow / 标题 / 描述渲染，并随输入实时更新（含标题字体）。
+- **作用范围标注**：「色彩与玻璃材质」明确标注仅对「静澈 / 流形」两套视觉主题生效，蓝晒 / 留白 / 行迹不受影响。
+- **服务端同步**：`FRONTEND_DEFAULTS` 与 `PUT /api/frontend` 白名单移除这 4 个字段；`GET /api/frontend` 现返回 21 项（20 配置 + `contentHash`），不再回传失效字段。
+- **CSS**：`.frontend-preview` 重写为真实渲染结构；删除已无引用的 `.frontend-preview-grid` / `.frontend-image-grid` 及对应响应式规则。
+
+#### 验证
+
+- `verify-admin-core.mjs` 新增 8 项断言（预览卡片存在、真实 `<img>` 渲染、失效字段已移除、生效字段保留 4/4、上传入口收敛为 1、预览随输入同步、服务端契约不含失效字段），合计 21 项断言。
+- `npm run test:admin-all` 全绿；`npm run build` 通过（107 页）。
 
 ---
 

@@ -1755,12 +1755,11 @@ const FRONTEND_DEFAULTS = {
   heroDescription: '医学、技术、艺术，以及日常生活里值得记住的片刻。',
   primaryCtaLabel: '浏览文章',
   primaryCtaHref: '/blog/',
+  // 首页首屏背景图：站点首页 index.astro 只消费这一套。
+  // 原先并存的 fluidHeroImage / fluidHeroAlt / fluidImagePosition（零消费）与
+  // 从未接入 alt 的 stillHeroAlt 已移除——后台能编辑但站点毫无效果。
   stillHeroImage: 'https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/_DSC0217_1785663966034.webp',
-  stillHeroAlt: '云南夏日山野',
   stillImagePosition: 'center',
-  fluidHeroImage: 'https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/a42a4e50333f93636b6bf41305ddfe88_1785630055301.webp',
-  fluidHeroAlt: '清晨跑步时拍下的城市风景',
-  fluidImagePosition: 'center',
   displayFont: 'noto-serif',
   stillAccent: '#c44136',
   fluidPrimary: '#1f6955',
@@ -1834,11 +1833,7 @@ app.route('/api/frontend')
         primaryCtaLabel: strField('primaryCtaLabel', 40),
         primaryCtaHref,
         stillHeroImage: strField('stillHeroImage', 2000),
-        stillHeroAlt: strField('stillHeroAlt', 200),
         stillImagePosition: enumField('stillImagePosition', IMAGE_POSITIONS),
-        fluidHeroImage: strField('fluidHeroImage', 2000),
-        fluidHeroAlt: strField('fluidHeroAlt', 200),
-        fluidImagePosition: enumField('fluidImagePosition', IMAGE_POSITIONS),
         displayFont: enumField('displayFont', DISPLAY_FONTS),
         stillAccent: colorField('stillAccent'),
         fluidPrimary: colorField('fluidPrimary'),

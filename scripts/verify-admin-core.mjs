@@ -44,7 +44,12 @@ page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
 page.on('dialog', async (d) => { try { await d.accept(); } catch { /* 已被别处处理 */ } });
 page.on('console', (m) => {
   const t = m.text();
-  if (m.type() === 'error' && !t.includes('favicon')) errors.push('console: ' + t);
+  if (m.type() !== 'error' || t.includes('favicon')) return;
+  // 上传被拦截后会返回一个并不存在的 mock CDN 地址，预览图必然加载失败；
+  // 这类「外部资源」失败与应用无关，只把本地（127.0.0.1:4322）资源失败视为错误。
+  const url = m.location()?.url || '';
+  if (!url.includes('127.0.0.1:4322') && /Failed to load resource|ERR_/.test(t)) return;
+  errors.push('console: ' + t);
 });
 page.on('requestfailed', (r) => {
   if (r.url().includes('127.0.0.1:4322')) errors.push('requestfailed: ' + r.url());
@@ -136,7 +141,37 @@ if (target) {
   check(`上传后字段回填为上传结果（${filled.slice(0, 60)}）`, filled.includes('mock.webp'));
 }
 
-// ── 5. 无运行时报错 ──
+// ── 5. 「外观」模块：失效字段已移除，预览与线上渲染一致 ──
+const frontendInfo = await page.evaluate(() => ({
+  preview: Boolean(document.querySelector('#frontendHeroPreview')),
+  previewSrc: document.querySelector('#frontendPreviewImg')?.getAttribute('src') || '',
+  removed: ['#fFluidHeroImage', '#fFluidHeroAlt', '#fFluidImagePosition', '#fStillHeroAlt'].filter((s) => document.querySelector(s)),
+  kept: ['#fStillHeroImage', '#fStillImagePosition', '#fSiteName', '#fDisplayFont'].filter((s) => document.querySelector(s)),
+  uploadAreas: document.querySelectorAll('[data-frontend-upload]').length,
+}));
+check('外观：首屏预览卡片存在', frontendInfo.preview);
+check(`外观：预览用真实 <img> 渲染（${frontendInfo.previewSrc.slice(0, 46)}…）`, frontendInfo.previewSrc.startsWith('http'));
+check(`外观：失效字段已移除${frontendInfo.removed.length ? '（残留 ' + frontendInfo.removed.join(',') + '）' : ''}`, frontendInfo.removed.length === 0);
+check(`外观：生效字段完整保留（${frontendInfo.kept.length}/4）`, frontendInfo.kept.length === 4);
+check(`外观：上传入口收敛为 1 个（实际 ${frontendInfo.uploadAreas}）`, frontendInfo.uploadAreas === 1);
+
+const previewSync = await page.evaluate(() => {
+  const input = document.querySelector('#fHeroTitleLine1');
+  if (!input) return null;
+  input.value = '自动化预览校验';
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+  return document.querySelector('#frontendPreviewTitle')?.textContent || '';
+});
+check(`外观：预览随输入同步（${previewSync}）`, (previewSync || '').includes('自动化预览校验'));
+
+const apiFields = await page.evaluate(async () => {
+  const res = await fetch('/api/frontend', { headers: { 'x-admin-token': window.__ADMIN_TOKEN__ } });
+  const data = await res.json();
+  return Object.keys(data.frontend || data || {});
+});
+check(`外观：服务端契约已同步（${apiFields.length} 个字段）`, !apiFields.some((k) => /fluidHero|stillHeroAlt|fluidImagePosition/i.test(k)));
+
+// ── 6. 无运行时报错 ──
 check(`无浏览器运行时报错${errors.length ? '：' + errors.join(' | ') : ''}`, errors.length === 0);
 
 console.log(`\n全部通过：${results.length} 项断言`);

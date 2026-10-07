@@ -171,7 +171,7 @@
 
 .frontend-editor{max-width:1080px;width:100%;margin-inline:auto}
 
-@media(max-width:900px){.frontend-preview-grid,.frontend-image-grid,.post-cover-editor{grid-template-columns:1fr}.post-cover-preview{max-width:360px}}
+@media(max-width:900px){.post-cover-editor{grid-template-columns:1fr}.post-cover-preview{max-width:360px}}
 
 /* ── Vditor 集成 ── */
 #vditorEditor{flex:1;min-width:0;height:100%;display:flex}
