@@ -1,77 +1,359 @@
-/* 布局：侧栏 / 主区域 / 列表 / 同步卡 / 媒体库外壳 */
+/* ============================================================
+   布局骨架
+   ------------------------------------------------------------
+   结构：顶栏（品牌 / 模块导航 / 发布区 / 会话）+ 工作区（侧栏列表 + 主区）
+   动线原则：
+   1. 全局动线（发布、拉取、站点、会话）集中在顶栏，与模块内操作分离；
+   2. 侧栏只承载「当前模块的列表」，工具条与列表控件固定、不随列表滚走；
+   3. 只有列表本身滚动 —— 短窗口下也能随时够到工具条与筛选。
+   ============================================================ */
 
-.sidebar{width:300px;min-width:300px;background:#1a1a1e;border-right:1px solid #2a2a30;display:flex;flex-direction:column;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#3a3a40 transparent;min-height:0}
-.sidebar-header,.sidebar-toolbar,.sync-card,.list-controls,.batch-bar{flex:0 0 auto}
-.sidebar::-webkit-scrollbar{width:8px}
-.sidebar::-webkit-scrollbar-thumb{background:#3a3a40;border-radius:4px}
-.sidebar::-webkit-scrollbar-thumb:hover{background:#4a4a55}
-.sidebar::-webkit-scrollbar-track{background:transparent}
+/* ── 顶栏 ── */
+/* [hidden] 兜底：本文件的 display:flex 规则会盖掉 UA 的 [hidden]{display:none}，
+   #listFilters / #batchBar 依赖 hidden 属性做显隐，必须显式还原。 */
+[hidden] {
+  display: none !important;
+}
 
-.sidebar-header{padding:16px;border-bottom:1px solid #2a2a30}
+.topbar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  height: var(--topbar-h);
+  padding-inline: var(--sp-4);
+  background: var(--surface-1);
+  border-bottom: 1px solid var(--border);
+  z-index: var(--z-sticky);
+}
 
-.sidebar-header h1{font-size:16px;color:#c8b080;letter-spacing:2px;margin-bottom:4px}
+.topbar__brand {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding-right: var(--sp-4);
+  border-right: 1px solid var(--border);
+}
 
-.sidebar-header small{font-size:11px;color:#6a6a70}
+.topbar__brand b {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+}
 
-.sidebar-toolbar{padding:10px 16px;border-bottom:1px solid #2a2a30;display:flex;flex-wrap:wrap;gap:8px}
+.topbar__brand small {
+  font-size: var(--fs-2xs);
+  color: var(--text-faint);
+}
 
-.post-list{flex:1 1 auto;overflow-y:visible;min-height:120px;padding:8px}
+.topbar__nav {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-5);
+  flex: 1 1 auto;
+  min-width: 0;
+}
 
-.list-controls{padding:8px 12px;border-bottom:1px solid #2a2a30;background:#16161a;display:flex;flex-direction:column;gap:6px}
+.nav-group {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+}
 
-.list-search{display:flex;gap:6px;align-items:center}
+.nav-group__label {
+  margin-right: var(--sp-1);
+  font-size: var(--fs-2xs);
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+}
 
-.list-search input{flex:1;min-width:0}
+.topbar__publish {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding-left: var(--sp-4);
+  border-left: 1px solid var(--border);
+}
 
-.list-controls input,.list-controls select{background:#222228;border:1px solid #3a3a40;color:#c8b080;border-radius:4px;padding:5px 8px;font-size:11px;min-width:0;font-family:inherit}
+.publish-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+}
 
-.list-controls input:focus,.list-controls select:focus{outline:none;border-color:#5a5020}
+.topbar__session {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding-left: var(--sp-3);
+  border-left: 1px solid var(--border);
+}
 
-.list-controls input::placeholder{color:#55555c}
+/* 同步状态卡（顶栏内紧凑形态，点击打开发布中心） */
+.sync-card {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  max-width: 320px;
+  padding: var(--sp-1) var(--sp-2);
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: background var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease);
+}
 
-.list-filters{display:flex;flex-direction:column;gap:6px}
+.sync-card:hover {
+  background: var(--surface-3);
+  border-color: var(--border);
+}
 
-.filter-row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.sync-state {
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+  white-space: nowrap;
+}
 
-.filter-row select,.filter-row input{flex:1}
+.sync-meta {
+  overflow: hidden;
+  font-size: var(--fs-2xs);
+  color: var(--text-faint);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
-.filter-sep{color:#5a5a60;font-size:10px}
+/* ── 工作区 ── */
+.workspace {
+  flex: 1 1 auto;
+  display: flex;
+  min-height: 0;
+}
 
-.filter-actions{justify-content:space-between}
+/* ── 侧栏：仅承载当前模块的列表 ── */
+.sidebar {
+  flex: 0 0 var(--sidebar-w);
+  width: var(--sidebar-w);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  /* overflow 兜底：极矮窗口下侧栏整体仍可滚动 */
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--surface-1);
+  border-right: 1px solid var(--border);
+}
 
-.filter-count{font-size:10px;color:#6a6a70;font-variant-numeric:tabular-nums}
+.sidebar-toolbar {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+  border-bottom: 1px solid var(--border);
+}
 
-.media-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.list-controls {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+}
 
-.media-toolbar input,.media-toolbar select,.media-target select{background:#222228;border:1px solid #3a3a40;color:#c8b080;border-radius:4px;padding:5px 8px;font-size:11px;font-family:inherit}
+.list-search {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
 
-.media-target{display:flex;gap:8px;align-items:center;font-size:10px;color:#6a6a70;flex-wrap:wrap}
+.list-search input {
+  flex: 1;
+  min-width: 0;
+}
 
-.media-target select{max-width:340px}
+.list-filters {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
 
-.sync-card{padding:9px 16px;border-bottom:1px solid #2a2a30;background:#17171b;font-size:11px;line-height:1.6}
+.filter-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
 
-.sync-card-head{display:flex;align-items:center;gap:6px}
+.filter-row select,
+.filter-row input {
+  flex: 1;
+  min-width: 0;
+}
 
-.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.filter-sep {
+  font-size: var(--fs-2xs);
+  color: var(--text-faint);
+}
 
-.main-header{padding:12px 20px;border-bottom:1px solid #2a2a30;display:flex;justify-content:space-between;align-items:center;background:#16161a;gap:12px}
+.filter-actions {
+  justify-content: space-between;
+}
 
-.main-header-title{display:flex;align-items:center;gap:10px;min-width:0;overflow:hidden}
+.filter-count {
+  font-size: var(--fs-2xs);
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
 
-.main-header h2{font-size:14px;color:#9a9a9e;letter-spacing:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* 列表：唯一的滚动区（min-height:0 让它在矮窗口下收缩并自身滚动，
+   而不是把侧栏整体撑高） */
+.post-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: var(--sp-2);
+  overflow-y: auto;
+}
 
-.main-header .header-actions{display:flex;gap:6px;flex-shrink:0}
+/* ── 批量操作栏（仅文章模块可见） ── */
+.batch-bar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--accent-soft);
+  border-bottom: 1px solid var(--accent-line);
+  font-size: var(--fs-xs);
+  color: var(--accent-text);
+}
 
-@media(max-width:700px){body{flex-direction:column}.sidebar{width:100%;min-width:100%;max-height:40vh}}
+.batch-bar__spacer {
+  flex: 1;
+}
 
-/* 会话控制 */
-.session-row{display:flex;gap:6px;margin-top:8px}
+/* ── 主区 ── */
+.main {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
 
-/* 批量操作栏 */
-.batch-bar{display:flex;gap:5px;align-items:center;padding:7px 12px;background:#20201a;border-bottom:1px solid #3a3420;font-size:11px;color:#c8b080}
-.batch-bar .btn.small{padding:2px 7px;font-size:10px}
+.main-header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-5);
+  background: var(--surface-1);
+  border-bottom: 1px solid var(--border);
+}
 
-/* 专注模式：隐藏侧栏，编辑区独占 */
-body.focus-mode .sidebar{display:none}
-body.focus-mode .main{width:100%}
+.main-header-title {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-width: 0;
+  overflow: hidden;
+}
+
+.main-header h2 {
+  overflow: hidden;
+  font-size: var(--fs-base);
+  font-weight: 600;
+  color: var(--text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.header-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: var(--sp-2);
+}
+
+.editor-host {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* 媒体库工具条 */
+.media-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+.media-target {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-2xs);
+  color: var(--text-faint);
+  flex-wrap: wrap;
+}
+
+.media-target select {
+  max-width: 340px;
+}
+
+/* ── 专注模式：隐藏侧栏，编辑区独占 ── */
+body.focus-mode .sidebar {
+  display: none;
+}
+
+/* ── 响应式 ── */
+@media (max-width: 1500px) {
+  /* 顶栏优先保证模块导航与发布操作可见，次要的同步细节先让位 */
+  .sync-meta {
+    display: none;
+  }
+}
+
+@media (max-width: 1280px) {
+  .topbar {
+    height: auto;
+    flex-wrap: wrap;
+    padding-block: var(--sp-2);
+    gap: var(--sp-3);
+  }
+
+  .topbar__nav {
+    order: 3;
+    flex-basis: 100%;
+  }
+
+  .topbar__publish {
+    margin-left: auto;
+  }
+}
+
+@media (max-width: 900px) {
+  .nav-group__label {
+    display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  body {
+    overflow: auto;
+  }
+
+  .workspace {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    flex-basis: auto;
+    max-height: 45vh;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+}

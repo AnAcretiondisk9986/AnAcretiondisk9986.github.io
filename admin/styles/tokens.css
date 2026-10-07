@@ -1,7 +1,162 @@
-/* 设计令牌与基础重置 */
+/* ============================================================
+   设计令牌 —— 后台视觉语言的唯一真相来源
+   ------------------------------------------------------------
+   规则：layout / components / editor / preview-site 与中国
+   JS 内联样式里只允许出现 var(--*)，禁止硬编码颜色、字号、
+   圆角与间距。新增视觉需求先在此处定义令牌。
+   定位：单机内容工作台 —— 冷中性深色、低眩光、高信息密度、
+   状态表达清晰，与前台博客的「档案叙事」视觉明确区分。
+   ============================================================ */
 
-*{margin:0;padding:0;box-sizing:border-box}
+:root {
+  color-scheme: dark;
 
-body{font-family:'Noto Sans SC','Source Han Sans SC','Microsoft YaHei',system-ui,sans-serif;background:#0f0f11;color:#d4d0c8;height:100vh;display:flex}
+  /* —— 表面层级（数字越大越靠前、越亮） —— */
+  --bg: #0d0f12;
+  --surface-1: #14171b;
+  --surface-2: #1a1e23;
+  --surface-3: #22272e;
+  --surface-4: #2b3138;
+  --overlay: rgba(6, 8, 10, 0.68);
 
-:focus-visible{outline:2px solid #c8b080;outline-offset:1px}
+  /* —— 边框 —— */
+  --border: #262c34;
+  --border-strong: #343b45;
+
+  /* —— 文本 —— */
+  --text: #e3e7ec;
+  --text-dim: #98a2ad;
+  --text-faint: #6b7480;
+  --text-on-accent: #07101f;
+
+  /* —— 强调色 —— */
+  --accent: #4c8dff;
+  --accent-hover: #6ba1ff;
+  --accent-text: #9dc2ff;
+  --accent-soft: rgba(76, 141, 255, 0.14);
+  --accent-line: rgba(76, 141, 255, 0.42);
+
+  /* —— 状态色 —— */
+  --ok: #3fb950;
+  --ok-text: #7ee08a;
+  --ok-soft: rgba(63, 185, 80, 0.13);
+  --warn: #d29922;
+  --warn-text: #e3b341;
+  --warn-soft: rgba(210, 153, 34, 0.13);
+  --danger: #f85149;
+  --danger-text: #ff8b84;
+  --danger-soft: rgba(248, 81, 73, 0.13);
+  --info: #58a6ff;
+  --info-soft: rgba(88, 166, 255, 0.13);
+
+  /* —— 间距刻度（4px 基准） —— */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-10: 40px;
+
+  /* —— 字号与行高 —— */
+  --fs-2xs: 10px;
+  --fs-xs: 11px;
+  --fs-sm: 12px;
+  --fs-md: 13px;
+  --fs-base: 14px;
+  --fs-lg: 16px;
+  --fs-xl: 20px;
+  --lh-tight: 1.35;
+  --lh-normal: 1.6;
+  --lh-loose: 1.9;
+
+  /* —— 圆角 —— */
+  --r-xs: 3px;
+  --r-sm: 5px;
+  --r-md: 8px;
+  --r-lg: 12px;
+  --r-full: 999px;
+
+  /* —— 阴影与层级 —— */
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-2: 0 8px 24px rgba(0, 0, 0, 0.45);
+  --shadow-3: 0 24px 60px rgba(0, 0, 0, 0.55);
+  --z-sticky: 10;
+  --z-modal: 100;
+  --z-toast: 200;
+
+  /* —— 动效 —— */
+  --dur-1: 120ms;
+  --dur-2: 200ms;
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* —— 布局尺寸 —— */
+  --topbar-h: 52px;
+  --sidebar-w: 324px;
+  --font-sans: 'Noto Sans SC', 'Source Han Sans SC', 'Microsoft YaHei', system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, 'Cascadia Code', Consolas, monospace;
+}
+
+/* ── 基础重置 ── */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  font-family: var(--font-sans);
+  font-size: var(--fs-md);
+  line-height: var(--lh-normal);
+  background: var(--bg);
+  color: var(--text);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-radius: var(--r-xs);
+}
+
+::selection {
+  background: var(--accent-soft);
+}
+
+/* ── 滚动条统一 ── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--surface-4) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--surface-4);
+  background-clip: content-box;
+  border: 2px solid transparent;
+  border-radius: var(--r-full);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--border-strong);
+  background-clip: content-box;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 1ms !important;
+    animation-duration: 1ms !important;
+  }
+}

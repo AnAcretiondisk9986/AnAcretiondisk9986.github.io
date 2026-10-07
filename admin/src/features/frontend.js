@@ -7,14 +7,19 @@ import { apiFetch } from '../api/app-client.js';
 
 const FRONTEND_API = '/api/frontend';
 let frontendHash = '';
-let ctx = { setupUpload: () => {}, setUploadField: () => {} };
+let ctx = {
+  setupUpload: () => {},
+  setUploadField: () => {},
+  /** 主模块的上传实现：内部按 currentMode 路由到 frontendUploadField 指定的字段 */
+  uploadImage: async () => {},
+};
 
 export function initFrontend(options = {}) { ctx = { ...ctx, ...options }; }
 
     function renderFrontendList() {
       $('#postList').innerHTML = `
-        <div style="padding:12px 14px;font-size:11px;color:#6a6a70;line-height:1.9">
-          <div style="color:#c8b080;margin-bottom:4px">◐ 前端定制</div>
+        <div style="padding:12px 14px;font-size:11px;color:var(--text-faint);line-height:1.9">
+          <div style="color:var(--accent);margin-bottom:4px">◐ 前端定制</div>
           <div>主题、首屏文案与背景图片</div>
           <div>玻璃材质、圆角与主题色</div>
         </div>`;
@@ -118,9 +123,9 @@ export function initFrontend(options = {}) { ctx = { ...ctx, ...options }; }
           <section class="frontend-section">
             <h3>色彩与玻璃材质</h3>
             <div class="form-row">
-              <div class="form-group"><label>静澈强调色</label><input id="fStillAccent" type="color" value="${escAttr(data.stillAccent || '#c44136')}" /></div>
-              <div class="form-group"><label>流形主色</label><input id="fFluidPrimary" type="color" value="${escAttr(data.fluidPrimary || '#1f6955')}" /></div>
-              <div class="form-group"><label>流形辅助色</label><input id="fFluidSecondary" type="color" value="${escAttr(data.fluidSecondary || '#db5d4f')}" /></div>
+              <div class="form-group"><label>静澈强调色</label><input id="fStillAccent" type="color" value="${escAttr(data.stillAccent || 'var(--danger)')}" /></div>
+              <div class="form-group"><label>流形主色</label><input id="fFluidPrimary" type="color" value="${escAttr(data.fluidPrimary || 'var(--ok)')}" /></div>
+              <div class="form-group"><label>流形辅助色</label><input id="fFluidSecondary" type="color" value="${escAttr(data.fluidSecondary || 'var(--danger)')}" /></div>
             </div>
             <div class="form-row">
               <div class="form-group"><label>静澈玻璃不透明度</label><div class="frontend-range"><input id="fStillGlassOpacity" type="range" min="0.15" max="1" step="0.01" value="${Number(data.stillGlassOpacity ?? .84)}" /><output id="vStillGlassOpacity"></output></div></div>
@@ -156,18 +161,12 @@ export function initFrontend(options = {}) { ctx = { ...ctx, ...options }; }
           area.classList.remove('dragover');
           ctx.setUploadField(area.dataset.frontendUpload);
           const file = e.dataTransfer.files[0];
-          if (file) await uploadImage(file);
+          if (file) await ctx.uploadImage(file);
         };
       });
-      $('#fileInput').onchange = async () => {
-        const file = $('#fileInput').files[0];
-        if (file) await uploadImage(file);
-        $('#fileInput').value = '';
-      };
-      document.onpaste = async e => {
-        const item = [...(e.clipboardData?.items || [])].find(entry => entry.type.startsWith('image/'));
-        if (item) { e.preventDefault(); await uploadImage(item.getAsFile()); }
-      };
+      // #fileInput.onchange 与 document.onpaste 由主模块 setupUpload 统一接管：
+      // 它按 currentMode === 'frontend' + frontendUploadField 路由目标字段。
+      // 此处曾二次覆盖这两个全局处理器，导致离开「前端定制」后的上传被静默吞掉。
     }
 
     function syncFrontendPreview() {

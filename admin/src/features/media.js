@@ -9,7 +9,16 @@ import { formatBytes } from '../util/format.js';
 import { openModal, closeModal } from '../ui/modal.js';
 import { store } from '../state/store.js';
 
-let ctx = { getPosts: () => [], putPostFields: async () => false };
+// 编辑器侧能力（封面预览刷新、脏标记、正文插入）全部由主模块注入：
+// 这些函数定义在 main.js 的模块作用域内，此处直接调用会抛 ReferenceError。
+let ctx = {
+  getPosts: () => [],
+  putPostFields: async () => false,
+  syncPostCoverPreview: () => {},
+  markPostDirty: () => {},
+  insertMarkdownBlock: () => {},
+  insertImageIntoEditor: () => {},
+};
 
 export function initMedia(options = {}) { ctx = { ...ctx, ...options }; }
 
@@ -44,10 +53,10 @@ const POSTS_API = '/api/posts';
       if (!el) return;
       const s = mediaData?.stats;
       el.innerHTML = `
-        <div style="padding:12px 14px;font-size:11px;color:#6a6a70;line-height:1.9">
-          <div style="color:#c8b080;margin-bottom:4px">▤ 媒体库</div>
-          <div>图片 <b style="color:#a09a80">${s ? s.images : '—'}</b> · 音频 <b style="color:#a09a80">${s ? s.audios : '—'}</b></div>
-          <div>已引用 <b style="color:#a09a80">${s ? s.referenced : '—'}</b> · 未引用 <b style="color:#a09a80">${s ? s.orphan : '—'}</b></div>
+        <div style="padding:12px 14px;font-size:11px;color:var(--text-faint);line-height:1.9">
+          <div style="color:var(--accent);margin-bottom:4px">▤ 媒体库</div>
+          <div>图片 <b style="color:var(--text-dim)">${s ? s.images : '—'}</b> · 音频 <b style="color:var(--text-dim)">${s ? s.audios : '—'}</b></div>
+          <div>已引用 <b style="color:var(--text-dim)">${s ? s.referenced : '—'}</b> · 未引用 <b style="color:var(--text-dim)">${s ? s.orphan : '—'}</b></div>
           <div style="margin-top:6px;line-height:1.7">删除前会扫描引用；仍被引用的资源不会被删除。</div>
           <div style="margin-top:6px;line-height:1.7">上传大小限制：${mediaData?.limits ? formatBytes(mediaData.limits.uploadMaxBytes) : '35 MB'}</div>
         </div>`;
@@ -169,7 +178,7 @@ const POSTS_API = '/api/posts';
       el.innerHTML = mediaTasks.map((t) => `
         <div class="media-task${t.status === 'failed' ? ' failed' : ''}">
           <span class="tname" title="${escAttr(t.name)}">${esc(t.name)}</span>
-          ${t.duplicate && t.status !== 'ready' ? '<span style="color:#c08060">可能重复</span>' : ''}
+          ${t.duplicate && t.status !== 'ready' ? '<span style="color:var(--warn)">可能重复</span>' : ''}
           <span class="bar"><i style="width:${t.progress || 0}%"></i></span>
           <span>${t.status === 'failed' ? esc(t.error || '失败') : (statusText[t.status] || t.status)}${t.status === 'uploading' ? ` ${t.progress || 0}%` : ''}</span>
           ${t.status === 'uploading' ? `<button class="btn small" data-mtask="cancel" data-id="${t.id}">取消</button>` : ''}
@@ -486,7 +495,7 @@ const POSTS_API = '/api/posts';
       if (!btn) return;
       btn.onclick = () => openMediaPicker({ type: 'image', title: '选择封面图片', onPick: (m) => {
         const input = $('#fCover');
-        if (input) { input.value = m.url; syncPostCoverPreview(); markPostDirty(); }
+        if (input) { input.value = m.url; ctx.syncPostCoverPreview(); ctx.markPostDirty(); }
         closeMediaPicker();
       }});
     }
@@ -496,9 +505,9 @@ const POSTS_API = '/api/posts';
       if (!btn) return;
       btn.onclick = () => openMediaPicker({ type: 'all', title: '从媒体库插入', onPick: (m) => {
         if (m.type === 'audio') {
-          insertMarkdownBlock(`<div class="song-player" data-src="${m.url}" data-title="${m.name.replace(/\.[^.]+$/, '')}" data-artist="">♪ 播放音频</div>`);
+          ctx.insertMarkdownBlock(`<div class="song-player" data-src="${m.url}" data-title="${m.name.replace(/\.[^.]+$/, '')}" data-artist="">♪ 播放音频</div>`);
         } else {
-          insertImageIntoEditor(m.url, m.name.replace(/\.[^.]+$/, ''));
+          ctx.insertImageIntoEditor(m.url, m.name.replace(/\.[^.]+$/, ''));
         }
         closeMediaPicker();
       }});

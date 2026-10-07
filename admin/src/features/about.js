@@ -14,8 +14,8 @@ export function initAbout(options = {}) { ctx = { ...ctx, ...options }; }
     function renderAboutList() {
       const el = $('#postList');
       el.innerHTML = `
-        <div style="padding:12px 14px;font-size:11px;color:#6a6a70;line-height:1.9">
-          <div style="color:#c8b080;margin-bottom:4px">📄 关于页面</div>
+        <div style="padding:12px 14px;font-size:11px;color:var(--text-faint);line-height:1.9">
+          <div style="color:var(--accent);margin-bottom:4px">📄 关于页面</div>
           <div>右侧编辑「关于」页的全部文本与头像，</div>
           <div>保存后需点击「⬆ 推送」发布到网站。</div>
         </div>`;
@@ -90,8 +90,8 @@ export function initAbout(options = {}) { ctx = { ...ctx, ...options }; }
               <div class="form-group" style="flex:1"><label>头像地址 (src)</label><input id="fAvatar" value="${escAttr(data.avatar || '')}" placeholder="https://cdn.jsdelivr.net/gh/…@main/image/avatar.webp" /></div>
               <div class="form-group" style="flex:1"><label>预览</label>
                 <div style="display:flex;gap:10px;align-items:center;min-height:52px">
-                  <img id="avatarPreview" src="${escAttr(data.avatar || '')}" alt="头像预览" style="width:52px;height:52px;object-fit:cover;border:1px solid #2a2a30;border-radius:2px;display:${data.avatar ? 'block' : 'none'}" onerror="this.style.display='none'" />
-                  <small id="avatarHint" style="color:#5a5a50;font-size:10px">${data.avatar ? '' : '尚未设置头像，网站将显示书本标记'}</small>
+                  <img id="avatarPreview" src="${escAttr(data.avatar || '')}" alt="头像预览" style="width:52px;height:52px;object-fit:cover;border:1px solid var(--border);border-radius:2px;display:${data.avatar ? 'block' : 'none'}" onerror="this.style.display='none'" />
+                  <small id="avatarHint" style="color:var(--text-faint);font-size:10px">${data.avatar ? '' : '尚未设置头像，网站将显示书本标记'}</small>
                 </div>
               </div>
             </div>
@@ -136,7 +136,7 @@ export function initAbout(options = {}) { ctx = { ...ctx, ...options }; }
             <label>项目条目（序号 / 名称 / 网址 / 网页标题）</label>
             <div id="aboutProjectsRows" style="display:flex;flex-direction:column;gap:6px">${projects.map(it => aboutRowTemplate('project', it)).join('')}</div>
             <button class="btn small" type="button" id="btnAddProject" style="align-self:flex-start;margin-top:6px">＋ 添加一项</button>
-            <small style="display:block;color:#5a5a50;font-size:10px;margin-top:4px">网址解析：标题留空时保存会自动抓取网页 &lt;title&gt;；也可点行内「⤓ 解析」即时抓取后手动修改。</small>
+            <small style="display:block;color:var(--text-faint);font-size:10px;margin-top:4px">网址解析：标题留空时保存会自动抓取网页 &lt;title&gt;；也可点行内「⤓ 解析」即时抓取后手动修改。</small>
           </div>
         </div>`;
 
@@ -241,10 +241,6 @@ export function initAbout(options = {}) { ctx = { ...ctx, ...options }; }
         await loadAbout();
       } catch (e) { toast('保存失败: ' + e.message); }
     }
-
-    // ═══════════════════════════════════════
-    // 留言管理（Waline）
-    // ═══════════════════════════════════════
 
 
 export { renderAboutList, loadAbout, saveAbout, refreshAvatarPreview };

@@ -58,7 +58,7 @@ try {
   }
 
   let failures = 0;
-  for (const script of ['sync-center-e2e.mjs', 'post-list-e2e.mjs', 'post-form-e2e.mjs', 'editor-e2e.mjs', 'media-library-e2e.mjs', 'preflight-e2e.mjs', 'quality-e2e.mjs']) {
+  for (const script of ['sync-center-e2e.mjs', 'post-list-e2e.mjs', 'post-form-e2e.mjs', 'editor-e2e.mjs', 'media-library-e2e.mjs', 'preflight-e2e.mjs', 'quality-e2e.mjs', 'verify-admin-core.mjs']) {
     console.log(`\n──────── ${script} ────────`);
     const code = await runNode(join(ROOT, 'scripts', script));
     if (code !== 0) failures += 1;

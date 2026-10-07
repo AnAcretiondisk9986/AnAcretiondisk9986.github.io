@@ -6,7 +6,7 @@
   font-size: 15px;
   line-height: 1.95;
   letter-spacing: 0.02em;
-  color: #d9d4c8;
+  color: var(--text);
 }
 
 #editorBody .vditor-reset p,
@@ -23,20 +23,20 @@
 .acr-site-preview h2 {
   font-size: 1.55em;
   padding-bottom: 0.4em;
-  border-bottom: 1px solid #3a3428;
+  border-bottom: 1px solid var(--border);
 }
 
 #editorBody .vditor-reset h2::before,
-.acr-site-preview h2::before { content: '§'; margin-right: 8px; color: #c06050; font-family: Georgia, 'Times New Roman', serif; }
+.acr-site-preview h2::before { content: '§'; margin-right: 8px; color: var(--danger); font-family: Georgia, 'Times New Roman', serif; }
 
 #editorBody .vditor-reset h3,
 .acr-site-preview h3 { font-size: 1.22em; }
 
 #editorBody .vditor-reset a,
-.acr-site-preview a { color: #d99a86; }
+.acr-site-preview a { color: var(--danger-text); }
 
 #editorBody .vditor-reset img,
-.acr-site-preview img { max-width: 100%; height: auto; padding: 6px; border: 1px solid #3a3a40; }
+.acr-site-preview img { max-width: 100%; height: auto; padding: 6px; border: 1px solid var(--border-strong); }
 
 #editorBody .vditor-reset iframe,
 .acr-site-preview iframe {
@@ -45,8 +45,8 @@
   aspect-ratio: 16 / 9;
   height: auto;
   margin-block: 1.6em;
-  border: 1px solid #3a3a40;
-  background: #101014;
+  border: 1px solid var(--border-strong);
+  background: var(--surface-1);
 }
 
 #editorBody .vditor-reset iframe[src*='music.163.com'],
@@ -56,7 +56,7 @@
 .acr-site-preview iframe[src*='music.163.com'][src*='height=66'] { height: 66px; }
 
 #editorBody .vditor-reset mark,
-.acr-site-preview mark { padding: 0 0.22em; border-radius: 2px; background: rgba(200, 176, 128, 0.3); color: inherit; }
+.acr-site-preview mark { padding: 0 0.22em; border-radius: 2px; background: var(--accent-line); color: inherit; }
 
 #editorBody .vditor-reset u,
 .acr-site-preview u { text-decoration: underline; }
@@ -64,10 +64,10 @@
 .acr-site-preview s { text-decoration: line-through; }
 
 #editorBody .vditor-reset blockquote,
-.acr-site-preview blockquote { margin: 1.4em 0; padding-left: 1em; border-left: 3px solid #4a4020; color: #b8b0a0; }
+.acr-site-preview blockquote { margin: 1.4em 0; padding-left: 1em; border-left: 3px solid var(--accent-soft); color: var(--text-dim); }
 
 #editorBody .vditor-reset pre,
-.acr-site-preview pre { padding: 12px 14px; border: 1px solid #2a2a30; border-radius: 4px; background: #141418; overflow: auto; }
+.acr-site-preview pre { padding: 12px 14px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); overflow: auto; }
 
 #editorBody .vditor-reset code,
 .acr-site-preview code { font-family: ui-monospace, Consolas, 'Courier New', monospace; font-size: 0.92em; }
@@ -77,12 +77,12 @@
 #editorBody .vditor-reset th,
 #editorBody .vditor-reset td,
 .acr-site-preview th,
-.acr-site-preview td { padding: 6px 10px; border: 1px solid #3a3a40; }
+.acr-site-preview td { padding: 6px 10px; border: 1px solid var(--border-strong); }
 #editorBody .vditor-reset th,
-.acr-site-preview th { background: #1e1e24; }
+.acr-site-preview th { background: var(--surface-2); }
 
 #editorBody .vditor-reset hr,
-.acr-site-preview hr { margin: 2em 0; border: 0; border-top: 1px solid #3a3a40; }
+.acr-site-preview hr { margin: 2em 0; border: 0; border-top: 1px solid var(--border-strong); }
 
 /* 视频 / 音乐播放条的排版反馈 */
 #editorBody .vditor-reset .video-embed,
@@ -95,15 +95,15 @@
   gap: 12px;
   margin-block: 1.6em;
   padding: 12px 14px;
-  border: 1px solid #3a3a40;
+  border: 1px solid var(--border-strong);
   border-radius: 6px;
-  background: #16161a;
+  background: var(--surface-1);
 }
 
 #editorBody .vditor-reset .song-player audio,
 .acr-site-preview .song-player audio { width: 100%; height: 36px; }
 
 #editorBody .vditor-reset .music-embed,
-.acr-site-preview .music-embed { margin: 1.2em 0; padding: 10px 12px; border: 1px solid #2a2a30; border-radius: 6px; background: #16161a; }
+.acr-site-preview .music-embed { margin: 1.2em 0; padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-1); }
 #editorBody .vditor-reset .music-embed-meta,
-.acr-site-preview .music-embed-meta { margin-bottom: 8px; color: #c8b080; font-size: 12px; word-break: break-all; }
+.acr-site-preview .music-embed-meta { margin-bottom: 8px; color: var(--accent); font-size: 12px; word-break: break-all; }

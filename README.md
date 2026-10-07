@@ -1,7 +1,44 @@
 # Acretiondisk Blog — 更新日志
 
 > 使用 Astro 构建的个人博客，部署到 GitHub Pages（`https://blog.acretiondisk.top/`）。
-> 开发版本：**3.5.3**（2026-08-05）· 最新 Release：[v3.5.2](https://github.com/AnAcretiondisk9986/AnAcretiondisk9986.github.io/releases/latest)
+> 开发版本：**3.6.0**（2026-10-07）· 最新 Release：[v3.5.2](https://github.com/AnAcretiondisk9986/AnAcretiondisk9986.github.io/releases/latest)
+
+---
+
+## 3.6.0（2026-10-07）
+
+### 🧹 后台重构：功能清理、视觉语言重做与动线重排
+
+#### 功能清理与缺陷修复
+
+- **移除「留言（Waline）」模块**：公开站已无留言页（`src/pages` 无 guestbook，全站零引用）、`admin-server.mjs` 零相关接口，模块内指引的 `scripts/mock-waline.mjs` 与 `npm run mock:waline` 均不存在——纯死功能。删除 `admin/src/features/guestbook.js` 与全部引用。
+- **发布操作收敛**：顶部「拉取 / 推送 / 全量推送」从侧栏工具区（与「新建 / 刷新」混排）移入顶栏独立发布区（同步状态点 + 拉取 + 发布 + 全量），全局操作与模块操作彻底分离；相关 id 保持不变以维持测试契约。
+- **移除主区常驻提示条**（5 条操作提示，且在媒体 / 关于模块里仍显示文章编辑提示）；「上传自检」降级为媒体模块内的次要诊断入口。
+- **修复模块拆分遗留的 4 处运行时缺陷**（features 直接调用 main.js 模块作用域函数 → ES Module 下必然 ReferenceError）：
+  - 发布中心总览此前完全打不开，永久停在「正在读取同步状态…」（`fetchHealth` 未注入）；
+  - 编辑器工具栏「媒体库」插入、封面取自媒体库，选中图片即抛错（`insertImageIntoEditor` / `insertMarkdownBlock` / `syncPostCoverPreview` / `markPostDirty` 未注入）；
+  - 「外观」上传背景图抛错（`uploadImage` 未定义），且该模块二次覆盖 `#fileInput.onchange` 与 `document.onpaste`，导致离开后选图无反应。
+  - 统一改为经既有注入契约传递；新增 `setupGlobalFileInput()` 在启动时**绑定一次**全局文件输入与粘贴（`uploadImage` 内部按 `currentMode` 路由到正文 / 封面 / 画廊 / 头像 / 外观字段）。
+- **修复跨模块行为缺陷**：批量操作栏在画廊 / 媒体模块残留（可对先前勾选的文章误执行发布、归档、删除）；Ctrl+S 在媒体模块误落到文章保存并提示「没有未保存修改」。
+
+#### 视觉构成系统重做
+
+- `admin/styles/tokens.css` 从 7 行基础重置升级为**完整设计令牌**：表面层级、边框、文本、强调、状态色、间距刻度（4px 基准）、字号与行高、圆角、阴影层级、动效时长与布局尺寸。
+- **全量令牌化 385 处硬编码色值**（重构前共 116 种颜色、348 次出现，全仓 `var(--*)` 引用仅 1 处），覆盖 5 个 CSS 文件与 8 个 JS 模块的内联样式——剩余硬编码色值 **0**。
+- 视觉语言由「金色档案感」改为「**冷中性工具台**」：近黑分层表面 + 单一蓝色强调色 + 语义状态色（成功 / 警告 / 危险 / 信息）。
+- **统一弹窗与面板原语**：`.modal-mask` / `.modal` / `.modal-body` / `.panel` / `.modal-actions`；旧类名（`.video-modal-mask` / `.sync-section` / `.sync-body` 等）以 `:is()` 并入同一条规则，JS 动态标记无需一次性改完。
+
+#### 动线与信息架构
+
+- 结构改为「**顶栏 + 工作区**」：7 个平铺模块改为顶栏**分组导航**（内容：文章 / 画廊 / 媒体；站点：关于页 / 外观 / 访问控制），并修复原先 7 个 tab 在 300px 侧栏内被压成**竖排文字**的布局崩塌。
+- 侧栏只承载当前模块的列表：工具条与筛选固定，**只有列表滚动**——侧栏内容高度从 3638px（3.6 屏）降到不再溢出。
+- **保存动线显式化**：保存后状态栏与提示区分「已保存 · 已同步」/「已保存到本地 · 未发布」，未发布时明确提示「点顶栏『发布』上线」，解决「保存了但忘了推送、线上没更新」。
+
+#### 测试
+
+- 新增 `scripts/verify-admin-core.mjs`（14 项断言）：导航模块数、发布中心可打开、媒体库插入、外观上传回填（拦截 `/api/upload`，不写图库、不推送图片仓库）。
+- `quality-e2e` 侧栏滚动断言适配新骨架（工具条固定 + 列表独立滚动，注入长列表验证）；已并入 `npm run test:admin-all`。
+- `npm run test:admin-all` 全绿（单元 + API 冒烟 + 8 组浏览器冒烟）；`npm run build` 通过。
 
 ---
 

@@ -13,130 +13,149 @@
   <link rel="stylesheet" href="/admin/styles/preview-site.css" />
 </head>
 <body>
-  <aside class="sidebar">
-    <div class="sidebar-header">
-      <h1>ACR—ADMIN</h1>
-      <small>博客内容管理系统</small>
-      <div class="session-row">
-        <button class="btn small" id="btnLock" title="锁定管理面板，需要重新输入口令">🔒 锁定</button>
-        <button class="btn small danger" id="btnLogout" title="退出并清除留言凭据">退出</button>
-      </div>
-      <div class="mode-tabs" id="modeTabs">
+  <!-- ── 顶栏：品牌 / 模块导航（按使用频次分组） / 发布区 / 会话 ── -->
+  <header class="topbar">
+    <div class="topbar__brand">
+      <b>ACR—ADMIN</b>
+      <small>内容工作台</small>
+    </div>
+
+    <nav class="topbar__nav" id="modeTabs" aria-label="模块导航">
+      <div class="nav-group">
+        <span class="nav-group__label">内容</span>
         <button class="mode-tab active" data-mode="posts">文章</button>
         <button class="mode-tab" data-mode="gallery">画廊</button>
         <button class="mode-tab" data-mode="media">媒体</button>
-        <button class="mode-tab" data-mode="about">关于</button>
-        <button class="mode-tab" data-mode="frontend">前端定制</button>
-        <button class="mode-tab" data-mode="access">访问控制</button>
-        <button class="mode-tab" data-mode="guestbook">留言</button>
       </div>
-    </div>
-    <div class="sidebar-toolbar">
-      <button class="btn primary" id="btnNew">＋ 新建</button>
-      <button class="btn" id="btnRefresh">↻ 刷新</button>
-      <button class="btn" id="btnPull" style="border-color:#3a4080;color:#8090c0" title="从远端拉取最新内容（Git pull）">⇩ 拉取</button>
-      <button class="btn" id="btnPush" style="border-color:#3a6040;color:#80c080" title="推送文章/图片/画廊数据">⬆ 推送</button>
-      <button class="btn" id="btnPushFull" style="border-color:#806040;color:#c0a080" title="推送全部改动（含页面代码等），排除 reasonix.toml">⬆ 全量推送</button>
-      <button class="btn" id="btnSite" style="border-color:#3a4060;color:#80a0c0" title="打开博客网站">🌐</button>
-    </div>
-    <div class="sync-card" id="syncCard" title="打开发布中心">
-      <div class="sync-card-head">
+      <div class="nav-group">
+        <span class="nav-group__label">站点</span>
+        <button class="mode-tab" data-mode="about">关于页</button>
+        <button class="mode-tab" data-mode="frontend">外观</button>
+        <button class="mode-tab" data-mode="access">访问控制</button>
+      </div>
+    </nav>
+
+    <div class="topbar__publish">
+      <div class="sync-card" id="syncCard" title="打开发布中心：推送、拉取与操作记录">
         <span class="sync-dot" id="syncDot" data-state="unknown"></span>
         <span class="sync-state" id="syncState">检查同步状态…</span>
-        <button class="btn small" id="btnSyncRefresh" title="重新检查同步状态">↻</button>
+        <span class="sync-meta" id="syncMeta">—</span>
       </div>
-      <div class="sync-meta" id="syncMeta">—</div>
-    </div>
-    <div class="list-controls" id="listControls">
-      <div class="list-search">
-        <input id="fPostSearch" type="search" placeholder="搜索标题 / 描述 / Slug / 正文…" autocomplete="off" />
-        <button class="btn small" id="btnToggleFilters" title="显示 / 隐藏筛选与排序">筛选</button>
-      </div>
-      <div class="list-filters" id="listFilters" hidden>
-        <div class="filter-row">
-          <select id="fPostStatus" title="发布状态">
-            <option value="">全部状态</option>
-            <option value="published">已发布</option>
-            <option value="draft">草稿</option>
-            <option value="archived">已归档</option>
-          </select>
-          <select id="fPostAccess" title="访问权限">
-            <option value="">全部权限</option>
-            <option value="public">公开</option>
-            <option value="authorized">授权</option>
-            <option value="admin">管理员</option>
-          </select>
-        </div>
-        <div class="filter-row">
-          <select id="fPostTag" title="标签"><option value="">全部标签</option></select>
-        </div>
-        <div class="filter-row">
-          <input id="fPostFrom" type="date" title="起始发布日期" />
-          <span class="filter-sep">—</span>
-          <input id="fPostTo" type="date" title="结束发布日期" />
-        </div>
-        <div class="filter-row">
-          <select id="fPostSort" title="排序">
-            <option value="date-desc">发布日期 ↓</option>
-            <option value="date-asc">发布日期 ↑</option>
-            <option value="updated-desc">更新时间 ↓</option>
-            <option value="updated-asc">更新时间 ↑</option>
-            <option value="title-asc">标题 A→Z</option>
-            <option value="title-desc">标题 Z→A</option>
-            <option value="dayIndex-desc">同日序号 ↓</option>
-          </select>
-          <select id="fPostView" title="列表视图">
-            <option value="compact">紧凑列表</option>
-            <option value="card">卡片视图</option>
-          </select>
-        </div>
-        <div class="filter-row filter-actions">
-          <button class="btn small" id="btnClearFilters">清除筛选</button>
-          <span class="filter-count" id="postCountHint"></span>
-        </div>
+      <div class="publish-actions">
+        <button class="btn small ghost" id="btnSyncRefresh" title="重新检查同步状态">⟳</button>
+        <button class="btn small ghost" id="btnPull" title="从远端拉取最新内容（快进合并）">拉取</button>
+        <button class="btn small primary" id="btnPush" title="发布：先预览将提交的文件，确认后推送">发布</button>
+        <button class="btn small ghost" id="btnPushFull" title="全量发布：连同页面代码一起推送（排除 reasonix.toml）">全量</button>
       </div>
     </div>
-    <div class="batch-bar" id="batchBar" hidden>
-      <span id="batchCount">已选 0 项</span>
-      <span style="flex:1"></span>
-      <button class="btn small" data-batch="publish">发布</button>
-      <button class="btn small" data-batch="unpublish">撤回</button>
-      <button class="btn small" data-batch="archive">归档</button>
-      <button class="btn small danger" data-batch="delete">删除</button>
-      <button class="btn small" data-batch="clear">取消</button>
+
+    <div class="topbar__session">
+      <button class="btn small ghost" id="btnSite" title="打开博客网站">↗ 站点</button>
+      <button class="btn small ghost" id="btnLock" title="锁定管理面板，需要重新输入口令">锁定</button>
+      <button class="btn small ghost" id="btnLogout" title="退出并停止当前会话">退出</button>
     </div>
-    <div class="post-list" id="postList"><div class="empty-state" style="padding:30px">加载中…</div></div>
-  </aside>
-  <main class="main">
-    <div class="main-header">
-      <div class="main-header-title"><h2 id="editorTitle">选择或创建一篇文章</h2><span id="postEditorStatus" class="editor-save-status" aria-live="polite"></span></div>
-      <div class="header-actions">
-        <button class="btn" id="btnPreflight" style="display:none" disabled title="发布前检查：排版 / 元数据 / 缺 alt / 链接等">✓ 发布检查</button>
-        <button class="btn primary" id="btnSave" disabled>💾 保存 (Ctrl+S)</button>
-        <button class="btn danger" id="btnDelete" style="display:none">🗑 删除</button>
+  </header>
+
+  <div class="workspace">
+    <!-- ── 侧栏：只承载「当前模块的列表」及其工具，全局操作一律在顶栏 ── -->
+    <aside class="sidebar">
+      <div class="sidebar-toolbar">
+        <button class="btn primary" id="btnNew">＋ 新建</button>
+        <button class="btn" id="btnRefresh">↻ 刷新</button>
       </div>
-    </div>
-    <div class="tip-bar">
-      <span>💡 粘贴图片自动上传</span>
-      <span>▶ 正文工具栏可插入视频 / ♪ 音乐播放条</span>
-      <span>⚡ Ctrl+S 保存</span>
-      <span>⇩ 拉取=同步远端最新内容</span>
-      <span>⬆ 推送=内容 / 全量推送=含代码</span>
-    </div>
-    <div id="editorContainer"><div class="empty-state">← 从左侧列表选择文章，或点击「新建」</div></div>
-  </main>
+
+      <div class="list-controls" id="listControls">
+        <div class="list-search">
+          <input id="fPostSearch" type="search" placeholder="搜索标题 / 描述 / Slug / 正文…" autocomplete="off" />
+          <button class="btn small" id="btnToggleFilters" title="显示 / 隐藏筛选与排序">筛选</button>
+        </div>
+        <div class="list-filters" id="listFilters" hidden>
+          <div class="filter-row">
+            <select id="fPostStatus" title="发布状态">
+              <option value="">全部状态</option>
+              <option value="published">已发布</option>
+              <option value="draft">草稿</option>
+              <option value="archived">已归档</option>
+            </select>
+            <select id="fPostAccess" title="访问权限">
+              <option value="">全部权限</option>
+              <option value="public">公开</option>
+              <option value="authorized">授权</option>
+              <option value="admin">管理员</option>
+            </select>
+          </div>
+          <div class="filter-row">
+            <select id="fPostTag" title="标签"><option value="">全部标签</option></select>
+          </div>
+          <div class="filter-row">
+            <input id="fPostFrom" type="date" title="起始发布日期" />
+            <span class="filter-sep">—</span>
+            <input id="fPostTo" type="date" title="结束发布日期" />
+          </div>
+          <div class="filter-row">
+            <select id="fPostSort" title="排序">
+              <option value="date-desc">发布日期 ↓</option>
+              <option value="date-asc">发布日期 ↑</option>
+              <option value="updated-desc">更新时间 ↓</option>
+              <option value="updated-asc">更新时间 ↑</option>
+              <option value="title-asc">标题 A→Z</option>
+              <option value="title-desc">标题 Z→A</option>
+              <option value="dayIndex-desc">同日序号 ↓</option>
+            </select>
+            <select id="fPostView" title="列表视图">
+              <option value="compact">紧凑列表</option>
+              <option value="card">卡片视图</option>
+            </select>
+          </div>
+          <div class="filter-row filter-actions">
+            <button class="btn small" id="btnClearFilters">清除筛选</button>
+            <span class="filter-count" id="postCountHint"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="batch-bar" id="batchBar" hidden>
+        <span id="batchCount">已选 0 项</span>
+        <span class="batch-bar__spacer"></span>
+        <button class="btn small" data-batch="publish">发布</button>
+        <button class="btn small" data-batch="unpublish">撤回</button>
+        <button class="btn small" data-batch="archive">归档</button>
+        <button class="btn small danger" data-batch="delete">删除</button>
+        <button class="btn small" data-batch="clear">取消</button>
+      </div>
+
+      <div class="post-list" id="postList"><div class="empty-state">加载中…</div></div>
+    </aside>
+
+    <!-- ── 工作区 ── -->
+    <main class="main">
+      <div class="main-header">
+        <div class="main-header-title">
+          <h2 id="editorTitle">选择或创建一篇文章</h2>
+          <span id="postEditorStatus" class="editor-save-status" aria-live="polite"></span>
+        </div>
+        <div class="header-actions">
+          <button class="btn" id="btnPreflight" style="display:none" disabled title="发布前检查：排版 / 元数据 / 缺 alt / 链接等">✓ 发布检查</button>
+          <button class="btn primary" id="btnSave" disabled>保存 (Ctrl+S)</button>
+          <button class="btn danger" id="btnDelete" style="display:none">删除</button>
+        </div>
+      </div>
+      <div class="editor-host" id="editorContainer"><div class="empty-state">← 从左侧列表选择文章，或点击「新建」</div></div>
+    </main>
+  </div>
+
   <input type="file" id="fileInput" style="display:none" accept="image/*" />
 
   <!-- 插入视频对话框 -->
-  <div class="video-modal-mask" id="videoModal" style="display:none">
-    <div class="video-modal">
-      <h3>▶ 插入视频</h3>
+  <div class="modal-mask" id="videoModal" style="display:none">
+    <div class="modal">
+      <h3>插入视频</h3>
       <input id="fVideoInput" placeholder="粘贴 B站 / YouTube 视频链接，或官网 iframe 嵌入代码" />
-      <div class="video-hint">
+      <div class="modal-hint">
         支持：B站视频链接（bilibili.com/video/BV…）、YouTube 链接（youtube.com/watch / youtu.be / shorts）、或视频网站提供的 iframe 嵌入代码（粘贴后自动提取地址）。<br />
         提示：b23.tv 短链接请先打开，再复制跳转后的完整视频地址。
       </div>
-      <div class="video-actions">
+      <div class="modal-actions">
         <button class="btn" id="btnVideoCancel">取消</button>
         <button class="btn primary" id="btnVideoInsert">插入</button>
       </div>
@@ -144,9 +163,9 @@
   </div>
 
   <!-- 图片尺寸对话框 -->
-  <div class="video-modal-mask" id="imgSizeModal" style="display:none">
-    <div class="video-modal">
-      <h3>⛶ 设置图片尺寸</h3>
+  <div class="modal-mask" id="imgSizeModal" style="display:none">
+    <div class="modal">
+      <h3>设置图片尺寸</h3>
       <input id="fImgSizeSrc" placeholder="图片 URL（自动提取光标处图片，可修改）" />
       <div class="imgsize-row">
         <input id="fImgSizeVal" type="number" min="1" max="2000" value="60" />
@@ -156,11 +175,11 @@
         </select>
         <button class="btn small" id="btnImgSizeClear" title="清空宽度=按原图显示">原图</button>
       </div>
-      <div class="video-hint">
+      <div class="modal-hint">
         生成 &lt;img src="…" style="width: 60%"&gt; 替换光标处的图片语法；留空宽度则按原图显示（不限制）。<br />
         线上渲染宽度按文章内容宽度计算；也可直接手动修改 Markdown 源码。
       </div>
-      <div class="video-actions">
+      <div class="modal-actions">
         <button class="btn" id="btnImgSizeCancel">取消</button>
         <button class="btn primary" id="btnImgSizeInsert">应用</button>
       </div>
@@ -168,9 +187,9 @@
   </div>
 
   <!-- 插入音乐播放条对话框 -->
-  <div class="video-modal-mask" id="musicModal" style="display:none">
-    <div class="video-modal">
-      <h3>♪ 插入音乐播放条</h3>
+  <div class="modal-mask" id="musicModal" style="display:none">
+    <div class="modal">
+      <h3>插入音乐播放条</h3>
       <input id="fMusicSrc" placeholder="音频直链 / 网易云歌曲页链接，如 https://cdn.jsdelivr.net/gh/用户名/blog-images@main/audio/xxx.mp3" />
       <div id="musicProbe" class="music-probe" hidden></div>
       <div class="music-fields">
@@ -178,16 +197,16 @@
         <input id="fMusicArtist" placeholder="歌手（可选）" />
         <input id="fMusicCover" placeholder="封面图片 URL（可选）" />
       </div>
-      <div class="video-hint">
+      <div class="modal-hint">
         推荐 MP3（全平台可播）；FLAC 在 Safari / iOS 不支持，且 jsDelivr 单文件限 20MB。<br />
         也可直接粘贴已有的 &lt;div class="song-player" …&gt; 占位代码，自动提取字段重建。
       </div>
       <div class="music-upload-row">
         <input type="file" id="fMusicFile" accept="audio/*" style="display:none" />
-        <button class="btn small" id="btnMusicUpload">⬆ 上传音频</button>
+        <button class="btn small" id="btnMusicUpload">上传音频</button>
         <span class="music-upload-tip">单文件 ≤20MB（jsDelivr 上限），上传后自动回填直链</span>
       </div>
-      <div class="video-actions">
+      <div class="modal-actions">
         <button class="btn" id="btnMusicCancel">取消</button>
         <button class="btn primary" id="btnMusicInsert">插入</button>
       </div>
@@ -195,9 +214,9 @@
   </div>
 
   <!-- 封面裁剪对话框 -->
-  <div class="video-modal-mask" id="coverCropModal" style="display:none">
-    <div class="video-modal cover-crop-modal">
-      <h3>✂ 封面裁剪</h3>
+  <div class="modal-mask" id="coverCropModal" style="display:none">
+    <div class="modal cover-crop-modal">
+      <h3>封面裁剪</h3>
       <div class="cover-crop-view" id="cropView">
         <div class="cover-crop-loading" id="cropLoading">加载图片…</div>
         <img id="cropImg" alt="" />
@@ -218,65 +237,65 @@
   </div>
 
   <!-- 发布中心（同步状态 / 推送预览 / 操作日志） -->
-  <div class="video-modal-mask" id="syncModal" style="display:none">
-    <div class="video-modal sync-modal">
-      <h3 id="syncModalTitle">◈ 发布中心</h3>
-      <div class="sync-body" id="syncModalBody"></div>
-      <div class="video-actions" id="syncModalActions"></div>
+  <div class="modal-mask" id="syncModal" style="display:none">
+    <div class="modal modal--wide">
+      <h3 id="syncModalTitle">发布中心</h3>
+      <div class="modal-body" id="syncModalBody"></div>
+      <div class="modal-actions" id="syncModalActions"></div>
     </div>
   </div>
 
   <!-- 正文预览（管理面板内只读渲染） -->
-  <div class="video-modal-mask" id="previewModal" style="display:none">
-    <div class="video-modal sync-modal">
+  <div class="modal-mask" id="previewModal" style="display:none">
+    <div class="modal modal--wide">
       <h3 id="previewTitle">正文预览</h3>
-      <div class="sync-body">
-        <div class="sync-section">
-          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
-            <span class="sync-meta" id="previewMeta" style="margin:0"></span>
+      <div class="modal-body">
+        <div class="panel">
+          <div class="panel__row">
+            <span class="panel__meta" id="previewMeta"></span>
             <button class="btn small" id="previewOpenLink">打开线上页面</button>
           </div>
         </div>
         <div class="preview-body" id="previewBody"></div>
       </div>
-      <div class="video-actions">
+      <div class="modal-actions">
         <button class="btn primary" id="previewClose">关闭</button>
       </div>
     </div>
   </div>
 
   <!-- 发布前检查 -->
-  <div class="video-modal-mask" id="preflightModal" style="display:none">
-    <div class="video-modal sync-modal">
-      <h3>✓ 发布前检查</h3>
-      <div class="sync-body">
-        <div class="sync-section"><div id="preflightSummary"></div></div>
-        <div class="sync-section">
+  <div class="modal-mask" id="preflightModal" style="display:none">
+    <div class="modal modal--wide">
+      <h3>发布前检查</h3>
+      <div class="modal-body">
+        <div class="panel"><div id="preflightSummary"></div></div>
+        <div class="panel">
           <h4>检查项</h4>
           <div class="preflight-list" id="preflightList"></div>
         </div>
       </div>
-      <div class="video-actions">
+      <div class="modal-actions">
         <button class="btn primary" id="preflightClose">关闭</button>
       </div>
     </div>
   </div>
 
   <!-- 修订历史 -->
-  <div class="video-modal-mask" id="historyModal" style="display:none">
-    <div class="video-modal sync-modal">
-      <h3>🕘 修订历史：<span id="historyTitle"></span></h3>
-      <div class="sync-body">
-        <div class="sync-section">
+  <div class="modal-mask" id="historyModal" style="display:none">
+    <div class="modal modal--wide">
+      <h3>修订历史：<span id="historyTitle"></span></h3>
+      <div class="modal-body">
+        <div class="panel">
           <h4>历史版本</h4>
-          <div class="sync-ops" id="historyList" style="max-height:150px">加载中…</div>
+          <div class="ops-list ops-list--short" id="historyList">加载中…</div>
         </div>
-        <div class="sync-section">
+        <div class="panel">
           <h4>与当前版本的差异</h4>
           <div class="history-diff" id="historyDiff">选择左侧一个历史版本查看差异</div>
         </div>
       </div>
-      <div class="video-actions">
+      <div class="modal-actions">
         <button class="btn" id="historyClose">关闭</button>
         <button class="btn primary" id="historyRestore" disabled>恢复此版本</button>
       </div>
@@ -284,45 +303,45 @@
   </div>
 
   <!-- 锁定管理面板 -->
-  <div class="video-modal-mask" id="lockOverlay" style="display:none">
-    <div class="video-modal" style="width:420px">
-      <h3>🔒 管理面板已锁定</h3>
+  <div class="modal-mask" id="lockOverlay" style="display:none">
+    <div class="modal modal--narrow">
+      <h3>管理面板已锁定</h3>
       <div class="form-group"><label>管理口令</label><input id="lockInput" type="password" placeholder="输入管理口令解锁" autocomplete="current-password" /></div>
-      <div class="video-actions"><button class="btn primary" id="btnUnlock">解锁</button></div>
+      <div class="modal-actions"><button class="btn primary" id="btnUnlock">解锁</button></div>
     </div>
   </div>
 
   <!-- 媒体选择器（画廊 / 封面 / 正文复用） -->
-  <div class="video-modal-mask" id="mediaPickerModal" style="display:none">
-    <div class="video-modal sync-modal">
+  <div class="modal-mask" id="mediaPickerModal" style="display:none">
+    <div class="modal modal--wide">
       <h3 id="mediaPickerTitle">选择媒体</h3>
-      <div class="sync-body">
+      <div class="modal-body">
         <div class="media-toolbar">
           <input type="file" id="fMediaPickerUpload" multiple accept="image/*,audio/*" style="display:none" />
-          <button class="btn small" id="btnMediaPickerUpload">⬆ 上传新文件</button>
+          <button class="btn small" id="btnMediaPickerUpload">上传新文件</button>
           <span class="field-hint">点击缩略图即选择；上传后自动刷新。</span>
         </div>
         <div class="media-picker-grid" id="mediaPickerGrid"></div>
       </div>
-      <div class="video-actions">
+      <div class="modal-actions">
         <button class="btn" id="mediaPickerClose">取消</button>
       </div>
     </div>
   </div>
 
-  <!-- 上传自检：一次性展示目录/权限/转码/git/远端/磁盘检查结果 -->
-  <div class="video-modal-mask" id="uploadSelfCheckModal" style="display:none">
-    <div class="video-modal sync-modal">
-      <h3>上传自检</h3>
-      <div class="sync-body">
+  <!-- 诊断：上传链路自检（排障用，收纳在媒体模块的次要入口） -->
+  <div class="modal-mask" id="uploadSelfCheckModal" style="display:none">
+    <div class="modal modal--wide">
+      <h3>上传链路诊断</h3>
+      <div class="modal-body">
         <div id="uploadSelfCheckSummary" class="field-hint">正在检查…</div>
         <div id="uploadSelfCheckList"></div>
-        <details style="margin-top:10px">
-          <summary class="field-hint" style="cursor:pointer">环境信息</summary>
-          <pre id="uploadSelfCheckConfig" class="field-hint" style="white-space:pre-wrap;word-break:break-all;margin:8px 0 0"></pre>
+        <details class="selfcheck-env">
+          <summary class="field-hint">环境信息</summary>
+          <pre id="uploadSelfCheckConfig" class="field-hint"></pre>
         </details>
       </div>
-      <div class="video-actions">
+      <div class="modal-actions">
         <button class="btn" id="uploadSelfCheckRerun">重新检查</button>
         <button class="btn primary" id="uploadSelfCheckClose">关闭</button>
       </div>
@@ -330,11 +349,11 @@
   </div>
 
   <!-- 媒体引用 -->
-  <div class="video-modal-mask" id="mediaUsageModal" style="display:none">
-    <div class="video-modal">
+  <div class="modal-mask" id="mediaUsageModal" style="display:none">
+    <div class="modal">
       <h3>引用：<span id="mediaUsageTitle"></span></h3>
       <div id="mediaUsageList"></div>
-      <div class="video-actions">
+      <div class="modal-actions">
         <button class="btn primary" id="mediaUsageClose">关闭</button>
       </div>
     </div>

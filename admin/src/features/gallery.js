@@ -83,7 +83,7 @@ export function resetGallerySelection() { currentGalleryId = null; }
             <div class="form-group"><label>来源链接 (sourceUrl)</label><input id="fSourceUrl" value="${escAttr(item.sourceUrl||'')}" placeholder="https://..."/></div>
             <div class="form-group"><label>来源标题 (sourceTitle)</label><input id="fSourceTitle" value="${escAttr(item.sourceTitle||'')}" placeholder="来源名称"/></div>
           </div>
-          <div style="margin-top:8px;padding:8px;background:#1a1a1e;border-radius:2px">
+          <div style="margin-top:8px;padding:8px;background:var(--surface-2);border-radius:2px">
             <img src="${escAttr(item.src||'')}" alt="预览" style="max-width:100%;max-height:200px;display:block;margin:0 auto" onerror="this.style.display='none'" />
           </div>
         </div>`;

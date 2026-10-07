@@ -19,8 +19,10 @@ export function isModalOpen(el) {
   return Boolean(el && el.style.display !== 'none');
 }
 
+/** 当前打开的模态框（兼容新骨架 .modal-mask 与旧类名 .video-modal-mask）。 */
 export function openModals() {
-  return [...document.querySelectorAll('.video-modal-mask')].filter((m) => m.style.display !== 'none');
+  return [...document.querySelectorAll('.modal-mask, .video-modal-mask')]
+    .filter((m) => m.style.display !== 'none');
 }
 
 /** 安装全局 Tab 焦点锁定：焦点始终停留在最上层打开模态框内。 */

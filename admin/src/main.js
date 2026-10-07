@@ -7,7 +7,6 @@
     import { openModal, closeModal, isModalOpen, installFocusTrap } from './ui/modal.js';
     import { runPreflight } from './features/preflight.js';
     import { renderPrivateAccess, savePrivateAccess } from './features/access.js';
-    import { renderGuestbookList, loadGuestbookComments, clearCredentials } from './features/guestbook.js';
     import { initSyncCenter, closeSyncModal, isSyncModalOpen, refreshSyncStatus } from './features/sync-center.js';
     import { initAbout, renderAboutList, loadAbout, saveAbout, refreshAvatarPreview } from './features/about.js';
     import { initFrontend, renderFrontendList, loadFrontend, saveFrontend, syncFrontendPreview } from './features/frontend.js';
@@ -60,7 +59,7 @@
     function renderListError(message) {
       const el = $('#postList');
       if (!el) return;
-      el.innerHTML = `<div class="empty-state" style="padding:24px;text-align:center;color:#c06050">加载失败<br/><span style="font-size:10px;color:#8a5a50">${esc(message || '未知错误')}</span></div>`;
+      el.innerHTML = `<div class="empty-state" style="padding:24px;text-align:center;color:var(--danger)">加载失败<br/><span style="font-size:10px;color:var(--danger)">${esc(message || '未知错误')}</span></div>`;
       const box = el.querySelector('.empty-state');
       const btn = document.createElement('button');
       btn.className = 'btn small primary';
@@ -156,7 +155,7 @@
       const list = getFilteredPosts();
       $('#postCountHint').textContent = `${list.length} / ${posts.length} 篇`;
       if (!list.length) {
-        el.innerHTML = '<div class="empty-state" style="padding:30px">没有匹配的文章<br/><span style="font-size:10px;color:#55555c">试试减少筛选条件</span></div>';
+        el.innerHTML = '<div class="empty-state" style="padding:30px">没有匹配的文章<br/><span style="font-size:10px;color:var(--text-faint)">试试减少筛选条件</span></div>';
         updateBatchBar();
         return;
       }
@@ -331,9 +330,22 @@
       } else {
         btn.disabled = true;
         btn.textContent = '✓ 已保存';
-        setPostEditorStatus('已保存');
+        setPostEditorStatus(savedStatusText());
         store.set({ editor: { status: 'saved', dirty: false, saving: false, lastSavedAt: Date.now() } });
       }
+    }
+
+    /**
+     * 保存后的状态文案：写入本地 Markdown ≠ 线上已更新。
+     * 用工作区是否有未提交改动区分「未发布 / 已同步」，
+     * 避免「保存了但忘了发布、线上没更新」这一最常见的困惑。
+     */
+    function savedStatusText() {
+      const sync = store.get()?.syncStatus;
+      const dirtyCount = sync?.dirtyCount ?? 0;
+      return sync && sync.state === 'clean' && dirtyCount === 0
+        ? '已保存 · 已同步'
+        : '已保存到本地 · 未发布';
     }
 
     function savePostDraftNow() {
@@ -617,7 +629,7 @@
           };
         });
       } else {
-        el.innerHTML = '<div style="color:#6a6a70">该文章为草稿或管理员级，没有线上公开链接；推送并公开后才可分享。</div>';
+        el.innerHTML = '<div style="color:var(--text-faint)">该文章为草稿或管理员级，没有线上公开链接；推送并公开后才可分享。</div>';
       }
     }
 
@@ -693,7 +705,7 @@
               <div class="form-row" style="align-items:flex-start">
                 <div class="toggle-row" style="flex:1">
                   <div class="toggle${value.draft?'':' on'}" id="fDraftToggle" onclick="toggleDraft()"></div>
-                  <span>发布</span><span style="font-size:10px;color:#6a6a70" id="draftStatus">${value.draft?'当前为草稿':'已发布'}</span>
+                  <span>发布</span><span style="font-size:10px;color:var(--text-faint)" id="draftStatus">${value.draft?'当前为草稿':'已发布'}</span>
                 </div>
                 <div class="form-group" style="flex:1"><label>访问权限</label><select id="fAccess"><option value="public" ${value.access==='public'?'selected':''}>访客级 · 公开查看</option><option value="authorized" ${value.access==='authorized'?'selected':''}>授权级 · 验证站长网名</option><option value="admin" ${value.access==='admin'?'selected':''}>管理员级 · 私密文章密码</option></select></div>
               </div>
@@ -812,7 +824,14 @@
         postDirty = false;
         postBaselineSnapshot = '';
         currentSlug = data.slug;
-        toast(isExistingPost ? '已保存' : '已创建');
+        // 刷新同步状态，让「未发布」判定基于最新工作区，并在提示里给出下一步
+        try { await refreshSyncStatus({ silent: true }); } catch { /* 状态刷新失败不影响保存结果 */ }
+        const published = (store.get()?.syncStatus?.dirtyCount ?? 0) === 0;
+        if (published) {
+          toast(isExistingPost ? '已保存 · 已同步' : '已创建 · 已同步');
+        } else {
+          toast(`${isExistingPost ? '已保存到本地' : '已创建'} · 未发布（点顶栏「发布」上线）`);
+        }
         await loadPosts();
         await selectPost(data.slug, { skipLeaveGuard: true });
       } catch(e) {
@@ -897,6 +916,40 @@
       syncPostCoverPreview();
     }
 
+    /**
+     * 全局文件输入与粘贴：启动时绑定一次，供所有模块复用。
+     * uploadImage 内部按 currentMode 路由（正文 / 封面 / 画廊 / 关于头像 / 前端定制字段），
+     * 所以各模块不需要（也不应该）自己覆盖 onchange —— 前端定制曾覆盖掉全局处理器，
+     * 导致离开该模块后选图无反应。封面路径通过 postUploadTarget 传递。
+     */
+    function setupGlobalFileInput() {
+      const fileInput = $('#fileInput');
+      if (!fileInput) return;
+      fileInput.onchange = async () => {
+        const f = fileInput.files[0];
+        const target = postUploadTarget;
+        if (f) {
+          if (f.type.startsWith('audio/')) { await uploadAudioTrack(f); }
+          else { await uploadImage(f, target); }
+          fileInput.value = '';
+        }
+        postUploadTarget = 'content';
+      };
+      document.onpaste = async e => {
+        // 编辑器（Vditor）已接管粘贴时会先 preventDefault，此处跳过，避免同一张图上传两次
+        if (e.defaultPrevented) return;
+        const items = e.clipboardData?.items ? [...e.clipboardData.items] : [];
+        const audioItem = items.find(i => i.type.startsWith('audio/'));
+        const imgItem = items.find(i => i.type.startsWith('image/'));
+        const item = audioItem || imgItem;
+        if (item) {
+          e.preventDefault();
+          if (audioItem) { await uploadAudioTrack(audioItem.getAsFile()); }
+          else { await uploadImage(imgItem.getAsFile(), 'content'); }
+        }
+      };
+    }
+
     function setupUpload() {
       const area = $('#uploadArea'); if(!area) return;
       const fileInput = $('#fileInput');
@@ -927,13 +980,6 @@
         coverArea.ondragleave = ()=>coverArea.classList.remove('dragover');
         coverArea.ondrop = async e=>{e.preventDefault();e.stopPropagation();coverArea.classList.remove('dragover');const f=e.dataTransfer.files[0];if(f)await uploadImage(f,'cover')};
       }
-
-      fileInput.onchange = async ()=>{
-        const f=fileInput.files[0];
-        const target=postUploadTarget;
-        if(f){if(f.type.startsWith('audio/')){await uploadAudioTrack(f)}else{await uploadImage(f,target)}fileInput.value=''}
-        postUploadTarget='content';
-      };
 
       // URL import button
       const btnImport = $('#btnImportUrl');
@@ -969,21 +1015,8 @@
         btnImport.textContent = '导入'; btnImport.disabled = false;
       };
 
-      // Paste image / audio support
-      document.onpaste = async e => {
-        // TOAST UI 在两种模式下都已内置粘贴图片处理（addImageBlobHook）且先于 document 触发；
-        // 事件冒泡到这里时若已 preventDefault 说明编辑器已接管，跳过以免同一张图上传两次、插入两张
-        if (e.defaultPrevented) return;
-        const items = e.clipboardData?.items ? [...e.clipboardData.items] : [];
-        const audioItem = items.find(i=>i.type.startsWith('audio/'));
-        const imgItem = items.find(i=>i.type.startsWith('image/'));
-        const item = audioItem || imgItem;
-        if(item) {
-          e.preventDefault();
-          if(audioItem){ await uploadAudioTrack(audioItem.getAsFile()); }
-          else { await uploadImage(imgItem.getAsFile(),'content'); }
-        }
-      };
+      // 粘贴与文件选择由 setupGlobalFileInput() 在启动时统一绑定，
+      // 这里不再重复覆盖（避免各模式互相顶掉处理器）。
     }
 
     /* ── 插入视频（B站 / YouTube / 通用 iframe 嵌入） ── */
@@ -1936,7 +1969,16 @@
 
 
     document.addEventListener('keydown', e => {
-      if((e.ctrlKey||e.metaKey)&&e.key==='s'){e.preventDefault();currentMode==='gallery'?saveGalleryItem():currentMode==='about'?saveAbout():currentMode==='frontend'?saveFrontend():currentMode==='access'?savePrivateAccess():currentMode==='guestbook'?null:savePost()}
+      if((e.ctrlKey||e.metaKey)&&e.key==='s'){
+        e.preventDefault();
+        // 各模块只处理自己可保存的内容；媒体/画廊列表等无「保存」语义的模块不应落到文章保存上
+        // （此前 media 缺失分支，Ctrl+S 会误报「没有未保存修改」）
+        if(currentMode==='gallery') saveGalleryItem();
+        else if(currentMode==='about') saveAbout();
+        else if(currentMode==='frontend') saveFrontend();
+        else if(currentMode==='access') savePrivateAccess();
+        else if(currentMode==='posts') savePost();
+      }
     });
 
     bindVideoModal();
@@ -1944,16 +1986,37 @@
     bindImgSizeModal();
     bindCoverCropModal();
     setupMediaPicker();
+    setupGlobalFileInput();
     installFocusTrap();
     setupSessionControls();
     setupBatchControls();
     applySavedFocusMode();
-    initSyncCenter({ getMode: () => currentMode, reloadPosts: () => loadPosts(), reloadGallery: () => loadGallery() });
+    // 模块初始化：跨模块能力一律通过注入传递。
+    // features/* 是独立 ES Module，无法看到 main.js 的模块作用域，
+    // 直接调用这些函数会抛 ReferenceError（曾导致发布中心总览、媒体库「插入/封面」、
+    // 前端定制背景图上传全部失效）。
+    initSyncCenter({
+      getMode: () => currentMode,
+      reloadPosts: () => loadPosts(),
+      reloadGallery: () => loadGallery(),
+      fetchHealth,
+    });
     initGallery({ setupUpload, setupGalleryMediaButton });
-    initMedia({ getPosts: () => posts, putPostFields });
+    initMedia({
+      getPosts: () => posts,
+      putPostFields,
+      syncPostCoverPreview,
+      markPostDirty,
+      insertMarkdownBlock,
+      insertImageIntoEditor,
+    });
     initAbout({ setupUpload });
     fetchHealth();
-    initFrontend({ setupUpload, setUploadField: (v) => { frontendUploadField = v; } });
+    initFrontend({
+      setupUpload,
+      setUploadField: (v) => { frontendUploadField = v; },
+      uploadImage,
+    });
     initPosts({
       getPosts: () => posts,
       getSelection: () => selectedSlugs,
@@ -1982,6 +2045,13 @@
       store.set({ mode });
       const listControls = $('#listControls');
       if (listControls) listControls.style.display = mode === 'posts' ? '' : 'none';
+      // 批量操作只属于文章模块：切走后清空选择并隐藏操作栏，
+      // 否则在画廊/媒体里仍能对先前勾选的文章执行发布、归档、删除。
+      if (mode !== 'posts') {
+        selectedSlugs.clear();
+        const batchBar = $('#batchBar');
+        if (batchBar) batchBar.hidden = true;
+      }
       document.querySelectorAll('.mode-tab').forEach(t => t.classList.toggle('active', t.dataset.mode === mode));
       if (mode === 'gallery') {
         $('#btnNew').textContent = '＋ 新建';
@@ -2030,15 +2100,6 @@
         currentSlug = null; resetGallerySelection();
         $('#editorTitle').textContent = '访问控制'; $('#btnNew').style.display = 'none'; $('#btnDelete').style.display = 'none'; $('#btnSave').style.display = 'none';
         renderPrivateAccess();
-      } else if (mode === 'guestbook') {
-        currentSlug = null;
-        $('#editorTitle').textContent = '留言管理（Waline）';
-        $('#btnDelete').style.display = 'none';
-        $('#btnSave').style.display = 'none';
-        $('#btnNew').style.display = 'none';
-        $('#editorContainer').innerHTML = '<div class="empty-state">连接 Waline 服务后管理留言</div>';
-        renderGuestbookList();
-        loadGuestbookComments();
       } else {
         resetGallerySelection();
         $('#editorTitle').textContent = '选择或创建一篇文章';
@@ -2054,7 +2115,7 @@
 
     // ── 按钮分发 ──
     $('#btnNew').onclick = () => currentMode === 'media' ? triggerMediaUpload() : currentMode === 'gallery' ? newGalleryItem() : newPost();
-    $('#btnRefresh').onclick = () => currentMode === 'gallery' ? loadGallery() : currentMode === 'media' ? loadMedia() : currentMode === 'about' ? loadAbout() : currentMode === 'frontend' ? loadFrontend() : currentMode === 'access' ? renderPrivateAccess() : currentMode === 'guestbook' ? loadGuestbookComments() : loadPosts();
+    $('#btnRefresh').onclick = () => currentMode === 'gallery' ? loadGallery() : currentMode === 'media' ? loadMedia() : currentMode === 'about' ? loadAbout() : currentMode === 'frontend' ? loadFrontend() : currentMode === 'access' ? renderPrivateAccess() : loadPosts();
     $('#btnSave').onclick = () => currentMode === 'gallery' ? saveGalleryItem() : currentMode === 'about' ? saveAbout() : currentMode === 'frontend' ? saveFrontend() : savePost();
     $('#btnPreflight').onclick = showPreflight;
     $('#btnDelete').onclick = () => currentMode === 'gallery' ? (getCurrentGalleryId() && deleteGalleryItem(getCurrentGalleryId())) : (currentSlug && deletePost(currentSlug));
@@ -2112,14 +2173,13 @@
     }
 
     function logoutPanel() {
-      if (!confirm('退出管理面板？将清除留言凭据并停止当前会话。')) return;
-      clearCredentials();
+      if (!confirm('退出管理面板？将停止当前会话。')) return;
       setToken('');
       document.body.innerHTML = `
-        <div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#141418;color:#c8b080;font-family:inherit">
+        <div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:var(--bg);color:var(--accent);font-family:inherit">
           <h1 style="font-size:16px;letter-spacing:2px;font-weight:normal">已退出管理面板</h1>
-          <p style="color:#6a6a70;font-size:12px">凭据已清除。可关闭本页；重新打开 http://localhost:4322/admin 会重新获得本机口令。</p>
-          <button onclick="location.reload()" style="padding:7px 14px;border:1px solid #5a5020;background:#2a2818;color:#c8b080;border-radius:6px;cursor:pointer">重新进入</button>
+          <p style="color:var(--text-faint);font-size:12px">凭据已清除。可关闭本页；重新打开 http://localhost:4322/admin 会重新获得本机口令。</p>
+          <button onclick="location.reload()" style="padding:7px 14px;border:1px solid var(--accent-line);background:var(--surface-3);color:var(--accent);border-radius:6px;cursor:pointer">重新进入</button>
         </div>`;
     }
 

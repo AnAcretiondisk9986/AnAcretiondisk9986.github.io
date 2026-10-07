@@ -141,18 +141,20 @@ try {
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   check('窄屏无横向溢出', overflow <= 2, `overflow=${overflow}`);
 
-  // 侧栏纵向滚动
+  // 侧栏纵向滚动：新骨架下工具条与筛选固定，列表是唯一滚动区（侧栏保留 overflow 兜底）
   const sidebarOverflow = await page.$eval('.sidebar', (el) => getComputedStyle(el).overflowY);
-  check('侧栏启用纵向滚动', sidebarOverflow === 'auto', sidebarOverflow);
+  check('侧栏保留纵向滚动兜底', sidebarOverflow === 'auto', sidebarOverflow);
   await page.setViewport({ width: 1440, height: 420 });
   await sleep(400);
   const scrollInfo = await page.evaluate(() => {
-    const el = document.querySelector('.sidebar');
+    const el = document.querySelector('.post-list');
+    // mock 只有 1 篇；真实站点有 50+ 篇，这里造长列表验证「矮窗口下列表自身滚动」
+    el.innerHTML = Array.from({ length: 40 }, (_, i) => `<div class="post-item">item ${i}</div>`).join('');
     const before = el.scrollTop;
     el.scrollTop = 200;
-    return { scrollable: el.scrollHeight > el.clientHeight, before, after: el.scrollTop };
+    return { scrollable: el.scrollHeight > el.clientHeight, before, after: el.scrollTop, clientH: el.clientHeight, scrollH: el.scrollHeight };
   });
-  check('短窗口下侧栏可上下滑动', scrollInfo.scrollable && scrollInfo.after > scrollInfo.before, JSON.stringify(scrollInfo));
+  check('短窗口下列表可上下滑动（工具条不随列表滚走）', scrollInfo.scrollable && scrollInfo.after > scrollInfo.before, JSON.stringify(scrollInfo));
   await page.setViewport({ width: 1440, height: 950 });
 
   // 关于 / 前端定制模式可正常渲染

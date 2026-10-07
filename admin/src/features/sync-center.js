@@ -9,7 +9,14 @@ import { formatBytes } from '../util/format.js';
 import { store } from '../state/store.js';
 import { openModal, closeModal, isModalOpen } from '../ui/modal.js';
 
-let ctx = { getMode: () => 'posts', reloadPosts: () => {}, reloadGallery: () => {} };
+// fetchHealth 由主模块注入：它持有管理口令校验逻辑（/api/health），
+// 此处直接调用会因 ES Module 作用域隔离而抛 ReferenceError（发布中心总览曾因此打不开）。
+let ctx = {
+  getMode: () => 'posts',
+  reloadPosts: () => {},
+  reloadGallery: () => {},
+  fetchHealth: async () => null,
+};
 
     const SYNC_STATE_LABELS = {
       unknown: '状态未知', clean: '工作区干净', dirty: '有未提交的修改',
@@ -73,7 +80,7 @@ let ctx = { getMode: () => 'posts', reloadPosts: () => {}, reloadGallery: () => 
         const time = new Date(op.time).toLocaleString('zh-CN', { hour12: false });
         const cls = op.status === 'error' ? ' class="bad"' : '';
         const st = op.status === 'error' ? '失败' : op.status === 'skipped' ? '跳过' : '成功';
-        return `<div><span${cls}>[${st}]</span> ${esc(time)} ${esc(op.message || op.action)}${op.requestId ? ` <span style="color:#55555c">#${esc(op.requestId)}</span>` : ''}</div>`;
+        return `<div><span${cls}>[${st}]</span> ${esc(time)} ${esc(op.message || op.action)}${op.requestId ? ` <span style="color:var(--text-faint)">#${esc(op.requestId)}</span>` : ''}</div>`;
       }).join('')}</div>`;
     }
 
@@ -83,7 +90,7 @@ let ctx = { getMode: () => 'posts', reloadPosts: () => {}, reloadGallery: () => 
         const stat = (f.additions || f.deletions) ? ` <span class="add">+${f.additions || 0}</span> <span class="del">-${f.deletions || 0}</span>` : '';
         return `<div><span class="st">[${FILE_STATUS_LABELS[f.status] || f.status}]</span> ${esc(f.path)}${stat}</div>`;
       }).join('');
-      return `<div class="sync-file-list">${rows}</div><div style="color:#6a6a70;font-size:10px">共 ${preview.fileCount} 个文件，+${preview.insertions} / -${preview.deletions}${preview.binary ? `，${preview.binary} 个二进制文件` : ''}</div>`;
+      return `<div class="sync-file-list">${rows}</div><div style="color:var(--text-faint);font-size:10px">共 ${preview.fileCount} 个文件，+${preview.insertions} / -${preview.deletions}${preview.binary ? `，${preview.binary} 个二进制文件` : ''}</div>`;
     }
 
     function openSyncModal() {
@@ -137,7 +144,7 @@ let ctx = { getMode: () => 'posts', reloadPosts: () => {}, reloadGallery: () => 
       const [status, ops, health] = await Promise.all([
         refreshSyncStatus({ fetchRemote: true, silent: true }),
         loadOperations(),
-        fetchHealth(),
+        ctx.fetchHealth(),
       ]);
       const st = status || syncStatusCache || { state: 'sync-error' };
       const problem = (status && status.ok === false && status.error) || st.fetchError || (!status && st.error);
@@ -145,7 +152,7 @@ let ctx = { getMode: () => 'posts', reloadPosts: () => {}, reloadGallery: () => 
       const limitsHtml = limits ? `
         <div class="sync-section">
           <h4>⚙ 运行限制</h4>
-          <div style="color:#8a8a90;font-size:11px;line-height:1.9">
+          <div style="color:var(--text-dim);font-size:11px;line-height:1.9">
             本地上传 ≤ ${formatBytes(limits.uploadMaxBytes)} · 远程下载 ≤ ${formatBytes(limits.remoteMaxBytes)}
             · Git 超时 ${Math.round(limits.gitTimeoutMs / 1000)}s · 抓取超时 ${Math.round(limits.remoteFetchTimeoutMs / 1000)}s · 并发上传 ${limits.uploadConcurrency}
           </div>
@@ -153,16 +160,16 @@ let ctx = { getMode: () => 'posts', reloadPosts: () => {}, reloadGallery: () => 
       $('#syncModalBody').innerHTML = `
         <div class="sync-section">
           <h4>◐ 工作区状态：${esc(st.stateLabel || SYNC_STATE_LABELS[st.state] || st.state || '未知')}</h4>
-          <div style="color:#9a9aa0;font-size:11px;line-height:1.8">
-            分支 <b style="color:#c8b080">${esc(st.branch || '未知')}</b>
-            ${st.hasUpstream ? `· 远端 <b style="color:#c8b080">${esc(st.upstream || '')}</b> · 领先 ${st.ahead || 0} / 落后 ${st.behind || 0}` : '· 未设置远端跟踪分支'}
-            · 待提交文件 <b style="color:#c8b080">${st.dirtyCount ?? 0}</b>
+          <div style="color:var(--text-dim);font-size:11px;line-height:1.8">
+            分支 <b style="color:var(--accent)">${esc(st.branch || '未知')}</b>
+            ${st.hasUpstream ? `· 远端 <b style="color:var(--accent)">${esc(st.upstream || '')}</b> · 领先 ${st.ahead || 0} / 落后 ${st.behind || 0}` : '· 未设置远端跟踪分支'}
+            · 待提交文件 <b style="color:var(--accent)">${st.dirtyCount ?? 0}</b>
           </div>
           ${problem ? `<div class="sync-err">${esc(String(problem))}</div>` : ''}
         </div>
         <div class="sync-section">
           <h4>◈ 发布操作</h4>
-          <div style="color:#8a8a90;font-size:11px;line-height:1.8">推送前会先展示将要提交的文件；拉取只会快进合并，工作区有未提交改动时会跳过。</div>
+          <div style="color:var(--text-dim);font-size:11px;line-height:1.8">推送前会先展示将要提交的文件；拉取只会快进合并，工作区有未提交改动时会跳过。</div>
         </div>
         <div class="sync-section">
           <h4>◷ 最近操作</h4>
@@ -267,7 +274,7 @@ let ctx = { getMode: () => 'posts', reloadPosts: () => {}, reloadGallery: () => 
             <h4>✔ ${esc(data.message || '推送完成')}</h4>
             ${data.preview ? renderPreviewFiles(data.preview) : ''}
             ${warn}
-            ${data.requestId ? `<div style="color:#55555c;font-size:10px">requestId #${esc(data.requestId)}</div>` : ''}
+            ${data.requestId ? `<div style="color:var(--text-faint);font-size:10px">requestId #${esc(data.requestId)}</div>` : ''}
           </div>`;
         setSyncActions([
           { label: '返回', onClick: openSyncCenter },
@@ -304,7 +311,7 @@ let ctx = { getMode: () => 'posts', reloadPosts: () => {}, reloadGallery: () => 
           <div class="sync-section">
             <h4>⇩ 拉取结果</h4>
             <div class="${cls}">${esc(data.message || '')}</div>
-            ${data.requestId ? `<div style="color:#55555c;font-size:10px">requestId #${esc(data.requestId)}</div>` : ''}
+            ${data.requestId ? `<div style="color:var(--text-faint);font-size:10px">requestId #${esc(data.requestId)}</div>` : ''}
           </div>`;
         setSyncActions([
           { label: '返回', onClick: openSyncCenter },

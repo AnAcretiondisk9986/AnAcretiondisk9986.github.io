@@ -98,7 +98,7 @@ export function initPosts(options = {}) { ctx = { ...ctx, ...options }; }
     function renderHistoryList() {
       const el = $('#historyList');
       if (!historyState.revisions.length) { el.textContent = '暂无历史版本（首次保存后开始记录）'; return; }
-      el.innerHTML = historyState.revisions.map((r) => `<div><button class="btn small" data-rev="${escAttr(r.id)}">${esc(new Date(r.savedAt).toLocaleString('zh-CN', { hour12: false }))}</button> <span style="color:#55555c">${formatBytes(r.size)}</span></div>`).join('');
+      el.innerHTML = historyState.revisions.map((r) => `<div><button class="btn small" data-rev="${escAttr(r.id)}">${esc(new Date(r.savedAt).toLocaleString('zh-CN', { hour12: false }))}</button> <span style="color:var(--text-faint)">${formatBytes(r.size)}</span></div>`).join('');
       el.querySelectorAll('[data-rev]').forEach((btn) => { btn.onclick = () => loadRevisionDiff(btn.dataset.rev); });
     }
 
