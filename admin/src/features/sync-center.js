@@ -136,18 +136,10 @@ let ctx = {
       }
     }
 
-    async function openSyncCenter() {
-      openSyncModal();
-      $('#syncModalTitle').textContent = '◈ 发布中心';
-      $('#syncModalBody').innerHTML = '<div class="sync-section"><h4>正在读取同步状态…</h4></div>';
-      setSyncActions([{ label: '关闭', onClick: closeSyncModal }]);
-      const [status, ops, health] = await Promise.all([
-        refreshSyncStatus({ fetchRemote: true, silent: true }),
-        loadOperations(),
-        ctx.fetchHealth(),
-      ]);
-      const st = status || syncStatusCache || { state: 'sync-error' };
-      const problem = (status && status.ok === false && status.error) || st.fetchError || (!status && st.error);
+    /** 渲染发布中心总览。st 可先用缓存状态，remotePending 表示远端仍在后台核对 */
+    function renderSyncCenterBody(st, ops, health, { remotePending = false } = {}) {
+      st = st || { state: 'sync-error' };
+      const problem = st.fetchError || (st.ok === false ? st.error : '') || st.error || '';
       const limits = health?.limits;
       const limitsHtml = limits ? `
         <div class="sync-section">
@@ -159,7 +151,7 @@ let ctx = {
         </div>` : '';
       $('#syncModalBody').innerHTML = `
         <div class="sync-section">
-          <h4>◐ 工作区状态：${esc(st.stateLabel || SYNC_STATE_LABELS[st.state] || st.state || '未知')}</h4>
+          <h4>◐ 工作区状态：${esc(st.stateLabel || SYNC_STATE_LABELS[st.state] || st.state || '未知')}${remotePending ? ' <span style="color:var(--text-faint);font-weight:400">· 正在核对远端…</span>' : ''}</h4>
           <div style="color:var(--text-dim);font-size:11px;line-height:1.8">
             分支 <b style="color:var(--accent)">${esc(st.branch || '未知')}</b>
             ${st.hasUpstream ? `· 远端 <b style="color:var(--accent)">${esc(st.upstream || '')}</b> · 领先 ${st.ahead || 0} / 落后 ${st.behind || 0}` : '· 未设置远端跟踪分支'}
@@ -176,12 +168,29 @@ let ctx = {
           ${renderOperations(ops)}
         </div>
         ${limitsHtml}`;
+    }
+
+    async function openSyncCenter() {
+      openSyncModal();
+      $('#syncModalTitle').textContent = '◈ 发布中心';
       setSyncActions([
         { label: '⇩ 拉取远端', onClick: previewPullAction },
         { label: '⬆ 内容推送', primary: true, onClick: () => previewPushAction('content') },
         { label: '⬆ 全量推送', onClick: () => previewPushAction('full') },
         { label: '关闭', onClick: closeSyncModal },
       ]);
+
+      // 先用已有缓存 / 本地状态立刻渲染：核对远端要跑 git fetch，实测约 4.6s，
+      // 不该让「打开发布中心」卡在网络上（本地状态与操作日志本就够用）。
+      const [ops, health] = await Promise.all([loadOperations(), ctx.fetchHealth()]);
+      if (!isModalOpen($('#syncModal'))) return;
+      renderSyncCenterBody(syncStatusCache, ops, health, { remotePending: true });
+
+      // 远端结果回来后原地更新，不打断阅读
+      const status = await refreshSyncStatus({ fetchRemote: true, silent: true });
+      if (isModalOpen($('#syncModal'))) {
+        renderSyncCenterBody(status || syncStatusCache, ops, health, { remotePending: false });
+      }
     }
 
     async function previewPushAction(kind) {
