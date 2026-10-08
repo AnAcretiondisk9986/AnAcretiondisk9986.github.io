@@ -2,6 +2,19 @@
 
 > 本文件已在用户授权下公开于 GitHub 仓库。每位 Agent 完成工作后在此记录变更。
 
+**🩹 修复首页 Hero 大标题排版（中英混排被裁切 / 字形相贴）**
+
+- **症状**（用户反馈「首页大标题排版有问题」）：1440px 桌面端 `欢迎来到Blog.Acretiondisk.top` 与 `这是我的个人网站` 各被折成 2 行、共 4 行大黑块，且 `letter-spacing:-0.08em` 让中文字形相贴；390px 手机端拉丁串无法断行，横向溢出后被 `.fusion-hero{overflow:hidden}` 裁掉，「.top」整段消失（只剩 `Blog.Acretiondisl`）。
+- **根因**：`src/styles/fusion-theme.css` 的 `.fusion-hero h1` 用 `clamp(3rem, 7vw, 6.8rem)`（1440px 下约 100px）+ `line-height:0.98` + `letter-spacing:-0.08em`，而标题是中英混排、词间无空格且含 20 字符域名——最长不可断片段 `Blog.Acretiondisk.top ≈ 10.2em`，字号一旦超过「标题可用宽 / 10.2em」就横向溢出被祖级 `overflow:hidden` 裁切；`hero__content` 的 `max-width:760px` 又把可用宽压到约 595px，进一步加剧折行。
+- **修复**（`src/styles/fusion-theme.css`，单文件、CSS-only，未改文案与 DOM 结构）：
+  - `.fusion-hero h1`：字号 `clamp(2.6rem, 5.4vw, 5rem)`、`letter-spacing:-0.02em`（只保留紧凑感）、`line-height:1.1`、`max-width:100%`、`overflow-wrap:break-word`（用户把标题改更长时的兜底）；注释写明「可用宽 / 10.2em」这条不变量。
+  - `.fusion-hero__content`：`max-width:760px → 1040px`，给长标题更宽的排版空间（描述、按钮等各自仍有独立宽度约束，视觉不受影响）。
+  - `@media (max-width:720px)` 覆盖：`clamp(1.55rem, 5.2vw, 2.6rem)` + `line-height:1.14`——360px 视口（含滚动条）标题可用宽约 267px，字号必须 ≤ 约 26px 才能让域名整串放下。
+- **效果**：1920~721px 稳定 3 行（欢迎来到 / Blog.Acretiondisk.top / 这是我的个人网站），720~430px 部分宽度 2 行，390/360px 3 行；任何视口都无横向裁切、无词内断行、文档无横向溢出；五套视觉主题（静澈/流形/留白/行迹/fusion）表现完全一致。
+- **新增回归脚本** `scripts/verify-hero-title.mjs`（CDP 9224 + static-server 8766，与 `verify-catalog-title.mjs` 同套路）：13 个视口 × 5 项（标题未被裁切 / 长词未被词内折断 / 行高 ≥1.05 / 字距 ≤0.03em / 文档无横向溢出）+ 5 主题一致性，逐字符测量还原真实断行；**71/71 通过**。
+- **验证**：`npm run build` 107 页成功；`node scripts/verify-hero-title.mjs` 71/71；headless Chrome 截图实测 1920/1600/1440/1180/1000/900/820/721/720/600/430/390/360 十三个视口与五套主题。
+- **遗留**：`blog-template` 未同步（沿用既有约定，待用户决定）。
+
 **🏠 首页重构：从「全量文章列表」改为「个人档案导航中枢」（2026-08-14）**
 
 - **背景**：首页与 `/blog/` 功能高度重合——两页拉取同一份全量文章集合（过滤 + 排序逻辑逐字重复），首页「最新文章」区块实际展示全部文章（`v2.x` 起移除了 `.slice(0,3)`），与 `/blog/` 的 `PostCatalog` 是同一个列表、同一套排序/版式切换工具栏。

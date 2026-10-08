@@ -219,7 +219,7 @@
   z-index: 2;
   display: flex;
   min-height: inherit;
-  max-width: 760px;
+  max-width: 1040px;
   flex-direction: column;
   justify-content: flex-end;
   padding: clamp(34px, 7vw, 86px);
@@ -236,14 +236,23 @@
 }
 
 :root[data-visual-theme] .fusion-hero h1 {
-  max-width: 820px;
+  /* 标题是中英混排（「欢迎来到Blog.Acretiondisk.top」）且词间没有空格，
+     排版空间要按最长的不可断片段 Blog.Acretiondisk.top（≈10.2em）来算：
+     字号一旦超过「可用宽 / 10.2em」，拉丁串就横向溢出，被
+     .fusion-hero 的 overflow:hidden 直接裁掉（390px 手机端曾把 .top 整段吃掉）。
+     上限 5rem 配合内容区 1040px（扣除内边距后标题可用宽 ≈868px）留有余量；
+     overflow-wrap 只作为标题被改得更长时的兜底。 */
+  max-width: 100%;
   margin: 0 0 24px;
   color: #fff;
   font-family: var(--sans);
-  font-size: clamp(3rem, 7vw, 6.8rem);
+  font-size: clamp(2.6rem, 5.4vw, 5rem);
   font-weight: 700;
-  letter-spacing: -0.08em;
-  line-height: 0.98;
+  /* 原 -0.08em 对中文过度压缩（字形相贴），收到 -0.02em 只保留紧凑感 */
+  letter-spacing: -0.02em;
+  /* 原 0.98 让折行后的中文字形上下相碰 */
+  line-height: 1.1;
+  overflow-wrap: break-word;
 }
 
 :root[data-visual-theme] .fusion-hero h1 span,
@@ -1120,8 +1129,11 @@
 
   :root[data-visual-theme] .fusion-hero h1 {
     margin-bottom: 18px;
-    font-size: clamp(2.65rem, 12vw, 4.5rem);
-    letter-spacing: -0.075em;
+    /* 窄屏同样受「域名整串必须放下」约束：360px 视口（含滚动条）下标题
+       可用宽约 267px，字号 ≤ 约 26px 才能让 Blog.Acretiondisk.top 不被折断 */
+    font-size: clamp(1.55rem, 5.2vw, 2.6rem);
+    letter-spacing: -0.02em;
+    line-height: 1.14;
   }
 
   :root[data-visual-theme] .fusion-hero__description {
