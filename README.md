@@ -1,7 +1,7 @@
 # Acretiondisk Blog — 更新日志
 
 > 使用 Astro 构建的个人博客，部署到 GitHub Pages（`https://blog.acretiondisk.top/`）。
-> 开发版本：**3.7.0**（2026-10-15）· 最新 Release：[v3.5.2](https://github.com/AnAcretiondisk9986/AnAcretiondisk9986.github.io/releases/latest)
+> 开发版本：**3.7.0**（2026-10-15）· 最新 Release：[v3.7.0](https://github.com/AnAcretiondisk9986/AnAcretiondisk9986.github.io/releases/latest)
 
 ---
 
@@ -36,6 +36,23 @@
 
 新增可重复运行的基准与回归脚本：`perf:baseline`（含 CDN 口径）、`perf:verify`、
 `perf:images`、`perf:normalize-themes`。
+
+---
+
+## 3.6.2（2026-10-08）
+
+### 🐛 修复首页 Hero 大标题排版：中英混排被裁切与字形相贴
+
+标题为中英混排且词间无空格（含 20 字符域名），原字号 `clamp(3rem,7vw,6.8rem)` 配合
+`letter-spacing:-0.08em`、`line-height:0.98` 会让拉丁串横向溢出，被 `.fusion-hero` 的
+`overflow:hidden` 裁掉（390px 视口下 `.top` 整段消失），桌面端则被挤成 4 行。
+
+- h1 字号改为 `clamp(2.6rem,5.4vw,5rem)`，字距 `-0.02em`，行高 1.1，并加 `overflow-wrap` 兜底；
+- `.fusion-hero__content` 宽度 760px → 1040px，给长标题更宽的排版空间；
+- ≤720px 覆盖为 `clamp(1.55rem,5.2vw,2.6rem)`，保证 360px 下域名整串放下；
+- 新增 `scripts/verify-hero-title.mjs` 回归（13 视口 × 5 项 + 5 主题一致性，71/71 通过）。
+
+---
 
 ## 3.6.1（2026-10-07）
 
@@ -302,6 +319,8 @@
 - 验证：`npm run build` 19 页成功；产物含路由脚本与全部动画；dev 服务器冒烟 200。
 
 ---
+
+## 2.3.3（2026-08-02）
 
 ### 🐛 修复：同日随文图片/图集排序颠倒 + 画廊默认视图改为文章图集
 
