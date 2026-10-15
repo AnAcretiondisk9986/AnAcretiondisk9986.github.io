@@ -2,7 +2,7 @@
 
 /* Liquid Glass: two distinct material systems, both intentionally opaque enough for long-form reading. */
 :root[data-visual-theme='still'],
-:root[data-visual-theme='fluid'] {
+:root:root[data-visual-theme='fluid'] {
   color-scheme: light;
   --liquid-ink: #15201e;
   --liquid-muted: #52615c;
@@ -40,7 +40,7 @@
   --liquid-secondary: #172321;
 }
 
-:root[data-visual-theme='fluid'] {
+:root:root[data-visual-theme='fluid'] {
   --paper: #dfe8e0;
   --paper-deep: #d1ddd5;
   --paper-light: #f0f7f2;
@@ -54,7 +54,7 @@
 }
 
 :root[data-theme='dark'][data-visual-theme='still'],
-:root[data-theme='dark'][data-visual-theme='fluid'] {
+:root:root[data-theme='dark'][data-visual-theme='fluid'] {
   color-scheme: dark;
   --paper: #101816;
   --paper-deep: #0b1110;
@@ -83,7 +83,7 @@
 }
 
 :root[data-visual-theme='still'],
-:root[data-visual-theme='fluid'] {
+:root:root[data-visual-theme='fluid'] {
   background: var(--paper);
 }
 
@@ -949,7 +949,7 @@
 
 @media (prefers-reduced-transparency: reduce) {
   :root[data-visual-theme='still'],
-  :root[data-visual-theme='fluid'] {
+  :root:root[data-visual-theme='fluid'] {
     --liquid-surface: var(--paper-light);
   }
 
@@ -962,7 +962,7 @@
 
 @media (prefers-contrast: more) {
   :root[data-visual-theme='still'],
-  :root[data-visual-theme='fluid'] {
+  :root:root[data-visual-theme='fluid'] {
     --liquid-surface: var(--paper-light);
     --liquid-highlight: var(--ink);
   }

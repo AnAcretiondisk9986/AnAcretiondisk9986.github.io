@@ -1,0 +1,130 @@
+@charset "UTF-8";
+
+/*
+ * 主题共享层：所有视觉主题都必须加载的规则。
+ *
+ * 这些规则原先散落在 minimal-theme.css / liquid-theme.css 中，但它们并不属于
+ * 任何单一主题（文案切换、无障碍工具类、关于页的主题选择器 UI，以及仍需在
+ * 所有主题下隐藏的 legacy hero 层）。主题样式改为按需加载后，若继续留在主题
+ * 文件里，用户使用 cyanotype 主题时就会丢失这些规则。
+ *
+ * 由 scripts/ 中的优化流程从原文件抽出，内容与原处保持一致。
+ */
+
+/* ── 两套文案都由服务端输出，仅让当前视觉主题的语气进入布局和无障碍树。 ── */
+.theme-copy,
+[data-theme-copy-minimal] {
+  display: inline;
+}
+
+[data-theme-copy-trace] {
+  display: none;
+}
+
+:root[data-visual-theme='trace'] [data-theme-copy-minimal] {
+  display: none;
+}
+
+:root[data-visual-theme='trace'] [data-theme-copy-trace] {
+  display: inline;
+}
+
+/* ── 无障碍工具类 ── */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ── 关于页的主题选择器 UI（所有主题下都要可见） ── */
+.appearance-settings {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding-block: 22px;
+  border-bottom: 1px solid var(--rule-strong);
+}
+
+.appearance-heading .eyebrow {
+  margin-bottom: 5px;
+}
+
+.appearance-heading h2 {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 1.15rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.appearance-selector {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(94px, 1fr));
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--rule);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--paper-deep) 50%, transparent);
+}
+
+.appearance-selector button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 42px;
+  padding: 0 15px;
+  border: 0;
+  border-radius: 5px;
+  color: var(--ink-soft);
+  font: 600 0.82rem/1 var(--sans);
+  background: transparent;
+  cursor: pointer;
+  transition: color 160ms ease, background 160ms ease, box-shadow 160ms ease, transform 100ms ease-out;
+}
+
+.appearance-selector button:active {
+  transform: scale(0.97);
+}
+
+.appearance-selector button[aria-pressed='true'] {
+  color: var(--ink);
+  background: var(--paper-light);
+  box-shadow: 0 1px 4px var(--shadow);
+}
+
+.appearance-selector button:focus-visible {
+  outline: 2px solid var(--red);
+  outline-offset: 2px;
+}
+
+.appearance-swatch {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  border: 1px solid rgba(20, 20, 20, 0.2);
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 4px #f7f7f5;
+}
+
+.appearance-swatch--minimal {
+  background: #d84b40;
+}
+
+.appearance-swatch--trace {
+  background: #9a7b40;
+  box-shadow: inset 0 0 0 4px #e9e1cd;
+}
+
+/* ── Liquid 主题的 hero 层：默认隐藏，由 still/fluid 主题规则再打开 ── */
+.liquid-hero-media,
+.liquid-hero-copy {
+  display: none;
+}

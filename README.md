@@ -1,9 +1,41 @@
 # Acretiondisk Blog — 更新日志
 
 > 使用 Astro 构建的个人博客，部署到 GitHub Pages（`https://blog.acretiondisk.top/`）。
-> 开发版本：**3.6.1**（2026-10-07）· 最新 Release：[v3.5.2](https://github.com/AnAcretiondisk9986/AnAcretiondisk9986.github.io/releases/latest)
+> 开发版本：**3.7.0**（2026-10-15）· 最新 Release：[v3.5.2](https://github.com/AnAcretiondisk9986/AnAcretiondisk9986.github.io/releases/latest)
 
 ---
+
+## 3.7.0（2026-10-15）
+
+### ⚡ 全站性能优化：首页真实体积 −77%、文章目录 −81%，并修复了构建链路
+
+量化报告与复现方式见 **[PERFORMANCE_REPORT.md](./PERFORMANCE_REPORT.md)**。
+
+> 此前测量只统计站内资源，而本站 294 处图片引用都在 jsDelivr 上，真实成本远高于站内数字。
+> 下表补齐 CDN 统计（站内 + CDN）。
+
+- **首页 hero 图**：一张 3840×2160 / **1.03 MB** 的 4K 背景图占了首页约 96% 的体积，
+  压到 2560×1440 / **207 KB**（−80%），画质人工比对无损感知。
+- **文章封面**：卡片封面此前直接引用原图（首页 9 张合计 **2.18 MB**），
+  而显示宽度只有约 300px —— 改用已有 480px 缩略图后降到 **368 KB**（−83%）。
+- **图片**：站点图标与正文大图按实际显示尺寸重制，本地图片总量 2687 → 417 KB（−84.5%）。
+  仅页头 LOGO 一项就为**每个页面**省下约 119 KB（48×48 的显示框里塞着 512×512 原图，
+  暗色 LOGO 还因 CSS `content: url()` 在每页被强制加载）。
+- **图库页**：387 张卡片中有 369 张被分页 CSS 隐藏却仍由服务端全量渲染 ——
+  改为客户端按页构建后，HTML 1320 → 651 KB，DOM 节点 10745 → 3058。
+- **CSS**：5 套视觉主题此前全部随每个页面加载（实测使用率仅 11–15%），
+  改为只加载当前主题、其余按需，首屏 CSS 172.9 → 119.6 KB。
+- **CDN 镜像降级**：原先只有图库页有降级逻辑（且每次导航重复注册监听器），
+  首页 hero 与文章正文图片在 jsDelivr 被墙时直接白图 —— 已抽为全站脚本。
+  顺带修掉降级判断误用 `img.currentSrc` 导致「重试了却没换镜像」的缺陷。
+- **构建**：修复 `astro sync` 阶段的 picomatch CJS 崩溃 —— 此前 `npm run build` 表面 exit 0，
+  但 `dist/` 其实一直停留在旧日期。先以 postinstall 补丁止血，确认问题在 Vite 侧后
+  **升级 astro 7.1.6 → 7.4.0（vite 8.3.4）根治，补丁已整体移除**。
+- **管理后台**：`readPosts()` 补齐缓存与写路径失效，`GET /api/posts` 61 → **7 ms**；
+  媒体引用扫描加缓存；vendor 静态资源启用长缓存。
+
+新增可重复运行的基准与回归脚本：`perf:baseline`（含 CDN 口径）、`perf:verify`、
+`perf:images`、`perf:normalize-themes`。
 
 ## 3.6.1（2026-10-07）
 

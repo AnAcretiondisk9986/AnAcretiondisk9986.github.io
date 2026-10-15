@@ -1,11 +1,12 @@
 ---
 import '../styles/tokens.css';
 import '../styles/global.css';
-import '../styles/minimal-theme.css';
-import '../styles/liquid-theme.css';
-import '../styles/cyanotype-theme.css';
+import '../styles/theme-shared.css';
 import '../styles/fusion-theme.css';
 import { ClientRouter } from 'astro:transitions';
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import ThemeCopy from '../components/ThemeCopy.astro';
 import EdgeNotes from '../components/layout/EdgeNotes.astro';
 import SiteHeader from '../components/layout/SiteHeader.astro';
@@ -47,6 +48,43 @@ const frontendStyle = [
   `--liquid-radius:${frontend.cardRadius}px`,
   `--liquid-art-font:${displayFont}`,
 ].join(';');
+
+// ── 视觉主题样式按需加载 ──
+// 原先 5 套主题 CSS 全部随每个页面加载（浏览器实测 CSS 使用率仅 ~15%）。
+// 现在只同步加载当前主题，其余主题在页面空闲时预取，切换时立即生效。
+// trace 主题没有独立样式（其规则已在 theme-shared.css / fusion-theme.css 中）。
+const themeFileOf: Record<string, string | null> = {
+  cyanotype: 'cyanotype-theme.css',
+  still: 'liquid-theme.css',
+  fluid: 'liquid-theme.css',
+  minimal: 'minimal-theme.css',
+  trace: null,
+};
+// 用内容哈希做缓存失效：主题文件内容不变则 URL 不变（可长缓存），变了立即失效
+const themeFileHashes: Record<string, string> = {};
+const themeUrlOf = (file: string | null) => {
+  if (!file) return null;
+  if (!(file in themeFileHashes)) {
+    try {
+      themeFileHashes[file] = createHash('sha256')
+        .update(readFileSync(join(process.cwd(), 'public', 'themes', file)))
+        .digest('hex')
+        .slice(0, 8);
+    } catch {
+      themeFileHashes[file] = 'dev';
+    }
+  }
+  return `/themes/${file}?v=${themeFileHashes[file]}`;
+};
+const themeUrls = Object.fromEntries(
+  Object.entries(themeFileOf).map(([theme, file]) => [theme, themeUrlOf(file)]),
+);
+const defaultThemeUrl = themeUrls[defaultVisualTheme] ?? themeUrls.cyanotype;
+// 首屏同步选定主题（避免先渲染一屏再换主题的闪烁）。
+// 末尾的去重逻辑用于 ClientRouter 导航：head 合并后可能残留旧的 theme-css。
+// 注意：这里**不做**其余主题的预取 —— 只有 /about 页有主题切换器，
+// 在其他页面预取会让每次访问都白白下载全部主题（实测会把 CSS 从 119KB 拉回 193KB）。
+const themeScript = `(function(){var F=${JSON.stringify(themeUrls)};var d=document.documentElement.dataset.defaultVisualTheme||'cyanotype';var w=d;try{var s=localStorage.getItem('visual-theme');if(s&&Object.prototype.hasOwnProperty.call(F,s))w=s;}catch(e){}document.documentElement.dataset.visualTheme=w;var all=document.querySelectorAll('#theme-css');var l=all.length?all[0]:null;for(var i=1;i<all.length;i++){all[i].parentNode.removeChild(all[i]);}var h=F[w];if(!h){if(l&&l.parentNode)l.parentNode.removeChild(l);l=null;}else if(!l){l=document.createElement('link');l.rel='stylesheet';l.id='theme-css';l.href=h;document.head.appendChild(l);}else if(l.getAttribute('href')!==h){l.setAttribute('href',h);}window.__ACR_THEME_CSS={files:F,current:h||null,link:h?l:null};})();`;
 const pageTitle = title === 'Acretiondisk' ? siteName : `${title} · ${siteName}`;
 ---
 
@@ -61,8 +99,16 @@ const pageTitle = title === 'Acretiondisk' ? siteName : `${title} · ${siteName}
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
     <link rel="preconnect" href="https://fastly.jsdelivr.net" crossorigin />
     <title>{pageTitle}</title>
+    {/* 视觉主题样式：默认主题由服务端直出，其余主题由内联脚本按 localStorage 替换 URL */}
+    <link rel="stylesheet" id="theme-css" href={defaultThemeUrl} />
+    <script is:inline set:html={themeScript} />
     <script>
       import '../scripts/appearance.ts';
+    </script>
+    {/* jsDelivr 镜像降级：必须在图片大量加载前注册，故放在 head。
+        原先只有图库页有这段逻辑，首页 hero 与文章正文图片在被墙时会直接白图。 */}
+    <script>
+      import '../scripts/cdn-fallback.ts';
     </script>
   </head>
   <body>

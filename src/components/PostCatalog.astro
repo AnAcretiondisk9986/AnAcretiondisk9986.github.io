@@ -3,6 +3,7 @@ import Icon from './Icon.astro';
 import type { CollectionEntry } from 'astro:content';
 import ThemeCopy from './ThemeCopy.astro';
 import { firstImageFromBody } from '../lib/post-cover';
+import { thumbOf } from '../lib/gallery';
 
 interface Props {
   posts: CollectionEntry<'blog'>[];
@@ -21,10 +22,14 @@ for (const post of posts) {
   dayCounts.set(key, (dayCounts.get(key) ?? 0) + 1);
 }
 
-const covers = new Map(posts.map((post) => [
-  post.id,
-  post.data.cover?.trim() || firstImageFromBody(post.body ?? ''),
-]));
+// 卡片封面一律走 480px 缩略图（image/thumb/*.webp，平均约 20KB）：
+// 此前直接引用原图，首页 9 张封面就带来 2.1MB 传输（原图 185～645KB 不等），
+// 而封面显示区只有约 300px 宽。thumbOf() 对非 CDN 图片原样返回，安全。
+// original 一并带出，供 cdn-fallback.ts 在缩略图缺失（镜像全部失败）时回退。
+const covers = new Map(posts.map((post) => {
+  const original = post.data.cover?.trim() || firstImageFromBody(post.body ?? '');
+  return [post.id, { src: thumbOf(original), original }];
+}));
 ---
 
 <div class="catalog-collection">
@@ -71,7 +76,8 @@ const covers = new Map(posts.map((post) => [
 
   <div class="catalog-list" data-catalog-list data-catalog-layout={toolbar ? 'rows' : 'cards'} data-order-list data-catalog-fixed={toolbar ? undefined : ''}>
     {posts.map((post, index) => {
-      const cover = covers.get(post.id) ?? '';
+      const coverEntry = covers.get(post.id);
+      const cover = coverEntry?.src ?? '';
       const dayKey = post.data.pubDate.toISOString().slice(0, 10);
       const href = `${normalizedBasePath}${post.id}/`;
       return (
@@ -80,7 +86,15 @@ const covers = new Map(posts.map((post) => [
             <span data-order-sequence data-order-pad="2">{String(index + 1).padStart(2, '0')}</span>
           </div>
           <figure class="catalog-cover" data-empty={cover ? undefined : ''}>
-            {cover && <img src={cover} alt="" loading={index < 3 ? 'eager' : 'lazy'} decoding="async" />}
+            {cover && (
+              <img
+                src={cover}
+                alt=""
+                loading={index < 3 ? 'eager' : 'lazy'}
+                decoding="async"
+                data-original-cover={coverEntry && coverEntry.original !== cover ? coverEntry.original : undefined}
+              />
+            )}
           </figure>
           <div class="catalog-content">
             {isPrivate && <span class="private-entry__mark">LOCKED</span>}

@@ -11,3 +11,5 @@ src/content/blog/.obsidian/
 .admin-token
 .admin-backups/
 .admin-revisions/
+perf-reports/
+.perf/

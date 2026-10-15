@@ -4,6 +4,9 @@ import sharp from 'sharp';
 
 // Windows 长驻进程：关闭 libvips 操作缓存与文件句柄复用。
 // 否则被 sharp 读过的图片会被进程持续占用，导致后续删除/覆盖报 EBUSY（Device or resource busy）。
+// 说明：曾实测改为有界缓存 sharp.cache({ memory: 50, files: 0, items: 100 })，
+// 对真实媒体库（431 张图，逐个 metadata 探测）耗时无可见收益（0.66~0.73ms/张，与关闭时同一噪声区间，
+// 因为每次探测的文件都不同、无法命中操作缓存），而 files>0 会重新引入句柄占用风险，故保持关闭。
 sharp.cache(false);
 import decodeHeic from 'heic-decode';
 import { getHeicOrientation } from './admin/heic-exif.mjs';
@@ -513,39 +516,105 @@ function withPublicInfo(post, { id, content } = {}) {
   };
 }
 
+// ── 文章列表缓存 ──
+// readPosts() 原先每次调用都要 readdir + 全量 readFile + gray-matter 解析 + sha256 + 摘要正则清洗，
+// 面板每次刷新（文章列表 / 媒体库引用扫描）都重复付出这份 O(文章数) 的磁盘 IO。
+// 这里按「文件名 → 该文件的解析结果 + mtimeMs/size」做缓存：
+//   · readdir 结果作为候选集合，新增/删除/改名文件自然进出；
+//   · 每个在列文件用 stat 的 mtimeMs + size 校验，不一致才重新读盘解析；
+//   · 任何写入路径（新建/保存/删除/拉取/定时发布）都会改变 mtime 或 size，因此缓存必定失效。
+// 返回数组与其元素均为副本（tags 也复制），避免调用方排序或改动影响缓存内容。
+const postFileCache = new Map(); // 文件名 → { mtimeMs, size, post }
+let postListEpoch = 0;            // 显式失效计数：写路径主动 +1，使 stat 校验之外也能兜底失效
+let postListSnapshot = null;      // { epoch, posts }
+
+/** 显式失效文章列表缓存（写入 / 拉取等改变文章集合的操作后调用，立即生效）*/
+function invalidatePostCache() {
+  postListEpoch += 1;
+  postListSnapshot = null;
+}
+
+/** 把「已读到的原始 markdown」装成列表项（保持原有字段与顺序）*/
+function buildPostEntry(slug, raw, data, content, updatedAt) {
+  return {
+    slug,
+    contentHash: sha256(raw),
+    title: data.title || slug,
+    description: data.description || '',
+    cover: data.cover || '',
+    pubDate: safeDate(data.pubDate),
+    tags: data.tags || [],
+    draft: data.draft ?? false,
+    access: ['public', 'authorized', 'admin'].includes(data.access) ? data.access : 'public',
+    archived: data.archived ?? false,
+    scheduledAt: safeIso(data.scheduledAt),
+    dayIndex: data.dayIndex || undefined,
+    updatedAt,
+    excerpt: excerptOf(content),
+    astroId: astroIdFor(slug, data),
+  };
+}
+
+/** 返回缓存条目的副本（含 tags 数组），保证缓存不被外部改动污染 */
+function clonePostEntry(post) {
+  return { ...post, tags: Array.isArray(post.tags) ? post.tags.slice() : post.tags };
+}
+
 async function readPosts() {
   const files = await readdir(BLOG_DIR);
-  const posts = [];
-  for (const file of files) {
-    if (!file.endsWith('.md') && !file.endsWith('.mdx')) continue;
+  // 只保留文章文件：与缓存条目一一对应，顺序沿用 readdir 的原始顺序（与优化前完全一致）
+  const candidates = files.filter((file) => file.endsWith('.md') || file.endsWith('.mdx'));
+  const epoch = postListEpoch;
+  const reusable = postListSnapshot && postListSnapshot.epoch === epoch ? postListSnapshot.posts : null;
+  if (reusable) {
+    // 快速路径：先用文件名列表判断是否有结构性变化（新增 / 删除 / 改名）
+    let structuralChange = candidates.length !== reusable.length;
+    if (!structuralChange) {
+      for (let i = 0; i < candidates.length; i += 1) {
+        if (candidates[i] !== reusable[i].name) { structuralChange = true; break; }
+      }
+    }
+    if (!structuralChange) {
+      // 再做 stat 校验：全部 mtimeMs + size 未变才直接复用，避免读到过期内容
+      let fresh = true;
+      for (const entry of reusable) {
+        const st = await statFile(join(BLOG_DIR, entry.name)).catch(() => null);
+        if (!st || st.mtimeMs !== entry.mtimeMs || st.size !== entry.size) { fresh = false; break; }
+      }
+      if (fresh) return reusable.map((entry) => clonePostEntry(entry.post));
+    }
+  }
+
+  const nextEntries = [];
+  for (const file of candidates) {
     const filePath = join(BLOG_DIR, file);
     const raw = await readFile(filePath, 'utf-8');
     const { data, content } = matter(raw);
     const slug = file.replace(/\.(md|mdx)$/, '');
     let updatedAt = '';
+    let mtimeMs = 0;
+    let size = raw.length;
     try {
       const stat = await statFile(filePath);
       updatedAt = stat.mtime.toISOString();
+      mtimeMs = stat.mtimeMs;
+      size = stat.size;
     } catch { /* 忽略 mtime 读取失败 */ }
-    posts.push({
-      slug,
-      contentHash: sha256(raw),
-      title: data.title || slug,
-      description: data.description || '',
-      cover: data.cover || '',
-      pubDate: safeDate(data.pubDate),
-      tags: data.tags || [],
-      draft: data.draft ?? false,
-      access: ['public', 'authorized', 'admin'].includes(data.access) ? data.access : 'public',
-      archived: data.archived ?? false,
-      scheduledAt: safeIso(data.scheduledAt),
-      dayIndex: data.dayIndex || undefined,
-      updatedAt,
-      excerpt: excerptOf(content),
-      astroId: astroIdFor(slug, data),
-    });
+    const cached = postFileCache.get(file);
+    // 单文件级复用：文件未变时直接拿上次的解析结果（contentHash / 摘要不再重算）
+    const post = cached && mtimeMs !== 0 && cached.mtimeMs === mtimeMs && cached.size === size
+      ? cached.post
+      : buildPostEntry(slug, raw, data, content, updatedAt);
+    postFileCache.set(file, { mtimeMs, size, post });
+    nextEntries.push({ name: file, mtimeMs, size, post });
   }
-  return posts;
+  // 清掉已不在目录中的文件条目，避免缓存随删除操作无限增长
+  const currentNames = new Set(candidates);
+  for (const name of postFileCache.keys()) {
+    if (!currentNames.has(name)) postFileCache.delete(name);
+  }
+  postListSnapshot = { epoch, posts: nextEntries };
+  return nextEntries.map((entry) => clonePostEntry(entry.post));
 }
 
 function privatePasswordHash(password) {
@@ -688,6 +757,7 @@ app.route('/api/posts')
 
       const allPosts = await readPosts();
       const markdown = buildPostMarkdown(req.body, allPosts);
+      invalidatePostCache(); // 新建后立即失效，下一次列表读取必定重扫
       await atomicWriteFile(checked.filePath, markdown);
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
       res.status(201).json({ success: true, slug: checked.slug, contentHash: sha256(markdown) });
@@ -774,10 +844,12 @@ app.route('/api/posts/:slug')
           if (err.code !== 'ENOENT') throw err;
         }
         await savePostRevision(oldChecked.slug, currentRaw);
+        invalidatePostCache(); // 改名 / 移动同样会改变文件集合，先失效再落盘
         await atomicWriteFile(newChecked.filePath, markdown);
         await unlink(oldChecked.filePath);
       } else {
         await savePostRevision(oldChecked.slug, currentRaw);
+        invalidatePostCache(); // 保存后立即失效（同尺寸覆盖也能被 epoch 兜住，不依赖 mtime 精度）
         await atomicWriteFile(oldChecked.filePath, markdown);
       }
 
@@ -795,6 +867,7 @@ app.route('/api/posts/:slug')
       if (!checked) return res.status(400).json({ error: '无效的 Slug' });
       const raw = await readFile(checked.filePath, 'utf-8');
       await savePostRevision(checked.slug, raw);
+      invalidatePostCache(); // 删除后立即失效
       await unlink(checked.filePath);
       res.json({ success: true });
     } catch (err) {
@@ -1394,6 +1467,8 @@ app.get('/api/operations', (req, res) => {
 // 返回 { status: 'up-to-date' | 'pulled' | 'skipped', message, ahead, behind, ... }
 async function syncFromRemote({ requestId = '' } = {}) {
   const startedAt = Date.now();
+  // 拉取可能改写/新增文章文件（快进合并），无论结果如何都先失效文章列表缓存，避免面板读到旧快照
+  invalidatePostCache();
   try {
     const result = await blogGit.pullFastForward();
     recordOperation({
@@ -1442,6 +1517,7 @@ async function autoSyncOnStart() {
     console.log(`   [同步检查] ${SYNC_STATE_LABELS[state] || state}（分支 ${info.branch || '未知'}，未提交 ${info.dirtyCount}，领先 ${info.ahead}，落后 ${info.behind}）`);
     if (autoPull) {
       const result = await blogGit.pullFastForward();
+      if (result.status === 'pulled') invalidatePostCache(); // 启动时自动拉取到新内容，丢弃可能存在的旧缓存
       recordOperation({ action: 'auto-pull', status: result.status === 'pulled' ? 'success' : 'skipped', message: result.message });
       console.log(`   [自动拉取] ${result.message}`);
     } else {
@@ -1907,7 +1983,18 @@ function fileNameFromUrl(value) {
 }
 
 /** 扫描文章与画廊，返回 { 文件名: [引用者] } */
+// ── 媒体引用扫描缓存 ──
+// collectMediaUsage 会遍历全部文章 + gallery.json 做正则统计（实测约 40ms/次），
+// 而每次打开媒体库都会调用它。缓存键 = 文章缓存代次 + gallery.json 的 mtime/size：
+//   · 文章写路径已统一调用 invalidatePostCache()，代次变化即失效；
+//   · gallery.json 由 writeGallery() 落盘，mtime/size 变化即失效。
+let mediaUsageCache = { key: '', usage: null };
+
 async function collectMediaUsage() {
+  const galleryStat = await statFile(GALLERY_JSON).catch(() => null);
+  const cacheKey = `${postListEpoch}:${galleryStat ? `${galleryStat.mtimeMs}:${galleryStat.size}` : 'none'}`;
+  if (mediaUsageCache.usage && mediaUsageCache.key === cacheKey) return mediaUsageCache.usage;
+
   const usage = new Map();
   const mark = (name, owner) => {
     if (!name) return;
@@ -1934,6 +2021,7 @@ async function collectMediaUsage() {
   } catch { /* 画廊读取失败时忽略 */ }
   const plain = {};
   for (const [name, owners] of usage) plain[name] = [...owners];
+  mediaUsageCache = { key: cacheKey, usage: plain };
   return plain;
 }
 
@@ -2165,17 +2253,48 @@ app.get('/api/health', (req, res) => {
 app.use(express.static(join(__dirname, 'public')));
 
 // Admin panel
+// 面板 HTML 只在磁盘文件变化时重读并重新注入口令：
+// 原实现每次请求都 readFile + 字符串替换，这里用 mtimeMs/size 校验缓存，
+// 开发时直接改 admin/index.html 刷新即可生效（stat 变化 → 自动重读），无需重启服务。
+const ADMIN_TOKEN_MARKER = "window.__ADMIN_TOKEN__ = '__ADMIN_TOKEN__';";
+const adminHtmlCache = { mtimeMs: 0, size: -1, injected: '' };
+
+async function readInjectedAdminHtml() {
+  const st = await statFile(ADMIN_HTML);
+  if (st.mtimeMs === adminHtmlCache.mtimeMs && st.size === adminHtmlCache.size) return adminHtmlCache.injected;
+  const html = await readFile(ADMIN_HTML, 'utf8');
+  adminHtmlCache.injected = html.replace(ADMIN_TOKEN_MARKER, `window.__ADMIN_TOKEN__ = ${JSON.stringify(ADMIN_TOKEN)};`);
+  adminHtmlCache.mtimeMs = st.mtimeMs;
+  adminHtmlCache.size = st.size;
+  return adminHtmlCache.injected;
+}
+
 app.get(['/admin', '/admin/', '/admin/index.html'], async (_req, res) => {
   try {
-    const html = await readFile(ADMIN_HTML, 'utf8');
-    const injected = html.replace("window.__ADMIN_TOKEN__ = '__ADMIN_TOKEN__';", `window.__ADMIN_TOKEN__ = ${JSON.stringify(ADMIN_TOKEN)};`);
+    const injected = await readInjectedAdminHtml();
+    // 面板 HTML 必须每次校验（口令注入 + 前端改动即时生效）
+    res.set('Cache-Control', 'no-cache');
     res.type('html').send(injected);
   } catch (err) {
     console.error('Admin panel error:', err.message);
     res.status(500).send('Admin panel unavailable');
   }
 });
-app.use('/admin', express.static(join(__dirname, 'admin')));
+
+// 管理面板静态资源缓存策略：
+//   · vendor/**（vditor 等第三方发行文件，随版本升级才变）：7 天内不再回源校验，附 immutable；
+//   · src/**、styles/**（自建前端代码，开发中随时改动）：no-cache —— 保留 ETag 条件请求做校验，
+//     命中即 304，既能立刻看到改动，又不必重传 100KB+ 的 main.js。
+//   同时显式设置 Cache-Control：send 只在响应尚未设置该头时才写入自己的值，因此这里完全生效。
+const VENDOR_CACHE_CONTROL = 'public, max-age=604800, immutable';
+function setAdminStaticCacheHeaders(res, filePath) {
+  const relative = filePath.slice(join(__dirname, 'admin').length + 1).split('\\').join('/');
+  const isVendor = relative.startsWith('vendor/');
+  if (!res.getHeader('Cache-Control')) {
+    res.setHeader('Cache-Control', isVendor ? VENDOR_CACHE_CONTROL : 'no-cache');
+  }
+}
+app.use('/admin', express.static(join(__dirname, 'admin'), { setHeaders: setAdminStaticCacheHeaders }));
 
 app.listen(PORT, '127.0.0.1', () => {
   const url = `http://localhost:${PORT}/admin`;

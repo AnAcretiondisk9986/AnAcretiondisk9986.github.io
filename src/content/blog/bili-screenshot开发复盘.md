@@ -20,7 +20,7 @@ draft: false
 
 仓库是 [GitHub: AnAcretiondisk9986/Bili-Screenshot](https://github.com/AnAcretiondisk9986/Bili-Screenshot)。从第一笔提交到 `main` 上的 `v1.1.4`，时间是 18:09 到 22:59，共 13 次提交。下面不只列功能，而是从需求边界、架构、失败回退、版本演进到发布，把整个开发过程还原一遍。
 
-![Bili Screenshot 的设置页，保存、画质、文件名、连拍和快捷键集中在同一处](/images/bili-screenshot/options.png)
+![Bili Screenshot 的设置页，保存、画质、文件名、连拍和快捷键集中在同一处](/images/bili-screenshot/options.webp)
 
 ## 一、先把问题收窄
 
@@ -213,7 +213,7 @@ python tools/build_release.py --dir
 
 ## 十一、13 次提交实际发生了什么
 
-![GitHub 上的 Bili Screenshot 提交时间线，快捷键兼容和 macOS 修复都保留了完整记录](/images/bili-screenshot/commit-history.png)
+![GitHub 上的 Bili Screenshot 提交时间线，快捷键兼容和 macOS 修复都保留了完整记录](/images/bili-screenshot/commit-history.webp)
 
 把 13 次提交按工程阶段归并，大致是这样：
 

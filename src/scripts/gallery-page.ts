@@ -18,26 +18,14 @@ import { cyanotypeCopy } from '../lib/cyanotype-copy';
 import { captureFlip, playFlip } from './reorder-anim';
 
 // 独立收藏数据池(由上方 JSON 标签注入,避免 define:vars 内联导致 TS 语法残留)
+/** 查看器点击入口：委托监听只注册一次，始终指向「当前这一次页面实例」的实现 */
+let galleryViewerHandler: ((button: HTMLButtonElement) => void) | null = null;
+
   document.addEventListener('astro:page-load', () => {
 
-  // ── jsDelivr 镜像自动降级：国内访问 cdn.jsdelivr.net 时常被墙/超时，
-  // 捕获 img 加载失败后依次切换到 fastly / gcore / testingcf 镜像重试 ──
-  const CDN_HOSTS = ['cdn.jsdelivr.net', 'fastly.jsdelivr.net', 'gcore.jsdelivr.net', 'testingcf.jsdelivr.net'];
-  const nextCdnHost = (host: string) => {
-    const i = CDN_HOSTS.indexOf(host);
-    return i >= 0 && i < CDN_HOSTS.length - 1 ? CDN_HOSTS[i + 1] : null;
-  };
-  document.addEventListener('error', (event) => {
-    const img = event.target as HTMLImageElement | null;
-    if (!img || !(img instanceof HTMLImageElement)) return;
-    try {
-      const url = new URL(img.currentSrc || img.src);
-      const next = nextCdnHost(url.hostname);
-      if (!next) return; // 已到最后镜像,不再重试
-      url.hostname = next;
-      img.src = url.href; // 换镜像重试(失败会再次触发 error,自然推进到下一个)
-    } catch { /* 非 jsDelivr URL,忽略 */ }
-  }, true);
+  // jsDelivr 镜像降级已上移到全站脚本 src/scripts/cdn-fallback.ts（由 BaseLayout 在 head 引入）。
+  // 原实现绑在这里的 astro:page-load 内，每次客户端导航都会重复注册一个 error 监听器，
+  // 且只覆盖图库页；现在全站共用一份、只注册一次。
 
   // astro:page-load:整页加载与每次 VT 导航后触发,重新初始化(打包脚本只执行一次,事件驱动每次导航执行)
 
@@ -54,7 +42,15 @@ import { captureFlip, playFlip } from './reorder-anim';
     void container.offsetWidth; // 强制 reflow,重触发动画
     visible.forEach((card) => card.classList.add('is-entering'));
   };
-  const standalonePool = JSON.parse(document.querySelector<HTMLElement>('#gallery-pool')?.textContent || '[]') as GalleryImage[];
+  // 数据池：#journal-pool / #gallery-pool 由服务端序列化注入。
+  // 时间线与独立照片两个视图原先由服务端渲染全部卡片（387 张里 369 张被分页 CSS 隐藏），
+  // 现在改为客户端按页构建；position 记录原始顺序，供排序兜底与 data-gallery-position 使用。
+  type PooledImage = GalleryImage & { position: number };
+  const readPool = (id: string): PooledImage[] =>
+    (JSON.parse(document.querySelector<HTMLElement>(id)?.textContent || '[]') as GalleryImage[])
+      .map((image, position) => ({ ...image, position }));
+  const journalPool = readPool('#journal-pool');
+  const standalonePool = readPool('#gallery-pool');
   const tabs = [...document.querySelectorAll<HTMLButtonElement>('[data-gallery-tab]')];
   const panels = [...document.querySelectorAll<HTMLElement>('[data-gallery-panel]')];
   const viewer = document.querySelector<HTMLDialogElement>('#gallery-viewer');
@@ -107,42 +103,182 @@ import { captureFlip, playFlip } from './reorder-anim';
   let journalPage = 1;
   let independentPage = 1;
 
+  const escapeHtml = (value: string) =>
+    String(value).replace(/[&<>"']/g, (ch) =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch] as string));
+
+  /** 与服务端 ThemeCopy 组件同构的三语文案结构（哪一份可见由主题 CSS 决定） */
+  const themeCopyMarkup = (minimal: string, trace: string, cyanotype = cyanotypeCopy[minimal] ?? minimal) =>
+    `<span class="theme-copy" data-theme-copy><span data-theme-copy-minimal>${escapeHtml(minimal)}</span>`
+    + `<span data-theme-copy-trace>${escapeHtml(trace)}</span>`
+    + `<span data-theme-copy-cyanotype>${escapeHtml(cyanotype)}</span></span>`;
+
+  /**
+   * 构建一张图库卡片。结构必须与原先服务端输出的 HTML 逐项一致
+   * （data-* 契约、多语文案、编号），否则查看器 / 排序 / 主题切换都会失去依据。
+   */
+  function buildGalleryCard(image: PooledImage, sequenceIndex: number, variant: 'journal' | 'independent'): HTMLElement {
+    const sequence = String(sequenceIndex + 1).padStart(2, '0');
+    const article = document.createElement('article');
+    article.className = 'gallery-card';
+    article.dataset.galleryCard = '';
+    article.dataset.galleryDate = image.date || '';
+    article.dataset.galleryDaySequence = String(image.daySequence ?? 0);
+    article.dataset.galleryPosition = String(image.position);
+
+    const button = document.createElement('button');
+    button.className = 'gallery-image-button';
+    button.type = 'button';
+    button.dataset.galleryOpen = '';
+    button.dataset.gallerySrc = image.src;
+    if (variant === 'independent') button.dataset.galleryOriginal = image.original || '';
+    button.dataset.galleryAlt = image.alt || image.title;
+    button.dataset.galleryTitle = image.title;
+    button.dataset.galleryCaption = variant === 'journal'
+      ? (image.caption || '')
+      : (image.caption || image.alt);
+    button.dataset.gallerySource = image.sourceUrl || '';
+    button.dataset.gallerySourceTitle = image.sourceTitle || '';
+    button.setAttribute('aria-label', variant === 'journal'
+      ? `查看${image.title}中的${image.caption ?? ''}`
+      : `查看${image.title}`);
+
+    const img = document.createElement('img');
+    img.src = image.thumb || image.src;
+    img.alt = variant === 'journal' ? image.alt : (image.alt || image.title);
+    img.loading = 'lazy'; // 两个视图默认都不可见，切换过去时再加载
+    img.decoding = 'async';
+    img.referrerPolicy = 'no-referrer';
+    button.appendChild(img);
+
+    const stamp = document.createElement('span');
+    stamp.className = 'gallery-image-stamp';
+    stamp.textContent = sequence;
+    button.appendChild(stamp);
+
+    const expand = document.createElement('span');
+    expand.className = 'gallery-image-expand';
+    expand.setAttribute('aria-hidden', 'true');
+    expand.innerHTML = iconMarkup('arrow-up-right');
+    button.appendChild(expand);
+
+    article.appendChild(button);
+
+    const meta = document.createElement('div');
+    meta.className = 'gallery-card-meta';
+    const labels = document.createElement('div');
+    if (variant === 'journal' && image.date) {
+      const dateLabel = document.createElement('span');
+      dateLabel.className = 'gallery-card-label';
+      dateLabel.textContent = image.date;
+      labels.appendChild(dateLabel);
+    }
+    if (image.daySequence && image.dayTotal) {
+      const dayLabel = document.createElement('span');
+      dayLabel.className = 'gallery-card-label';
+      dayLabel.dataset.galleryDay = '';
+      dayLabel.textContent = `D.${String(image.daySequence).padStart(2, '0')}/${String(image.dayTotal).padStart(2, '0')}`;
+      labels.appendChild(dayLabel);
+    }
+    const seqLabel = document.createElement('span');
+    seqLabel.className = 'gallery-card-label';
+    seqLabel.dataset.gallerySequence = '';
+    const prefix = variant === 'journal'
+      ? { cyanotype: '切片 ', minimal: '图片 ', trace: 'FOLIO ' }
+      : { cyanotype: '散页 ', minimal: '照片 ', trace: 'INDEPENDENT / ' };
+    seqLabel.dataset.gallerySequenceCyanotypePrefix = prefix.cyanotype;
+    seqLabel.dataset.gallerySequenceMinimalPrefix = prefix.minimal;
+    seqLabel.dataset.gallerySequenceTracePrefix = prefix.trace;
+    seqLabel.innerHTML = themeCopyMarkup(
+      `${prefix.minimal}${sequence}`,
+      `${prefix.trace}${sequence}`,
+      `${prefix.cyanotype}${sequence}`,
+    );
+    labels.appendChild(seqLabel);
+    meta.appendChild(labels);
+
+    const heading = document.createElement('h2');
+    heading.textContent = variant === 'journal' ? (image.caption || '') : image.title;
+    meta.appendChild(heading);
+
+    if (variant === 'journal') {
+      const link = document.createElement('a');
+      link.href = image.sourceUrl || '#';
+      link.innerHTML = themeCopyMarkup(
+        `阅读《${image.sourceTitle ?? ''}》`,
+        `阅览《${image.sourceTitle ?? ''}》`,
+        `回到手记《${image.sourceTitle ?? ''}》`,
+      );
+      meta.appendChild(link);
+    } else {
+      if (image.caption) {
+        const caption = document.createElement('p');
+        caption.textContent = image.caption;
+        meta.appendChild(caption);
+      }
+      if (image.sourceUrl) {
+        const link = document.createElement('a');
+        link.href = image.sourceUrl;
+        link.textContent = image.sourceTitle || '查看来源';
+        meta.appendChild(link);
+      }
+    }
+
+    article.appendChild(meta);
+    return article;
+  }
+
+  /** 排序规则与原 DOM 排序完全一致：date 降序 → 日内序号降序 → 原始位置 */
+  function sortPool(images: PooledImage[], order: GalleryOrder): PooledImage[] {
+    return [...images].sort((a, b) => {
+      const aTime = a.date ? Date.parse(a.date) : NaN;
+      const bTime = b.date ? Date.parse(b.date) : NaN;
+      const aHas = Number.isFinite(aTime);
+      const bHas = Number.isFinite(bTime);
+      if (aHas !== bHas) return aHas ? -1 : 1;
+      if (aHas && bHas && aTime !== bTime) return order === 'newest' ? bTime - aTime : aTime - bTime;
+      const aSeq = a.daySequence ?? 0;
+      const bSeq = b.daySequence ?? 0;
+      if (aHas && bHas && aSeq !== bSeq) return order === 'newest' ? bSeq - aSeq : aSeq - bSeq;
+      return order === 'newest' ? a.position - b.position : b.position - a.position;
+    });
+  }
+
+  let journalSorted: PooledImage[] = sortPool(journalPool, currentOrder);
+  let independentSorted: PooledImage[] = sortPool(standalonePool, currentOrder);
+
   // 随文图像时间线视图:按每页 9 张分页显示(编号保持全局连续)
   function renderJournalPage() {
     if (!journalMasonry || !pager) return;
-    const cards = [...journalMasonry.querySelectorAll<HTMLElement>('[data-gallery-card]')];
-    const total = Math.max(1, Math.ceil(cards.length / JOURNAL_PAGE_SIZE));
+    const total = Math.max(1, Math.ceil(journalSorted.length / JOURNAL_PAGE_SIZE));
     journalPage = Math.min(Math.max(1, journalPage), total);
-    cards.forEach((card, index) => {
-      const onPage = Math.floor(index / JOURNAL_PAGE_SIZE) === journalPage - 1;
-      card.classList.toggle('is-off-page', !onPage);
-    });
+    const start = (journalPage - 1) * JOURNAL_PAGE_SIZE;
+    const pageItems = journalSorted.slice(start, start + JOURNAL_PAGE_SIZE);
+    journalMasonry.replaceChildren(...pageItems.map((image, i) => buildGalleryCard(image, start + i, 'journal')));
     if (pagerCurrent) pagerCurrent.textContent = String(journalPage).padStart(2, '0');
     if (pagerTotal) pagerTotal.textContent = String(total).padStart(2, '0');
     const prevBtn = pager.querySelector<HTMLButtonElement>('[data-gallery-page="prev"]');
     const nextBtn = pager.querySelector<HTMLButtonElement>('[data-gallery-page="next"]');
     if (prevBtn) prevBtn.disabled = journalPage <= 1;
     if (nextBtn) nextBtn.disabled = journalPage >= total;
-    pager.hidden = journalView !== 'timeline' || cards.length <= JOURNAL_PAGE_SIZE;
+    pager.hidden = journalView !== 'timeline' || journalSorted.length <= JOURNAL_PAGE_SIZE;
   }
 
   // 独立收藏:每页 9 张分页显示(编号保持全局连续)
   function renderIndependentPage() {
     if (!independentMasonry || !independentPager) return;
-    const cards = [...independentMasonry.querySelectorAll<HTMLElement>('[data-gallery-card]')];
-    const total = Math.max(1, Math.ceil(cards.length / INDEPENDENT_PAGE_SIZE));
+    const total = Math.max(1, Math.ceil(independentSorted.length / INDEPENDENT_PAGE_SIZE));
     independentPage = Math.min(Math.max(1, independentPage), total);
-    cards.forEach((card, index) => {
-      const onPage = Math.floor(index / INDEPENDENT_PAGE_SIZE) === independentPage - 1;
-      card.classList.toggle('is-off-page', !onPage);
-    });
+    const start = (independentPage - 1) * INDEPENDENT_PAGE_SIZE;
+    const pageItems = independentSorted.slice(start, start + INDEPENDENT_PAGE_SIZE);
+    independentMasonry.replaceChildren(...pageItems.map((image, i) => buildGalleryCard(image, start + i, 'independent')));
     if (independentPagerCurrent) independentPagerCurrent.textContent = String(independentPage).padStart(2, '0');
     if (independentPagerTotal) independentPagerTotal.textContent = String(total).padStart(2, '0');
     const prevBtn = independentPager.querySelector<HTMLButtonElement>('[data-independent-page="prev"]');
     const nextBtn = independentPager.querySelector<HTMLButtonElement>('[data-independent-page="next"]');
     if (prevBtn) prevBtn.disabled = independentPage <= 1;
     if (nextBtn) nextBtn.disabled = independentPage >= total;
-    independentPager.hidden = cards.length <= INDEPENDENT_PAGE_SIZE;
+    independentPager.hidden = independentSorted.length <= INDEPENDENT_PAGE_SIZE;
   }
 
   // 文章图集视图:按当前排序重排分组
@@ -225,32 +361,10 @@ import { captureFlip, playFlip } from './reorder-anim';
     });
     if (orderStatus) orderStatus.textContent = order === 'newest' ? '从新至旧' : '从旧至新';
 
-    document.querySelectorAll<HTMLElement>('.gallery-masonry').forEach((gallery) => {
-      const cards = [...gallery.querySelectorAll<HTMLElement>('[data-gallery-card]')];
-      const frames = captureFlip(gallery);
-      cards.sort((a, b) => {
-        const aTime = Date.parse(a.dataset.galleryDate || '');
-        const bTime = Date.parse(b.dataset.galleryDate || '');
-        const aHasDate = Number.isFinite(aTime);
-        const bHasDate = Number.isFinite(bTime);
-        if (aHasDate !== bHasDate) return aHasDate ? -1 : 1;
-        if (aHasDate && bHasDate && aTime !== bTime) return order === 'newest' ? bTime - aTime : aTime - bTime;
-        const aSeq = Number(a.dataset.galleryDaySequence || '0');
-        const bSeq = Number(b.dataset.galleryDaySequence || '0');
-        if (aHasDate && bHasDate && aSeq !== bSeq) return order === 'newest' ? bSeq - aSeq : aSeq - bSeq;
-        const positionDelta = Number(a.dataset.galleryPosition) - Number(b.dataset.galleryPosition);
-        return order === 'newest' ? positionDelta : -positionDelta;
-      });
-      gallery.append(...cards);
-      playFlip(gallery, frames);
-      cards.forEach((card, index) => {
-        const sequence = String(index + 1).padStart(2, '0');
-        const stamp = card.querySelector<HTMLElement>('.gallery-image-stamp');
-        const label = card.querySelector<HTMLElement>('[data-gallery-sequence]');
-        if (stamp) stamp.textContent = sequence;
-        setSequenceText(label, sequence);
-      });
-    });
+    // 时间线 / 独立照片两个视图的卡片改为客户端按需构建，
+    // 因此排序直接在数据池上进行，随后由下面的分页渲染重建当前页。
+    journalSorted = sortPool(journalPool, currentOrder);
+    independentSorted = sortPool(standalonePool, currentOrder);
 
     if (updateUrl) {
       const url = new URL(location.href);
@@ -285,6 +399,11 @@ import { captureFlip, playFlip } from './reorder-anim';
     });
     // 广告牌轮播仅在独立收藏面板可见时运行；懒构建：首次进入面板才创建（避免首屏生成 3×N 个图片节点）
     if (name === 'independent') {
+      // 卡片改为客户端构建，首次进入面板时才渲染当前页（此前由服务端渲染 99 张、其中 90 张被隐藏）
+      if (!independentRendered) {
+        independentRendered = true;
+        renderIndependentPage();
+      }
       if (!billboardBuilt) {
         billboardBuilt = true;
         buildBillboard();
@@ -418,6 +537,7 @@ import { captureFlip, playFlip } from './reorder-anim';
   let billboardReduced = false;
   let billboardGoNext: (() => void) | null = null;
   let billboardBuilt = false; // 懒构建标记:首次切换到独立收藏面板时才创建轮播节点
+  let independentRendered = false; // 独立照片卡片同样懒渲染:首次进入面板才构建当前页
 
   function pauseBillboard() {
     if (billboardTimer !== undefined) window.clearInterval(billboardTimer);
@@ -684,9 +804,17 @@ import { captureFlip, playFlip } from './reorder-anim';
     fitDialog();
   }
 
-  document.querySelectorAll<HTMLButtonElement>('[data-gallery-open]:not(.gallery-billboard-slide)').forEach((button) => {
-    button.addEventListener('click', () => openGalleryViewer(button));
-  });
+  // 客户端按页构建的卡片无法预先绑定点击，改用事件委托（广告牌 slide 由自身逻辑处理，故排除）。
+  // 处理器每次导航后重新指向当前实例，避免闭包引用上一页已失效的 DOM。
+  galleryViewerHandler = openGalleryViewer;
+  if (!document.documentElement.dataset.galleryDelegated) {
+    document.documentElement.dataset.galleryDelegated = '1';
+    document.addEventListener('click', (event) => {
+      const target = event.target as HTMLElement | null;
+      const button = target?.closest?.('[data-gallery-open]:not(.gallery-billboard-slide)');
+      if (button instanceof HTMLButtonElement) galleryViewerHandler?.(button);
+    });
+  }
 
   document.querySelector<HTMLButtonElement>('[data-gallery-close]')?.addEventListener('click', () => viewer?.close());
   viewer?.addEventListener('click', (event) => {

@@ -164,6 +164,40 @@ function linkify(text = '') {
 <script>
   type VisualTheme = 'cyanotype' | 'still' | 'fluid' | 'minimal' | 'trace';
 
+  /** BaseLayout 注入的主题样式表句柄；主题 CSS 现在按需加载 */
+  interface ThemeCssStore {
+    files: Record<string, string | null>;
+    current: string | null;
+    link: HTMLLinkElement | null;
+  }
+
+  /** 切换到目标主题前，确保其样式表已就位（其余主题在页面空闲时已预取） */
+  function ensureThemeCss(theme: VisualTheme) {
+    const store = (window as unknown as { __ACR_THEME_CSS?: ThemeCssStore }).__ACR_THEME_CSS;
+    if (!store) return;
+    const href = store.files[theme] ?? null;
+    if (store.link === null) {
+      if (!href) return;
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.id = 'theme-css';
+      link.href = href;
+      document.head.appendChild(link);
+      store.link = link;
+      store.current = href;
+      return;
+    }
+    if ((store.current ?? null) === href) return;
+    if (!href) {
+      store.link.remove();
+      store.link = null;
+      store.current = null;
+      return;
+    }
+    store.link.setAttribute('href', href);
+    store.current = href;
+  }
+
   const initializedThemeButtons = new WeakSet<HTMLButtonElement>();
 
   function initVisualThemePicker() {
@@ -193,6 +227,7 @@ function linkify(text = '') {
         if (document.documentElement.dataset.visualTheme === theme) return;
 
         const apply = () => {
+          ensureThemeCss(theme);
           document.documentElement.dataset.visualTheme = theme;
           try { localStorage.setItem('visual-theme', theme); } catch {}
           sync(theme);
@@ -207,5 +242,40 @@ function linkify(text = '') {
     });
   }
 
-  document.addEventListener('astro:page-load', initVisualThemePicker);
+  /**
+   * 预取其余主题样式：本页是唯一有主题切换器的页面，用户点下去时应当立即生效。
+   * 其他页面不做预取（否则每次访问都要多下载约 74KB 的主题 CSS）。
+   */
+  function prefetchOtherThemes() {
+    const store = (window as unknown as { __ACR_THEME_CSS?: ThemeCssStore }).__ACR_THEME_CSS;
+    if (!store) return;
+    const wanted = new Set<string>();
+    for (const href of Object.values(store.files)) {
+      if (href && href !== store.current) wanted.add(href);
+    }
+    const existing = new Set(
+      [...document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"], link[rel="prefetch"]')]
+        .map((l) => l.getAttribute('href')),
+    );
+    for (const href of wanted) {
+      if (existing.has(href)) continue;
+      const link = document.createElement('link');
+      link.rel = 'prefetch';
+      link.as = 'style';
+      link.href = href;
+      document.head.appendChild(link);
+    }
+  }
+
+  const onPageLoad = () => {
+    initVisualThemePicker();
+    // 空闲时再预取，避免和首屏渲染抢带宽
+    const idle = (window as unknown as {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => void;
+    }).requestIdleCallback;
+    if (typeof idle === 'function') idle(() => prefetchOtherThemes(), { timeout: 2000 });
+    else setTimeout(prefetchOtherThemes, 800);
+  };
+
+  document.addEventListener('astro:page-load', onPageLoad);
 </script>

@@ -140,7 +140,7 @@ Library.answer_question(question, limit=6)
 
 这次我还拿到了一张教材原题的现场截图。题目来自解剖学练习页，图片里的“外展肩关节”“胸上肢肌”“斜方肌”等内容，正好对应知识库需要处理的 OCR、题干和选项信息。
 
-![教材题目原始页面截图](/images/anatomy-question-screenshot.png)
+![教材题目原始页面截图](/images/anatomy-question-screenshot.webp)
 
 ## 4. 接入 MCP 后，Codex 就可以负责最后一步
 
@@ -202,7 +202,7 @@ python -m medical_rag.cli answer "为什么肩关节容易脱位？" --json
 
 这次开发时，另一个 Agent 中正好开着 PiDeck。我没有猜测它内部的对话内容，而是直接使用了这张现场截图：PiDeck 中已经出现了基于《系统解剖学》第 5 版处理后教材生成的参考答案。
 
-![PiDeck 中基于知识库解题的实际运行截图](/images/pideck-answer-screenshot.png)
+![PiDeck 中基于知识库解题的实际运行截图](/images/pideck-answer-screenshot.webp)
 
 这张图由我在实际运行过程中截取，保留了题目、参考答案、教材依据和模型运行信息；没有补写截图之外的对话内容。另一个 Agent 的 PiDeck 现场，至此也成为这次知识库开发的一部分。
 
