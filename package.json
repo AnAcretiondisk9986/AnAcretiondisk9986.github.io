@@ -12,6 +12,7 @@
     "perf:baseline": "node scripts/perf-baseline.mjs",
     "perf:images": "node scripts/optimize-images.mjs --dry-run",
     "perf:verify": "node scripts/verify-gallery-perf.mjs",
+    "verify:home-cinematic": "node scripts/verify-home-cinematic.mjs",
     "changelog:check": "node scripts/check-changelog.mjs",
     "changelog:release": "node scripts/make-releases.mjs",
     "test:admin-storage": "node --test scripts/admin-storage.test.mjs",

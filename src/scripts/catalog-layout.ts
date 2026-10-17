@@ -1,5 +1,31 @@
 const boundLists = new WeakSet<HTMLElement>();
 
+/**
+ * 目录页 resize 监听的防抖计时器。
+ *
+ * 监听器必须整个页面生命周期只绑定一次：ClientRouter 每次导航都会生成新的
+ * [data-catalog-list] 元素；如果在 initCatalogLayout() 里匿名 addEventListener，
+ * 旧列表被替换后监听器仍留在 window 上（闭包引用已卸载的 list），每进入一次
+ * /blog/ 就多泄漏一个。这里改为模块级具名 handler + 单次绑定，触发时按当前
+ * DOM 查询列表，导航后自动作用到新列表。
+ */
+let resizeTimer = 0;
+let resizeBound = false;
+
+function handleCatalogResize() {
+  window.clearTimeout(resizeTimer);
+  resizeTimer = window.setTimeout(() => {
+    const list = document.querySelector<HTMLElement>('[data-catalog-list]');
+    if (list) fitTitles(list);
+  }, 120);
+}
+
+function ensureResizeListener() {
+  if (resizeBound) return;
+  resizeBound = true;
+  window.addEventListener('resize', handleCatalogResize, { passive: true });
+}
+
 type CatalogLayout = 'cards' | 'rows';
 
 /** 标题自适应下限：基准字号的 55%，且不低于 12px */
@@ -104,12 +130,9 @@ export function initCatalogLayout() {
       });
     });
 
-    // 窗口尺寸变化时防抖重算（标题容器宽度随视口变化）
-    let resizeTimer = 0;
-    window.addEventListener('resize', () => {
-      clearTimeout(resizeTimer);
-      resizeTimer = window.setTimeout(() => fitTitles(list), 120);
-    });
+    // 窗口尺寸变化时防抖重算（标题容器宽度随视口变化）。
+    // 监听器只绑一次，由 handleCatalogResize 自行查询当前列表，避免导航累积。
+    ensureResizeListener();
 
     // 字体加载完成后测量才准确
     if (document.fonts?.ready) {

@@ -9,6 +9,8 @@ import { safeLink } from '../lib/safe-link';
 import frontend from '../data/frontend.json';
 import about from '../data/about.json';
 import standaloneGallery from '../data/gallery.json';
+// 首页专属的滚动动效样式：放在 BaseLayout 之后引入，保证在同一 @layer 里后胜出
+import '../styles/home-cinematic.css';
 
 const posts = await getPublicPosts();
 const primaryCtaHref = safeLink(frontend.primaryCtaHref, '/blog/');
@@ -109,13 +111,13 @@ const heroPosition = String(frontend.stillImagePosition || 'center');
   </section>
 
   <section class="f-section">
-    <div class="f-section-head">
+    <div class="f-section-head" data-reveal="head">
       <h2 class="f-section-title"><small>II</small>近期编目</h2>
       <a class="f-section-more" href="/blog/">全部 {posts.length} 篇 →</a>
     </div>
     <div class="f-recent">
       {recentCards.map((card) => (
-        <a class="f-card" href={card.href}>
+        <a class="f-card" href={card.href} data-reveal="card">
           <span
             class="f-card__frame"
             data-loading={card.cover ? 'true' : undefined}
@@ -146,13 +148,13 @@ const heroPosition = String(frontend.stillImagePosition || 'center');
   </section>
 
   <section class="f-section">
-    <div class="f-section-head">
+    <div class="f-section-head" data-reveal="head">
       <h2 class="f-section-title"><small>III</small>最新图版</h2>
       <a class="f-section-more" href="/gallery/">进入图志 →</a>
     </div>
     <div class="f-plates">
       {galleryTeaserImages.map((img, i) => (
-        <a class="f-plate" href="/gallery/">
+        <a class="f-plate" href="/gallery/" data-reveal="plate">
           <span class="f-plate__frame">
             <img src={img.thumb ?? img.src} alt={img.alt || img.title || ''} loading="lazy" decoding="async" />
           </span>
@@ -172,7 +174,7 @@ const heroPosition = String(frontend.stillImagePosition || 'center');
     quoteText={about.quoteText}
   />
 
-  <section class="f-section f-coda">
+  <section class="f-section f-coda" data-reveal="coda">
     <div class="f-fleuron" aria-hidden="true"><i></i></div>
     <blockquote>"写下来，是为了更清楚地看见自己。"</blockquote>
     <p class="f-num">FINIS PAGINAE · INITIUM SEQUENTIS</p>
@@ -181,4 +183,5 @@ const heroPosition = String(frontend.stillImagePosition || 'center');
 
 <script>
   import '../scripts/home-media';
+  import '../scripts/home-cinematic';
 </script>

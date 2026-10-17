@@ -1,0 +1,317 @@
+/* ============================================================================
+   HOME CINEMATIC — 首页电影感滚动系统（2026-10）
+   只在首页加载（由 src/pages/index.astro 引入），不进入全局样式链。
+
+   设计约束（与 AGENT_HANDOFF 中的既有约定一致）：
+     · 只动 transform / translate / scale / opacity，不碰尺寸、间距、颜色体系；
+     · 不改任何既有选择器的静态外观——所有"隐藏 / 位移"初态都挂在 html.fx 之下，
+       因此没有脚本、脚本报错、或 prefers-reduced-motion: reduce 时，页面就是原样；
+     · 不覆盖整页 CSS，全部落在既有的 @layer components 层里，遵循"后来者胜"。
+
+   三块职责：
+     1. 首屏：把滚动进度（--hp，由 home-cinematic.ts 写入）映射成逐层退场；
+     2. 分区 / 卡片 / 图版 / 尾页：进入视口时按 .is-in 类做统一、克制的显现；
+     3. 减少动效、打印、移动端的降级。
+   ========================================================================== */
+
+/* ───────────────────────── tokens：局部动效变量 ─────────────────────────
+   全站已有的 --p-ease / --p-dur-* 继续有效；这里只补首页需要的语义名字，
+   不覆盖任何既有变量。 */
+@layer tokens {
+  :root {
+    --motion-duration-fast: 220ms;
+    --motion-duration-medium: 480ms;
+    --motion-duration-slow: 760ms;
+    --motion-ease-out: cubic-bezier(.22, .61, .24, 1); /* 同 --p-ease，平滑无回弹 */
+    --motion-ease-glide: cubic-bezier(.16, .84, .24, 1); /* 更慢的收尾，用于画幅 */
+    --motion-stagger: 60ms;
+    --motion-rise: 16px;
+  }
+}
+
+@layer components {
+
+  /* ==========================================================================
+     一、首屏 Hero：随滚动进度缓慢退场
+     --------------------------------------------------------------------------
+     进度变量 --hp ∈ [0, 1] 由脚本写在 .f-hero 的行内样式上；缺省 0 = 完全静止。
+     .is-fx 是"入场动画已播完、交棒给滚动"的状态位：
+     首屏内容原本有一条一次性入场动画（f-hero-in，含 nth-child 延迟），
+     它带着 forwards 填充，会一直占住 opacity/translate；所以交棒后必须先把
+     那条动画关掉，再把同一组属性接到滚动进度上——两者不会同时生效。
+     ========================================================================== */
+  .f-hero {
+    --hp: 0;
+  }
+
+  /* 分层节奏：数字是滚动进度上的起点 d 与斜率 k（k = 1/持续区间），
+     位移量 y 是该层最终上移的像素。标题最先开始、最大幅度；按钮最后。 */
+  .f-hero__folio       { --hp-d: .12; --hp-k: 1.5152; --hp-y: 14px; }
+  .f-hero__title       { --hp-d: .20; --hp-k: 1.4286; --hp-y: 36px; }
+  .f-hero__domain-rule { --hp-d: .18; --hp-k: 1.6667; --hp-y: 20px; }
+  .f-hero__line3       { --hp-d: .26; --hp-k: 1.4706; --hp-y: 28px; }
+  .f-hero__deck        { --hp-d: .32; --hp-k: 1.5152; --hp-y: 22px; }
+  .f-hero__meta        { --hp-d: .38; --hp-k: 1.6129; --hp-y: 16px; }
+  .f-hero__actions     { --hp-d: .44; --hp-k: 1.7857; --hp-y: 12px; }
+
+  /* 交棒：animation:none 关掉入场动画，opacity/translate 改由 --hp 驱动。
+     --hp-y-scale 给移动端整体减幅用。 */
+  html.fx .f-hero.is-fx .f-hero__body > * {
+    --hp-t: clamp(0, (var(--hp) - var(--hp-d, 0)) * var(--hp-k, 1.4), 1);
+    animation: none;
+    opacity: calc(1 - var(--hp-t));
+    translate: 0 calc(var(--hp-y, 20px) * -1 * var(--hp-t) * var(--hp-y-scale, 1));
+  }
+
+  /* 交棒瞬间的短过渡：如果用户在入场动画播完之前就滚动了（或刷新时停在中段），
+     --hp 会从 0 一次性跳到当前值，这一段过渡把这次跳变收成一次短促的"落位"，
+     避免首屏内容瞬移。只在交棒后的 0.4s 内存在（is-settle 由脚本移除）。 */
+  html.fx .f-hero.is-fx.is-settle .f-hero__body > * {
+    transition:
+      opacity .34s var(--motion-ease-out),
+      translate .34s var(--motion-ease-out);
+  }
+  /* 域名下的那条铜线自带"从中心展开"的入场动画，关掉动画后要补回终态：
+     宽度回到 scaleX(1)，亮度回到动画终点 opacity .85（见 folio-next.css
+     的 f-rule-in）——否则 fx 模式会比原设计亮 18%。 */
+  html.fx .f-hero.is-fx .f-hero__domain-rule {
+    transform: scaleX(1);
+    opacity: calc(.85 * (1 - var(--hp-t)));
+  }
+
+  /* 背景图版：与文字反向、更慢的位移（10–25px 量级），并轻微推近，
+     形成"镜头后退、内容上浮"的有限视差。图片层 overflow:clip 已兜住溢出。 */
+  html.fx .f-hero.is-fx .f-hero__image {
+    translate: 0 calc(var(--hp) * var(--hp-par, 16px));
+    scale: calc(1 + var(--hp) * var(--hp-zoom, .045));
+  }
+  /* 纱幕随退场稍稍退去，让画面在离开时更通透一点（不影响文字期对比度） */
+  html.fx .f-hero.is-fx .f-hero__scrim {
+    opacity: calc(1 - var(--hp) * .25);
+  }
+
+  /* ==========================================================================
+     二、分区标题：编号+标题 → 更多入口 → 分隔线
+     --------------------------------------------------------------------------
+     .f-section-head 原本用 border-bottom 画分隔线；border 无法做 scaleX 展开，
+     所以 fx 模式下把 border 变透明，用同色同位的 ::after 画同一条线。
+     终态与原来完全一致（同色、同 1px、同位置）。
+     ========================================================================== */
+  html.fx .f-section-head[data-reveal] {
+    position: relative;
+    border-bottom-color: transparent;
+  }
+  html.fx .f-section-head[data-reveal]::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -1px;
+    height: 1px;
+    background: var(--c-rule-strong);
+    transform: scaleX(0);
+    transform-origin: left center;
+    transition: transform var(--motion-duration-slow) var(--motion-ease-out) 110ms;
+  }
+
+  html.fx .f-section-head[data-reveal] > .f-section-title,
+  html.fx .f-section-head[data-reveal] > .f-section-more {
+    opacity: 0;
+    translate: 0 var(--motion-rise);
+    transition:
+      opacity var(--motion-duration-medium) var(--motion-ease-out),
+      translate var(--motion-duration-medium) var(--motion-ease-out);
+  }
+  /* 标题先、入口稍后（50–90ms 错峰） */
+  html.fx .f-section-head[data-reveal] > .f-section-more {
+    transition-delay: 70ms;
+  }
+
+  html.fx .f-section-head[data-reveal].is-in::after { transform: scaleX(1); }
+  html.fx .f-section-head[data-reveal].is-in > .f-section-title,
+  html.fx .f-section-head[data-reveal].is-in > .f-section-more {
+    opacity: 1;
+    translate: 0 0;
+  }
+
+  /* ==========================================================================
+     三、编目卡片 / 图版 / 档案 / 尾页：进入视口的统一显现
+     --------------------------------------------------------------------------
+     统一用 --rv-delay 控制同组错峰；默认 0，具体分组偏移见下方各节。
+     ========================================================================== */
+  html.fx [data-reveal="card"],
+  html.fx [data-reveal="plate"],
+  html.fx [data-reveal="figure"],
+  html.fx [data-reveal="text"] {
+    opacity: 0;
+    translate: 0 var(--motion-rise);
+    /* 注意把既有的 border-color 过渡一并写回：.f-card 原本有
+       transition: border-color .25s（hover 变铜色），简写会把它覆盖掉。
+       错峰延迟只加在 opacity/translate 上，border-color 保持 0 延迟。 */
+    transition:
+      opacity var(--motion-duration-medium) var(--motion-ease-out) var(--rv-delay, 0ms),
+      translate var(--motion-duration-medium) var(--motion-ease-out) var(--rv-delay, 0ms),
+      border-color .25s var(--p-ease);
+  }
+  html.fx [data-reveal="card"].is-in,
+  html.fx [data-reveal="plate"].is-in,
+  html.fx [data-reveal="figure"].is-in,
+  html.fx [data-reveal="text"].is-in {
+    opacity: 1;
+    translate: 0 0;
+  }
+
+  /* 键盘兜底：焦点落进还没显现的链接时立刻显示（220ms，比重现动画快一档）。
+     元素只是 opacity:0，本来就留在可访问树与 tab 序列里；这条规则让
+     "按 Tab 之后光标停在看不见的卡片上"不会发生。 */
+  html.fx [data-reveal]:focus-within {
+    opacity: 1;
+    translate: 0 0;
+    transition-delay: 0ms;
+    transition-duration: var(--motion-duration-fast);
+  }
+  html.fx .f-section-head[data-reveal]:focus-within > .f-section-title,
+  html.fx .f-section-head[data-reveal]:focus-within > .f-section-more {
+    opacity: 1;
+    translate: 0 0;
+    transition-delay: 0ms;
+    transition-duration: var(--motion-duration-fast);
+  }
+  html.fx .f-section-head[data-reveal]:focus-within::after {
+    transform: scaleX(1);
+    transition-delay: 0ms;
+  }
+
+  /* 卡片：同一行 50–80ms 依次出现；第 4 张起不再叠加，避免长序列拖沓 */
+  html.fx .f-recent > [data-reveal="card"]:nth-child(2) { --rv-delay: calc(var(--motion-stagger) * 1); }
+  html.fx .f-recent > [data-reveal="card"]:nth-child(3) { --rv-delay: calc(var(--motion-stagger) * 2); }
+  html.fx .f-recent > [data-reveal="card"]:nth-child(n + 4) { --rv-delay: calc(var(--motion-stagger) * 3); }
+
+  /* 图版：容器轻微上浮 + 画幅从 1.035 收到 1（"画幅展开"）。
+     图片的 transform 已被 hover 占用，这里改用独立的 scale 属性叠加，
+     并把 transform 的过渡一并写回，避免覆盖既有的悬停放大。 */
+  html.fx .f-plates > [data-reveal="plate"]:nth-child(2) { --rv-delay: calc(var(--motion-stagger) * 1.4); }
+  html.fx .f-plates > [data-reveal="plate"]:nth-child(3) { --rv-delay: calc(var(--motion-stagger) * 2.8); }
+
+  html.fx [data-reveal="plate"] .f-plate__frame img {
+    scale: 1.035;
+    transition:
+      scale var(--motion-duration-slow) var(--motion-ease-glide) var(--rv-delay, 0ms),
+      transform .42s var(--p-ease);
+  }
+  html.fx [data-reveal="plate"].is-in .f-plate__frame img {
+    scale: 1;
+  }
+
+  /* 档案：头像画幅略晚于标题，正文逐段跟上 */
+  html.fx .f-about__copy > [data-reveal="text"]:nth-child(2) { --rv-delay: calc(var(--motion-stagger) * 1); }
+  html.fx .f-about__copy > [data-reveal="text"]:nth-child(3) { --rv-delay: calc(var(--motion-stagger) * 2); }
+
+  /* 尾页：饰花 → 引文 → 编号，最后一段自然收束，不做第二个大场景 */
+  html.fx [data-reveal="coda"] .f-fleuron,
+  html.fx [data-reveal="coda"] blockquote,
+  html.fx [data-reveal="coda"] .f-num {
+    opacity: 0;
+    translate: 0 12px;
+    transition:
+      opacity var(--motion-duration-medium) var(--motion-ease-out) var(--rv-delay, 0ms),
+      translate var(--motion-duration-medium) var(--motion-ease-out) var(--rv-delay, 0ms);
+  }
+  html.fx [data-reveal="coda"] blockquote { --rv-delay: 90ms; }
+  html.fx [data-reveal="coda"] .f-num { --rv-delay: 170ms; }
+
+  html.fx [data-reveal="coda"].is-in blockquote,
+  html.fx [data-reveal="coda"].is-in .f-num {
+    opacity: 1;
+    translate: 0 0;
+  }
+  /* 饰花的可见度由主题变量控制（trace / minimal 下为 0），终点必须回到变量值 */
+  html.fx [data-reveal="coda"].is-in .f-fleuron {
+    opacity: var(--deco-fleuron, 1);
+    translate: 0 0;
+  }
+
+  /* ==========================================================================
+     四、移动端：内容可读性优先，整体减幅
+     ========================================================================== */
+  @media (max-width: 720px) {
+    html.fx .f-hero.is-fx .f-hero__body > * {
+      --hp-y-scale: .62;
+    }
+    html.fx .f-hero.is-fx .f-hero__image {
+      --hp-par: 8px;
+      --hp-zoom: .02;
+    }
+    html.fx .f-hero.is-fx .f-hero__scrim {
+      opacity: 1;
+    }
+    /* 单列布局下错峰序列只会让内容出现得更慢，收敛为一档 */
+    html.fx .f-recent > [data-reveal="card"]:nth-child(n + 2) { --rv-delay: 0ms; }
+    html.fx .f-plates > [data-reveal="plate"]:nth-child(n + 2) { --rv-delay: 0ms; }
+  }
+
+  /* ==========================================================================
+     五、降级：减少动效 / 打印
+     --------------------------------------------------------------------------
+     prefers-reduced-motion 下脚本根本不会进入 fx 模式；这里再补一层 CSS 兜底，
+     保证运行中切换系统设置也不会留下隐藏元素。所有复位声明必须写在上面各节之后。
+     ========================================================================== */
+  @media (prefers-reduced-motion: reduce) {
+    html.fx .f-section-head[data-reveal] { border-bottom-color: var(--c-rule-strong); }
+    html.fx .f-section-head[data-reveal]::after { display: none; }
+
+    html.fx .f-section-head[data-reveal] > .f-section-title,
+    html.fx .f-section-head[data-reveal] > .f-section-more,
+    html.fx [data-reveal="card"],
+    html.fx [data-reveal="plate"],
+    html.fx [data-reveal="figure"],
+    html.fx [data-reveal="text"],
+    html.fx [data-reveal="coda"] .f-fleuron,
+    html.fx [data-reveal="coda"] blockquote,
+    html.fx [data-reveal="coda"] .f-num {
+      opacity: 1;
+      translate: none;
+      transition: none;
+    }
+    html.fx [data-reveal="coda"] .f-fleuron { opacity: var(--deco-fleuron, 1); }
+
+    html.fx [data-reveal="plate"] .f-plate__frame img { scale: 1; transition: transform .42s var(--p-ease); }
+
+    html.fx .f-hero.is-fx .f-hero__body > * {
+      animation: none;
+      opacity: 1;
+      translate: none;
+    }
+    /* 铜线有独立（更高特异性）的终态规则，这里必须一并复位到 .85 */
+    html.fx .f-hero.is-fx .f-hero__domain-rule { opacity: .85; transform: scaleX(1); }
+    html.fx .f-hero.is-fx .f-hero__image { translate: none; scale: 1; }
+    html.fx .f-hero.is-fx .f-hero__scrim { opacity: 1; }
+  }
+
+  @media print {
+    html.fx .f-section-head[data-reveal] { border-bottom-color: var(--c-rule-strong); }
+    html.fx .f-section-head[data-reveal]::after { display: none; }
+
+    html.fx [data-reveal],
+    html.fx [data-reveal] .f-fleuron,
+    html.fx [data-reveal] blockquote,
+    html.fx [data-reveal] .f-num,
+    html.fx .f-section-head[data-reveal] > * {
+      opacity: 1;
+      translate: none;
+      transition: none;
+    }
+    /* 饰花的可见度仍由主题变量决定，打印时不要把它强行点亮 */
+    html.fx [data-reveal="coda"] .f-fleuron { opacity: var(--deco-fleuron, 1); }
+    html.fx [data-reveal="plate"] .f-plate__frame img { scale: 1; }
+    /* 打印时首屏必须回到"完全静止、完全可见"，与滚动位置无关 */
+    html.fx .f-hero.is-fx .f-hero__body > * {
+      animation: none;
+      opacity: 1;
+      translate: none;
+    }
+    html.fx .f-hero.is-fx .f-hero__domain-rule { opacity: .85; transform: scaleX(1); }
+    html.fx .f-hero.is-fx .f-hero__image { translate: none; scale: 1; }
+    html.fx .f-hero.is-fx .f-hero__scrim { opacity: 1; }
+  }
+}

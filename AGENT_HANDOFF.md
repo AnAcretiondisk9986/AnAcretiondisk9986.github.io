@@ -2,6 +2,31 @@
 
 > 本文件已在用户授权下公开于 GitHub 仓库。每位 Agent 完成工作后在此记录变更。
 
+**🧹 审计修复：目录页 resize 监听泄漏（2026-10-17）**
+
+- **症状/根因**：`src/scripts/catalog-layout.ts` 在 `initCatalogLayout()` 里匿名 `window.addEventListener('resize', …)`。ClientRouter 每次导航都会生成新的 `[data-catalog-list]`，`boundLists` WeakSet 只能防止同一元素重复绑定；旧列表卸载后监听器仍留在 window 上（闭包引用旧 list），每进入一次 `/blog/` 就多泄漏一个。实测两轮 home→blog→home 后 `resize` 监听数为 2→3→4。
+- **修复**：改为模块级具名 `handleCatalogResize` + `ensureResizeListener()` 单次绑定；事件触发时按当前 DOM 查询 `[data-catalog-list]`，导航后自动作用到新列表，不再持有旧列表。目录页标题自适应逻辑未改。
+- **关联审计 #1**：首页交棒计时已由上方功能条目中的 `activeHero` 同屏去重修复（`src/scripts/home-cinematic.ts`），本次复核 `verify:home-cinematic` 的“重资源页面交棒不被晚到的 load 推迟”为 1345ms。
+- **验证**：`npm run build` 111 页；`npm run verify:home-cinematic` 63/63；独立 CDP 监听归因（scriptId→URL）两轮往返后 `PostCatalog` 的 `resize` 监听稳定为 1（修复前 1→2），首页脚本 `scroll`/`resize` 仍各 1。
+
+**🎞 首页电影感滚动动画系统（渐进增强，2026-10-17）**
+
+- **背景**：首页已有完整编辑式视觉（全幅首屏 banner、II 近期编目六卡、III 最新图版、IV 编目者档案、尾页 coda）与一次性首屏入场动画（`f-hero-in`），但滚动过程是静止的。本次在不改内容、不改组件结构、不改设计变量、不新增依赖的前提下，加一层克制的滚动叙事。
+- **新增文件**：
+  - `src/styles/home-cinematic.css`（只在首页加载，沿用全站 `@layer` 序列、落在 components 层）：`--motion-*` 局部动效 token；首屏退场映射（`--hp` 0→1 → 逐层 opacity / translate）；分区标题→入口→分隔线的分步显现；卡片错峰；图版画幅；档案与尾页；移动端减幅；`prefers-reduced-motion` 与 print 复位；键盘聚焦兜底。
+  - `src/scripts/home-cinematic.ts`：控制器。首屏「一次测量 + rAF 合并 + 只写一个 CSS 变量」的滚动进度；内容显现用 IntersectionObserver（进入视口一次性显现，装载时已在视口内的目标同步标记，避免先露后藏）；跟随 ClientRouter `astro:page-load` 幂等重装（同一屏只接管一次，避免首次装载时重置交棒计时）；运行中切换「减少动态效果」立即撤销。
+  - `scripts/verify-home-cinematic.mjs` + `npm run verify:home-cinematic`：headless Chrome 回归，63 项断言。
+- **最小改动**：`src/pages/index.astro`（4 类 `data-reveal` 挂载属性 + 一行 CSS/脚本 import）、`src/components/AboutTeaser.astro`（该组件仅首页使用，3 处属性）。**未重写首页、未替换组件、未引入任何 UI/动画库、未改既有选择器的静态外观**。
+- **动画设计**：
+  - 首屏：进度严格对应滚动位置（区间 = hero 绝对底边 × 0.88），主标题 0→-36px 并淡出，folio/副标题/说明/元信息/按钮按 0.06–0.16 的进度差依次晚退；背景图版反向 16px + 1.045 推近（移动端 8px / 1.02）；`.is-fx` 把既有入场动画（带 forwards）交棒给滚动，二者不同时驱动同一组属性（交棒点取最慢的铜线动画终点 1.28s 之后，落位瞬间用 0.34s 过渡收掉跳变）；进度是纯函数，向上滚动自然复原。
+  - 分区：标题 →「更多」入口（+70ms）→ 分隔线（`scaleX(0→1)`，`transform-origin: left center`，+110ms）。分隔线在动效模式下由同色同位 `::after` 绘制，终态与原 `border-bottom` 完全一致。
+  - 卡片：16px 上浮 + 淡入，480ms 同级缓出；同组 60/120/180ms 三档错峰，第 4 张起不再叠加；移动端单列收敛为 0。
+  - 图版：容器 16px 上浮 + 图片独立 `scale` 从 1.035 收到 1（760ms），与既有 hover 的 `transform: scale(1.025)` 正交，不互相覆盖。
+  - 导航未动：现有页头不是 sticky/fixed，随文档滚出视口；为其追加吸顶或背景过渡会改变现有布局与移动端可视高度，属于本任务明确禁止的改动，故不实现（导航文案、点击区、键盘可用性保持原样）。
+- **性能/兼容**：滚动回调只读 `window.scrollY`、只写 `.f-hero` 的 `--hp`，不在滚动中读布局（测量发生在 init / resize / `document.fonts.ready`）；不用 `will-change`；只动 transform/translate/scale/opacity（另有一处把铜线透明度还原到原设计终值 .85，不是新增视觉）；无脚本、脚本加载失败、`prefers-reduced-motion: reduce` 时所有隐藏初态都不生效（全部挂在 `html.fx` 下），初始化异常会先撤掉 fx 再退出。
+- **验证**：`npm run build` 111 页通过；与 `git HEAD` 独立构建逐字节对照——首页 `<body>` 结构在剥离 `data-reveal` 后**完全一致**（10479/10479 字符），正文文本、内容 href 序列、全部 `<img>` 标签一致；`npm run verify:home-cinematic` 63/63（含进度映射与可逆性、铜线终态 .85、错峰、分隔线 scaleX、卡片/图版 hover 过渡未被覆盖、聚焦兜底、交棒落位过渡不残留、重资源页面交棒不被晚到的 load 推迟、打印复位、window 监听不累积、全页无隐藏残留、桌面/移动无横向溢出、reduced-motion 含 CSS 兜底、脚本加载失败、ClientRouter 往返）；截图留档 `perf-reports/home-cinematic/`。
+- **遗留**：没有做真实人工视觉验收（headless 环境里首屏底图走 CDN 被脚本拦截，截图背景为兜底深墨场）；项目未配置 `astro check`，TS 仅经 esbuild 转换；导航状态过渡按上述理由未实现。
+
 **🩹 修复首页 Hero 大标题排版（中英混排被裁切 / 字形相贴）**
 
 - **症状**（用户反馈「首页大标题排版有问题」）：1440px 桌面端 `欢迎来到Blog.Acretiondisk.top` 与 `这是我的个人网站` 各被折成 2 行、共 4 行大黑块，且 `letter-spacing:-0.08em` 让中文字形相贴；390px 手机端拉丁串无法断行，横向溢出后被 `.fusion-hero{overflow:hidden}` 裁掉，「.top」整段消失（只剩 `Blog.Acretiondisl`）。

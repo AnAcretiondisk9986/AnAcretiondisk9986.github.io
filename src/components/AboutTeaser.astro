@@ -12,19 +12,21 @@ const { avatar, lead, paragraphs, quoteText } = Astro.props;
 ---
 
 <section class="f-section f-about" aria-labelledby="about-title">
-  <div class="f-section-head">
+  {/* data-reveal：首页滚动动效的挂载点（见 src/styles/home-cinematic.css）。
+      本组件只被首页使用；属性本身不改变任何样式与语义。 */}
+  <div class="f-section-head" data-reveal="head">
     <h2 class="f-section-title" id="about-title"><small>IV</small>编目者档案</h2>
     <a class="f-section-more" href="/about/">了解我 <Icon name="arrow-right" /></a>
   </div>
 
   <div class="f-about__grid">
-    <figure class="f-about__portrait">
+    <figure class="f-about__portrait" data-reveal="figure">
       <img src={avatar} alt="" width="360" height="360" loading="lazy" decoding="async" />
     </figure>
     <div class="f-about__copy">
-      <p class="f-about__lead">{lead}</p>
-      {paragraphs[0] && <p class="f-about__para">{paragraphs[0]}</p>}
-      <blockquote class="f-about__quote">{quoteText}</blockquote>
+      <p class="f-about__lead" data-reveal="text">{lead}</p>
+      {paragraphs[0] && <p class="f-about__para" data-reveal="text">{paragraphs[0]}</p>}
+      <blockquote class="f-about__quote" data-reveal="text">{quoteText}</blockquote>
     </div>
   </div>
 </section>
