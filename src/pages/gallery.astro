@@ -92,27 +92,17 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
 
 <BaseLayout title="照片" description="Acretiondisk 的照片。">
   <div class="gallery-shell">
-    <header class="gallery-header">
-      <div class="gallery-header-copy">
-        <div class="folio-kicker">
-          <span>IMAGO / PERSONAL ARCHIVE</span>
-          <span>VOL. I · {String(totalImages).padStart(2, '0')} IMAGES</span>
-        </div>
-        <p class="eyebrow"><ThemeCopy minimal="CATALOGUS IMAGINUM" trace="CATALOGUS IMAGINUM" cyanotype="LIGHT FRAGMENTS / 03" /></p>
-        <h1>
-          <ThemeCopy minimal="照片">
-            <Fragment slot="trace">图像<br /><em>档案</em></Fragment>
-          </ThemeCopy>
-        </h1>
-        <p class="gallery-intro"><ThemeCopy minimal="文章中的图片，以及单独收藏的照片。" trace="从文字中显影的片段，以及尚未归入卷册的独立收藏。" /></p>
+    <header class="f-gallery-head">
+      <div class="f-fleuron" aria-hidden="true"><i></i></div>
+      <div class="f-cover__folio">
+        <span>IMAGO</span><span>·</span><span>图志</span><span>·</span><span>VOL. I</span>
       </div>
-      <div class="gallery-header-mark">
-        <img class="archive-seal" src="/logo.webp" alt="" width="400" height="400" loading="lazy" />
-        <dl>
-          <div><dt><ThemeCopy minimal="文章图片" trace="随文图像" /></dt><dd>{String(journalImages.length).padStart(2, '0')}</dd></div>
-          <div><dt><ThemeCopy minimal="独立照片" trace="独立收藏" /></dt><dd>{String(standaloneImages.length).padStart(2, '0')}</dd></div>
-          <div><dt><ThemeCopy minimal="更新状态" trace="档案状态" /></dt><dd><ThemeCopy minimal="持续更新" trace="持续入藏" /></dd></div>
-        </dl>
+      <h1 class="f-gallery-head__title">照片</h1>
+      <p class="f-gallery-head__deck"><ThemeCopy minimal="文章中的图片，以及单独收藏的照片。" trace="从文字中显影的片段，以及尚未归入卷册的独立收藏。" /></p>
+      <div class="f-cover__meta f-gallery-head__stats">
+        <span><span>图版</span><b class="f-num">{String(totalImages).padStart(3, '0')}</b></span>
+        <span><span>随文图像</span><b class="f-num">{String(journalImages.length).padStart(2, '0')}</b></span>
+        <span><span>独立收藏</span><b class="f-num">{String(standaloneImages.length).padStart(2, '0')}</b></span>
       </div>
     </header>
 
@@ -294,7 +284,592 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
   import '../scripts/gallery-page';
 </script>
 
+<style is:global>
+  /* ── 图志页：把 legacy 的档案头 / 药丸 tab / 卡片盒接管为 Folio 版式。
+     仅视觉层覆盖，class 名、data-* 契约与 DOM 层级保持原样（gallery-page.ts 依赖）。 ── */
+  @layer components {
+    /* ===== 页头：章节头（饰花 + 徽标 + 标题 + 说明 + 等宽统计） ===== */
+    .f-gallery-head {
+      padding-block: var(--p-sp-8) var(--p-sp-6);
+      border-bottom: 1px solid var(--c-rule-strong);
+      text-align: center;
+    }
+    .f-gallery-head .f-fleuron { margin-bottom: var(--p-sp-4); }
+    .f-gallery-head__title {
+      margin-top: var(--p-sp-5);
+      font-family: var(--hero-font);
+      font-size: var(--type-title);
+      font-weight: var(--hero-weight);
+      font-synthesis-weight: none;
+      letter-spacing: -.03em;
+      line-height: 1.15;
+    }
+    .f-gallery-head__deck {
+      max-width: 34em;
+      margin: var(--p-sp-4) auto 0;
+      font-family: var(--font-display);
+      font-style: italic;
+      font-size: var(--type-lead);
+      line-height: 1.75;
+      color: var(--c-ink-2);
+    }
+    .f-gallery-head__stats { margin-top: var(--p-sp-6); }
+    .f-gallery-head__stats b {
+      font-family: var(--font-mono);
+      font-size: var(--type-meta);
+      font-weight: 400;
+      letter-spacing: .04em;
+      color: var(--c-ink);
+      font-variant-numeric: tabular-nums;
+    }
 
+    /* ===== tabs：下划线式，选中仅 2px 铜线下划线 ===== */
+    .gallery-tabs {
+      display: flex;
+      grid-template-columns: none;
+      gap: var(--p-sp-6);
+      margin: var(--p-sp-5) 0 0;
+      padding: 0;
+      overflow: visible;
+      border: 0;
+      border-bottom: 1px solid var(--c-rule);
+      border-radius: 0;
+      background: transparent;
+    }
+    .gallery-tab {
+      position: relative;
+      display: inline-flex;
+      align-items: baseline;
+      gap: 8px;
+      min-height: 0;
+      padding: 0 0 var(--p-sp-3);
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      color: var(--c-ink-3);
+      font-family: var(--font-body);
+      font-size: var(--type-meta);
+      letter-spacing: .02em;
+      box-shadow: none;
+      transition: color .12s var(--p-ease);
+    }
+    .gallery-tab::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: -1px;
+      height: 2px;
+      background: transparent;
+      transition: background-color .12s var(--p-ease);
+    }
+    .gallery-tab:hover { color: var(--c-ink-2); background: transparent; }
+    .gallery-tab[aria-selected='true'] { color: var(--c-ink); background: transparent; box-shadow: none; }
+    .gallery-tab[aria-selected='true']::after { background: var(--c-metal); }
+    .gallery-tab-index {
+      font-family: var(--font-mono);
+      font-size: var(--type-micro);
+      letter-spacing: .1em;
+      color: var(--c-metal);
+    }
+    .gallery-tab b {
+      display: inline;
+      min-width: 0;
+      width: auto;
+      height: auto;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: var(--c-ink-3);
+      font-family: var(--font-mono);
+      font-size: var(--type-micro);
+      font-weight: 400;
+      letter-spacing: .06em;
+    }
 
+    /* ===== 排序条 / 视图切换条：细线 + 等宽小字，去掉填充与描边盒 ===== */
+    .gallery-order-bar,
+    .gallery-view-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: var(--p-sp-3) var(--p-sp-4);
+      min-height: 0;
+      margin: 0;
+      padding-block: var(--p-sp-3);
+      border: 0;
+      border-bottom: 1px solid var(--c-rule);
+      border-radius: 0;
+      background: transparent;
+      box-shadow: none;
+    }
+    .gallery-order-label,
+    .gallery-view-label {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 10px;
+      padding: 0;
+      color: var(--c-ink-3);
+      font-family: var(--font-mono);
+      font-size: var(--type-micro);
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+    .gallery-order-label strong,
+    .gallery-view-label strong {
+      color: var(--c-ink);
+      font-family: var(--font-body);
+      font-size: var(--type-micro);
+      font-weight: 500;
+      letter-spacing: .04em;
+    }
+    .gallery-sort,
+    .gallery-view-switch {
+      display: flex;
+      grid-template-columns: none;
+      gap: var(--p-sp-5);
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+    }
+    .gallery-sort button,
+    .gallery-view-switch button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      min-width: 0;
+      min-height: 0;
+      padding: 2px 0 6px;
+      border: 0;
+      border-bottom: 1px solid transparent;
+      border-radius: 0;
+      background: transparent;
+      color: var(--c-ink-3);
+      font-family: var(--font-body);
+      font-size: var(--type-meta);
+      letter-spacing: .02em;
+      box-shadow: none;
+      transition: color .12s var(--p-ease), border-color .12s var(--p-ease);
+    }
+    .gallery-sort button span,
+    .gallery-view-switch button span {
+      color: inherit;
+      font-family: inherit;
+      font-size: inherit;
+    }
+    .gallery-sort button svg,
+    .gallery-view-switch button svg { width: 12px; height: 12px; }
+    .gallery-sort button:hover,
+    .gallery-view-switch button:hover,
+    .gallery-sort button[aria-pressed='true'],
+    .gallery-view-switch button[aria-pressed='true'] {
+      color: var(--c-ink);
+      background: transparent;
+      box-shadow: none;
+    }
+    .gallery-sort button:hover,
+    .gallery-view-switch button:hover { border-bottom-color: var(--c-rule-strong); }
+    .gallery-sort button[aria-pressed='true'],
+    .gallery-view-switch button[aria-pressed='true'] { border-bottom-color: var(--c-metal); }
+
+    /* ===== 索引条 ===== */
+    .gallery-index-bar {
+      display: flex;
+      justify-content: space-between;
+      gap: var(--p-sp-4);
+      padding: var(--p-sp-3) 0;
+      border-bottom: 1px solid var(--c-rule);
+      color: var(--c-ink-3);
+      font-family: var(--font-body);
+      font-size: var(--type-micro);
+      letter-spacing: .06em;
+    }
+
+    /* ===== 文章图集 ===== */
+    .gallery-albums { padding: var(--p-sp-6) 0 var(--p-sp-8); }
+    .gallery-album {
+      overflow: visible;
+      padding: var(--p-sp-6) 0;
+      border: 0;
+      border-bottom: 1px solid var(--c-rule);
+      border-radius: 0;
+      background: transparent;
+    }
+    .gallery-album-head {
+      align-items: baseline;
+      gap: var(--p-sp-3);
+      margin-bottom: var(--p-sp-4);
+    }
+    .gallery-album-head > div { gap: var(--p-sp-3); }
+    .gallery-album-head h2 {
+      font-family: var(--font-display);
+      font-style: italic;
+      font-size: var(--type-h2);
+      font-weight: 500;
+      letter-spacing: 0;
+    }
+    .gallery-album-head a {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      color: var(--c-ink-3);
+      font-family: var(--font-body);
+      font-size: var(--type-micro);
+      letter-spacing: .04em;
+    }
+    .gallery-album-head a:hover { color: var(--c-metal); }
+    .gallery-album-head a svg { width: 11px; height: 11px; }
+    .gallery-album-grid { gap: var(--p-sp-3); }
+    .gallery-album-thumb {
+      overflow: hidden;
+      border: 1px solid var(--c-rule-strong);
+      border-radius: var(--r-frame);
+      background: var(--c-paper-sunken);
+    }
+    .gallery-album-thumb img { height: 132px; filter: none; }
+    .gallery-album-thumb:hover img { filter: none; transform: scale(1.02); }
+
+    /* ===== 时间线图卡 ===== */
+    .gallery-masonry {
+      column-count: 3;
+      column-gap: var(--p-sp-5);
+      padding: var(--p-sp-6) 0 var(--p-sp-7);
+    }
+    .gallery-card {
+      display: inline-block;
+      width: 100%;
+      overflow: visible;
+      margin: 0 0 var(--p-sp-6);
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+    }
+    .gallery-image-button {
+      border: 1px solid var(--c-rule-strong);
+      border-radius: var(--r-frame);
+      background: var(--c-paper-sunken);
+    }
+    .gallery-image-button img { filter: none; }
+    .gallery-image-button:hover img { filter: none; transform: scale(1.02); }
+
+    /* 图上的编号标签：细线 + 纸面，铜色等宽编号（PL. xxx） */
+    .gallery-image-stamp,
+    .gallery-image-expand,
+    .gallery-album-thumb-index {
+      border: 1px solid var(--c-rule-strong);
+      border-radius: var(--r-frame);
+      color: var(--c-metal);
+      background: var(--c-paper-raised);
+      font-family: var(--font-mono);
+      font-size: var(--type-micro);
+      letter-spacing: .08em;
+      backdrop-filter: none;
+    }
+    .gallery-image-stamp,
+    .gallery-album-thumb-index {
+      top: 10px;
+      left: 10px;
+      display: inline-flex;
+      align-items: baseline;
+      gap: 4px;
+      min-width: 0;
+      height: auto;
+      padding: 2px 7px;
+      white-space: nowrap;
+    }
+    .gallery-image-stamp::before,
+    .gallery-album-thumb-index::before { content: "PL. "; }
+    .gallery-image-expand {
+      right: 10px;
+      bottom: 10px;
+      width: 26px;
+      height: 26px;
+      color: var(--c-ink-3);
+    }
+    .gallery-image-expand svg { width: 12px; height: 12px; }
+
+    /* 图下 caption：衬线斜体 + 等宽小字 */
+    .gallery-card-meta { padding: var(--p-sp-3) 0 0; }
+    .gallery-card-meta > div { gap: var(--p-sp-3); margin-bottom: 6px; }
+    .gallery-card-label {
+      color: var(--c-ink-3);
+      font-family: var(--font-mono);
+      font-size: var(--type-micro);
+      letter-spacing: .1em;
+    }
+    .gallery-card-label[data-gallery-sequence] { color: var(--c-metal); }
+    .gallery-card-meta h2 {
+      margin-bottom: 4px;
+      font-family: var(--font-display);
+      font-style: italic;
+      font-size: var(--type-body);
+      font-weight: 500;
+      letter-spacing: 0;
+      line-height: 1.5;
+      color: var(--c-ink);
+    }
+    .gallery-card-meta p {
+      margin-bottom: 4px;
+      color: var(--c-ink-2);
+      font-family: var(--font-body);
+      font-size: var(--type-meta);
+      line-height: 1.7;
+    }
+    .gallery-card-meta a {
+      color: var(--c-ink-3);
+      font-family: var(--font-body);
+      font-size: var(--type-micro);
+      letter-spacing: .04em;
+      border-bottom: 1px solid transparent;
+      transition: color .12s var(--p-ease), border-color .12s var(--p-ease);
+    }
+    .gallery-card-meta a:hover { color: var(--c-metal); border-bottom-color: var(--c-metal); }
+
+    /* ===== 分页 ===== */
+    .gallery-pager {
+      gap: var(--p-sp-4);
+      min-height: 0;
+      margin-top: var(--p-sp-5);
+      padding: var(--p-sp-4) 0 0;
+      border-top: 1px solid var(--c-rule);
+    }
+    .gallery-pager button {
+      min-width: 34px;
+      height: 34px;
+      border: 1px solid var(--c-rule);
+      border-radius: var(--r-frame);
+      color: var(--c-ink-2);
+      background: transparent;
+      transition: color .12s var(--p-ease), border-color .12s var(--p-ease);
+    }
+    .gallery-pager button svg { width: 12px; height: 12px; }
+    .gallery-pager button:hover { border-color: var(--c-metal); color: var(--c-metal); }
+    .gallery-pager-status {
+      color: var(--c-ink-3);
+      font-family: var(--font-mono);
+      font-size: var(--type-micro);
+      letter-spacing: .12em;
+    }
+    .gallery-pager-status b {
+      color: var(--c-ink);
+      font-weight: 400;
+      font-family: var(--font-mono);
+    }
+
+    /* ===== 独立收藏广告牌 ===== */
+    .gallery-billboard {
+      margin-top: var(--p-sp-5);
+      padding: var(--p-sp-4) 0;
+      border-bottom: 1px solid var(--c-rule);
+    }
+    .gallery-billboard-head {
+      padding: 0 0 var(--p-sp-3);
+      color: var(--c-ink-3);
+      font-family: var(--font-body);
+      font-size: var(--type-micro);
+      letter-spacing: .06em;
+    }
+    .gallery-billboard-slide {
+      border: 1px solid var(--c-rule-strong);
+      border-radius: var(--r-frame);
+      background: var(--c-paper-sunken);
+      filter: none;
+    }
+    .gallery-billboard-slide.is-active { filter: none; }
+    .gallery-billboard-slide img { filter: none; }
+    .gallery-billboard-slide.is-active img { filter: none; }
+    .gallery-billboard-arrow {
+      width: 34px;
+      height: 34px;
+      border: 1px solid var(--c-rule-strong);
+      border-radius: var(--r-frame);
+      color: var(--c-ink);
+      background: var(--c-paper-raised);
+      backdrop-filter: none;
+    }
+    .gallery-billboard-arrow svg { width: 12px; height: 12px; }
+    .gallery-billboard-arrow:hover {
+      color: var(--c-metal);
+      border-color: var(--c-metal);
+      background: var(--c-paper-raised);
+    }
+    .gallery-billboard-dots { gap: 5px; padding-top: var(--p-sp-3); }
+    .gallery-billboard-dots button {
+      width: 5px;
+      height: 5px;
+      border: 1px solid var(--c-rule-strong);
+      border-radius: 0;
+      background: transparent;
+    }
+    .gallery-billboard-dots button:hover { border-color: var(--c-metal); }
+    .gallery-billboard-dots button[aria-current='true'] {
+      border-color: var(--c-metal);
+      background: var(--c-metal);
+    }
+
+    /* ===== 空态 / 页脚 ===== */
+    .gallery-empty { border-bottom: 1px solid var(--c-rule); }
+    .gallery-empty::before { display: none; }
+    .gallery-empty .archive-seal { color: var(--c-metal); opacity: .5; }
+    .gallery-empty strong {
+      font-family: var(--font-display);
+      font-style: italic;
+      font-weight: 500;
+      font-size: var(--type-h2);
+      letter-spacing: 0;
+    }
+    .gallery-empty span {
+      color: var(--c-ink-3);
+      font-family: var(--font-body);
+      font-size: var(--type-meta);
+      letter-spacing: 0;
+    }
+    .gallery-footer {
+      padding: var(--p-sp-4) 0;
+      border-top: 1px solid var(--c-rule);
+      color: var(--c-ink-3);
+      font-family: var(--font-body);
+      font-size: var(--type-micro);
+      letter-spacing: .06em;
+    }
+
+    /* ===== 灯箱：深色遮罩 + 细线边框 + 衬线斜体 caption ===== */
+    .gallery-viewer {
+      width: fit-content;
+      height: fit-content;
+      border: 1px solid var(--c-rule-strong);
+      border-radius: var(--r-frame);
+      color: var(--c-ink);
+      background: var(--c-paper-raised);
+      box-shadow: none;
+    }
+    .gallery-viewer::backdrop {
+      background: rgb(0 0 0 / .82);
+      backdrop-filter: blur(6px);
+    }
+    .gallery-viewer-close {
+      top: 12px;
+      right: 12px;
+      width: 34px;
+      height: 34px;
+      border: 1px solid var(--c-rule-strong);
+      border-radius: var(--r-frame);
+      color: var(--c-ink);
+      background: var(--c-paper-raised);
+      font-size: 1rem;
+      transition: color .12s var(--p-ease), border-color .12s var(--p-ease);
+    }
+    .gallery-viewer-close:hover { color: var(--c-metal); border-color: var(--c-metal); }
+    .gallery-viewer-close svg { width: 14px; height: 14px; }
+    .gallery-viewer-media { background: var(--c-paper-sunken); }
+    .gallery-viewer-tools {
+      gap: var(--p-sp-4);
+      min-height: 0;
+      padding: var(--p-sp-2) var(--p-sp-4);
+      border-top: 1px solid var(--c-rule);
+      background: var(--c-paper-raised);
+      font-family: var(--font-body);
+      font-size: var(--type-micro);
+      letter-spacing: .04em;
+    }
+    .gallery-viewer-tools button {
+      border: 1px solid var(--c-rule);
+      border-radius: var(--r-frame);
+      color: var(--c-ink-2);
+      background: transparent;
+      font-family: var(--font-body);
+      font-size: var(--type-micro);
+      letter-spacing: .04em;
+      padding: 4px 10px;
+    }
+    .gallery-viewer-tools button:hover { border-color: var(--c-metal); color: var(--c-metal); }
+    .gallery-viewer-zoom {
+      color: var(--c-ink-3);
+      font-family: var(--font-body);
+      font-size: var(--type-micro);
+      letter-spacing: .04em;
+    }
+    .gallery-viewer-zoom input[type='range'] { accent-color: var(--c-metal); }
+    .gallery-viewer-zoom b {
+      color: var(--c-ink);
+      font-family: var(--font-mono);
+      font-weight: 400;
+    }
+    .gallery-viewer-meta {
+      gap: var(--p-sp-5);
+      min-height: 0;
+      padding: var(--p-sp-4);
+      border-top: 1px solid var(--c-rule);
+    }
+    .gallery-viewer-meta .gallery-card-label {
+      color: var(--c-metal);
+      font-family: var(--font-body);
+      letter-spacing: .06em;
+    }
+    .gallery-viewer-meta h2 {
+      margin-top: 4px;
+      font-family: var(--font-display);
+      font-style: italic;
+      font-size: var(--type-item);
+      font-weight: 500;
+      letter-spacing: 0;
+    }
+    .gallery-viewer-meta a {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--c-ink-3);
+      font-family: var(--font-body);
+      font-size: var(--type-micro);
+      letter-spacing: .04em;
+    }
+    .gallery-viewer-meta a:hover { color: var(--c-metal); }
+    .gallery-viewer-meta a svg { width: 11px; height: 11px; }
+
+    /* 脚本构建的卡片带三份主题文案；服务端 ThemeCopy 已收敛为一份，隐藏多余副本 */
+    .gallery-shell [data-theme-copy-cyanotype] { display: none; }
+
+    /* ===== 响应式 ===== */
+    @media (max-width: 1100px) {
+      .gallery-masonry { column-count: 2; }
+      .gallery-album-grid { grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); }
+    }
+    @media (max-width: 720px) {
+      .f-gallery-head { padding-block: var(--p-sp-7) var(--p-sp-5); }
+      .gallery-tabs { gap: var(--p-sp-5); margin-inline: 0; }
+      .gallery-order-bar,
+      .gallery-view-bar {
+        align-items: flex-start;
+        flex-direction: column;
+        margin-inline: 0;
+      }
+      .gallery-index-bar { flex-direction: column; gap: 2px; }
+      .gallery-masonry { column-count: 1; padding-block: var(--p-sp-5) var(--p-sp-6); }
+      .gallery-album-grid { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); }
+      .gallery-album-thumb img { height: 104px; }
+      .gallery-viewer {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        height: 100%;
+        max-width: 100%;
+        max-height: 100%;
+        margin: 0;
+        border: 0;
+        border-radius: 0;
+      }
+      .gallery-viewer-frame { max-height: 100%; }
+      .gallery-viewer-meta { padding: var(--p-sp-4) var(--p-sp-3); }
+      .gallery-footer { flex-direction: column; gap: 4px; }
+    }
+    @media (max-width: 480px) {
+      .gallery-album-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .gallery-album-thumb img { height: 92px; }
+    }
+  }
+</style>
 
 

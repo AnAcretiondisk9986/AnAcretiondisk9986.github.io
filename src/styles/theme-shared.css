@@ -1,5 +1,8 @@
 @charset "UTF-8";
 
+/* FOLIO: 旧样式统一降级到 legacy 层 —— 新的 base/layout/components 层永远后胜出。 */
+@layer legacy {
+
 /*
  * 主题共享层：所有视觉主题都必须加载的规则。
  *
@@ -127,4 +130,5 @@
 .liquid-hero-media,
 .liquid-hero-copy {
   display: none;
+}
 }

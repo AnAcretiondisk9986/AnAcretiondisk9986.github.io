@@ -1,25 +1,24 @@
 ---
-import Icon from '../Icon.astro';
-import ThemeCopy from '../ThemeCopy.astro';
-
 interface Props {
   siteName: string;
   siteTagline: string;
 }
 
 const { siteName, siteTagline } = Astro.props;
+const year = new Date().getFullYear();
 ---
 
-<footer class="site-footer">
-  <div class="footer-mark">
-    <img class="footer-seal site-logo" src="/logo-primary.webp" alt={`${siteName} LOGO`} width="48" height="48" />
-    <p>
-      <strong>{siteName} · <ThemeCopy minimal="持续更新" trace="持续编目" /></strong>
-      <span><ThemeCopy minimal={siteTagline} trace={siteTagline} cyanotype="让路过的光，有迹可循。" /></span>
-    </p>
-  </div>
-  <div class="footer-meta">
-    <span>© {new Date().getFullYear()} {siteName.toUpperCase()}</span>
-    <a href="https://github.com/AnAcretiondisk9986">GITHUB <Icon name="arrow-up-right" /></a>
+<footer class="f-footer">
+  <div class="f-double-rule" style="margin-bottom:32px"></div>
+  <div class="f-footer__inner">
+    <div class="f-stamp" aria-hidden="true">ARS<br />LONGA</div>
+    <div class="f-footer__meta">
+      {siteName} · {siteTagline}<br />
+      内容以 CC BY-NC 4.0 授权 · 图片来源见各图版
+    </div>
+    <div class="f-footer__meta" style="text-align:right">
+      <a href="https://github.com/AnAcretiondisk9986">GITHUB ↗</a> · © {year} {siteName.toUpperCase()}<br />
+      编目与图版持续增补
+    </div>
   </div>
 </footer>

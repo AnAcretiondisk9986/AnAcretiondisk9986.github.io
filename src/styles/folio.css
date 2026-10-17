@@ -1,0 +1,246 @@
+/* ============================================================================
+   FOLIO — 视觉系统 token 层
+   层序（全站唯一声明处，必须在最先加载的样式表里）：
+   reset → tokens → legacy → base → layout → components → theme → print
+
+   · 旧样式全部收进 legacy 层（global.css / theme-shared.css / fusion-theme.css），
+     新系统位于其后的 base / layout / components 层，因此永远后胜出——
+     不再需要 :root:root 提权，也不再依赖加载顺序。
+   · 主题块只写语义变量，不写任何具体声明（padding/font-size 之类）。
+   ============================================================================ */
+@layer reset, tokens, legacy, base, layout, components, theme, print;
+
+/* ── 西文字体：Anthropic 官网字体系统（可变字重 300–800，含 opsz 轴） ──
+   中文不在这些字体内，会按字符回退到系统宋/黑；四槽位见 --latin-* / --cjk-* */
+@font-face { font-family: "Anthropic Serif"; src: url("/fonts/anthropic-serif.woff2") format("woff2"); font-weight: 300 800; font-style: normal; font-display: swap; }
+@font-face { font-family: "Anthropic Serif"; src: url("/fonts/anthropic-serif-italic.woff2") format("woff2"); font-weight: 300 800; font-style: italic; font-display: swap; }
+@font-face { font-family: "Anthropic Sans"; src: url("/fonts/anthropic-sans.woff2") format("woff2"); font-weight: 300 800; font-style: normal; font-display: swap; }
+@font-face { font-family: "Anthropic Sans"; src: url("/fonts/anthropic-sans-italic.woff2") format("woff2"); font-weight: 300 800; font-style: italic; font-display: swap; }
+@font-face { font-family: "Anthropic Mono"; src: url("/fonts/anthropic-mono.woff2") format("woff2"); font-weight: 300 800; font-style: normal; font-display: swap; }
+@font-face { font-family: "Anthropic Mono"; src: url("/fonts/anthropic-mono-italic.woff2") format("woff2"); font-weight: 300 800; font-style: italic; font-display: swap; }
+@font-face { font-family: "JetBrains Mono"; src: url("/fonts/jetbrains-mono.woff2") format("woff2"); font-weight: 300 800; font-style: normal; font-display: swap; }
+
+@layer tokens {
+  /* ---------- L1 primitive：原始值，任何声明都不得直接使用 ---------- */
+  :root {
+    --p-paper-0: #fcfaf6;
+    --p-paper-1: #f6f3ec;
+    --p-paper-2: #ede8de;
+    --p-paper-3: #e2dbce;
+    --p-ink-0: #12100d;
+    --p-ink-1: #2b2721;
+    --p-ink-2: #4d463c;
+    --p-ink-3: #7c7366;
+    --p-copper-700: #6e5a32;
+    --p-copper-500: #9a7b40;
+    --p-copper-300: #c4a566;
+    --p-blue-600: #234eb6;
+    --p-red-600: #b0432f;
+    --p-green-700: #2f4f45;
+    --p-teal-600: #0e7f9b;
+    --p-amber-600: #c08a3e;
+    --p-brick-600: #a8433a;
+    --p-cyan-500: #139eb7;
+
+    --p-night-0: #0d0d0e;
+    --p-night-1: #12151a;
+    --p-night-2: #0f1513;
+    --p-night-3: #0e1a1e;
+    --p-night-ink: #e8e3d9;
+    --p-night-ink-2: #b9b2a5;
+    --p-night-ink-3: #8b8477;
+
+    --p-sp-1: 4px;  --p-sp-2: 8px;  --p-sp-3: 12px; --p-sp-4: 16px;
+    --p-sp-5: 24px; --p-sp-6: 32px; --p-sp-7: 48px; --p-sp-8: 64px;
+    --p-sp-9: 96px; --p-sp-10: 128px;
+    --p-r-0: 0; --p-r-1: 2px; --p-r-2: 4px; --p-r-3: 8px;
+    --p-dur-fast: 120ms; --p-dur-base: 220ms; --p-dur-slow: 420ms;
+    --p-ease: cubic-bezier(.22, .61, .24, 1);
+  }
+
+  /* ---------- L2 semantic：角色契约（默认值 = 蓝晒/明色） ---------- */
+  :root {
+    --c-paper: var(--p-paper-1);
+    --c-paper-raised: var(--p-paper-0);
+    --c-paper-sunken: var(--p-paper-2);
+    --c-ink: var(--p-ink-0);
+    --c-ink-2: var(--p-ink-2);
+    --c-ink-3: var(--p-ink-3);
+    --c-rule: rgba(18, 16, 13, .15);
+    --c-rule-strong: rgba(18, 16, 13, .34);
+    --c-metal: var(--p-copper-500);
+    --c-accent: var(--p-blue-600);
+    --c-accent-2: var(--p-red-600);
+
+    /* 四槽位字体（S1：中文标题宋 / 正文黑，拉丁标题衬线 / 正文无衬线） */
+    --latin-display: "Anthropic Serif";
+    --latin-body: "Anthropic Sans";
+    --cjk-display: "Noto Serif SC";
+    --cjk-body: "Noto Sans SC";
+
+    --stack-display: var(--latin-display), var(--cjk-display), "Source Han Serif SC", "Songti SC", "STSong", "SimSun", Georgia, serif;
+    --stack-body: var(--latin-body), var(--cjk-body), "Source Han Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    --stack-mono: "Anthropic Mono", "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+
+    --font-display: var(--stack-display);
+    --font-body: var(--stack-body);
+    --font-mono: var(--stack-mono);
+
+    /* 首页展示字：中西文皆 Serif 最粗。仅作用于展示级。 */
+    --hero-font: var(--latin-display), var(--cjk-display), "Source Han Serif SC", "Songti SC", "SimSun", serif;
+    --hero-weight: 900;
+
+    --type-display: clamp(2rem, 6.9vw, 6rem);
+    --type-title: clamp(1.75rem, 3vw, 2.5rem);
+    --type-h2: clamp(1.25rem, 1.6vw, 1.5rem);
+    --type-item: 1.125rem;
+    --type-lead: 1.0625rem;
+    --type-body: 1rem;
+    --type-meta: .8125rem;
+    --type-micro: .6875rem;
+
+    --lh-display: 1.14;
+    --lh-body: 1.85;
+    --track-caps: .18em;
+
+    --content-w: 1200px;
+    --measure: 34em;
+
+    --r-frame: 0;
+    --frame-w: 1px;
+    --frame-color: var(--c-rule-strong);
+    --frame-bg: transparent;
+    --frame-shadow: none;
+    --frame-backdrop: none;
+    --deco-crops: 1;
+    --deco-fleuron: 1;
+    --deco-double: 1;
+    --texture-img: none;
+    --texture-op: .022;
+  }
+
+  /* ==========================================================================
+     L3 主题层 —— 规则：每个主题都必须显式给出 [data-theme="light"] 与 dark 两块。
+     两个轴同时出现在选择器里，杜绝「实现块被通用暗色块反超」。
+     ========================================================================== */
+
+  /* ── 蓝晒 cyanotype：铜线双框 / 裁切标记 / 网点 ── */
+  :root[data-visual-theme="cyanotype"][data-theme="light"] {
+    --c-paper: #f6f3ec; --c-paper-raised: #fcfaf6; --c-paper-sunken: #ede8de;
+    --c-ink: #12100d; --c-ink-2: #4d463c; --c-ink-3: #7c7366;
+    --c-rule: rgba(18, 16, 13, .15); --c-rule-strong: rgba(18, 16, 13, .34);
+    --c-metal: var(--p-copper-500); --c-accent: var(--p-blue-600); --c-accent-2: var(--p-red-600);
+    --r-frame: 0; --frame-color: var(--c-rule-strong);
+    --deco-crops: 1; --deco-fleuron: 1; --deco-double: 1;
+    --texture-op: .022;
+  }
+  :root[data-visual-theme="cyanotype"][data-theme="dark"] {
+    --c-paper: #12151a; --c-paper-raised: #171b21; --c-paper-sunken: #0a0c10;
+    --c-ink: #e8e3d9; --c-ink-2: #b9b2a5; --c-ink-3: #8b8477;
+    --c-rule: rgba(232, 227, 217, .16); --c-rule-strong: rgba(232, 227, 217, .34);
+    --c-metal: var(--p-copper-300); --c-accent: #86a9dc; --c-accent-2: #c9715a;
+    --frame-color: var(--c-rule-strong);
+    --texture-op: .038;
+  }
+
+  /* ── 行迹 trace：纸本的去装饰变体（单线框、无线饰） ── */
+  :root[data-visual-theme="trace"][data-theme="light"] {
+    --c-paper: #f6f3ec; --c-paper-raised: #fcfaf6; --c-paper-sunken: #ede8de;
+    --c-ink: #12100d; --c-ink-2: #4d463c; --c-ink-3: #7c7366;
+    --c-rule: rgba(18, 16, 13, .15); --c-rule-strong: rgba(18, 16, 13, .34);
+    --c-metal: var(--c-rule-strong); --c-accent: var(--p-cyan-500); --c-accent-2: #6b7b7e;
+    --r-frame: 0; --frame-color: var(--c-rule);
+    --deco-crops: 0; --deco-fleuron: 0; --deco-double: 0;
+    --texture-op: .028;
+  }
+  :root[data-visual-theme="trace"][data-theme="dark"] {
+    --c-paper: #12151a; --c-paper-raised: #171b21; --c-paper-sunken: #0a0c10;
+    --c-ink: #e8e3d9; --c-ink-2: #b9b2a5; --c-ink-3: #8b8477;
+    --c-rule: rgba(232, 227, 217, .16); --c-rule-strong: rgba(232, 227, 217, .34);
+    --c-metal: var(--c-rule-strong); --c-accent: #5cc4da; --c-accent-2: #93a2a5;
+    --frame-color: var(--c-rule);
+    --deco-crops: 0; --deco-fleuron: 0; --deco-double: 0;
+    --texture-op: .04;
+  }
+
+  /* ── 静澈 still：玻璃面板 / 哑光平涂 / 8px 圆角 ── */
+  :root[data-visual-theme="still"][data-theme="light"] {
+    --c-paper: #f5f3ef; --c-paper-raised: #fbfaf7; --c-paper-sunken: #eae6de;
+    --c-ink: #1b2422; --c-ink-2: #46524f; --c-ink-3: #7b8683;
+    --c-rule: rgba(27, 36, 34, .16); --c-rule-strong: rgba(27, 36, 34, .38);
+    --c-metal: #8f9c94; --c-accent: var(--p-green-700); --c-accent-2: #b86a52;
+    --r-frame: 8px; --frame-color: rgba(27, 36, 34, .10);
+    --frame-bg: rgba(255, 255, 255, .58);
+    --frame-shadow: 0 16px 44px -26px rgba(27, 36, 34, .18);
+    --frame-backdrop: blur(12px);
+    --deco-crops: 0; --deco-fleuron: 1; --deco-double: 0;
+    --texture-op: .016;
+  }
+  :root[data-visual-theme="still"][data-theme="dark"] {
+    --c-paper: #0f1513; --c-paper-raised: #17201d; --c-paper-sunken: #0b100e;
+    --c-ink: #e4ede9; --c-ink-2: #b3c0bb; --c-ink-3: #86948f;
+    --c-rule: rgba(228, 237, 233, .15); --c-rule-strong: rgba(228, 237, 233, .32);
+    --c-metal: #a8b5ac; --c-accent: #7fb0a2; --c-accent-2: #cf8a70;
+    --frame-color: rgba(228, 237, 233, .12);
+    --frame-bg: rgba(255, 255, 255, .055);
+    --frame-shadow: 0 20px 56px -30px rgba(0, 0, 0, .65);
+    --frame-backdrop: blur(12px);
+    --deco-crops: 0; --deco-fleuron: 1; --deco-double: 0;
+    --texture-op: .03;
+  }
+
+  /* ── 流形 fluid：展柜的流动材质（斜向渐变玻璃 / 16px 圆角） ── */
+  :root[data-visual-theme="fluid"][data-theme="light"] {
+    --c-paper: #f6f4ef; --c-paper-raised: #fdfbf7; --c-paper-sunken: #ebe7df;
+    --c-ink: #16241f; --c-ink-2: #445754; --c-ink-3: #7d8e8a;
+    --c-rule: rgba(22, 36, 31, .16); --c-rule-strong: rgba(22, 36, 31, .38);
+    --c-metal: #b08a52; --c-accent: var(--p-teal-600); --c-accent-2: var(--p-amber-600);
+    --r-frame: 16px; --frame-color: rgba(22, 36, 31, .10);
+    --frame-bg: linear-gradient(148deg, rgba(255, 255, 255, .80) 0%, rgba(246, 244, 239, .40) 58%, rgba(255, 255, 255, .58) 100%);
+    --frame-shadow: 0 30px 84px -30px rgba(22, 36, 31, .30);
+    --frame-backdrop: blur(20px) saturate(118%);
+    --deco-crops: 0; --deco-fleuron: 1; --deco-double: 0;
+    --texture-op: .016;
+  }
+  :root[data-visual-theme="fluid"][data-theme="dark"] {
+    --c-paper: #0e1a1e; --c-paper-raised: #142228; --c-paper-sunken: #081113;
+    --c-ink: #e6f3f0; --c-ink-2: #adc8c6; --c-ink-3: #7e9c9c;
+    --c-rule: rgba(230, 243, 240, .16); --c-rule-strong: rgba(230, 243, 240, .36);
+    --c-metal: #c8a878; --c-accent: #6fc4d8; --c-accent-2: #d9a862;
+    --frame-color: rgba(230, 243, 240, .14);
+    --frame-bg: linear-gradient(148deg, rgba(255, 255, 255, .11) 0%, rgba(255, 255, 255, .028) 58%, rgba(255, 255, 255, .075) 100%);
+    --frame-shadow: 0 34px 96px -30px rgba(0, 0, 0, .82);
+    --frame-backdrop: blur(20px) saturate(118%);
+    --deco-crops: 0; --deco-fleuron: 1; --deco-double: 0;
+    --texture-op: .03;
+  }
+
+  /* ── 留白 minimal：无框、零装饰、无衬线标题、更安静的展示字 ── */
+  :root[data-visual-theme="minimal"][data-theme="light"] {
+    --c-paper: #ffffff; --c-paper-raised: #ffffff; --c-paper-sunken: #f4f4f2;
+    --c-ink: #141414; --c-ink-2: #4a4a4a; --c-ink-3: #86868a;
+    --c-rule: rgba(20, 20, 20, .12); --c-rule-strong: rgba(20, 20, 20, .40);
+    --c-metal: var(--c-rule-strong); --c-accent: var(--p-brick-600); --c-accent-2: #52705b;
+    --r-frame: 4px; --frame-w: 0; --frame-color: transparent;
+    --deco-crops: 0; --deco-fleuron: 0; --deco-double: 0;
+    --texture-op: 0;
+    --type-display: clamp(1.85rem, 5.4vw, 4.4rem);
+    --font-display: var(--stack-body);
+    --hero-font: var(--latin-body), var(--cjk-body), "Source Han Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+  :root[data-visual-theme="minimal"][data-theme="dark"] {
+    --c-paper: #0d0d0e; --c-paper-raised: #141415; --c-paper-sunken: #050506;
+    --c-ink: #f0eee9; --c-ink-2: #b8b6b0; --c-ink-3: #85837e;
+    --c-rule: rgba(240, 238, 233, .14); --c-rule-strong: rgba(240, 238, 233, .40);
+    --c-metal: var(--c-rule-strong); --c-accent: #d9705f; --c-accent-2: #7fa892;
+    --r-frame: 4px; --frame-w: 0; --frame-color: transparent;
+    --deco-crops: 0; --deco-fleuron: 0; --deco-double: 0;
+    --texture-op: 0;
+    --type-display: clamp(1.85rem, 5.4vw, 4.4rem);
+    --font-display: var(--stack-body);
+    --hero-font: var(--latin-body), var(--cjk-body), "Source Han Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+
+  /* 首屏文字选中/焦点在两套主题下都要可辨 */
+  :root { --c-selection: color-mix(in oklab, var(--c-accent) 26%, transparent); }
+}

@@ -1,6 +1,22 @@
 ---
-import { cyanotypeCopy } from '../lib/cyanotype-copy';
-interface Props { minimal?: string; trace?: string; cyanotype?: string; }
-const { minimal = '', trace = '', cyanotype = cyanotypeCopy[minimal] ?? minimal } = Astro.props;
+/**
+ * FOLIO：文案收敛为一份。
+ *
+ * 旧实现同屏渲染 minimal / trace / cyanotype 三份 DOM，靠主题 CSS 显隐其一：
+ * 既让每页多出约 16% 体积，又因显隐规则只写在 cyanotype-theme.css 里，
+ * 导致 4/5 主题显示「拼接句」（导航出现「首页晒台」「文章手记」）。
+ *
+ * 现在只输出一份：优先 minimal（直白中文），缺失时回退 trace / cyanotype。
+ * props 签名保持兼容，80 处调用点无需改动。
+ */
+interface Props {
+  minimal?: string;
+  trace?: string;
+  cyanotype?: string;
+}
+
+const { minimal = '', trace = '', cyanotype = '' } = Astro.props;
+const text = (minimal || trace || cyanotype).trim();
 ---
-<span class="theme-copy" data-theme-copy><span data-theme-copy-minimal><slot name="minimal">{minimal}</slot></span><span data-theme-copy-trace><slot name="trace">{trace}</slot></span><span data-theme-copy-cyanotype><slot name="cyanotype">{cyanotype}</slot></span></span>
+
+{text ? text : <slot name="minimal" />}

@@ -1,5 +1,8 @@
 @charset "UTF-8";
 
+/* FOLIO: 旧样式统一降级到 legacy 层 —— 新的 base/layout/components 层永远后胜出。 */
+@layer legacy {
+
 
 
 * {
@@ -4654,4 +4657,4 @@ main {
     height: 120px;
   }
 }
-
+}

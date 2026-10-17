@@ -1,15 +1,39 @@
 ---
 import Icon from '../components/Icon.astro';
 import BaseLayout from '../layouts/BaseLayout.astro';
-import ThemeCopy from '../components/ThemeCopy.astro';
 ---
 
 <BaseLayout title="页面未找到">
-  <section class="not-found">
-    <div class="not-found-code">IV · 04</div>
-    <p class="eyebrow"><ThemeCopy minimal="404" trace="FOLIO NON INVENTUM" /></p>
-    <h1><ThemeCopy minimal="页面不存在。" trace="这一页未被收入卷册。" /></h1>
-    <p><ThemeCopy minimal="链接可能有误，或页面已经移动。" trace="它可能尚未写成，或已被移动到新的编目位置。" /></p>
-    <a class="primary-link" href="/"><span><ThemeCopy minimal="返回首页" trace="返回首页" /></span><span><Icon name="arrow-right" /></span></a>
+  <section class="f-section f-notfound" aria-labelledby="nf-title">
+    <div class="f-frame f-frame--plain">
+      <span class="f-crop f-crop--tl"></span><span class="f-crop f-crop--tr"></span>
+      <span class="f-crop f-crop--bl"></span><span class="f-crop f-crop--br"></span>
+      <div class="f-cover__inner">
+        <div class="f-fleuron" aria-hidden="true"><i></i></div>
+        <div class="f-cover__folio"><span>IV · 04</span><span>·</span><span>FOLIO NON INVENTUM</span></div>
+        <h1 id="nf-title" class="f-notfound__title">页面不存在</h1>
+        <p class="f-cover__deck">链接可能有误，或这一页已经被移到新的编目位置。</p>
+        <div class="f-actions">
+          <a class="f-btn" href="/">返回首页 <Icon name="arrow-right" /></a>
+          <a class="f-btn f-btn--ghost" href="/blog/">浏览编目</a>
+        </div>
+      </div>
+    </div>
   </section>
 </BaseLayout>
+
+<style is:global>
+  @layer components {
+    .f-notfound { padding-block: var(--p-sp-9) var(--p-sp-8); }
+    .f-frame--plain { padding-block: clamp(56px, 12vw, 140px); }
+    .f-notfound__title {
+      font-family: var(--hero-font);
+      font-size: clamp(2.25rem, 7vw, 5.5rem);
+      font-weight: var(--hero-weight);
+      font-synthesis-weight: none;
+      letter-spacing: -.03em;
+      line-height: 1.08;
+      margin-top: var(--p-sp-5);
+    }
+  }
+</style>

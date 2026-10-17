@@ -3,10 +3,7 @@ import Icon from '../components/Icon.astro';
 import { getPublicPosts } from '../lib/posts';
 import { sortNewestFirst, thumbOf, type GalleryImageBrief } from '../lib/gallery';
 import BaseLayout from '../layouts/BaseLayout.astro';
-import PostCatalog from '../components/PostCatalog.astro';
-import GalleryTeaser from '../components/GalleryTeaser.astro';
 import AboutTeaser from '../components/AboutTeaser.astro';
-import ThemeCopy from '../components/ThemeCopy.astro';
 import { safeLink } from '../lib/safe-link';
 import frontend from '../data/frontend.json';
 import about from '../data/about.json';
@@ -14,62 +11,98 @@ import standaloneGallery from '../data/gallery.json';
 
 const posts = await getPublicPosts();
 const primaryCtaHref = safeLink(frontend.primaryCtaHref, '/blog/');
+const recentPosts = posts.slice(0, 6);
 
-// 首页精选：最新 9 篇（3 列卡片正好 3×3）
-const recentPosts = posts.slice(0, 9);
-
-// 图志精选：独立图集最新 4 张
-const galleryTeaserImages: GalleryImageBrief[] = sortNewestFirst(
+const galleryTeaserImages: (GalleryImageBrief & { thumb?: string })[] = sortNewestFirst(
   standaloneGallery as GalleryImageBrief[],
 )
-  .slice(0, 4)
+  .slice(0, 3)
   .map((img) => ({ ...img, thumb: img.thumb ?? thumbOf(img.src) }));
+
+/* 首屏标题：frontend.heroTitleLine1 里同时含有中文与域名（如「欢迎来到Blog.Acretiondisk.top」）。
+   按第一个拉丁字符拆成两行，各自定标——中文行用 --type-display，域名行用更小的 clamp，
+   否则 21 字符的域名会被断行算法从词中间劈开。 */
+const rawTitle1 = String(frontend.heroTitleLine1 ?? '').trim();
+const latinAt = rawTitle1.search(/[A-Za-z0-9]/);
+const titleCjk = latinAt > 0 ? rawTitle1.slice(0, latinAt).trim() : rawTitle1;
+const titleLatin = latinAt > 0 ? rawTitle1.slice(latinAt).trim() : '';
+const titleLine3 = String(frontend.heroTitleLine2 ?? '').trim();
+
+const fmtDate = (d: Date) =>
+  `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
 ---
 
 <BaseLayout>
-  <section class="fusion-hero" aria-labelledby="fusion-hero-title">
-    <div class="fusion-hero__media" aria-hidden="true">
-      <img src={frontend.stillHeroImage} alt="" style={`object-position:${frontend.stillImagePosition}`} fetchpriority="high" crossorigin="anonymous" />
+  <section class="f-cover" aria-labelledby="cover-title">
+    <div class="f-frame f-frame--ghost" style={`--cover-image:url('${frontend.stillHeroImage}')`}>
+      <span class="f-crop f-crop--tl"></span><span class="f-crop f-crop--tr"></span>
+      <span class="f-crop f-crop--bl"></span><span class="f-crop f-crop--br"></span>
+
+      <div class="f-cover__inner">
+        <div class="f-fleuron" aria-hidden="true"><i></i></div>
+        <div class="f-cover__folio"><span>PLATE I</span><span>·</span><span>MMXXVI</span></div>
+
+        <h1 id="cover-title" class="f-cover__title">
+          <span class="f-cover__line1">{titleCjk}</span>
+          {titleLatin && <span class="f-cover__line2"><em>{titleLatin}</em></span>}
+          {titleLine3 && <span class="f-cover__line3">{titleLine3}</span>}
+        </h1>
+
+        <p class="f-cover__deck">{frontend.heroDescription}</p>
+
+        <div class="f-cover__meta">
+          <span>{posts.length} 篇手记</span>
+          <span>{(standaloneGallery as unknown[]).length} 幅图版</span>
+          <span>自 2026 年起</span>
+        </div>
+
+        <div class="f-actions">
+          <a class="f-btn" href={primaryCtaHref}>
+            {frontend.primaryCtaLabel}
+            <Icon name="arrow-right" />
+          </a>
+          <a class="f-btn f-btn--ghost" href="/gallery/">查看图志</a>
+        </div>
+      </div>
     </div>
-    <div class="fusion-hero__content">
-      <p class="fusion-hero__eyebrow">{frontend.heroEyebrow}</p>
-      <h1 id="fusion-hero-title"><span>{frontend.heroTitleLine1}</span><em>{frontend.heroTitleLine2}</em></h1>
-      <p class="fusion-hero__description">{frontend.heroDescription}</p>
-      <div class="fusion-hero__actions">
-        <a class="fusion-button fusion-button--primary" href={primaryCtaHref}>
-          {frontend.primaryCtaLabel}<Icon name="arrow-right" />
+  </section>
+
+  <section class="f-section">
+    <div class="f-section-head">
+      <h2 class="f-section-title"><small>II</small>近期编目</h2>
+      <a class="f-section-more" href="/blog/">全部 {posts.length} 篇 →</a>
+    </div>
+    <div class="f-catalog">
+      {recentPosts.map((post, i) => (
+        <a class="f-entry" href={`/blog/${post.id}/`}>
+          <span class="f-entry__no">{String(posts.length - i).padStart(3, '0')}</span>
+          <span class="f-entry__title"><span>{post.data.title}</span></span>
+          <span class="f-entry__tag">{post.data.tags?.[0] ?? ''}</span>
+          <span class="f-entry__date">{fmtDate(post.data.pubDate)}</span>
         </a>
-        <a class="fusion-button fusion-button--ghost" href="/gallery/">查看图像</a>
-      </div>
-      <div class="fusion-hero__meta" aria-label="博客内容范围">
-        <span>医学 · 技术 · 艺术</span>
-        <span>持续更新</span>
-      </div>
+      ))}
     </div>
   </section>
 
-  <section class="fusion-section fusion-section--posts">
-    <div class="fusion-section__header">
-      <div>
-        <p class="eyebrow">LATEST NOTES</p>
-        <h2>最新文章</h2>
-      </div>
-      <div class="fusion-section__aside">
-        <span>{posts.length} 篇公开文章</span>
-        <a href="/blog/">查看全部 <Icon name="arrow-right" /></a>
-      </div>
+  <section class="f-section">
+    <div class="f-section-head">
+      <h2 class="f-section-title"><small>III</small>最新图版</h2>
+      <a class="f-section-more" href="/gallery/">进入图志 →</a>
     </div>
-
-    <PostCatalog posts={recentPosts} toolbar={false} />
-
-    <div class="fusion-section__more">
-      <a class="fusion-button fusion-button--primary" href="/blog/">
-        <ThemeCopy minimal="查看更多" trace="查看更多" cyanotype="查看更多" /><Icon name="arrow-right" />
-      </a>
+    <div class="f-plates">
+      {galleryTeaserImages.map((img, i) => (
+        <a class="f-plate" href="/gallery/">
+          <span class="f-plate__frame">
+            <img src={img.thumb ?? img.src} alt={img.alt || img.title || ''} loading="lazy" decoding="async" />
+          </span>
+          <span class="f-plate__cap">
+            <span class="f-plate__title">{img.title || '未命名'}</span>
+            <span class="f-plate__no">PL. {String(99 - i).padStart(3, '0')}</span>
+          </span>
+        </a>
+      ))}
     </div>
   </section>
-
-  <GalleryTeaser images={galleryTeaserImages} />
 
   <AboutTeaser
     avatar={about.avatar}
@@ -78,9 +111,9 @@ const galleryTeaserImages: GalleryImageBrief[] = sortNewestFirst(
     quoteText={about.quoteText}
   />
 
-  <section class="index-coda">
-    <img class="archive-seal coda-seal" src="/logo.webp" alt="" width="132" height="132" loading="lazy" />
-    <blockquote><ThemeCopy minimal="“写下来，是为了更清楚地看见自己。”" trace="“记录并非为了留住一切，而是为了在时间中辨认自己。”" /></blockquote>
-    <p><ThemeCopy minimal="FINIS PAGINAE · INITIUM SEQUENTIS" trace="FINIS PAGINAE · INITIUM SEQUENTIS" cyanotype="THE STUDY CONTINUES. / 下次观察见。" /></p>
+  <section class="f-section f-coda">
+    <div class="f-fleuron" aria-hidden="true"><i></i></div>
+    <blockquote>“写下来，是为了更清楚地看见自己。”</blockquote>
+    <p class="f-num">FINIS PAGINAE · INITIUM SEQUENTIS</p>
   </section>
 </BaseLayout>

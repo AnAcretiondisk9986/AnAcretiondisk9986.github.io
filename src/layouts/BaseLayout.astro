@@ -1,14 +1,10 @@
 ---
-import '../styles/tokens.css';
+import '../styles/folio.css';
 import '../styles/global.css';
 import '../styles/theme-shared.css';
 import '../styles/fusion-theme.css';
+import '../styles/folio-ui.css';
 import { ClientRouter } from 'astro:transitions';
-import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
-import ThemeCopy from '../components/ThemeCopy.astro';
-import EdgeNotes from '../components/layout/EdgeNotes.astro';
 import SiteHeader from '../components/layout/SiteHeader.astro';
 import SiteFooter from '../components/layout/SiteFooter.astro';
 import frontend from '../data/frontend.json';
@@ -29,108 +25,87 @@ const visualThemes = ['cyanotype', 'still', 'fluid', 'minimal', 'trace'];
 const defaultVisualTheme = visualThemes.includes(frontend.defaultVisualTheme)
   ? frontend.defaultVisualTheme
   : 'cyanotype';
-const displayFonts = {
+
+const displayFonts: Record<string, string> = {
   'noto-serif': '"Noto Serif SC", "Source Han Serif SC", "Songti SC", STSong, SimSun, serif',
   'noto-sans': '"Noto Sans SC", "Source Han Sans SC", "Microsoft YaHei", system-ui, sans-serif',
   kaiti: 'STKaiti, KaiTi, "Kaiti SC", serif',
   songti: '"Songti SC", STSong, SimSun, serif',
   sans: 'Inter, "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif',
 };
-const displayFont = displayFonts[frontend.displayFont as keyof typeof displayFonts] || displayFonts['noto-serif'];
-const frontendStyle = [
-  `--liquid-still-accent:${frontend.stillAccent}`,
-  `--liquid-fluid-primary:${frontend.fluidPrimary}`,
-  `--liquid-fluid-secondary:${frontend.fluidSecondary}`,
-  `--liquid-still-surface:rgba(247,250,249,${frontend.stillGlassOpacity})`,
-  `--liquid-fluid-surface:rgba(240,247,242,${frontend.fluidGlassOpacity})`,
-  `--liquid-overlay:${frontend.heroOverlayOpacity}`,
-  `--liquid-blur:${frontend.glassBlur}px`,
-  `--liquid-radius:${frontend.cardRadius}px`,
-  `--liquid-art-font:${displayFont}`,
-].join(';');
+const displayFont = displayFonts[frontend.displayFont] || displayFonts['noto-serif'];
 
-// ── 视觉主题样式按需加载 ──
-// 原先 5 套主题 CSS 全部随每个页面加载（浏览器实测 CSS 使用率仅 ~15%）。
-// 现在只同步加载当前主题，其余主题在页面空闲时预取，切换时立即生效。
-// trace 主题没有独立样式（其规则已在 theme-shared.css / fusion-theme.css 中）。
-const themeFileOf: Record<string, string | null> = {
-  cyanotype: 'cyanotype-theme.css',
-  still: 'liquid-theme.css',
-  fluid: 'liquid-theme.css',
-  minimal: 'minimal-theme.css',
-  trace: null,
-};
-// 用内容哈希做缓存失效：主题文件内容不变则 URL 不变（可长缓存），变了立即失效
-const themeFileHashes: Record<string, string> = {};
-const themeUrlOf = (file: string | null) => {
-  if (!file) return null;
-  if (!(file in themeFileHashes)) {
-    try {
-      themeFileHashes[file] = createHash('sha256')
-        .update(readFileSync(join(process.cwd(), 'public', 'themes', file)))
-        .digest('hex')
-        .slice(0, 8);
-    } catch {
-      themeFileHashes[file] = 'dev';
-    }
-  }
-  return `/themes/${file}?v=${themeFileHashes[file]}`;
-};
-const themeUrls = Object.fromEntries(
-  Object.entries(themeFileOf).map(([theme, file]) => [theme, themeUrlOf(file)]),
-);
-const defaultThemeUrl = themeUrls[defaultVisualTheme] ?? themeUrls.cyanotype;
-// 首屏同步选定主题（避免先渲染一屏再换主题的闪烁）。
-// 末尾的去重逻辑用于 ClientRouter 导航：head 合并后可能残留旧的 theme-css。
-// 注意：这里**不做**其余主题的预取 —— 只有 /about 页有主题切换器，
-// 在其他页面预取会让每次访问都白白下载全部主题（实测会把 CSS 从 119KB 拉回 193KB）。
-const themeScript = `(function(){var F=${JSON.stringify(themeUrls)};var d=document.documentElement.dataset.defaultVisualTheme||'cyanotype';var w=d;try{var s=localStorage.getItem('visual-theme');if(s&&Object.prototype.hasOwnProperty.call(F,s))w=s;}catch(e){}document.documentElement.dataset.visualTheme=w;var all=document.querySelectorAll('#theme-css');var l=all.length?all[0]:null;for(var i=1;i<all.length;i++){all[i].parentNode.removeChild(all[i]);}var h=F[w];if(!h){if(l&&l.parentNode)l.parentNode.removeChild(l);l=null;}else if(!l){l=document.createElement('link');l.rel='stylesheet';l.id='theme-css';l.href=h;document.head.appendChild(l);}else if(l.getAttribute('href')!==h){l.setAttribute('href',h);}window.__ACR_THEME_CSS={files:F,current:h||null,link:h?l:null};})();`;
-const pageTitle = title === 'Acretiondisk' ? siteName : `${title} · ${siteName}`;
+// 后台可配项 → 新的语义 token。
+// 说明：调色板由主题 token 层拥有；这里只把后台真正可配的强调色/材质接到对应主题上，
+// 其余（圆角/模糊/Hero 遮罩）继续以旧变量名下发给 legacy 样式（图库/关于等页面仍在用）。
+const runtimeStyle = [
+  ':root{',
+  `--liquid-overlay:${frontend.heroOverlayOpacity};`,
+  `--liquid-blur:${frontend.glassBlur}px;`,
+  `--liquid-radius:${frontend.cardRadius}px;`,
+  `--liquid-art-font:${displayFont};`,
+  `--liquid-still-surface:rgba(247,250,249,${frontend.stillGlassOpacity});`,
+  `--liquid-fluid-surface:rgba(240,247,242,${frontend.fluidGlassOpacity});`,
+  '}',
+  `:root[data-visual-theme="still"]{--c-accent-2:${frontend.stillAccent}}`,
+  `:root[data-visual-theme="fluid"]{--c-accent:${frontend.fluidPrimary};--c-accent-2:${frontend.fluidSecondary}}`,
+].join('');
 ---
 
 <!doctype html>
-<html lang="zh-CN" data-default-visual-theme={defaultVisualTheme} data-visual-theme={defaultVisualTheme} style={frontendStyle}>
+<html
+  lang="zh-CN"
+  data-default-visual-theme={defaultVisualTheme}
+  data-visual-theme={defaultVisualTheme}
+  data-theme="light"
+>
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={description} />
-    <meta name="generator" content={Astro.generator} />
+    <meta name="theme-color" content="#f6f3ec" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#12151a" media="(prefers-color-scheme: dark)" />
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
-    <link rel="preconnect" href="https://fastly.jsdelivr.net" crossorigin />
-    <title>{pageTitle}</title>
-    {/* 视觉主题样式：默认主题由服务端直出，其余主题由内联脚本按 localStorage 替换 URL */}
-    <link rel="stylesheet" id="theme-css" href={defaultThemeUrl} />
-    <script is:inline set:html={themeScript} />
+    <link rel="preload" href="/fonts/anthropic-serif.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/anthropic-sans.woff2" as="font" type="font/woff2" crossorigin />
+    <title>{title === 'Acretiondisk' ? siteName : `${title} · ${siteName}`}</title>
+    <style is:inline set:html={runtimeStyle} />
+    <script is:inline>
+      /* 首屏同步外观：避免先渲染一屏再切换（主题 CSS 已不再按需加载，只切属性） */
+      (function () {
+        var r = document.documentElement;
+        var THEMES = ['cyanotype', 'still', 'fluid', 'minimal', 'trace'];
+        var t = null, v = null;
+        try { t = localStorage.getItem('theme'); v = localStorage.getItem('visual-theme'); } catch (e) {}
+        var dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        r.dataset.theme = (t === 'light' || t === 'dark') ? t : (dark ? 'dark' : 'light');
+        var def = r.dataset.defaultVisualTheme || 'cyanotype';
+        r.dataset.visualTheme = (v && THEMES.indexOf(v) >= 0) ? v : def;
+        r.classList.add('js');
+        if (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          r.classList.add('vt');
+        }
+      })();
+    </script>
     <script>
       import '../scripts/appearance.ts';
     </script>
-    {/* jsDelivr 镜像降级：必须在图片大量加载前注册，故放在 head。
-        原先只有图库页有这段逻辑，首页 hero 与文章正文图片在被墙时会直接白图。 */}
     <script>
       import '../scripts/cdn-fallback.ts';
     </script>
   </head>
   <body>
     <ClientRouter />
-    <div class="paper-grain" aria-hidden="true"></div>
     <div class="site-shell">
-      <EdgeNotes />
       <SiteHeader siteName={siteName} siteTagline={siteTagline} pathname={Astro.url.pathname} />
-
       <main>
         <slot />
       </main>
-
       <SiteFooter siteName={siteName} siteTagline={siteTagline} />
     </div>
-
     <script>
       import '../scripts/invert-surface.ts';
     </script>
   </body>
 </html>
-
-
-
-

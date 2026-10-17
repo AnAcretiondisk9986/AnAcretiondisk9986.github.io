@@ -14,3 +14,5 @@ src/content/blog/.obsidian/
 perf-reports/
 .perf/
 blog-template/
+design/
+reports/

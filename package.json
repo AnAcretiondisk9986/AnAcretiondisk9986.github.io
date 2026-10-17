@@ -1,7 +1,7 @@
 {
   "name": "anacretiondisk-blog",
   "type": "module",
-  "version": "3.2.1",
+  "version": "4.0.0",
   "private": true,
   "scripts": {
     "dev": "astro dev",
@@ -11,8 +11,7 @@
     "admin": "node admin-server.mjs",
     "perf:baseline": "node scripts/perf-baseline.mjs",
     "perf:images": "node scripts/optimize-images.mjs --dry-run",
-    "perf:normalize-themes": "node scripts/normalize-theme-specificity.mjs",
-    "perf:verify": "node scripts/verify-gallery-perf.mjs && node scripts/verify-theme-split.mjs",
+    "perf:verify": "node scripts/verify-gallery-perf.mjs",
     "changelog:check": "node scripts/check-changelog.mjs",
     "changelog:release": "node scripts/make-releases.mjs",
     "test:admin-storage": "node --test scripts/admin-storage.test.mjs",

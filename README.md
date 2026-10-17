@@ -1,7 +1,68 @@
 # Acretiondisk Blog — 更新日志
 
 > 使用 Astro 构建的个人博客，部署到 GitHub Pages（`https://blog.acretiondisk.top/`）。
-> 开发版本：**3.7.0**（2026-10-15）· 最新 Release：[v3.7.0](https://github.com/AnAcretiondisk9986/AnAcretiondisk9986.github.io/releases/latest)
+> 开发版本：**4.0.0**（2026-10-17）· 最新 Release：[v4.0.0](https://github.com/AnAcretiondisk9986/AnAcretiondisk9986.github.io/releases/latest)
+
+---
+
+## 4.0.0（2026-10-17）
+
+### 🖋 全新视觉系统 Folio：`@layer` 地基 + 四层 token，五套主题第一次真正生效
+
+#### 根因：主题从来没有真正上过屏
+
+浏览器实测的样式表顺序是「主题 CSS → 主包（tokens + global + theme-shared + fusion）」，
+而主题文件里除 `:root:root` 提权过的 token 之外，**所有等特异性覆盖都输给后加载的 fusion**：
+
+- 蓝晒想要「直角、零内边距、190px 栏、30–50px 标题」→ 实际渲染成 56px 内边距、10px 圆角、216/780 栏、72px/700；
+- 留白想要 30px 内边距、22px 模糊、180/720 栏、8px tabs → 同样被覆盖；
+- 纸纹 / 边注 / 登记条在 5 主题 × 明暗下**实测完全不可见**（隐藏前后截图逐字节相同）；
+- 暗色模式下「导出 PDF」输出深底浅字。
+
+#### 改动
+
+- **`@layer` 六层地基**：`reset → tokens → legacy → base → layout → components → theme → print`。
+  旧样式整体降级到 `legacy` 层，新系统位于其后，**永远后胜出**——不再需要 `:root:root` 提权，也不再依赖加载顺序。
+- **token 四层**：`src/styles/folio.css` 定义 primitive（原始值，页面永不明用）/ semantic（角色契约）/ theme（10 个主题块）/ component 四周，组件内**零十六进制色值**。
+- **主题改为纯 token 块**：删除 `public/themes/{cyanotype,liquid,minimal}-theme.css`（96.7 KB）、`src/styles/tokens.css`、
+  `scripts/normalize-theme-specificity.mjs` 与 `scripts/verify-theme-split.mjs`；
+  5 套主题各给出 `[data-theme="light"]` / `[data-theme="dark"]` 两块，杜绝跨模式互相反超。
+- **主题切换不再替换样式表**：删掉 `#theme-css` 的注入/替换逻辑（它正是「切主题后导航一次就掉皮肤」的根因），
+  切主题 = 改 `<html data-visual-theme>`，零网络请求。
+- **文案收敛**：`ThemeCopy` 从同屏 3 份 DOM 收敛为 1 份（80 处调用点无需改动），
+  修复 4/5 主题显示「拼接句」的缺陷（导航出现「首页晒台」「文章手记」）。
+- **字体系统**：接入 Anthropic 官网字体（woff2，共 800 KB，可变字重 300–800 含 opsz 光学尺寸轴）+ 四槽位
+  （拉丁标题 Serif / 中文标题宋 / 拉丁正文 Sans / 中文正文黑）。
+  首页展示字中西文皆取 Serif 最粗（拉丁 800、中文 900），`font-synthesis-weight: none` 禁止伪粗体。
+- **全站版式重做**：页头（登记条 + 主行 + 双线）、首页封面（双线框 + 四角裁切标记 + 饰花，首屏图作极淡底片）、
+  编目（等宽编号 + 细线分隔 + 悬停下划线延长）、图版（细框 + 斜体标题 + `PL.` 编号）、
+  文章页（180px 边注 + 34em 正文 + 首字下沉）、关于、404、私密区全部接入 Folio。
+- **打印**：新增 `@layer print`，强制浅色 token 并隐藏新页头页脚，修复暗色导出 PDF 黑底。
+- **字号反解**：`Blog.Acretiondisk.top` 是 21 字符不可断片段，加粗后 320px 视口溢出 40px；
+  按「文字宽 ≈ 11.2 × 字号」反解出 `clamp(1rem, 6.4vw, 5.1rem)`，19 个视口全部 0 溢出。
+
+#### 量化
+
+| 指标 | 改动前 | 改动后 |
+| --- | --- | --- |
+| 每页阻塞 CSS | 122.5 KB（主包 99.3 + 主题 23.2） | **119.7 KB 单文件**，主题 CSS 归零 |
+| 主题 CSS 文件 | 3 个 / 96.7 KB | 0（并入 token 块） |
+| 全站 HTML | 2,794 KB | 2,441 KB（−12.6%） |
+| 首页 HTML | 34.0 KB | 16.6 KB（−51%） |
+| 320px 横向溢出 | Hero 域名溢出 40px | 0 |
+| `!important` / `:root:root` | 23 / 12 | 0 / 0 |
+
+#### 验证
+
+- `npm run build` 111 页通过；`npm run test:admin` 25/25 通过。
+- 19 个视口（320→1920）× 5 主题 × 明暗的溢出扫描：0 溢出。
+- 明色 / 暗色 / 桌面 / 移动 / 打印五种状态逐页截图核对。
+
+#### 已知遗留
+
+- `legacy` 层仍有约 1.3k 行死 CSS（旧 hero / archive / guestbook），待逐块删除。
+- 图库页仍是全站最大页面（HTML 约 640 KB），数据池外置与首屏渲染优化排入下一版。
+- `frontend.json` 的 20 个字段仍按旧变量名下发，管理面板「前端定制」尚未完全映射到新 token。
 
 ---
 

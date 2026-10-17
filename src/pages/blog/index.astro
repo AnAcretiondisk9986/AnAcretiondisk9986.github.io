@@ -2,32 +2,167 @@
 import { getPublicPosts } from '../../lib/posts';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import PostCatalog from '../../components/PostCatalog.astro';
-import ThemeCopy from '../../components/ThemeCopy.astro';
 
 const posts = await getPublicPosts();
+const year = new Date().getFullYear();
 ---
 
-<BaseLayout title="文章" description="Acretiondisk 的全部文章。">
-  <header class="catalog-header fusion-catalog-header">
-    <div class="catalog-title">
-      <p class="eyebrow">ALL NOTES</p>
-      <h1>全部文章</h1>
-      <p>技术、医学、艺术，以及日常生活中的记录。</p>
+<BaseLayout title="编目" description="Acretiondisk 的全部文章。">
+  <section class="f-section f-opener">
+    <div class="f-fleuron" aria-hidden="true"><i></i></div>
+    <div class="f-cover__folio"><span>CATALOGUS</span><span>·</span><span>MMXXVI</span></div>
+    <h1 class="f-opener__title">全部文章</h1>
+    <p class="f-opener__deck">技术、医学、艺术，以及日常生活中的记录。</p>
+    <div class="f-cover__meta">
+      <span>{String(posts.length).padStart(3, '0')} 篇</span>
+      <span>持续编目</span>
+      <span data-order-text>由新至旧</span>
     </div>
-    <div class="catalog-mark">
-      <img class="archive-seal" src="/logo.webp" alt="" width="380" height="380" loading="lazy" />
-      <dl>
-        <div><dt>文章总数</dt><dd>{String(posts.length).padStart(3, '0')}</dd></div>
-        <div><dt>更新状态</dt><dd>持续更新</dd></div>
-        <div><dt>排序规则</dt><dd data-order-text>由新至旧</dd></div>
-      </dl>
-    </div>
-  </header>
+  </section>
 
   <PostCatalog posts={posts} />
 
-  <footer class="catalog-footer">
-    <span><ThemeCopy minimal="所有文章均由我本人记录" trace="所有条目均由编目者亲自记录" /></span>
-    <span><ThemeCopy minimal={`ACR / CATALOGUS / ${new Date().getFullYear()}`} trace={`ACR / CATALOGUS / ${new Date().getFullYear()}`} cyanotype={`ACR / FIELD NOTES / ${new Date().getFullYear()}`} /></span>
+  <footer class="f-section f-coda">
+    <div class="f-fleuron" aria-hidden="true"><i></i></div>
+    <p class="f-num">ACR / CATALOGUS / {year}</p>
   </footer>
 </BaseLayout>
+
+<style is:global>
+  /* ── 编目页：把 legacy 的卡片式工具栏与条目接管为 Folio 版式 ── */
+  @layer components {
+    .f-opener { text-align: center; padding-block: var(--p-sp-8) var(--p-sp-6); }
+    .f-opener__title {
+      font-family: var(--hero-font);
+      font-size: var(--type-title);
+      font-weight: var(--hero-weight);
+      font-synthesis-weight: none;
+      letter-spacing: -.03em;
+      margin-top: var(--p-sp-5);
+      line-height: 1.15;
+    }
+    .f-opener__deck {
+      margin-top: var(--p-sp-4);
+      font-family: var(--font-display);
+      font-style: italic;
+      color: var(--c-ink-2);
+      font-size: var(--type-lead);
+    }
+
+    /* 工具栏：细线 + 等宽小字，去掉药丸与填充 */
+    .catalog-toolbar,
+    .gallery-order-bar {
+      background: transparent;
+      border: 0;
+      border-top: 1px solid var(--c-rule);
+      border-bottom: 1px solid var(--c-rule);
+      border-radius: 0;
+      box-shadow: none;
+      padding-block: var(--p-sp-3);
+      gap: var(--p-sp-4);
+    }
+    .catalog-search {
+      border: 0;
+      border-bottom: 1px solid var(--c-rule-strong);
+      border-radius: 0;
+      background: transparent;
+      padding: 6px 2px;
+    }
+    .catalog-search input {
+      background: transparent;
+      border: 0;
+      font-family: var(--font-body);
+      font-size: var(--type-meta);
+      letter-spacing: .02em;
+      color: var(--c-ink);
+    }
+    .catalog-results,
+    .gallery-order-label,
+    .catalog-view-switch > * {
+      font-size: var(--type-micro);
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--c-ink-3);
+    }
+    .gallery-sort button,
+    .catalog-view-switch button,
+    .catalog-toolbar button {
+      border: 1px solid var(--c-rule);
+      border-radius: var(--r-frame);
+      background: transparent;
+      color: var(--c-ink-2);
+      font-size: var(--type-micro);
+      letter-spacing: .1em;
+      padding: 6px 12px;
+    }
+    .gallery-sort button[aria-pressed='true'],
+    .catalog-view-switch button[aria-pressed='true'] {
+      border-color: var(--c-ink);
+      background: var(--c-ink);
+      color: var(--c-paper);
+    }
+
+    /* 条目：去掉卡片容器，改为细线分隔的行 */
+    .catalog-list { gap: 0; }
+    .catalog-entry {
+      background: transparent;
+      border: 0;
+      border-bottom: 1px solid var(--c-rule);
+      border-radius: 0;
+      box-shadow: none;
+      padding: var(--p-sp-5) 0;
+      gap: var(--p-sp-4);
+    }
+    .catalog-entry:hover { background: color-mix(in oklab, var(--c-metal) 4%, transparent); }
+    .catalog-entry::before,
+    .catalog-entry::after { display: none; }
+
+    .catalog-index {
+      font-family: var(--font-mono);
+      font-size: var(--type-meta);
+      color: var(--c-metal);
+      letter-spacing: .06em;
+      font-variant-numeric: tabular-nums;
+    }
+    .catalog-cover,
+    .catalog-cover img {
+      border-radius: var(--r-frame);
+      border: 1px solid var(--c-rule);
+      overflow: hidden;
+    }
+    .catalog-entry h2,
+    .catalog-entry h2 a {
+      font-family: var(--font-display);
+      font-size: var(--type-item);
+      font-weight: 500;
+      line-height: 1.5;
+      letter-spacing: 0;
+    }
+    .catalog-day-index,
+    .catalog-entry .tag-list,
+    .catalog-entry .tag-list a,
+    .catalog-entry [data-order-date] {
+      font-family: var(--font-mono);
+      font-size: var(--type-micro);
+      letter-spacing: .1em;
+      color: var(--c-ink-3);
+    }
+    .catalog-open {
+      border: 0;
+      background: transparent;
+      font-size: var(--type-micro);
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--c-ink-3);
+    }
+    .catalog-open:hover { color: var(--c-metal); }
+
+    /* 卡片版式：去掉阴影与描边，只保留细框 */
+    .catalog-list[data-catalog-layout='cards'] { gap: var(--p-sp-6); }
+    .catalog-list[data-catalog-layout='cards'] .catalog-entry {
+      border: 0;
+      border-bottom: 1px solid var(--c-rule);
+      padding-bottom: var(--p-sp-5);
+    }
+  }
+</style>

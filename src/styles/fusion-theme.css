@@ -1,5 +1,8 @@
 @charset "UTF-8";
 
+/* FOLIO: 旧样式统一降级到 legacy 层 —— 新的 base/layout/components 层永远后胜出。 */
+@layer legacy {
+
 /*
  * B + C 融合视觉：内容优先的阅读结构，配合沉浸式图片层。
  * 该文件放在旧主题之后加载，保留旧主题选择器的兼容性，
@@ -1373,4 +1376,5 @@
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
   }
+}
 }
