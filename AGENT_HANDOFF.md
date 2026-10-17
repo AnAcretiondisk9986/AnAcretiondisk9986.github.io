@@ -13,7 +13,6 @@
 - **效果**：1920~721px 稳定 3 行（欢迎来到 / Blog.Acretiondisk.top / 这是我的个人网站），720~430px 部分宽度 2 行，390/360px 3 行；任何视口都无横向裁切、无词内断行、文档无横向溢出；五套视觉主题（静澈/流形/留白/行迹/fusion）表现完全一致。
 - **新增回归脚本** `scripts/verify-hero-title.mjs`（CDP 9224 + static-server 8766，与 `verify-catalog-title.mjs` 同套路）：13 个视口 × 5 项（标题未被裁切 / 长词未被词内折断 / 行高 ≥1.05 / 字距 ≤0.03em / 文档无横向溢出）+ 5 主题一致性，逐字符测量还原真实断行；**71/71 通过**。
 - **验证**：`npm run build` 107 页成功；`node scripts/verify-hero-title.mjs` 71/71；headless Chrome 截图实测 1920/1600/1440/1180/1000/900/820/721/720/600/430/390/360 十三个视口与五套主题。
-- **遗留**：`blog-template` 未同步（沿用既有约定，待用户决定）。
 
 **🏠 首页重构：从「全量文章列表」改为「个人档案导航中枢」（2026-08-14）**
 
@@ -31,7 +30,7 @@
   - `src/styles/global.css`：末尾追加「首页档案中枢」节——`.home-gallery-grid`（4 列 → 860px 下 2 列方图网格）、`.dossier-teaser`（头像 + 文案两列 → 单列）、hover 效果，全部使用主题变量。
   - `src/styles/minimal-theme.css`：极简主题覆盖——缩略图直角、隐藏悬浮标题、hover 改透明度、档案文案换 `--sans`。
 - **验证**：`npm.cmd run build` 77 页成功；`dist/index.html` 实测——文章条目 5 条、工具栏 0、`data-catalog-fixed` 1、图志精选 4 张（Sakiko / Miyako Fuji / Uika / Viola = gallery.json 最新 4 张）、档案版块 + 头像各 1、查看全部入口 2 处；`dist/blog/index.html` 工具栏保留、33 条全量；`dist/gallery/index.html` 缩略图正常。
-- **遗留**：`blog-template` 模板子仓库未同步（沿用既有约定，待用户决定）；新版块样式在 `still`/`fluid`/`trace` 主题下沿用主题变量自适应，`minimal` 已单独覆盖。
+- **遗留**：新版块样式在 `still`/`fluid`/`trace` 主题下沿用主题变量自适应，`minimal` 已单独覆盖。
 
 ---
 
@@ -50,25 +49,24 @@
 
 ---
 
-**🔒 v3.5.3 管理面板安全加固后续：认证口令持久化 + 文档同步（2026-08-05，未发布，blog-template 未同步）**
+**🔒 v3.5.3 管理面板安全加固后续：认证口令持久化 + 文档同步（2026-08-05，未发布）**
 
 - **背景**：v3.5.3 安全提交（`09128eb Harden admin authentication and remote URL handling`）移除默认口令 `acr-admin` 后出现运维问题——未设 `ADMIN_TOKEN` 时每次重启随机口令都变，外部脚本/curl 调 API 会失效；且 README/AGENT_HANDOFF 仍描述旧默认口令。
 - **修复**（`admin-server.mjs`）：新增 `TOKEN_FILE = resolve(__dirname, '.admin-token')` 与 `loadAdminToken()`——未设置 `ADMIN_TOKEN` 时首次启动生成 `randomBytes(32).toString('hex')` 口令写入 `.admin-token`（mode 0o600），之后重启复用，零配置且重启稳定，不退回硬编码弱口令；写入失败降级临时随机口令（告警不阻断启动）；`ADMIN_TOKEN = await loadAdminToken()`（顶层 await，Node 24 ESM 支持）；启动日志提示口令文件位置（仅未设 env 时）。`.gitignore` 新增 `.admin-token`。
 - **文档同步**：README 顶部新增 3.5.3 changelog 条目 + 开发版本 bump 3.5.3；README v1.1 功能总结与 AGENT_HANDOFF 认证段旧描述「默认 `acr-admin`」均改为持久化机制描述。
 - **验证**（Windows 实测，PORT=4399 三轮启动）：`node --check` 通过；首次启动生成文件、页面注入值与文件一致、带 header 200 / 无 token 401；kill 后重启 token 不变；`ADMIN_TOKEN=my-fixed-token` 时环境变量优先（env token 200、文件 token 401）、文件不被改写、页面注入 env 值；测试端口已释放。
-- **遗留**：`blog-template` 子模块仍是旧版认证（默认 `acr-admin` + 空口令放行），未同步（待用户决定是否跟进）。
 
 ---
 
-**🔒 v3.5.2 安全加固：HEIC 解析器防御恶意 iloc（2026-08-04 发布，blog-template 同步 v1.5.2）**
+**🔒 v3.5.2 安全加固：HEIC 解析器防御恶意 iloc（2026-08-04 发布）**
 
 - security_review(MEDIUM)发现 `parseIlocWithBase`：iloc 的 `offset_size` 与 `length_size` 均为 0 时 extent 循环无字节推进，配合 version-2 的 32 位 `extent_count`(0xFFFFFFFF)可空转 ~4.29e9 次 × 最多 5 个 base 候选 ≈ 2.1e10 次迭代(事件循环阻塞数十秒)。
-- 修复：两者之和为 0 时直接 `return null`(按 orientation 1 处理)。触发条件苛刻(libheif 可解码 + admin token + localhost 127.0.0.1),属纵深防御。主仓库与模板两个副本同步。
+- 修复：两者之和为 0 时直接 `return null`(按 orientation 1 处理)。触发条件苛刻(libheif 可解码 + admin token + localhost 127.0.0.1),属纵深防御。
 - 验证：`node --check` 两副本通过;`scripts/verify-heic-exif.mjs` 14 项回归全过。
 
 ---
 
-**🐛 v3.5.1 修复：HEIC 竖拍方向（2026-08-04 发布，blog-template 同步 v1.5.1）**
+**🐛 v3.5.1 修复：HEIC 竖拍方向（2026-08-04 发布）**
 
 ### HEIC EXIF Orientation 支持（`admin/heic-exif.mjs` 新增,零依赖）
 
@@ -81,11 +79,10 @@
   - `parseTiffOrientation` 读 IFD0 tag 0x0112(SHORT)。
 - **旋转管线**(admin-server.mjs saveImageFile heic 分支):orientation 2→flop、3→180、4→flip、5→270+flop、6→90、7→90+flop、8→270,其余不旋转;解析失败按 1 处理(不阻断上传)。
 - **验证**：`node scripts/verify-heic-exif.mjs` 14 项全过——3 个真实 iPhone HEIC 样本(blog-images/image/original/)解析 Orientation=1(横拍不旋转);合成 RGBA 数据走同一管线 Orientation 1-8 尺寸全部正确;非正方形(2x3)像素级验证 orientation 5/7 精确等于 transpose/transverse(sharp 内部固定按 flip→flop→rotate 顺序执行,与调用顺序无关——review 曾建议 5/7 互换,像素级验证证明原组合正确,未采纳)。**遗留**:暂无竖拍(6/8)真实样本,旋转方向经合成数据验证。
-- 模板同步:blog-template 复制 `admin/heic-exif.mjs`,convertHeicToWebp 同管线(v1.5.1)。
 
 ---
 
-**📎 v3.5.0 完整交接：文章分享短链 / 管理面板 HEIC 支持 / jsDelivr 预热优化（2026-08-04 发布，blog-template 同步 v1.5.0）**
+**📎 v3.5.0 完整交接：文章分享短链 / 管理面板 HEIC 支持 / jsDelivr 预热优化（2026-08-04 发布）**
 
 ### 一、文章分享短链（自托管静态，无第三方依赖）
 
@@ -105,9 +102,8 @@
 
 ### 三、发布记录与约定
 
-- 主仓库 tag `v3.5.0` + GitHub Release；README 更新日志新增 3.5.0 条目（含模板同步说明），顶部「开发版本」与「最新 Release」链接同步更新（v3.4.0 发布时漏改顶部版本号，本次已修正）。
-- 模板 `blog-template` 同步发布 **v1.5.0**（提交 `350cf19`，8 文件 +2490/-52）：同步词云、评论、画廊原图归档、播放条与音频工作流、格式化工具栏、图片尺寸、编辑器改造、HEIC 支持；模板构建 7 页通过。模板 README 保持使用文档定位不改动。
-- **`.githooks/pre-commit` 约定**：主仓库与模板均配置 `core.hooksPath=.githooks`，每次 commit 自动跑 `npm run build`，失败阻止提交——功能改动提交前先确认构建通过。
+- 主仓库 tag `v3.5.0` + GitHub Release；README 更新日志新增 3.5.0 条目，顶部「开发版本」与「最新 Release」链接同步更新（v3.4.0 发布时漏改顶部版本号，本次已修正）。
+- **`.githooks/pre-commit` 约定**：主仓库已配置 `core.hooksPath=.githooks`，每次 commit 自动跑 `npm run build`，失败阻止提交——功能改动提交前先确认构建通过。
 
 **🎧 v3.4.0 完整交接：音乐播放条 / 音频工作流 / 格式化工具栏 / 图片尺寸 / 编辑器改造（2026-08-09 发布）**
 
@@ -121,8 +117,8 @@
 
 ### 二、管理面板音频工作流（后端 + 面板）
 
-- **上传接口**（admin-server.mjs）：`ALLOWED_MIME` 新增 `audio/mpeg / flac / ogg / wav / x-wav / mp4 / aac / x-m4a`；multer destination 按 mimetype 分流（音频→`AUDIO_DIR`，主站 `IMG_REPO_DIR/audio`=仓库根目录新建的 `audio/` 文件夹，模板 `public/audio`）；音频不转码原样保留扩展名；返回 `AUDIO_BASE_URL`（主站 jsDelivr `…/audio/`，模板本地 `/audio/`）；`IMG_REPO_DIR` 支持环境变量覆盖（测试隔离用）；模板 `/api/push` stageCmd 增加 `public/audio/`。
-- **元数据解析**：`extractAudioMeta()`（music-metadata `parseFile`，依赖 `music-metadata@^11`，主站+模板均安装）——歌名 / 歌手 / 内嵌封面（封面 sharp 转 WebP ≤600px 存 `image/` 目录，与音频同一次 push）；解析失败**打印日志**（`Audio meta parse failed:`）不阻断上传，返回空字段让前端弹窗手填。已知边界：非标编码（GBK 等）标签可能乱码。
+- **上传接口**（admin-server.mjs）：`ALLOWED_MIME` 新增 `audio/mpeg / flac / ogg / wav / x-wav / mp4 / aac / x-m4a`；multer destination 按 mimetype 分流（音频→`AUDIO_DIR`，主站 `IMG_REPO_DIR/audio`=仓库根目录新建的 `audio/` 文件夹）；音频不转码原样保留扩展名；返回 `AUDIO_BASE_URL`（主站 jsDelivr `…/audio/`）；`IMG_REPO_DIR` 支持环境变量覆盖（测试隔离用）。
+- **元数据解析**：`extractAudioMeta()`（music-metadata `parseFile`，依赖 `music-metadata@^11`）——歌名 / 歌手 / 内嵌封面（封面 sharp 转 WebP ≤600px 存 `image/` 目录，与音频同一次 push）；解析失败**打印日志**（`Audio meta parse failed:`）不阻断上传，返回空字段让前端弹窗手填。已知边界：非标编码（GBK 等）标签可能乱码。
 - **外链可播性探测**：`GET /api/audio-probe?url=`（HEAD 优先，失败 GET `Range: bytes=0-2047` 校验 Content-Type 与音频魔数 ID3/fLaC/OggS/RIFF/ftyp；网易云歌曲页先映射 outer/url 再探测）；面板「♪ 音乐」对话框输入防抖 400ms 自动探测，`.music-probe` 三态显示「✓ 可播放 · audio/mpeg · N KB」/「⏳ 探测中」/「⚠ 失败」。
 - **jsDelivr 缓存预热**：`warmJsDelivr()` 在 `/api/upload` 推送成功后后台 fetch 一次外链（不阻塞响应）——否则新文件首次访问 301 到 raw.githubusercontent.com，境内网络不稳导致上传后立即播放失败（用户实测踩坑）。失败仅记日志。
 - **面板入口**：工具栏「♪ 音乐」按钮 + musicModal 对话框（直链/网易云歌曲页链接 + 歌名/歌手/封面 + 「⬆ 上传音频」）；`buildMusicEmbed`/`musicAttr`/`musicEmbedHtml`（粘贴 song-player 占位代码自动提取重建，属性经 `mdAttr` 转义，src 限 http(s)）；**编辑区/上传区拖放与 Ctrl+V 支持 `audio/*`**（`uploadAudioTrack()`：上传+解析→成功直接插入播放条到光标处，失败弹窗预填）；预览 `mdRenderVideo` 用 `\u0000M` 占位符提取闭合 song-player 块，`musicEmbedPreview` 渲染原生 `<audio>` 可试听。
@@ -143,7 +139,7 @@
 ### 五、编辑器体验升级（`setupEditablePreview` / `setupScrollSync` / `setupSplitDivider`）
 
 - **高度**：`.editor-body{height:min(72vh,860px);min-height:460px}`。
-- **渲染区可编辑**：`#fPreview` `contenteditable="true"`；编辑防抖 600ms 经 turndown 转回 Markdown 写回 `#fContent`（**不重渲染预览**，光标不丢；源码再编辑才重渲染覆盖）；粘贴强制纯文本。turndown `keep` 白名单 `span/div/u/mark/center/iframe/s/del/sub/sup`（变色/居中/下划线/高亮/视频/删除线原样保留，strong/em/img/a 默认转 Markdown），实例缓存 `window.__mdTurndown`；**转 Markdown 前清理 `data-line` 属性与 `.line-flash`**，防定位辅助污染源码。turndown 本地化 `admin/vendor/turndown.js`（`npm i turndown` 后从 node_modules 复制），admin-server 需 `app.use('/admin', express.static(admin))` 提供 vendor（曾 404，已修，主站+模板）。
+- **渲染区可编辑**：`#fPreview` `contenteditable="true"`；编辑防抖 600ms 经 turndown 转回 Markdown 写回 `#fContent`（**不重渲染预览**，光标不丢；源码再编辑才重渲染覆盖）；粘贴强制纯文本。turndown `keep` 白名单 `span/div/u/mark/center/iframe/s/del/sub/sup`（变色/居中/下划线/高亮/视频/删除线原样保留，strong/em/img/a 默认转 Markdown），实例缓存 `window.__mdTurndown`；**转 Markdown 前清理 `data-line` 属性与 `.line-flash`**，防定位辅助污染源码。turndown 本地化 `admin/vendor/turndown.js`（`npm i turndown` 后从 node_modules 复制），admin-server 需 `app.use('/admin', express.static(admin))` 提供 vendor（曾 404，已修）。
 - **行级联动**（迭代 3 次，最终形态）：
   - `mdParse`/`mdParseList` 全部块级输出注入 `data-line`（p 用 paraStart、表格 tblStart、blockquote 用 qs 记录起始行 + `startLine` 参数递归偏移）；
   - **提取占位符补行**：mdRenderVideo 的 iframe / song-player / 白名单提取后，占位符后补回被提取块占用的行数（`'
@@ -160,7 +156,7 @@
 
 - 验证：`npm run build` 22 页成功；隔离仓库（`IMG_REPO_DIR` 环境变量）端到端——带 ID3v2.3 标签+APIC 封面（UTF-16 中文）mp3 解析出「メランコリック / ヤマネマヒ / cover.webp」、无标签文件返回空字段、`/api/audio-probe` 网易云歌 ok=true（audio/mpeg 2.9MB）vs example.com ok=false；两份 admin `new Function` 语法通过；渲染管线 node 复刻验证 data-line 全覆盖；`/admin` 200、`/api/posts` 带 token 200、vendor/turndown.js 200。
 - 已知边界：网易云 outer/url 端点带时效签名不可作永久直链；GBK 标签可能乱码（走手填兜底）；居中块内 Markdown 语法按字面显示（HTML 块内不解析，提示用纯文本或 `<b>`）；段内行定位到段首（段落内部行无独立 data-line，偏差≤段落行数）。
-- 发布：tag `v3.4.0` + GitHub Release 已创建；README 3.4.0 更新日志已整理。模板 `blog-template` 工作区已同步（song-player.ts / global.css / admin / admin-server + vendor + music-metadata / turndown），**模板子仓库未推送**（待用户单独提交）。
+- 发布：tag `v3.4.0` + GitHub Release 已创建；README 3.4.0 更新日志已整理。
 
 **🔢 文章列表：序号纯数字 + 标题自适应字号（首页 / 卷册目录，v3.2.1）**
 
@@ -170,7 +166,7 @@
 - `src/styles/minimal-theme.css`：删除 `.catalog-index small { display:none }` 覆盖（元素已移除）。
 - 新增回归脚本 `scripts/verify-catalog-title.mjs`（CDP 9224 + static-server 8766，与 verify-vt-theme 同套路）。
 - 验证：`npm run build` 20 页成功；验证脚本 24/24 全过——两种布局 × 桌面 1440 / 窄屏 390 的序号格式与无小字、真实标题全部完整展示（仅需微调的字号变化）、注入超长标题后字号微调且完整展示、标题区容器高度统一、窄屏无横向溢出；**已知边界**：390px 横栏布局内容列仅约 130px 宽，3 条极端长标题触达 12px 下限仍截断属物理极限（手机窄栏 + 固定两行 + 字号下限）。
-- 发布：提交已推送，tag `v3.2.1` + GitHub Release（README 更新日志新增 3.2.1 条目，模板仓库未同步，沿用既有约定）。
+- 发布：提交已推送，tag `v3.2.1` + GitHub Release（README 更新日志新增 3.2.1 条目）。
 
 **💧 v3.2.0：Liquid Glass 主题、前端定制、文章双版式与导航修复**
 
@@ -181,7 +177,7 @@
 - 全站信息边界改为 `--content-width: min(80vw, var(--max-width))`；相册、照片卡片文字区、留言发表/评论、关于页档案卡、文章卡片增加四边留白。桌面端 Liquid 容器 22px，窄屏 18px；照片元信息左右 18px。
 - 动效按 Emil Kowalski / Apple 风格原则收敛：进入位移与时长降低，交互反馈采用短时、可打断缓动，图片 hover 不再长时间漂移；系统减弱动态时取消非必要位移。
 - `BaseLayout.astro` 在 `astro:before-swap` 把已保存主题写入新文档，并在 `astro:after-swap` / `astro:page-load` 再同步，修复视觉主题在五个主页面间 VT 导航时恢复「行迹」、刷新才恢复的问题；监听器使用全局幂等标记避免重复注册。
-- 发布范围：不包含 `blog-template` 子仓库的本地未提交内容、`scripts/verify-vt-theme.mjs` 的本机 CDP 端口修改和未跟踪的构建产物 `gal.js`。
+- 发布范围：不包含 `scripts/verify-vt-theme.mjs` 的本机 CDP 端口修改和未跟踪的构建产物 `gal.js`。
 - 验证：`npm.cmd run build` 生成 20 页；`git diff --check` 通过；浏览器实测「流形」依次导航 `/`、`/blog/`、`/gallery/`、`/about/`、`/guestbook/` 与刷新均保持主题。桌面及 355px 实际视口无横向溢出，五项导航完整，卡片/横栏与照片、留言、关于容器内边距通过计算样式和截图检查。
 
 **✍️ 双主题固定文案适配 + 顶栏标签修复**
@@ -209,7 +205,7 @@
 - 修复（`src/pages/gallery.astro`）：初始调用移至脚本末尾（全部声明之后），附注释说明该约束；其余脚本不受影响。
 - 排查过程：本地/线上黑盒全路径测试（VT 导航、后退/前进、刷新、reduced-motion、无 VT fallback、文章页/留言页进入）均无法复现"按钮失效"，最终通过 CDP 抓控制台异常定位到 TDZ；同时确认 `dispatchEvent` 监听器异常不影响其他监听器、按钮脚本（`is:inline data-astro-rerun` + IIFE）独立绑定不受牵连。
 - 验证：`npm run build` 19 页成功；headless Chrome 图志页功能全检（排序/视图/tab/22 张轮播/查看器）无 JS 错误；`scripts/verify-vt-theme.mjs` 回归 6 项全部通过（脚本端口 9223→9224）。
-- 发布：提交已推送，tag `v3.0.2` + GitHub Release；模板仓库已同步。
+- 发布：提交已推送，tag `v3.0.2` + GitHub Release。
 
 **🐛 修复除首页外昼夜模式切换按钮失效（v3.0.1）**
 
@@ -220,7 +216,7 @@
 - 修复：`src/layouts/BaseLayout.astro` 两个脚本 → `is:inline data-astro-rerun` + IIFE + 去 TS 泛型；页面/组件脚本（index、blog/index、gallery、guestbook、WordCloud、PostComments）→ 改注册 `astro:page-load` 监听器驱动初始化（模块只执行一次、事件每次导航触发）；`order-toggle.ts` 加 WeakSet 幂等（首页与卷册页两模块注册同一函数，防重复绑定致排序来回切换）；文章页 busuanzi 脚本加 `data-astro-rerun`。
 - 附带发现：本机 `python -m http.server`（Python 3.14）对 `.js` 返回 `text/plain`，浏览器严格 MIME 检查拒绝执行全部 module 脚本，导致本地复现时 VT 从未真正发生——新增 `scripts/static-server.mjs`（MIME 正确）与 `scripts/verify-vt-theme.mjs`（VT 导航回归测试）。
 - 验证：`npm run build` 19 页成功；headless Chrome 真实 VT 导航全链路（首页→文章页→留言页→图志页→首页，含往返、主题保持、按钮双向切换、排序/词云/留言/画廊初始化）全部通过。
-- 发布：README 新增 3.0.1 条目；模板仓库（blog-template）已同步本次全部源码改动。
+- 发布：README 新增 3.0.1 条目。
 
 **🎠 广告牌改为线性轨道轮播（v2.2.3）**
 
@@ -229,7 +225,7 @@
 - `ResizeObserver`：slide 宽度变化（图片头部到达/解码）→ `layoutTrack` 重排；viewport 尺寸变化（面板隐藏时宽 0、窗口缩放）→ `applyTrack` 重新对齐。
 - CSS：`.gallery-billboard-track` 增加 `transition: transform 560ms cubic-bezier(0.22,0.9,0.3,1)` 与 `will-change`。
 - 验证：`npm run build` 19 页成功；headless Chrome 实测——焦点对齐偏差 0、空隙恒 18px、线性定位单调；末→首 `transition:'none'` 瞬移、100ms 稳定、首张精确对齐；构造 900/300px 与真实图片均无重叠；自动轮播逐张前进正常。
-- 发布：提交已推送，tag `v2.2.3` + GitHub Release（README 更新日志新增 2.2.3 条目，模板仓库未同步，沿用既有约定）。
+- 发布：提交已推送，tag `v2.2.3` + GitHub Release（README 更新日志新增 2.2.3 条目）。
 
 **🎠 广告牌轮播间距逐对自适应布局（v2.2.2）**
 
@@ -237,7 +233,7 @@
 - 修复（`src/pages/gallery.astro` `layoutSlides`）：改为逐对自适应——相邻两图中心距 = 各自缩放后半宽之和 + `GAP`，沿焦点两侧按序累加/累减得每张图 offset；宽图间自然更远、窄图间紧凑，无重叠也无多余空隙。
 - 布局触发由 `load` 事件改 `ResizeObserver`（监听每个 slide）：图片头部下载完即定长宽比、宽度先于 `load` 变化，此前大图完整下载前按旧宽度（240 兜底）排布导致重叠；现在比例一到立即重排。
 - 验证：`npm run build` 19 页成功；headless Chrome 构造 900/300px 交替——初始与连续切换无重叠、空隙恒 18px；真实 22 张（671/623/532/213px 混合）稳态无重叠、空隙 17.7~18.4px，懒加载过程自动重排正常，自动轮播正常。
-- 发布：提交已推送，tag `v2.2.2` + GitHub Release（README 更新日志新增 2.2.2 条目，模板仓库未同步，沿用既有约定）。
+- 发布：提交已推送，tag `v2.2.2` + GitHub Release（README 更新日志新增 2.2.2 条目）。
 
 **🐛 修复广告牌轮播宽图重叠（v2.2.1）**
 
@@ -245,7 +241,7 @@
 - 根因：`layoutSlides()` 的步长（相邻 slide 中心距）仅按焦点图与 ±1 相邻图宽度计算，全部 slide 按 `d × 步长` 均匀分布——±2、±3 位置的宽图缩放 0.82 后仍向中心伸出，与更近的图重叠；v2.2.0 全量轮播后宽图出现概率大增，问题暴露。
 - 修复（`src/pages/gallery.astro`）：步长取两类约束的最大值——① `maxW × 0.82`（任意两个候播图相邻不重叠）；② `focusW × 1.2 / 2 + maxW × 0.82 / 2`（焦点图与候播图相邻不重叠），再加固定间距 `GAP`。
 - 验证：`npm run build` 19 页成功；headless Chrome 构造 900px/300px 宽窄交替实测——修复前 slide 0 与 21 重叠，修复后初始布局与连续切换均无重叠；真实图片（671/213/623px 混合）22 张无重叠、自动轮播正常。
-- 发布：提交已推送，tag `v2.2.1` + GitHub Release（README 更新日志新增 2.2.1 条目，模板仓库未同步，沿用既有约定）。
+- 发布：提交已推送，tag `v2.2.1` + GitHub Release（README 更新日志新增 2.2.1 条目）。
 
 **🎠 图志页：广告牌全量轮播 + 独立收藏分页（v2.2.0）**
 
@@ -253,7 +249,7 @@
 - 独立收藏面板新增每页 9 张分页：面板底部 `data-independent-pager` 翻页器（与随文图像同款样式），`renderIndependentPage()`（`INDEPENDENT_PAGE_SIZE = 9`，`is-off-page` 隐藏、页码/禁用态/无图时隐藏），排序切换后重置回第 1 页，INDEPENDENT 编号跨页全局连续。
 - `src/styles/global.css`：`.gallery-masonry--independent` 底部留白 44px 与随文图像对齐；`.gallery-billboard-dots` 加 `flex-wrap: wrap` 容纳全量指示点。
 - 验证：`npm run build` 19 页成功、bundle 无 `slice(0,5)` 残留；headless Chrome 实测——广告牌 22 张 slide 全量渲染、自动轮播正常；独立收藏 22 张分 3 页（9/9/4）翻页与首末页禁用态正确、排序后重置第 1 页；随文图像原有分页（27 张 01/03）未受影响。
-- 发布：提交 `4549326` 已推送，tag `v2.2.0` + GitHub Release（README 更新日志新增 2.2.0 条目，模板仓库未同步，沿用既有约定）。
+- 发布：提交 `4549326` 已推送，tag `v2.2.0` + GitHub Release（README 更新日志新增 2.2.0 条目）。
 
 **🔄 管理面板新增 Git 同步：启动自动比对 + 手动拉取（v2.1.0）**
 
@@ -263,7 +259,6 @@
 - `admin/index.html`（主仓库）：侧边栏新增「⇩ 拉取」按钮（`pullFromRemote()`，位于「推送」左侧），拉取成功后自动刷新当前文章/画廊列表；tip-bar 新增「⇩ 拉取=同步远端最新内容」提示。
 - 验证（Windows 实测，双端 git 命令跨平台）：`node --check` 通过；`PORT=4323` 启动真实服务器三场景全过——① 本地=远端 → 日志「本地与远端一致，无需同步」；② 远端领先+工作区干净 → `/api/pull` 返回 `status:"pulled"` 并快进拉取 macOS 适配提交 `1464bd0`（HEAD 与 origin/main 归零差异）；③ 远端领先+工作区脏 → 返回 `status:"skipped", reason:"dirty"` 不覆盖工作区；无 token 请求 401。stash/pop 往返验证改动无损。
 - 本次拉取到用户已在 macOS 推送的 `1464bd0 feat: macOS 适配 (v2.0.0-macOS)`（含 `.command` 启动器与 `.githooks/pre-commit` 跨平台修复），与本次同步功能配合，Windows / macOS 双端行为一致。
-- 模板仓库未同步（自 v1.4.0 起模板停止跟进主仓库架构，沿用既有约定）。
 
 **🐛 修复广告牌切换跳过一张（v1.7.2b）**
 
@@ -298,12 +293,12 @@
 - 独立收藏面板顶部新增广告牌（`buildBillboard`）：`define:vars` 注入 `standalonePool`，每次加载 Fisher–Yates 洗牌随机抽 5 张构建 scroll-snap 横向滚动条带；每张图高度固定、宽度按自身长宽比自适应；左右箭头、指示点（`getBoundingClientRect` 差值定位，图片 load 后刷新）、触摸滑动、自动轮播 4.2s；悬停/聚焦/面板隐藏（`selectGalleryTab` 联动 `pauseBillboard`/`resumeBillboard`）/`prefers-reduced-motion` 时暂停；点击打开查看器（含原图切换）。
 - `src/styles/global.css`（主仓库）：新增 `.gallery-view-bar`、`.gallery-pager`、`.gallery-albums/.gallery-album/.gallery-album-thumb`、`.gallery-billboard` 全套样式与 640px 响应式适配。
 - 验证：`npm run build` 18 页成功；dist 产物确认 8 个图集分组、24 个缩略图、standalonePool 注入；内置 review 审查 3 项修复（翻页 disabled、隐藏面板轮播暂停、dots 定位解耦）后二次复查通过。
-- 提交：`9fa9f35`（功能），本次 `docs` 提交 + tag `v1.7.0` + GitHub Release。模板仓库未同步（自 v1.4.0 起模板停止跟进主仓库架构，README 历史条目中「模板同步发布」说法与实际不符，本次不再沿用）。
+- 提交：`9fa9f35`（功能），本次 `docs` 提交 + tag `v1.7.0` + GitHub Release。
 
 **💬 文章底部新增评论功能（Waline 同一后端，地区不可达时优雅降级）**
 
-- `src/components/PostComments.astro`（新增，主仓库 + 模板）：文章页底部评论组件，复用留言页同一套 Waline 服务（`https://comment-sys-ashen.vercel.app`）与 B 站评论区视觉（独立 `pc-*` 类名，样式内联于组件，互不干扰）；`path` 取 `location.pathname`，按文章 URL 隔离评论。
-- `src/pages/blog/[...id].astro`（主仓库 + 模板）：`article-endmark`（FINIS）之后、`</article>` 前引入 `<PostComments />`。
+- `src/components/PostComments.astro`（新增）：文章页底部评论组件，复用留言页同一套 Waline 服务（`https://comment-sys-ashen.vercel.app`）与 B 站评论区视觉（独立 `pc-*` 类名，样式内联于组件，互不干扰）；`path` 取 `location.pathname`，按文章 URL 隔离评论。
+- `src/pages/blog/[...id].astro`：`article-endmark`（FINIS）之后、`</article>` 前引入 `<PostComments />`。
 - **地区降级**：按用户要求不迁就大陆网络——fetch 带 8 秒 AbortController 超时，加载/提交失败一律显示「当前地区暂不支持评论」提示（附技术细节小字）；评论失败不影响正文阅读。
 - 功能与留言页一致：300 字上限、昵称记忆（localStorage 与留言页共用键）、字母头像哈希取色、IP 属地标签、相对时间、`#N 楼`、分页加载更多、内容净化（剥离媒体/事件属性）；保留 `?server=` 覆盖参数便于本地 mock 联调。
 - 打印样式：`@media print` 隐藏评论区，导出 PDF 不受影响。
@@ -311,15 +306,15 @@
 
 **🔗 关于页链接可跳转（静默推送，无 Release）**
 
-- `src/pages/about.astro`（主仓库 + 模板）：新增通用 `linkify()` 函数——先做 HTML 转义（`& < > "`）再按 RFC 3986 URL 字符集识别 `http(s)://` 链接，转成 `<a target="_blank" rel="noopener noreferrer">`；仅识别 http/https（`javascript:` 等协议原样输出），尾部成对标点自动剥离。所有经管理面板可编辑的文本字段统一走此函数：身份表 `value`、开头段 `lead`、正文段落 `paragraphs`、引用 `quoteText`、关联网站 `note`——后续管理面板往任意字段粘贴链接都会自动可跳转。
-- `src/styles/global.css`（主仓库 + 模板）：新增 `.dossier a` 链接样式（红色 `--red-dark` + 下划线 + hover 加深 + `word-break` 防长 URL 溢出）；`.interest-index li small a` 覆盖灰字显示链接色。引用标签 `span` 选择器改为 `.quote-label`，`quoteText` 拆为 `.quote-text` 块渲染。
-- `admin/index.html`（主仓库 + 模板）：关联网站「备注」输入框 placeholder 改为「链接/备注（粘贴 http(s) 链接自动可跳转）」。
+- `src/pages/about.astro`：新增通用 `linkify()` 函数——先做 HTML 转义（`& < > "`）再按 RFC 3986 URL 字符集识别 `http(s)://` 链接，转成 `<a target="_blank" rel="noopener noreferrer">`；仅识别 http/https（`javascript:` 等协议原样输出），尾部成对标点自动剥离。所有经管理面板可编辑的文本字段统一走此函数：身份表 `value`、开头段 `lead`、正文段落 `paragraphs`、引用 `quoteText`、关联网站 `note`——后续管理面板往任意字段粘贴链接都会自动可跳转。
+- `src/styles/global.css`：新增 `.dossier a` 链接样式（红色 `--red-dark` + 下划线 + hover 加深 + `word-break` 防长 URL 溢出）；`.interest-index li small a` 覆盖灰字显示链接色。引用标签 `span` 选择器改为 `.quote-label`，`quoteText` 拆为 `.quote-text` 块渲染。
+- `admin/index.html`：关联网站「备注」输入框 placeholder 改为「链接/备注（粘贴 http(s) 链接自动可跳转）」。
 - 验证：`npm run build` 17 页成功；产物中 4 个关联网站均为可点击 `<a>`；linkify 单测 6 用例全过（XSS 转义、引号注入、中文标点剥离、协议白名单、多链接+查询参数、真实 B 站链接）。
 - 提交：本次为静默推送，不打 tag、不发 Release（commit hash 见 `git log`）。
 
 **🔤 文章页标题字号调小（静默推送，无 Release）**
 
-- `src/styles/global.css`（主仓库 + 模板）：文章页大标题 `.article-header h1` 字号由 `clamp(2.8rem, 6.5vw, 5.5rem)`（最大约 88px）改为 `2rem`，与正文一级标题（`.prose h1` 默认 2em）同大；`max-width: 640px` 断点内的覆盖值同步由 `clamp(2.45rem, 14vw, 4rem)` 改为 `2rem`。
+- `src/styles/global.css`：文章页大标题 `.article-header h1` 字号由 `clamp(2.8rem, 6.5vw, 5.5rem)`（最大约 88px）改为 `2rem`，与正文一级标题（`.prose h1` 默认 2em）同大；`max-width: 640px` 断点内的覆盖值同步由 `clamp(2.45rem, 14vw, 4rem)` 改为 `2rem`。
 - 打印样式（`@media print`，25pt）为独立设计的 A4 档案版式，未改动。
 - 验证：`npm run build` 通过；本地 dev 实测文章页标题与正文 `#` 一级标题字号一致。
 - 提交：本次为静默推送，不打 tag、不发 Release（commit hash 见 `git log`）。
@@ -327,21 +322,20 @@
 **🖼 头像自适应 + 压缩（v1.3.2）**
 
 - `global.css`：`.portrait-placeholder.has-avatar` 去掉固定 4:5 比例与网格底纹，`img` 改为按原图比例完整显示（`max-width:100%; max-height:540px; object-fit:contain`），不再 cover 裁切；无头像时原样回退。
-- `about.astro`（主仓库 + 模板）：头像 URL 走 `optimizeImageUrl()` 与文章图同一压缩管线（sharp WebP q78、>1920px 等比缩放）。实测 2500² 的 2.1MB JPEG → 164KB WebP；产物在 `public/image/opt/`（gitignore，Actions 构建时重新生成）。
-- 提交：主仓库 `8c0311b`、模板 `fc63ca5`。
+- `about.astro`：头像 URL 走 `optimizeImageUrl()` 与文章图同一压缩管线（sharp WebP q78、>1920px 等比缩放）。实测 2500² 的 2.1MB JPEG → 164KB WebP；产物在 `public/image/opt/`（gitignore，Actions 构建时重新生成）。
+- 提交：主仓库 `8c0311b`。
 - 用户反馈背景：线上兴趣表并非空——`cea2633` 部署后兴趣被清空，`6f191d7` 已恢复并部署，用户看到的空表是浏览器缓存；需强制刷新。面板内编辑兴趣条目需重启管理面板（旧面板保存会再次清空）。
 
 **🎬 文章内嵌流媒体视频（B站 / YouTube / 通用 iframe）**
 
-- `admin/index.html`（主仓库 + 模板）：文章编辑器工具栏新增「▶ 视频」按钮，弹出对话框粘贴视频链接或嵌入代码，一键生成响应式 iframe 代码插入正文光标处；支持 B站完整链接（含 `?p=N` 分P、纯 BV 号）、YouTube（watch / youtu.be / shorts / live）、b23.tv 短链提示展开、以及官网 iframe 嵌入代码（自动提取 src 重建，丢弃事件属性）。
+- `admin/index.html`：文章编辑器工具栏新增「▶ 视频」按钮，弹出对话框粘贴视频链接或嵌入代码，一键生成响应式 iframe 代码插入正文光标处；支持 B站完整链接（含 `?p=N` 分P、纯 BV 号）、YouTube（watch / youtu.be / shorts / live）、b23.tv 短链提示展开、以及官网 iframe 嵌入代码（自动提取 src 重建，丢弃事件属性）。
 - 预览渲染器 `mdRenderVideo`：先保护围栏代码块（其中的 `<iframe>` 不提取），再提取正文 iframe 重建为干净标签（丢弃 `on*` 事件属性、拒绝非 http(s) src），其余文本沿用轻转义；`mdParse` 新增 `\u0000K` / `\u0000V` 占位符块级分支。
-- `src/styles/global.css`（主仓库 + 模板）：新增 `.prose iframe` 响应式样式（`width:100%` + `aspect-ratio:16/9` + `height:auto` 覆盖 B站嵌入代码的固定高度），移动端不溢出；管理面板预览同步加 `.markdown-preview .video-embed` 样式。
+- `src/styles/global.css`：新增 `.prose iframe` 响应式样式（`width:100%` + `aspect-ratio:16/9` + `height:auto` 覆盖 B站嵌入代码的固定高度），移动端不溢出；管理面板预览同步加 `.markdown-preview .video-embed` 样式。
 - 使用方式：文章 Markdown 正文直接写 `<iframe src="...">`（satteri 原样保留），或管理面板「▶ 视频」按钮自动生成；B站推荐 `player.bilibili.com/player.html?bvid=…` 播放器地址。
 - 安全加固：预览只提取「闭合完整」的 iframe（未闭合回退为文本显示，不吞正文）；重建标签丢弃 `on*` 事件属性、src 限 http(s)；`mdInline` 捕获组排除 `\u0000` 占位符防止属性注入；`buildVideoEmbed` 对粘贴的 iframe 同样校验协议白名单；重建 iframe 补 `title` 无障碍属性。
 - 验证：27 项函数单测全过（含 XSS、未闭合 iframe、属性注入、连续多 iframe 用例）；`npm run build` 16 页成功；临时文章端到端构建产物含完整 iframe；管理面板冒烟测试 /admin 与 /api/posts 均 200。
 
 最后更新：2026-08-03（全站极简重构 + 双视觉主题）
-
 
 ## 2026-09-30（修复）编辑器上传：Vditor 4 handler 契约导致的「上传后不插入/报 errFiles」
 
@@ -718,17 +712,15 @@ origin/main: d21ff97 已推送（970e9e1..d21ff97）
 **🐛 修复（v1.3.1）：关于页保存时身份表与兴趣列表被静默清空**
 
 - 根因：`saveAbout()` 的 `collect` 用 `.label`/`.value`/`.index`/`.name`/`.note` 选择器，但行输入框类名是 `ai-*` 前缀，匹配不到 → 整表清空。用户全量推送提交 `cea2633` 中 `identity: []`、`interests: []` 即此 bug 所致。
-- 修复：collect 改为「提交键名 → 类名」映射（`[['label','ai-label'],...]`），主仓库 `6f191d7`、模板 `9e3ada1` 同步修复；新增回归测试 `/tmp/collect-test.mjs`（vm 执行 `aboutRowTemplate` 源码 + 类名匹配模拟，验证渲染→收集闭环）。
+- 修复：collect 改为「提交键名 → 类名」映射（`[['label','ai-label'],...]`），主仓库 `6f191d7` 修复；新增回归测试 `/tmp/collect-test.mjs`（vm 执行 `aboutRowTemplate` 源码 + 类名匹配模拟，验证渲染→收集闭环）。
 - 数据恢复：`src/data/about.json` 从 `3225a93` 恢复 identity（5 行）/ interests（4 行），保留用户修改（avatar、lead、interestsTitle）；线上 `/about/` 实测恢复。
 - 提醒：管理面板需重启加载修复后的 `admin/index.html`；旧版面板在修复前保存会再次清空表格。
 
-**🚀 发布 v1.3.0（双仓库 + Release）**
+**🚀 发布 v1.3.0（Release）**
 
-- 主仓库 `AnAcretiondisk9986/AnAcretiondisk9986.github.io`：提交 `3225a93`（功能）+ `8da0da8`（同步 blog-template 指针），tag `v1.3.0` 已推送；README.md（更新日志）顶部新增 1.3.0 条目。
-- 模板仓库 `AnAcretiondisk9986/blog-template`：同步 `admin-server.mjs`、`admin/index.html`（保留模板占位 `<title>` 与 `btnSite` 的 `your-username.github.io`）、`src/styles/global.css`（差异仅头像样式）、`src/pages/about.astro`（与主仓库同构），新增 `src/data/about.json`（占位文案：记录名「你的名字」、兴趣「待补充」）；提交 `610953d`，tag `v1.3.0` 已推送。模板构建 7 页成功。
+- 主仓库 `AnAcretiondisk9986/AnAcretiondisk9986.github.io`：提交 `3225a93`（功能），tag `v1.3.0` 已推送；README.md（更新日志）顶部新增 1.3.0 条目。
 - GitHub Release（均非草稿，notes 引用 1.3.0 更新日志）：
   - https://github.com/AnAcretiondisk9986/AnAcretiondisk9986.github.io/releases/tag/v1.3.0
-  - https://github.com/AnAcretiondisk9986/blog-template/releases/tag/v1.3.0
 
 ### 2026-07-31（编辑实时预览）
 
@@ -778,7 +770,7 @@ origin/main: d21ff97 已推送（970e9e1..d21ff97）
 **🔢 同日条目增加发表顺序索引号**
 
 - **文件**：`src/content.config.ts`、`src/data/gallery.json`、`src/pages/gallery.astro`、`src/pages/blog/index.astro`、`src/pages/index.astro`、`src/pages/blog/[...id].astro`、`admin-server.mjs`、`admin/index.html`、`_templates/blog-post.md`、6 篇博客 frontmatter
-- 博客 schema 新增可选 `dayIndex`（同一天内的发表顺序，1 = 当天第一篇）；模板已加默认值，6 篇现有文章按 git 首次提交时间推导写入（07-30：HealthCN2030=1、social-paper=2、write-SKILL=3；07-31：论文代写=1、apurupai=2、观梦限大=3）。
+- 博客 schema 新增可选 `dayIndex`（同一天内的发表顺序，1 = 当天第一篇）；6 篇现有文章按 git 首次提交时间推导写入（07-30：HealthCN2030=1、social-paper=2、write-SKILL=3；07-31：论文代写=1、apurupai=2、观梦限大=3）。
 - 画廊「从新至旧/从旧至新」的同日第二排序键从「初始位置」改为 `dayIndex`；卡片新增日内序号标签 `D.03/05`；独立收藏 6 条已按 `id` 内嵌毫秒时间戳推导 dayIndex（07-31：Yuri=1、ui=2、洁尔佩塔=3、Amiya=4、小羊=5）。
 - 博客目录页与首页同日排序改用 dayIndex（缺省按文件名兜底）；目录页同日多篇时日期旁显示 `DAY 02`，首页显示 `· #02`；文章详情页条目编号在同日多篇时带序号（如 `2026—0731—03`）。
 - 管理面板：文章与画廊表单新增「同日序号」输入框（留空自动推导为同日最大 +1），列表 meta 显示 `#N`；`GET /api/posts` 排序同步加入 dayIndex。

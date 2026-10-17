@@ -192,4 +192,3 @@ SSR module runner 会按 ESM 语义求值它，`require()` 直接抛错，构建
   但交互态样式（hover / JS 触发的类）不会被覆盖率统计到，误删风险高，需人工逐条审查。
 - **后台 `vditor` 懒加载**：实测首屏阻塞的只有 `index.css` 47 KB + `index.min.js` 297 KB
   （3.7 MB 的 `lute.min.js` 由编辑器内部按需加载），且后台是本地访问，收益有限。
-- `blog-template/` 是独立模板目录，未纳入本次优化（内含原尺寸 LOGO 引用）。
