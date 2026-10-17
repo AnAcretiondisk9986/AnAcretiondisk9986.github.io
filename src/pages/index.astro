@@ -2,6 +2,7 @@
 import Icon from '../components/Icon.astro';
 import { getPublicPosts } from '../lib/posts';
 import { sortNewestFirst, thumbOf, type GalleryImageBrief } from '../lib/gallery';
+import { firstImageFromBody } from '../lib/post-cover';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import AboutTeaser from '../components/AboutTeaser.astro';
 import { safeLink } from '../lib/safe-link';
@@ -28,41 +29,81 @@ const titleCjk = latinAt > 0 ? rawTitle1.slice(0, latinAt).trim() : rawTitle1;
 const titleLatin = latinAt > 0 ? rawTitle1.slice(latinAt).trim() : '';
 const titleLine3 = String(frontend.heroTitleLine2 ?? '').trim();
 
+/* 域名拆成「前缀」与「主域」两段：前缀（blog.）保持原样，主域单独加克制的光效。
+   只按第一个点切分，因此 blog.Acretiondisk.top / www.example.com 都成立；
+   没有点（纯单词）时整段按主域处理。 */
+const domainSplit = titleLatin.match(/^([A-Za-z0-9-]{1,12}\.)(.+)$/);
+const domainPrefix = domainSplit?.[1] ?? '';
+const domainZone = domainSplit?.[2] ?? titleLatin;
+
 const fmtDate = (d: Date) =>
   `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
+
+/* 六张编目卡片：封面走 480px 缩略图（image/thumb/*.webp），没有封面时退回正文首图；
+   两者都没有就渲染「NO PLATE」骨架，而不是留一个空洞。 */
+const recentCards = recentPosts.map((post, index) => {
+  const original = post.data.cover?.trim() || firstImageFromBody(post.body ?? '');
+  return {
+    href: `/blog/${post.id}/`,
+    title: post.data.title,
+    tag: post.data.tags?.[0] ?? '',
+    date: fmtDate(post.data.pubDate),
+    iso: post.data.pubDate.toISOString(),
+    no: String(posts.length - index).padStart(3, '0'),
+    cover: original ? thumbOf(original) : '',
+    original: original && original !== thumbOf(original) ? original : '',
+  };
+});
+
+const heroPosition = String(frontend.stillImagePosition || 'center');
 ---
 
 <BaseLayout>
-  <section class="f-cover" aria-labelledby="cover-title">
-    <div class="f-frame f-frame--ghost" style={`--cover-image:url('${frontend.stillHeroImage}')`}>
-      <span class="f-crop f-crop--tl"></span><span class="f-crop f-crop--tr"></span>
-      <span class="f-crop f-crop--bl"></span><span class="f-crop f-crop--br"></span>
+  <!-- 首屏横幅：图片层是 100vw 对称出血的全幅底图，内容层留在纸面内容框内，
+       两者共享同一水平中心，所以文字在任意宽度下都严格居中。 -->
+  <section class="f-hero" aria-labelledby="cover-title" data-hero>
+    <div class="f-hero__media" aria-hidden="true">
+      <img
+        class="f-hero__image"
+        src={frontend.stillHeroImage}
+        alt=""
+        decoding="async"
+        fetchpriority="high"
+        crossorigin="anonymous"
+        style={`--hero-image-position:${heroPosition}`}
+      />
+    </div>
+    <div class="f-hero__scrim" aria-hidden="true"></div>
 
-      <div class="f-cover__inner">
-        <div class="f-fleuron" aria-hidden="true"><i></i></div>
-        <div class="f-cover__folio"><span>PLATE I</span><span>·</span><span>MMXXVI</span></div>
+    <div class="f-hero__body">
+      <p class="f-hero__folio"><span>PLATE I</span><i></i><span>MMXXVI</span></p>
 
-        <h1 id="cover-title" class="f-cover__title">
-          <span class="f-cover__line1">{titleCjk}</span>
-          {titleLatin && <span class="f-cover__line2"><em>{titleLatin}</em></span>}
-          {titleLine3 && <span class="f-cover__line3">{titleLine3}</span>}
-        </h1>
+      <h1 id="cover-title" class="f-hero__title">
+        <span class="f-hero__line1">{titleCjk}</span>
+        {titleLatin && (
+          <span class="f-hero__domain">
+            {domainPrefix && <em class="f-hero__domain-prefix">{domainPrefix}</em>}
+            <em class="f-hero__domain-zone">{domainZone}</em>
+          </span>
+        )}
+      </h1>
+      {titleLatin && <span class="f-hero__domain-rule" aria-hidden="true"></span>}
+      {titleLine3 && <p class="f-hero__line3">{titleLine3}</p>}
 
-        <p class="f-cover__deck">{frontend.heroDescription}</p>
+      <p class="f-hero__deck">{frontend.heroDescription}</p>
 
-        <div class="f-cover__meta">
-          <span>{posts.length} 篇手记</span>
-          <span>{(standaloneGallery as unknown[]).length} 幅图版</span>
-          <span>自 2026 年起</span>
-        </div>
+      <div class="f-hero__meta">
+        <span>{posts.length} 篇手记</span>
+        <span>{(standaloneGallery as unknown[]).length} 幅图版</span>
+        <span>自 2026 年起</span>
+      </div>
 
-        <div class="f-actions">
-          <a class="f-btn" href={primaryCtaHref}>
-            {frontend.primaryCtaLabel}
-            <Icon name="arrow-right" />
-          </a>
-          <a class="f-btn f-btn--ghost" href="/gallery/">查看图志</a>
-        </div>
+      <div class="f-hero__actions">
+        <a class="f-btn" href={primaryCtaHref}>
+          {frontend.primaryCtaLabel}
+          <Icon name="arrow-right" />
+        </a>
+        <a class="f-btn f-btn--ghost" href="/gallery/">查看图志</a>
       </div>
     </div>
   </section>
@@ -72,13 +113,33 @@ const fmtDate = (d: Date) =>
       <h2 class="f-section-title"><small>II</small>近期编目</h2>
       <a class="f-section-more" href="/blog/">全部 {posts.length} 篇 →</a>
     </div>
-    <div class="f-catalog">
-      {recentPosts.map((post, i) => (
-        <a class="f-entry" href={`/blog/${post.id}/`}>
-          <span class="f-entry__no">{String(posts.length - i).padStart(3, '0')}</span>
-          <span class="f-entry__title"><span>{post.data.title}</span></span>
-          <span class="f-entry__tag">{post.data.tags?.[0] ?? ''}</span>
-          <span class="f-entry__date">{fmtDate(post.data.pubDate)}</span>
+    <div class="f-recent">
+      {recentCards.map((card) => (
+        <a class="f-card" href={card.href}>
+          <span
+            class="f-card__frame"
+            data-loading={card.cover ? 'true' : undefined}
+            data-empty={card.cover ? undefined : 'true'}
+          >
+            {card.cover && (
+              <img
+                class="f-card__img"
+                src={card.cover}
+                alt=""
+                loading="lazy"
+                decoding="async"
+                data-original-cover={card.original || undefined}
+              />
+            )}
+          </span>
+          <span class="f-card__body">
+            <span class="f-card__no">NO. {card.no}</span>
+            <span class="f-card__title">{card.title}</span>
+            <span class="f-card__meta">
+              <span class="f-card__tag">{card.tag || '未分类'}</span>
+              <time datetime={card.iso}>{card.date}</time>
+            </span>
+          </span>
         </a>
       ))}
     </div>
@@ -113,7 +174,11 @@ const fmtDate = (d: Date) =>
 
   <section class="f-section f-coda">
     <div class="f-fleuron" aria-hidden="true"><i></i></div>
-    <blockquote>“写下来，是为了更清楚地看见自己。”</blockquote>
+    <blockquote>"写下来，是为了更清楚地看见自己。"</blockquote>
     <p class="f-num">FINIS PAGINAE · INITIUM SEQUENTIS</p>
   </section>
 </BaseLayout>
+
+<script>
+  import '../scripts/home-media';
+</script>

@@ -24,15 +24,21 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 
 <style is:global>
   @layer components {
-    .f-notfound { padding-block: var(--p-sp-9) var(--p-sp-8); }
+    .f-notfound { padding-block: var(--p-sp-8) var(--p-sp-8); display: grid; justify-items: center; }
+    /* 404 的框不要跟着 1637px 的壳层无限拉宽：单独限一个"一页纸"的宽度 */
+    .f-notfound .f-frame {
+      width: min(100%, 58rem);
+      margin-inline: auto;
+      padding-block: clamp(3.5rem, 9vw, 8rem);
+    }
     .f-frame--plain { padding-block: clamp(56px, 12vw, 140px); }
     .f-notfound__title {
       font-family: var(--hero-font);
-      font-size: clamp(2.25rem, 7vw, 5.5rem);
+      font-size: var(--type-display);
       font-weight: var(--hero-weight);
       font-synthesis-weight: none;
-      letter-spacing: -.03em;
-      line-height: 1.08;
+      letter-spacing: var(--track-cjk-display);
+      line-height: var(--lh-display);
       margin-top: var(--p-sp-5);
     }
   }

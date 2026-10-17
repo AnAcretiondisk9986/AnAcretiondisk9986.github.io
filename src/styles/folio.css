@@ -72,6 +72,14 @@
     --c-accent: var(--p-blue-600);
     --c-accent-2: var(--p-red-600);
 
+    /* 影像上的文字：首屏横幅的文字极性由脚本按背景图实测亮度决定，
+       因此这里需要一组"与主题无关"的固定对比色（亮底墨字 / 暗底纸字），
+       以及配套的金属色（亮底用深铜、暗底用亮铜），否则铜色会在暗图上发灰。 */
+    --c-media-ink: #12100d;
+    --c-media-paper: #fcfaf6;
+    --c-media-metal-on-light: var(--p-copper-700);
+    --c-media-metal-on-dark: var(--p-copper-300);
+
     /* 四槽位字体（S1：中文标题宋 / 正文黑，拉丁标题衬线 / 正文无衬线） */
     --latin-display: "Anthropic Serif";
     --latin-body: "Anthropic Sans";
@@ -90,21 +98,43 @@
     --hero-font: var(--latin-display), var(--cjk-display), "Source Han Serif SC", "Songti SC", "SimSun", serif;
     --hero-weight: 900;
 
-    --type-display: clamp(2rem, 6.9vw, 6rem);
-    --type-title: clamp(1.75rem, 3vw, 2.5rem);
-    --type-h2: clamp(1.25rem, 1.6vw, 1.5rem);
-    --type-item: 1.125rem;
-    --type-lead: 1.0625rem;
-    --type-body: 1rem;
-    --type-meta: .8125rem;
-    --type-micro: .6875rem;
+    /* ---------- 字号音阶（按四槽位字体重新校准，2026-10 版） ----------
+       依据：Anthropic Sans 的 x-height 比 Inter 略高、字面更方，13px 已相当于旧版
+       13.5–14px 的观感；Noto Serif SC / 宋体的字面中心比拉丁衬线低且笔画细，
+       同字号下"小一号"。所以拉丁侧收窄、中文展示侧整体抬高一档，而不是全站等比放大。
+       音阶比例 ≈1.22（正文→条目）与 1.33+（条目→标题），符合中文阅读的视觉节奏。 */
+    --type-display: clamp(2.9rem, 4.2vw + 1rem, 6.2rem); /* 中文展示行 */
+    --type-title: clamp(2.125rem, 1.75vw + 1.35rem, 3.25rem);
+    --type-h2: clamp(1.75rem, 1.15vw + 1.3rem, 2.5rem);
+    --type-h3: clamp(1.375rem, .5vw + 1.2rem, 1.625rem);
+    --type-item: 1.3125rem;   /* 21px 条目 */
+    --type-reading: clamp(1.0625rem, .18vw + 1.01rem, 1.1875rem); /* 17→19px 正文 */
+    --type-lead: 1.1875rem;   /* 19px 导语 */
+    --type-body: 1.0625rem;   /* 17px 界面正文 */
+    --type-sm: .9375rem;      /* 15px 次要说明 */
+    --type-meta: .8125rem;    /* 13px 元信息 */
+    --type-micro: .75rem;     /* 12px 编号/落款 */
 
-    --lh-display: 1.14;
-    --lh-body: 1.85;
+    /* 行高：展示级要收紧才有"版面"感；中文正文下限 1.75，否则汉字会糊 */
+    --lh-display: 1.06;
+    --lh-title: 1.2;
+    --lh-snug: 1.42;
+    --lh-body: 1.8;
+    --lh-reading: 1.82;
+
     --track-caps: .18em;
+    --track-latin-display: -.028em;
+    --track-cjk-display: .01em;
 
-    --content-w: 1200px;
-    --measure: 34em;
+    /* ---------- 宽度体系（全站唯一来源） ----------
+       shell：纸张外框，宽屏下也允许接近满屏；gutter：纸边；content：正文可达宽度。
+       三者用 clamp 联动，保证 320px 到 3840px 之间没有"突然跳一下"的断点感。 */
+    --shell-max: 1760px;
+    --content-max: 1500px;
+    --page-gutter: clamp(20px, 3.2vw, 64px);
+    --content-w: var(--content-max);
+    --measure: 39em; /* 约 39 个汉字/行——中文无词间距，最佳行宽比拉丁更窄 */
+    --bleed: 0px;    /* 由 layout 层按 shell 推导：内容块突破到屏幕边缘的位移量 */
 
     --r-frame: 0;
     --frame-w: 1px;

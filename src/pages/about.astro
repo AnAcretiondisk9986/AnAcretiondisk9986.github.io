@@ -162,134 +162,107 @@ function linkify(text = '') {
 </style>
 
 <style is:global>
-  /* ── 关于页：接上 Folio 版式（覆盖 legacy 的 .dossier-*） ── */
+  /* ── 关于页：外观选择器 ──
+     .dossier 的版式（页头 / 头像 + 正文 measure / 兴趣索引 / 词云）统一放在
+     src/styles/pages-next.css 的 components 层；这里只保留本页独有的外观设置块。 */
   @layer components {
-    .dossier { max-width: none; }
-
-    .dossier-header {
-      display: grid; grid-template-columns: minmax(0, 1fr) auto;
-      gap: var(--p-sp-6); align-items: end;
-      padding-block: var(--p-sp-8) var(--p-sp-5);
-      border-bottom: 1px solid var(--c-rule-strong);
-    }
-    .dossier-header .eyebrow {
-      font-family: var(--font-mono); font-size: var(--type-micro);
-      letter-spacing: .18em; text-transform: uppercase; color: var(--c-metal);
-    }
-    .dossier-header h1 {
-      font-family: var(--hero-font);
-      font-size: var(--type-title);
-      font-weight: var(--hero-weight);
-      font-synthesis-weight: none;
-      letter-spacing: -.03em;
-      margin-top: var(--p-sp-4);
-      line-height: 1.15;
-    }
-    .dossier-header p {
-      font-family: var(--font-display); font-style: italic;
-      color: var(--c-ink-2); margin-top: var(--p-sp-3); font-size: var(--type-lead);
-    }
-    .dossier-header .archive-seal { width: 160px; height: 160px; opacity: .92; }
-
-    .private-channel {
-      display: flex; align-items: center; justify-content: space-between; gap: var(--p-sp-4);
-      margin-block: var(--p-sp-5); padding: var(--p-sp-4) 0;
-      border: 0; border-block: 1px solid var(--c-rule);
-      border-radius: 0; background: transparent; box-shadow: none;
-      font-family: var(--font-display); font-size: var(--type-item);
-    }
-    .private-channel__copy small {
-      display: block; font-family: var(--font-mono); font-size: var(--type-micro);
-      letter-spacing: .12em; color: var(--c-ink-3); margin-top: 4px;
-    }
-    .private-channel__arrow { color: var(--c-metal); }
-
     .appearance-settings {
-      margin-block: var(--p-sp-6); padding-top: var(--p-sp-5);
-      border-top: 1px solid var(--c-rule);
-      border-bottom: 1px solid var(--c-rule);
-      padding-bottom: var(--p-sp-5);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--p-sp-4) var(--p-sp-6);
+      margin-block: var(--p-sp-6);
+      padding-block: var(--p-sp-5);
+      border-block: 1px solid var(--c-rule);
     }
     .appearance-heading .eyebrow {
-      font-family: var(--font-mono); font-size: var(--type-micro);
-      letter-spacing: .18em; text-transform: uppercase; color: var(--c-metal);
+      font-family: var(--font-mono);
+      font-size: var(--type-micro);
+      letter-spacing: var(--track-caps);
+      text-transform: uppercase;
+      color: var(--c-metal);
     }
-    .appearance-heading h2 { font-family: var(--font-display); font-size: var(--type-h2); font-weight: 600; margin-top: 6px; }
-    .appearance-selector { display: flex; flex-wrap: wrap; gap: var(--p-sp-3); margin-top: var(--p-sp-4); }
+    .appearance-heading h2 {
+      margin: 6px 0 0;
+      font-family: var(--font-display);
+      font-size: var(--type-h2);
+      font-weight: 600;
+      line-height: var(--lh-title);
+    }
+    .appearance-selector {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--p-sp-2);
+      margin-top: 0;
+      padding: 0;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+    }
     .appearance-selector button {
-      display: inline-flex; align-items: center; gap: 8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 0;
       padding: 8px 14px;
-      border: 1px solid var(--c-rule); border-radius: var(--r-frame);
-      background: transparent; color: var(--c-ink-2);
-      font-size: var(--type-micro); letter-spacing: .1em;
-      transition: border-color .12s var(--p-ease), background .12s var(--p-ease), color .12s var(--p-ease);
+      border: 1px solid var(--c-rule);
+      border-radius: var(--r-frame);
+      background: transparent;
+      box-shadow: none;
+      color: var(--c-ink-2);
+      font-family: var(--font-body);
+      font-size: var(--type-micro);
+      font-weight: 400;
+      letter-spacing: .1em;
+      transition: border-color var(--p-dur-fast) var(--p-ease),
+                  background var(--p-dur-fast) var(--p-ease),
+                  color var(--p-dur-fast) var(--p-ease);
     }
-    .appearance-selector button:hover { border-color: var(--c-metal); color: var(--c-ink); }
-    .appearance-selector button[aria-pressed='true'] { border-color: var(--c-ink); background: var(--c-ink); color: var(--c-paper); }
-    .appearance-swatch { width: 11px; height: 11px; border: 1px solid var(--c-rule-strong); border-radius: 50%; flex: none; }
-    .appearance-swatch--cyanotype { background: #234eb6; }
-    .appearance-swatch--still { background: #2f4f45; }
-    .appearance-swatch--fluid { background: #0e7f9b; }
-    .appearance-swatch--minimal { background: #a8433a; }
-    .appearance-swatch--trace { background: #139eb7; }
-
-    .dossier-grid {
-      display: grid; grid-template-columns: 260px minmax(0, 1fr);
-      gap: clamp(24px, 4vw, 56px);
-      margin-top: var(--p-sp-7); align-items: start;
+    .appearance-selector button:hover {
+      border-color: var(--c-metal);
+      color: var(--c-ink);
     }
-    .portrait-placeholder {
-      position: relative; aspect-ratio: 1;
-      border: 1px solid var(--c-rule-strong); border-radius: var(--r-frame);
-      overflow: hidden; display: grid; place-items: center;
-      background: var(--c-paper-sunken);
+    .appearance-selector button:active {
+      transform: none;
     }
-    .portrait-placeholder img { width: 100%; height: 100%; object-fit: cover; }
-    .identity-table { margin-top: var(--p-sp-4); }
-    .identity-table div {
-      display: flex; justify-content: space-between; gap: var(--p-sp-3);
-      padding-block: 10px; border-bottom: 1px solid var(--c-rule);
-      font-size: var(--type-meta);
+    .appearance-selector button[aria-pressed='true'] {
+      border-color: var(--c-ink);
+      background: var(--c-ink);
+      box-shadow: none;
+      color: var(--c-paper);
     }
-    .identity-table dt { color: var(--c-ink-3); letter-spacing: .06em; }
-    .identity-table dd { font-family: var(--font-mono); color: var(--c-ink-2); }
-
-    .dossier-copy { max-width: var(--measure); font-family: var(--font-body); font-size: var(--type-lead); line-height: var(--lh-body); }
-    .dossier-copy p + p { margin-top: var(--p-sp-4); }
-    .dossier-copy .lead-paragraph { font-family: var(--font-display); font-size: 1.18em; line-height: 1.7; }
-    .dossier-copy blockquote {
-      margin-block: var(--p-sp-6); padding-left: var(--p-sp-5);
-      border-left: 1px solid var(--c-metal);
-      font-family: var(--font-display); font-style: italic;
-      color: var(--c-ink-2); font-size: 1.1em;
+    .appearance-selector button:focus-visible {
+      outline: 1px solid var(--c-metal);
+      outline-offset: 2px;
     }
-    .dossier-copy .quote-label {
-      display: block; font-family: var(--font-mono); font-style: normal;
-      font-size: var(--type-micro); letter-spacing: .14em;
-      text-transform: uppercase; color: var(--c-metal); margin-bottom: 8px;
+    .appearance-swatch {
+      width: 11px;
+      height: 11px;
+      flex: none;
+      border: 1px solid var(--c-rule-strong);
+      border-radius: 50%;
+      box-shadow: none;
     }
-
-    .interest-index { margin-top: var(--p-sp-7); }
-    .interest-index h2 {
-      font-family: var(--font-display); font-size: var(--type-h2); font-weight: 600;
-      padding-bottom: var(--p-sp-2); border-bottom: 1px solid var(--c-rule-strong);
-    }
-    .interest-index ol { margin-top: var(--p-sp-4); }
-    .interest-index li {
-      display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: var(--p-sp-3);
-      padding-block: var(--p-sp-3); border-bottom: 1px solid var(--c-rule);
-      font-size: var(--type-meta);
-    }
-    .interest-index li span { font-family: var(--font-mono); color: var(--c-metal); }
-    .interest-index li b { font-family: var(--font-display); font-weight: 500; font-size: var(--type-body); }
-    .interest-index li small { display: block; grid-column: 2; color: var(--c-ink-2); margin-top: 4px; line-height: 1.7; }
-
-    .dossier-wordcloud { margin-top: var(--p-sp-8); padding-top: var(--p-sp-5); border-top: 1px solid var(--c-rule); }
+    /* 色点表示各主题的原型强调色；L2 语义色只描述"当前"主题，
+       跨主题预览只能用 L1 原始色 + color-mix 压向纸面，保持与旧值几乎一致。 */
+    .appearance-swatch--cyanotype { background: color-mix(in oklab, var(--p-blue-600) 94%, var(--c-ink)); }
+    .appearance-swatch--still { background: color-mix(in oklab, var(--p-green-700) 94%, var(--c-ink)); }
+    .appearance-swatch--fluid { background: color-mix(in oklab, var(--p-teal-600) 94%, var(--c-ink)); }
+    .appearance-swatch--minimal { background: color-mix(in oklab, var(--p-brick-600) 94%, var(--c-ink)); }
+    .appearance-swatch--trace { background: color-mix(in oklab, var(--p-cyan-500) 94%, var(--c-ink)); }
 
     @media (max-width: 860px) {
-      .dossier-grid { grid-template-columns: 1fr; }
-      .dossier-header { grid-template-columns: 1fr; }
-      .dossier-header .archive-seal { display: none; }
+      .appearance-settings {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--p-sp-4);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .appearance-selector button { transition: none; }
     }
   }
 </style>

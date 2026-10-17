@@ -114,6 +114,36 @@ let galleryViewerHandler: ((button: HTMLButtonElement) => void) | null = null;
     + `<span data-theme-copy-cyanotype>${escapeHtml(cyanotype)}</span></span>`;
 
   /**
+   * 图片渐进加载：卡片先渲染同尺寸纸色骨架，进入视口附近才写入 src。
+   * 目的：切到「独立照片」面板时不再一次性触发整页缩略图请求，
+   * 未加载的图版保留固定比例占位（不空白、不抖动），就绪后淡入。
+   */
+  let cardImageObserver: IntersectionObserver | null = null;
+  const observeCardImage = (img: HTMLImageElement) => {
+    if (!img.dataset.galleryThumb) return;
+    const reveal = (target: HTMLImageElement) => {
+      const thumb = target.dataset.galleryThumb || '';
+      if (!thumb || target.getAttribute('src')) return;
+      target.src = thumb;
+    };
+    if (!('IntersectionObserver' in window)) {
+      reveal(img);
+      return;
+    }
+    // 注意：观察器回调是共享的，必须按 entry.target 取图，
+    // 不能闭包到某一次调用的 img —— 否则所有卡片都会去加载第一张。
+    cardImageObserver ??= new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue;
+        const target = entry.target as HTMLImageElement;
+        cardImageObserver?.unobserve(target);
+        reveal(target);
+      }
+    }, { rootMargin: '240px 0px', threshold: 0.01 });
+    cardImageObserver.observe(img);
+  };
+
+  /**
    * 构建一张图库卡片。结构必须与原先服务端输出的 HTML 逐项一致
    * （data-* 契约、多语文案、编号），否则查看器 / 排序 / 主题切换都会失去依据。
    */
@@ -144,12 +174,20 @@ let galleryViewerHandler: ((button: HTMLButtonElement) => void) | null = null;
       : `查看${image.title}`);
 
     const img = document.createElement('img');
-    img.src = image.thumb || image.src;
     img.alt = variant === 'journal' ? image.alt : (image.alt || image.title);
-    img.loading = 'lazy'; // 两个视图默认都不可见，切换过去时再加载
+    img.loading = 'lazy';
     img.decoding = 'async';
     img.referrerPolicy = 'no-referrer';
+    // 先占位、后取图：src 由 IntersectionObserver 在接近视口时才写入
+    img.dataset.galleryThumb = image.thumb || image.src;
+    button.dataset.state = 'pending';
+    img.addEventListener('load', () => { button.dataset.state = 'loaded'; });
+    img.addEventListener('error', () => {
+      button.dataset.state = 'failed';
+      button.dataset.failed = ''; // 显式失败标记：骨架保留，不再等待
+    });
     button.appendChild(img);
+    observeCardImage(img);
 
     const stamp = document.createElement('span');
     stamp.className = 'gallery-image-stamp';
@@ -558,6 +596,7 @@ let galleryViewerHandler: ((button: HTMLButtonElement) => void) | null = null;
     const track = billboard.querySelector<HTMLElement>('[data-billboard-track]');
     const viewport = billboard.querySelector<HTMLElement>('[data-billboard-viewport]');
     const dots = billboard.querySelector<HTMLElement>('[data-billboard-dots]');
+    const counter = billboard.querySelector<HTMLElement>('[data-billboard-counter]');
     const prevBtn = billboard.querySelector<HTMLButtonElement>('[data-billboard-prev]');
     const nextBtn = billboard.querySelector<HTMLButtonElement>('[data-billboard-next]');
     if (!track || !viewport || !dots || !prevBtn || !nextBtn) return;
@@ -574,9 +613,14 @@ let galleryViewerHandler: ((button: HTMLButtonElement) => void) | null = null;
 
     // 伪无限循环:轨道复制 3 份,active 只在中间份活动,首尾通过「无感知瞬移」无缝衔接
     // (轨道平移一整份长度,同一张图落到相同屏幕位置,用户无感知)
+    //
+    // 渐进加载:每个 slide 先是一块固定比例的纸色骨架,只有 active 前后各
+    // BILLBOARD_WINDOW 张会真正写入 src；其余保留 data-* 直到进入窗口。
+    // 这样首次进入面板只发 2N+1 个缩略图请求,而不是把 3×99 个 img 的 src 全部交给浏览器。
     const COPIES = 3;
+    const BILLBOARD_WINDOW = 4; // active ± 4 → 首次进入 9 张
     for (let c = 0; c < COPIES; c++) {
-      for (const image of selected) {
+      selected.forEach((image, index) => {
         const slide = document.createElement('button');
         slide.type = 'button';
         slide.className = 'gallery-billboard-slide';
@@ -588,19 +632,25 @@ let galleryViewerHandler: ((button: HTMLButtonElement) => void) | null = null;
         slide.dataset.galleryCaption = image.caption || image.alt;
         slide.dataset.gallerySource = image.sourceUrl || '';
         slide.dataset.gallerySourceTitle = image.sourceTitle || '';
+        slide.dataset.state = 'pending'; // 骨架：CSS 按此状态显示 shimmer / 失败标记
+        slide.dataset.plate = String(index + 1).padStart(2, '0'); // 骨架上的 PL. 编号
         slide.setAttribute('aria-label', `查看${image.title}`);
         const img = document.createElement('img');
-        img.src = image.thumb || image.src;
-        img.loading = 'lazy';
-        img.decoding = 'async';
-        img.referrerPolicy = 'no-referrer';
         img.alt = image.alt || image.title;
-        img.loading = 'lazy';
+        // src 由 loadBillboardWindow() 按窗口写入；这里只登记真实地址
+        img.dataset.galleryThumb = image.thumb || image.src;
+        img.loading = 'eager'; // 由窗口策略决定加载时机，不再叠加原生 lazy 的额外预取
         img.decoding = 'async';
         img.referrerPolicy = 'no-referrer';
+        img.setAttribute('fetchpriority', 'low');
+        img.addEventListener('load', () => { slide.dataset.state = 'loaded'; });
+        img.addEventListener('error', () => {
+          slide.dataset.state = 'failed';
+          slide.dataset.failed = ''; // 显式失败标记：保留同尺寸骨架 + NO PLATE
+        });
         slide.append(img);
         track.append(slide);
-      }
+      });
     }
 
     const slides = [...track.children] as HTMLButtonElement[];
@@ -610,6 +660,20 @@ let galleryViewerHandler: ((button: HTMLButtonElement) => void) | null = null;
     const GAP = 18;
     const FOCUS_SCALE = 1.2;
     const SIDE_SCALE = 0.82;
+
+    // 只给窗口内的 slide 补 src；已加载/已失败的保留，离开窗口也不卸载（避免反复闪烁）。
+    const ensureSlideImage = (slide: HTMLButtonElement) => {
+      if (slide.dataset.state !== 'pending') return;
+      const img = slide.querySelector<HTMLImageElement>('img');
+      const thumb = img?.dataset.galleryThumb;
+      if (!img || !thumb || img.getAttribute('src')) return;
+      img.src = thumb;
+    };
+    const loadBillboardWindow = (focus: number) => {
+      const start = Math.max(0, focus - BILLBOARD_WINDOW);
+      const end = Math.min(count - 1, focus + BILLBOARD_WINDOW);
+      for (let i = start; i <= end; i++) ensureSlideImage(slides[i]);
+    };
 
     // 线性轨道 ×3 份:每张图静态定位,切换时整个轨道平移(600ms 过渡);
     // 伪无限循环下没有真正的首尾,active 在中间份活动,越界时无缝瞬移一份
@@ -663,6 +727,7 @@ let galleryViewerHandler: ((button: HTMLButtonElement) => void) | null = null;
         active += shift;
         applyTrack();
         applyActive();
+        loadBillboardWindow(active);
         void track.offsetWidth; // 提交瞬移
         setTransitions(true); // 恢复过渡,供随后的目标变化使用
         void track.offsetWidth;
@@ -686,6 +751,7 @@ let galleryViewerHandler: ((button: HTMLButtonElement) => void) | null = null;
       active = target;
       applyTrack();
       applyActive();
+      loadBillboardWindow(active); // 先把即将成为焦点的图放进加载窗口，再播过渡
       if (jump) {
         requestAnimationFrame(() => setTransitions(true));
         // 瞬移无过渡,立即无缝拉回中间份,保证后续调用方拿到的 active 不越界
@@ -723,6 +789,19 @@ let galleryViewerHandler: ((button: HTMLButtonElement) => void) | null = null;
       dotButtons.forEach((dot, index) => {
         dot.setAttribute('aria-current', String(index === realActive));
       });
+      if (counter) {
+        counter.textContent = `${String(realActive + 1).padStart(2, '0')} / ${String(per).padStart(2, '0')}`;
+      }
+      // 99 个指示点在窄屏会折行：改成单行横向滚动，并让当前点留在可视区
+      if (dots.scrollWidth > dots.clientWidth + 4) {
+        const dot = dotButtons[realActive];
+        if (dot) {
+          dots.scrollTo({
+            left: dot.offsetLeft - (dots.clientWidth - dot.offsetWidth) / 2,
+            behavior: billboardReduced ? 'auto' : 'smooth',
+          });
+        }
+      }
     };
 
     // 图片宽度变化(懒加载头部到达即定比例/解码完成)便重新排轨道——仅靠 load 事件会在完整下载前留下旧间距
@@ -766,8 +845,15 @@ let galleryViewerHandler: ((button: HTMLButtonElement) => void) | null = null;
       });
     });
 
+    // 首帧直接落位：先关掉轨道 / slide 的过渡再排布，避免面板刚打开时
+    // 整条轨道从屏幕外滑入、图版同时缩放（那正是“炸开”观感的一部分）。
+    // 图片本身仍按窗口逐张淡入，骨架尺寸在首帧就是最终尺寸。
+    setTransitions(false);
     layoutTrack();
     applyActive();
+    loadBillboardWindow(active); // 首帧：只加载中间份前后 4 张，其余保持同尺寸骨架
+    void track.offsetWidth;
+    requestAnimationFrame(() => setTransitions(true));
 
     // 自动轮播:悬停 / 聚焦时暂停,面板不可见时暂停(见 selectGalleryTab)
     billboard.addEventListener('mouseenter', pauseBillboard);

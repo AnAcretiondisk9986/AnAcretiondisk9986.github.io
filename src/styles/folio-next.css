@@ -1,0 +1,760 @@
+/* ============================================================================
+   FOLIO NEXT — 版式基座（2026-10 改版）
+   本文件在 folio-ui.css 之后加载，仍然处在同一个 @layer 序列里，
+   因此同层内"后来者胜"，可以安全地覆盖旧组件声明，不需要提高特异性。
+
+   职责只有三件事：
+     1. 宽度体系：让纸面在 320 → 3840 之间连续可调，宽屏不再留下大片死白。
+     2. 字号体系：把 folio.css 的新音阶真正落到每个组件上（旧字号全部作废）。
+     3. 首屏横幅：全幅贯通、严格几何居中、可读性自适应的宽图 banner。
+   ========================================================================== */
+
+/* ───────────────────────── layout：宽度体系 ───────────────────────── */
+@layer layout {
+  :root {
+    /* 纸面与内容的关系：
+       shell   = 纸张（宽屏也可以接近满屏，但保留纸边）
+       gutter  = 纸边（随视口连续变化，没有突跳断点）
+       content = 真正承载正文/网格的可用宽度 */
+    --shell-w: min(100%, var(--shell-max));
+    --shell-inner: calc(var(--shell-w) - var(--page-gutter) * 2);
+  }
+
+  .site-shell {
+    width: var(--shell-w);
+    padding-inline: var(--page-gutter);
+    border-inline: 0;
+    box-shadow: none;
+  }
+  /* legacy 把 main / header / footer 锁在 --max-width 里，宽屏会再缩一次 */
+  .site-header,
+  .site-footer,
+  main {
+    width: 100%;
+    max-width: none;
+  }
+
+  /* 全幅块：相对自身中心对称地向视口两侧扩展 100vw。
+     用「左右各半」而不是 width:100vw，避免滚动条宽度带来的单侧偏移——
+     即使 100vw 比可视区宽出 15px，左右也只各多出 7.5px，文字中心不动。 */
+  .f-bleed {
+    position: relative;
+    margin-inline: calc(50% - 50vw);
+    width: auto;
+  }
+  html { overflow-x: clip; }
+
+  /* 内容列：文字类块永远落在可读行宽内，网格类块用满 shell 内容宽 */
+  .f-col {
+    width: 100%;
+    max-width: var(--measure);
+    margin-inline: auto;
+  }
+}
+
+/* ───────────────────────── base：排版基线 ───────────────────────── */
+@layer base {
+  :root {
+    /* 旧变量名 → 新宽度体系（图库 / 关于 / 私密等未重写的页面继续可用） */
+    --content-width: 100%;
+    --max-width: none;
+  }
+
+  body {
+    font-size: var(--type-body);
+    line-height: var(--lh-body);
+  }
+
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    font-weight: 500;
+    letter-spacing: 0;
+    line-height: var(--lh-title);
+  }
+  p { line-height: inherit; }
+
+  /* 小型大写：拉丁用小号 + 宽字距；中文不用大写，改用字号与颜色区分 */
+  .f-caps { font-size: var(--type-micro); letter-spacing: var(--track-caps); }
+}
+
+/* ───────────────────────── components：首屏横幅 ───────────────────────── */
+@layer components {
+
+  /* ===== 几何骨架 =====
+     内容格与图片层完全分离：
+       · __media 是 100vw 全幅层（对称出血），负责"贯通感"；
+       · __body  留在纸面内容框内，负责"严格居中"。
+     两者共享同一水平中心，所以在任何宽度下文字中心 = 视口中心。 */
+  .f-hero {
+    position: relative;
+    isolation: isolate;
+    display: grid;
+    justify-items: center;
+    align-content: center;
+    text-align: center;
+    gap: 0;
+
+    /* 文字极性：data-tone="dark" 表示背景图偏暗 → 用纸白字 + 深纱幕；
+       反之用墨字 + 纸色纱幕。缺省按"暗背景"处理，因为绝大多数摄影图偏暗，
+       而且浅字在未知背景上的容错率更高。 */
+    --hero-ink: var(--c-media-paper);
+    --hero-ink-2: color-mix(in oklab, var(--c-media-paper) 82%, transparent);
+    --hero-ink-3: color-mix(in oklab, var(--c-media-paper) 62%, transparent);
+    --hero-metal: color-mix(in oklab, var(--c-media-metal-on-dark) 74%, var(--c-metal));
+    --hero-veil-color: var(--c-media-ink);
+    --hero-veil: .46;
+    color: var(--hero-ink);
+
+    /* 高度算法：内容自然高度 ≥ 这个下限，屏幕很矮时也不会被压扁，
+       屏幕很高时不会无限拉长（上限交给 max-height + dvh 兜底）。 */
+    min-height: clamp(22rem, 54vh, 42rem);
+    padding-block: clamp(4rem, 9vh, 7.5rem);
+    padding-inline: 0;
+    margin-block: 0 var(--p-sp-8);
+  }
+
+  /* 亮背景图上改用墨色文字：文字对比来自"图本身亮"，不靠堆遮罩 */
+  .f-hero[data-tone='light'] {
+    --hero-ink: var(--c-media-ink);
+    --hero-ink-2: color-mix(in oklab, var(--c-media-ink) 78%, transparent);
+    --hero-ink-3: color-mix(in oklab, var(--c-media-ink) 56%, transparent);
+    --hero-metal: color-mix(in oklab, var(--c-media-metal-on-light) 74%, var(--c-metal));
+    --hero-veil-color: var(--c-media-paper);
+    --hero-veil: .18;
+  }
+
+  /* 图片层：对称出血到视口左右边缘 */
+  .f-hero__media {
+    position: absolute;
+    inset: 0 calc(50% - 50vw);
+    z-index: -2;
+    overflow: clip;
+    /* 图片到位之前这里是深墨底 + 一点铜色光晕：
+       文字默认是纸白字，因此"加载中"也必须是一个可读的深色场，
+       不能拿纸色底去配白字（慢网下那一屏会灰得看不清）。 */
+    background:
+      radial-gradient(ellipse 70% 60% at 50% 42%,
+        color-mix(in oklab, var(--c-metal) 14%, transparent),
+        transparent 70%),
+      color-mix(in oklab, var(--c-media-ink) 92%, var(--c-metal));
+  }
+  .f-hero__image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    /* 竖图/横图/方图统一处理：主体优先落在中上部，避免人脸与标题区重叠；
+       可用 frontend.stillImagePosition 覆盖（center / top / 30% 50% 等） */
+    object-position: var(--hero-image-position, center 38%);
+    opacity: var(--hero-image-opacity, 1);
+    transition: opacity .5s var(--p-ease);
+    filter: saturate(.94) contrast(1.02);
+  }
+  /* 图片未就绪 / 加载失败：保持深墨场 + 铜色星芒，不出现破图图标与浅色空洞 */
+  .f-hero[data-media='missing'] .f-hero__media {
+    background:
+      radial-gradient(circle at 50% 40%, color-mix(in oklab, var(--c-metal) 22%, transparent), transparent 62%),
+      color-mix(in oklab, var(--c-media-ink) 94%, var(--c-metal));
+  }
+  .f-hero[data-media='missing'] .f-hero__image { opacity: 0; }
+
+  /* ===== 遮罩：可读性自适应 =====
+     浓度由脚本按图片实测亮度写入 --hero-veil（0…1），
+     没有脚本时用默认值。原则是「图要看得见，字要读得清」：
+     旧版把图压到 opacity .048，等于 95% 的遮罩，这一次反过来——
+     只压中央的文字区（径向），四角与两侧几乎保持原图的干净程度。 */
+  .f-hero__scrim {
+    /* 纱幕必须和图片层同宽（同样对称出血到视口），
+       否则纸面内容框之外会露出一条没有遮罩的原始亮边。 */
+    position: absolute;
+    inset: 0 calc(50% - 50vw);
+    pointer-events: none;
+    background:
+      /* 上：与页头衔接 */
+      linear-gradient(180deg,
+        color-mix(in oklab, var(--c-paper) 46%, transparent) 0%,
+        transparent 16%),
+      /* 下：与纸面衔接，让横幅"融进"页面而不是贴一张图 */
+      linear-gradient(0deg,
+        var(--c-paper) 0%,
+        color-mix(in oklab, var(--c-paper) 78%, transparent) 5%,
+        transparent 22%),
+      /* 文字区：柔和径向纱幕，浓度随 --hero-veil 走 */
+      radial-gradient(ellipse 74% 66% at 50% 52%,
+        color-mix(in oklab, var(--hero-veil-color) calc(var(--hero-veil) * 100%), transparent) 0%,
+        color-mix(in oklab, var(--hero-veil-color) calc(var(--hero-veil) * 62%), transparent) 46%,
+        transparent 78%),
+      /* 全局薄纱：只保底 18%，四角仍然看得见图 */
+      color-mix(in oklab, var(--hero-veil-color) 18%, transparent);
+  }
+
+  /* 文字本身的柔和暗影：图片最亮处也不至于让标题糊掉（克制，只 1 层） */
+  .f-hero__title,
+  .f-hero__line3,
+  .f-hero__deck {
+    text-shadow: 0 1px 18px color-mix(in oklab, var(--hero-veil-color) 42%, transparent);
+  }
+  .f-hero[data-tone='light'] .f-hero__title,
+  .f-hero[data-tone='light'] .f-hero__line3,
+  .f-hero[data-tone='light'] .f-hero__deck {
+    text-shadow: 0 1px 16px color-mix(in oklab, var(--c-media-paper) 55%, transparent);
+  }
+
+  /* ===== 内容 ===== */
+  .f-hero__body {
+    position: relative;
+    /* 74rem 而不是 62rem：域名字号在宽屏会被 clamp 顶到 6.1rem，
+       21 字符要 ~1090px 才排得下。容器太窄时标题会溢出、随后被 grid
+       的对齐规则推向一侧 —— 这就是旧版"看起来没居中"的真正来源。 */
+    width: 100%;
+    max-width: min(100%, 74rem);
+    margin-inline: auto;
+    /* 容器查询上下文：域名字号同时受 vw 与 cqw 约束，任何视口/任何长度的
+       域名都不会超出这个盒子（详见 .f-hero__domain）。 */
+    container-type: inline-size;
+    display: grid;
+    justify-items: center;
+    gap: 0;
+  }
+
+  .f-hero__folio {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: var(--p-sp-3);
+    font-family: var(--font-mono);
+    font-size: var(--type-micro);
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--hero-metal);
+  }
+  .f-hero__folio i {
+    display: block;
+    width: 4px; height: 4px;
+    rotate: 45deg;
+    border: 1px solid currentColor;
+    opacity: .8;
+  }
+
+  .f-hero__title {
+    width: 100%;
+    max-width: 100%;
+    margin-top: clamp(1.25rem, 2.2vh, 2rem);
+    display: grid;
+    justify-items: center;
+    gap: 0;
+    font-family: var(--hero-font);
+    font-weight: var(--hero-weight);
+    font-synthesis-weight: none;
+    line-height: var(--lh-display);
+    letter-spacing: var(--track-cjk-display);
+    text-wrap: balance;
+  }
+
+  /* 第一行：中文展示字。汉字无词间距，字距保持 0～.01em，不得为负。 */
+  .f-hero__line1 {
+    font-size: var(--type-display);
+    line-height: 1.02;
+    /* 光学居中：letter-spacing 会在末字符右侧留出等量的空隙，
+       负 margin 把它补回去，字面中心才会落在容器中心上。 */
+    margin-right: calc(-1 * var(--track-cjk-display));
+  }
+
+  /* 第二行：不可断域名。整行 nowrap，字号取「视口基准」与「容器基准」的较小值：
+       · 6.35vw —— 按最窄 320px 仍放得下反解出的视口系数；
+       · 8.4cqw —— 按当前内容盒宽度反解（21 字符 × 约 0.56em ≈ 11.8em），
+         保证域名行永远不超过所在盒子的 100%，也就不会被 grid 对齐推到一侧。
+     两者取 min，宽的屏幕不会把字撑到溢出，窄的屏幕也不会缩得看不见。 */
+  .f-hero__domain {
+    position: relative;
+    display: inline-block;
+    margin-top: clamp(.5rem, 1.2vh, 1rem);
+    font-size: clamp(1.05rem, min(6.35vw, 8.4cqw), 6.1rem);
+    line-height: 1.06;
+    letter-spacing: -.018em;
+    white-space: nowrap;
+    text-wrap: nowrap;
+    max-width: 100%;
+    /* 同上：抵消末字符的负字距，保证域名行的光学中心 = 视口中心 */
+    margin-right: -.018em;
+  }
+
+  /* ===== 域名特效：Acretiondisk.top =====
+     克制版本：静态铜金渐变 + 极慢的单次扫光 + 入场细线 + 一点辉光。
+     不循环闪烁、不位移、不改字重。blog. 部分完全不动。 */
+  .f-hero__domain-prefix { color: var(--hero-ink); }
+
+  .f-hero__domain-zone {
+    position: relative;
+    display: inline-block;
+    background-image: linear-gradient(
+      96deg,
+      color-mix(in oklab, var(--hero-metal) 86%, var(--hero-ink)) 0%,
+      var(--hero-metal) 24%,
+      color-mix(in oklab, var(--hero-ink) 62%, var(--hero-metal)) 42%,
+      var(--hero-metal) 58%,
+      color-mix(in oklab, var(--hero-metal) 82%, var(--hero-ink)) 100%
+    );
+    background-size: 260% 100%;
+    background-position: 0% 50%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 0 11px color-mix(in oklab, var(--hero-metal) 16%, transparent));
+    animation: f-domain-sheen 9.5s var(--p-ease) infinite;
+  }
+  /* 极淡的一层高光，只在扫过时掠过，避免"霓虹灯"感 */
+  .f-hero__domain-zone::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(100deg,
+      transparent 34%,
+      color-mix(in oklab, var(--hero-ink) 58%, transparent) 50%,
+      transparent 66%);
+    background-size: 260% 100%;
+    background-position: 0% 50%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    opacity: .5;
+    animation: f-domain-sheen 9.5s var(--p-ease) infinite;
+  }
+  @keyframes f-domain-sheen {
+    0%, 56% { background-position: 0% 50%; }
+    82%, 100% { background-position: 100% 50%; }
+  }
+
+  /* 入场：一条铜线从中心向两侧展开，作为域名的"装帧线" */
+  .f-hero__domain-rule {
+    display: block;
+    width: min(100%, 44rem);
+    height: 1px;
+    margin-top: clamp(.5rem, 1.4vh, 1.1rem);
+    background: linear-gradient(90deg,
+      transparent,
+      color-mix(in oklab, var(--hero-metal) 78%, transparent) 22%,
+      var(--hero-metal) 50%,
+      color-mix(in oklab, var(--hero-metal) 78%, transparent) 78%,
+      transparent);
+    transform: scaleX(0);
+    transform-origin: center;
+    opacity: 0;
+    animation: f-rule-in 1.1s .18s var(--p-ease) forwards;
+  }
+  @keyframes f-rule-in {
+    to { transform: scaleX(1); opacity: .85; }
+  }
+
+  /* 第三行：副标题 */
+  .f-hero__line3 {
+    margin-top: clamp(1.1rem, 2.4vh, 1.9rem);
+    font-family: var(--font-display);
+    font-size: clamp(1.25rem, .55vw + 1.1rem, 1.75rem);
+    font-weight: 500;
+    letter-spacing: .02em;
+    color: var(--hero-ink-2);
+    line-height: 1.45;
+  }
+
+  .f-hero__deck {
+    margin-top: clamp(.85rem, 1.6vh, 1.35rem);
+    max-width: 34em;
+    font-family: var(--font-body);
+    font-size: var(--type-body);
+    color: var(--hero-ink-2);
+    line-height: 1.75;
+  }
+
+  .f-hero__meta {
+    margin-top: clamp(1.4rem, 3vh, 2.4rem);
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--p-sp-4) var(--p-sp-5);
+    font-family: var(--font-mono);
+    font-size: var(--type-micro);
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--hero-ink-3);
+  }
+  .f-hero__meta > * {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--p-sp-3);
+  }
+  .f-hero__meta > * + *::before {
+    content: "";
+    display: block;
+    width: 16px;
+    height: 1px;
+    background: var(--hero-metal);
+    opacity: .55;
+  }
+
+  .f-hero__actions {
+    margin-top: clamp(1.6rem, 3.4vh, 2.8rem);
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--p-sp-3);
+  }
+
+  /* 入场：内容整体轻轻上浮（一次性，不循环）。
+     domain-rule 有自己的「细线展开」动画，因此从这条通用规则里排除。 */
+  .f-hero__body > *:not(.f-hero__domain-rule) {
+    opacity: 0;
+    translate: 0 10px;
+    animation: f-hero-in .72s var(--p-ease) forwards;
+  }
+  .f-hero__body > :nth-child(1) { animation-delay: .04s; }
+  .f-hero__body > :nth-child(2) { animation-delay: .08s; }
+  .f-hero__body > :nth-child(3) { animation-delay: .14s; }
+  .f-hero__body > :nth-child(4) { animation-delay: .2s; }
+  .f-hero__body > :nth-child(5) { animation-delay: .26s; }
+  .f-hero__body > :nth-child(6) { animation-delay: .32s; }
+  .f-hero__body > :nth-child(7) { animation-delay: .38s; }
+  .f-hero__body > :nth-child(8) { animation-delay: .44s; }
+  @keyframes f-hero-in {
+    to { opacity: 1; translate: 0 0; }
+  }
+
+  /* ===== 窄屏：meta 行保证不挤、不溢出 ===== */
+  @media (max-width: 720px) {
+    .f-hero {
+      min-height: clamp(20rem, 62vh, 34rem);
+      padding-block: clamp(3rem, 7vh, 4.5rem);
+    }
+    .f-hero__meta {
+      gap: .45rem .9rem;
+      font-size: var(--type-micro);
+      letter-spacing: .1em;
+    }
+    .f-hero__meta > * + *::before { width: 9px; }
+    .f-hero__deck { font-size: var(--type-sm, .9375rem); max-width: 22em; }
+    .f-hero__actions { gap: var(--p-sp-2); }
+    .f-hero__actions .f-btn { padding: 11px 18px; letter-spacing: .12em; }
+    .f-hero__domain-rule { width: min(100%, 18rem); }
+  }
+  @media (max-width: 420px) {
+    .f-hero__meta { font-size: .6875rem; letter-spacing: .06em; }
+  }
+
+  /* ===== 留白主题：不要任何底片与辉光，首屏退回纯纸面 ===== */
+  :root[data-visual-theme='minimal'] .f-hero {
+    /* minimal 的人格是"只给你读的书"：没有摄影底片，只有纸、墨与一条铜线。
+       这里同时把文字极性固定为墨色，避免深度图把白字顶成灰色。 */
+    --hero-ink: var(--c-media-ink);
+    --hero-ink-2: color-mix(in oklab, var(--c-media-ink) 74%, transparent);
+    --hero-ink-3: color-mix(in oklab, var(--c-media-ink) 52%, transparent);
+    --hero-metal: var(--c-media-metal-on-light);
+    --hero-veil-color: var(--c-media-paper);
+    --hero-veil: 0;
+    background: var(--c-paper);
+  }
+  :root[data-visual-theme='minimal'] .f-hero__media,
+  :root[data-visual-theme='minimal'] .f-hero__scrim { display: none; }
+  :root[data-visual-theme='minimal'] .f-hero__title,
+  :root[data-visual-theme='minimal'] .f-hero__line3,
+  :root[data-visual-theme='minimal'] .f-hero__deck { text-shadow: none; }
+  :root[data-visual-theme='minimal'] .f-hero__domain-zone {
+    background-image: none;
+    color: var(--c-media-ink);
+    -webkit-text-fill-color: currentColor;
+    filter: none;
+    animation: none;
+  }
+  :root[data-visual-theme='minimal'] .f-hero__domain-zone::after { display: none; }
+
+  /* ===== 打印：横幅退回单线框，不浪费一页油墨 ===== */
+  @media print {
+    .f-hero { min-height: 0; padding-block: var(--p-sp-5); }
+    .f-hero__media, .f-hero__scrim { display: none; }
+    .f-hero__body > * { opacity: 1; translate: none; animation: none; }
+  }
+
+  /* ===== 减少动效 ===== */
+  @media (prefers-reduced-motion: reduce) {
+    .f-hero__image { transition: none; }
+    .f-hero__body > * { opacity: 1; translate: none; animation: none; }
+    .f-hero__domain-zone,
+    .f-hero__domain-zone::after { animation: none; }
+    .f-hero__domain-rule { animation: none; transform: scaleX(1); opacity: .85; }
+  }
+}
+
+/* ───────────────────────── components：首页编目卡片 ───────────────────────── */
+@layer components {
+  .f-recent {
+    --_gap: clamp(1.25rem, 1.6vw, 2rem);
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--_gap) var(--_gap);
+  }
+
+  .f-card {
+    position: relative;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    gap: var(--p-sp-4);
+    min-width: 0;
+    padding-bottom: var(--p-sp-4);
+    border-bottom: 1px solid var(--c-rule);
+    transition: border-color .25s var(--p-ease);
+  }
+  .f-card:hover { border-bottom-color: var(--c-metal); }
+
+  /* 封面：固定的 16:10 画框，图片未加载时是同尺寸的纸色骨架，
+     因此卡片从第一次绘制起尺寸就稳定，不会出现"文字跳一下" */
+  .f-card__frame {
+    position: relative;
+    display: block;
+    overflow: hidden;
+    aspect-ratio: 16 / 10;
+    border: 1px solid var(--c-rule);
+    border-radius: var(--r-frame);
+    background:
+      linear-gradient(135deg,
+        color-mix(in oklab, var(--c-paper-sunken) 92%, var(--c-ink)) 0%,
+        var(--c-paper-sunken) 100%);
+  }
+  .f-card__frame::after {
+    /* 骨架微光：仅在图片未就绪时可见，避免白洞 */
+    content: "";
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    background: linear-gradient(100deg,
+      transparent 20%,
+      color-mix(in oklab, var(--c-paper) 70%, transparent) 50%,
+      transparent 80%);
+    background-size: 220% 100%;
+    transition: opacity .3s var(--p-ease);
+  }
+  .f-card__frame[data-loading='true']::after {
+    opacity: .7;
+    animation: f-skeleton 1.6s linear infinite;
+  }
+  @keyframes f-skeleton {
+    from { background-position: 160% 50%; }
+    to { background-position: -60% 50%; }
+  }
+
+  .f-card__img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transform: scale(1.015);
+    transition: opacity .5s var(--p-ease), transform .6s var(--p-ease);
+  }
+  .f-card__frame[data-loaded='true'] .f-card__img {
+    opacity: 1;
+    transform: scale(1);
+  }
+  .f-card:hover .f-card__frame[data-loaded='true'] .f-card__img {
+    transform: scale(1.03);
+  }
+  .f-card__frame[data-empty='true']::before {
+    content: "NO PLATE";
+    position: absolute;
+    inset: auto 0 50% 0;
+    translate: 0 50%;
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: var(--type-micro);
+    letter-spacing: .24em;
+    color: var(--c-ink-3);
+    opacity: .6;
+  }
+
+  .f-card__body {
+    display: grid;
+    gap: .55rem;
+    align-content: start;
+    min-width: 0;
+  }
+  .f-card__no {
+    font-family: var(--font-mono);
+    font-size: var(--type-micro);
+    letter-spacing: .16em;
+    color: var(--c-metal);
+    font-variant-numeric: tabular-nums;
+  }
+  .f-card__title {
+    font-family: var(--font-display);
+    font-size: clamp(1.0625rem, .35vw + 1rem, 1.3125rem);
+    font-weight: 600;
+    line-height: 1.45;
+    letter-spacing: 0;
+    color: var(--c-ink);
+    /* 中文标题两行内可读，三行截断，保证六卡高度节奏一致 */
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    text-wrap: pretty;
+    /* 固定两行高度：一行标题的卡片不会比两行的矮，六张卡片的底边线因此对齐 */
+    min-height: calc(1.45em * 2);
+    transition: color .2s var(--p-ease);
+  }
+  .f-card:hover .f-card__title { color: var(--c-accent); }
+  .f-card__meta {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--p-sp-3);
+    font-family: var(--font-mono);
+    font-size: var(--type-micro);
+    letter-spacing: .1em;
+    color: var(--c-ink-3);
+    text-transform: uppercase;
+  }
+  .f-card__tag { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  @media (max-width: 1100px) {
+    .f-recent { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 640px) {
+    .f-recent { grid-template-columns: minmax(0, 1fr); }
+    .f-card__frame { aspect-ratio: 16 / 9; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .f-card__frame[data-loading='true']::after { animation: none; }
+    .f-card__img { transition: opacity .2s linear; transform: none; }
+    .f-card:hover .f-card__frame[data-loaded='true'] .f-card__img { transform: none; }
+  }
+}
+
+/* ───────────────────────── components：编辑者档案（首页） ───────────────────────── */
+@layer components {
+  .f-about__grid {
+    display: grid;
+    grid-template-columns: clamp(9rem, 14vw, 20rem) minmax(0, 42rem);
+    gap: clamp(1.75rem, 4vw, 4rem);
+    align-items: start;
+  }
+  .f-about__portrait {
+    position: relative;
+    margin: 0;
+    aspect-ratio: 1;
+    border: 1px solid var(--c-rule-strong);
+    border-radius: 50%;
+    overflow: hidden;
+    background: var(--c-paper-sunken);
+  }
+  .f-about__portrait::after {
+    /* 铅框内圈：与封面同一套装帧语言 */
+    content: "";
+    position: absolute;
+    inset: 8px;
+    border: 1px solid color-mix(in oklab, var(--c-metal) 42%, transparent);
+    border-radius: 50%;
+    pointer-events: none;
+    opacity: var(--deco-double);
+  }
+  .f-about__portrait img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    filter: saturate(.94);
+  }
+
+  .f-about__copy {
+    display: grid;
+    gap: var(--p-sp-3);
+    align-content: start;
+  }
+  .f-about__lead {
+    font-family: var(--font-display);
+    font-size: clamp(1.375rem, 1vw + 1.05rem, 2rem);
+    font-weight: 600;
+    line-height: var(--lh-title);
+    letter-spacing: 0;
+    color: var(--c-ink);
+  }
+  .f-about__para {
+    max-width: 38em;
+    font-size: var(--type-reading);
+    line-height: var(--lh-reading);
+    color: var(--c-ink-2);
+  }
+  .f-about__quote {
+    margin: var(--p-sp-3) 0 0;
+    padding-left: var(--p-sp-4);
+    border-left: 1px solid var(--c-metal);
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: var(--type-lead);
+    line-height: 1.7;
+    color: var(--c-ink-2);
+    max-width: 34em;
+  }
+
+  @media (max-width: 860px) {
+    .f-about__grid {
+      grid-template-columns: minmax(0, 1fr);
+      gap: var(--p-sp-4);
+    }
+    .f-about__portrait {
+      width: clamp(7rem, 26vw, 10rem);
+    }
+  }
+}
+
+/* ───────────────────────── components：字号落位 ───────────────────────── */
+@layer components {
+  /* 页头：Anthropic 系列字面更方，同字号比旧系统"大一号"，这里整体收一档 */
+  .f-register { font-size: var(--type-micro); }
+  .f-brand__name { font-size: 1.1875rem; }
+  .f-brand__tag { font-size: var(--type-micro); }
+  .f-nav a { font-size: var(--type-meta); }
+
+  /* 栏目标题：中文宋体 700 比旧版 1.25rem 更有版面感 */
+  .f-section-title {
+    font-size: var(--type-h2);
+    line-height: var(--lh-title);
+  }
+  .f-section-title small { font-size: var(--type-micro); }
+  .f-section-more {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: var(--type-micro);
+    letter-spacing: .12em;
+    white-space: nowrap;
+  }
+  .f-section-more svg { width: 11px; height: 11px; }
+
+  /* 图版说明 */
+  .f-plate__title { font-size: var(--type-sm); }
+  .f-plate__no { font-size: var(--type-micro); }
+
+  /* 按钮：旧 11px 在 17px 正文旁太小，抬到 12px 并补 0.02em */
+  .f-btn { font-size: var(--type-micro); letter-spacing: .15em; }
+
+  /* 页脚 */
+  .f-footer__meta { font-size: var(--type-meta); line-height: 1.95; }
+  .f-stamp { font-size: var(--type-micro); }
+
+  /* 文章正文：中文长文 17→19px 流式，行高 1.82 */
+  .prose {
+    font-size: var(--type-reading);
+    line-height: var(--lh-reading);
+  }
+  .prose h1 { font-size: 1.72em; }
+  .prose h2 { font-size: 1.42em; }
+  .prose h3 { font-size: 1.18em; }
+  .prose h4 { font-size: 1.02em; }
+  .prose code, .prose kbd { font-size: .88em; }
+
+  /* 尾页 */
+  .f-coda blockquote { font-size: clamp(1.2rem, 1vw + 1rem, 1.75rem); }
+  .f-coda p { font-size: var(--type-micro); }
+}
+
+
+
+
