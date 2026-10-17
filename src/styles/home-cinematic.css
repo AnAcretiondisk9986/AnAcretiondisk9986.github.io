@@ -16,7 +16,7 @@
 
 /* ───────────────────────── tokens：局部动效变量 ─────────────────────────
    全站已有的 --p-ease / --p-dur-* 继续有效；这里只补首页需要的语义名字，
-   不覆盖任何既有变量。 */
+   不覆盖任何既有变量。--sheen-* 是"流光"用的同一套节奏与颜色。 */
 @layer tokens {
   :root {
     --motion-duration-fast: 220ms;
@@ -26,6 +26,28 @@
     --motion-ease-glide: cubic-bezier(.16, .84, .24, 1); /* 更慢的收尾，用于画幅 */
     --motion-stagger: 60ms;
     --motion-rise: 16px;
+
+    /* 流光：一条很窄的高光，沿细线缓慢通过；周期长、停留久，不抢内容 */
+    --sheen-duration: 12s;
+    --sheen-duration-slow: 17s;
+    --sheen-band: 24%; /* 高光宽度（占所在细线的比例） */
+    /* 高光色 = 铜金提亮 + 一点点主题强调色，形成克制的双色虹彩，不引入新色系。
+       细线只有 1px，纯色差读不出来，所以线上再提亮一档：
+       铜 → 近白 → 淡强调色 → 铜。 */
+    --sheen-metal: color-mix(in oklab, var(--c-metal) 74%, #fff);
+    --sheen-accent: color-mix(in oklab, var(--c-accent) 34%, var(--c-metal));
+    --sheen-bright: color-mix(in oklab, var(--c-metal) 34%, #fff);
+    --sheen-tint: color-mix(in oklab, var(--c-accent) 26%, #fff);
+    --sheen-gradient: linear-gradient(90deg, transparent, var(--sheen-metal), var(--sheen-accent), transparent);
+    --sheen-line: linear-gradient(
+      90deg,
+      transparent 0%,
+      var(--sheen-metal) 26%,
+      var(--sheen-bright) 44%,
+      var(--sheen-tint) 58%,
+      var(--sheen-metal) 76%,
+      transparent 100%
+    );
   }
 }
 
@@ -108,7 +130,13 @@
     right: 0;
     bottom: -1px;
     height: 1px;
-    background: var(--c-rule-strong);
+    /* 第一层是缓慢通过的高光，第二层是分隔线本身（颜色与原来的 border-bottom 相同）。
+       两条背景层各自独立定位，scaleX 展开只影响整体，不影响光带速度。 */
+    background-image: var(--sheen-line), linear-gradient(var(--c-rule-strong), var(--c-rule-strong));
+    background-size: var(--sheen-band) 100%, 100% 100%;
+    background-position: -46% 0, 0 0;
+    background-repeat: no-repeat;
+    animation: sheen-ambient var(--sheen-duration) ease-in-out infinite;
     transform: scaleX(0);
     transform-origin: left center;
     transition: transform var(--motion-duration-slow) var(--motion-ease-out) 110ms;
@@ -232,7 +260,137 @@
   }
 
   /* ==========================================================================
-     四、移动端：内容可读性优先，整体减幅
+     四、流光（sheen）：只沿"装帧细线"和画框走，不铺满、不高频
+     --------------------------------------------------------------------------
+     三处环境光 + 两处悬停光：
+       · 报头双线（封面装帧线）
+       · 首屏域名下的铜线
+       · 分区标题下的分隔线（见上方，已并入同一条 ::after）
+       · 编目卡片底线的悬停流光
+       · 图版画框的悬停扫光
+     颜色只用铜金提亮 + 主题强调色（约 1/3），不新增色系；周期 12–17s、
+     每次通过约 3s，其余时间完全静止。
+     ========================================================================== */
+
+  /* 报头那条双线：一道很窄的光缓慢掠过 */
+  html.fx .f-header .f-double-rule {
+    position: relative;
+  }
+  html.fx .f-header .f-double-rule::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -1px;
+    height: 1px;
+    pointer-events: none;
+    background-image: var(--sheen-line);
+    background-size: 22% 100%;
+    background-repeat: no-repeat;
+    background-position: -40% 0;
+    animation: sheen-ambient var(--sheen-duration-slow) ease-in-out 2.2s infinite;
+  }
+
+  /* 首屏域名下的铜线：更亮一档，但同样只在 1px 高度上通过 */
+  html.fx .f-hero__domain-rule {
+    position: relative;
+  }
+  html.fx .f-hero__domain-rule::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in oklab, var(--hero-ink) 46%, var(--hero-metal)),
+      var(--hero-ink),
+      color-mix(in oklab, var(--c-accent) 28%, var(--hero-ink)),
+      color-mix(in oklab, var(--hero-ink) 46%, var(--hero-metal)),
+      transparent
+    );
+    background-size: var(--sheen-band) 100%;
+    background-repeat: no-repeat;
+    background-position: -40% 0;
+    animation: sheen-ambient var(--sheen-duration) ease-in-out 1.4s infinite;
+    /* 铜线本身随首屏退场淡出，这层高光跟着一起退 */
+  }
+
+  /* 编目卡片：悬停时一道光沿底边线通过（用背景层走位，不产生任何溢出） */
+  html.fx .f-card::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -1px;
+    height: 1px;
+    pointer-events: none;
+    background-image: var(--sheen-gradient);
+    background-size: 34% 100%;
+    background-repeat: no-repeat;
+    background-position: -52% 0;
+    opacity: 0;
+  }
+
+  /* 图版画框：悬停时一道斜向柔光扫过画幅（画框本身 overflow:hidden，不会溢出）。
+     画框描边同时"镀一层铜"，扫光才有落脚的边。 */
+  html.fx .f-plate__frame::after {
+    content: "";
+    position: absolute;
+    top: -25%;
+    bottom: -25%;
+    left: 0;
+    width: 42%;
+    pointer-events: none;
+    background: linear-gradient(
+      100deg,
+      transparent,
+      color-mix(in oklab, var(--c-metal) 22%, #fff) 38%,
+      color-mix(in oklab, var(--c-metal) 10%, #fff) 50%,
+      color-mix(in oklab, var(--c-metal) 22%, #fff) 62%,
+      transparent
+    );
+    opacity: 0;
+    transform: translateX(-190%) rotate(12deg);
+  }
+  html.fx .f-plate__frame {
+    transition: border-color .3s var(--p-ease);
+  }
+  html.fx .f-plate:hover .f-plate__frame {
+    border-color: color-mix(in oklab, var(--c-metal) 62%, var(--c-rule-strong));
+  }
+
+  /* 悬停效果只在真正有指针的设备上启用；触屏不因 tap 留下浮光 */
+  @media (hover: hover) and (pointer: fine) {
+    html.fx .f-card:hover::after {
+      opacity: 1;
+      animation: sheen-pass 1.1s ease-in-out;
+    }
+    html.fx .f-plate:hover .f-plate__frame::after {
+      animation: plate-sheen 1100ms ease-in-out;
+    }
+  }
+
+  /* 环境光：一次通过约 3s，其余时间停在画面外，所以看起来是"偶尔有一束光" */
+  @keyframes sheen-ambient {
+    0%, 58% { background-position: -46% 0; }
+    62% { background-position: -46% 0; }
+    88%, 100% { background-position: 146% 0; }
+  }
+  /* 悬停单次通过 */
+  @keyframes sheen-pass {
+    from { background-position: -52% 0; }
+    to { background-position: 152% 0; }
+  }
+  @keyframes plate-sheen {
+    0% { transform: translateX(-190%) rotate(12deg); opacity: 0; }
+    14% { opacity: .45; }
+    70% { opacity: .45; }
+    100% { transform: translateX(330%) rotate(12deg); opacity: 0; }
+  }
+
+  /* ==========================================================================
+     五、移动端：内容可读性优先，整体减幅
      ========================================================================== */
   @media (max-width: 720px) {
     html.fx .f-hero.is-fx .f-hero__body > * {
@@ -251,7 +409,7 @@
   }
 
   /* ==========================================================================
-     五、降级：减少动效 / 打印
+     六、降级：减少动效 / 打印
      --------------------------------------------------------------------------
      prefers-reduced-motion 下脚本根本不会进入 fx 模式；这里再补一层 CSS 兜底，
      保证运行中切换系统设置也不会留下隐藏元素。所有复位声明必须写在上面各节之后。
@@ -286,6 +444,18 @@
     html.fx .f-hero.is-fx .f-hero__domain-rule { opacity: .85; transform: scaleX(1); }
     html.fx .f-hero.is-fx .f-hero__image { translate: none; scale: 1; }
     html.fx .f-hero.is-fx .f-hero__scrim { opacity: 1; }
+
+    /* 流光全部停下：光的"通道"留在原位（高光在画面外），不会残留一条亮线 */
+    html.fx .f-section-head[data-reveal]::after,
+    html.fx .f-header .f-double-rule::after,
+    html.fx .f-hero__domain-rule::after {
+      animation: none;
+    }
+    html.fx .f-card::after,
+    html.fx .f-plate__frame::after {
+      animation: none;
+      opacity: 0;
+    }
   }
 
   @media print {
@@ -313,5 +483,12 @@
     html.fx .f-hero.is-fx .f-hero__domain-rule { opacity: .85; transform: scaleX(1); }
     html.fx .f-hero.is-fx .f-hero__image { translate: none; scale: 1; }
     html.fx .f-hero.is-fx .f-hero__scrim { opacity: 1; }
+
+    /* 纸上不印流光 */
+    html.fx .f-section-head[data-reveal]::after,
+    html.fx .f-header .f-double-rule::after,
+    html.fx .f-hero__domain-rule::after { animation: none; }
+    html.fx .f-card::after,
+    html.fx .f-plate__frame::after { animation: none; opacity: 0; }
   }
 }

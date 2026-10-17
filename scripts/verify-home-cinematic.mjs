@@ -323,12 +323,36 @@ try {
   check('分区标题：入口链接比标题稍后（50–90ms）',
     maxDelayMs(headShown.moreDelay) - maxDelayMs(headShown.titleDelay) >= 40,
     `title=${headShown.titleDelay} more=${headShown.moreDelay}`);
+
   check(
     '分隔线：从左向右展开到位',
     /matrix\(1,\s*0,\s*0,\s*1/.test(headShown.lineTransform) && headShown.lineOrigin.startsWith('0px'),
     `${headShown.lineTransform} / ${headShown.lineOrigin}`,
   );
   await page.screenshot({ path: join(SHOTS, 'desktop-section-2.png') });
+
+  // 流光：环境光（报头双线 / 首屏铜线 / 三条分区线）与悬停光
+  const sheen = await page.evaluate(() => {
+    const anims = document.getAnimations()
+      .filter((a) => (a.animationName || '').includes('sheen'))
+      .map((a) => {
+        const t = a.effect.getComputedTiming();
+        return { name: a.animationName, dur: t.duration, iter: t.iterations };
+      });
+    const line = document.querySelectorAll('.f-section-head')[0];
+    const cs = getComputedStyle(line, '::after');
+    return {
+      ambient: anims.filter((a) => a.name === 'sheen-ambient').length,
+      lineAnim: cs.animationName,
+      lineDur: cs.animationDuration,
+      lineLayers: cs.backgroundImage.split('),').length,
+      linePos: cs.backgroundPosition,
+    };
+  });
+  check('流光：报头/首屏/三条分区线均挂上环境流光', sheen.ambient >= 5, `ambient=${sheen.ambient}`);
+  check('流光：分区线为 12s 循环光带（光带 + 线本体两层背景）',
+    sheen.lineAnim === 'sheen-ambient' && sheen.lineDur === '12s' && sheen.lineLayers >= 2,
+    `${sheen.lineAnim} ${sheen.lineDur} layers=${sheen.lineLayers}`);
 
   // 卡片错峰
   await page.evaluate(() => document.querySelector('.f-recent').scrollIntoView({ block: 'center' }));
@@ -365,6 +389,12 @@ try {
   check('卡片：hover 底边色过渡仍在（未被 transition 简写覆盖）',
     cardBefore.props.includes('border-color') && cardAfter !== cardBefore.color,
     `${cardBefore.color} → ${cardAfter} / ${cardBefore.props}`);
+  const cardSheen = await page.evaluate(() => {
+    const cs = getComputedStyle(document.querySelector('.f-recent > .f-card'), '::after');
+    return { anim: cs.animationName, dur: cs.animationDuration, op: Number(cs.opacity) };
+  });
+  check('流光：卡片悬停触发底边流光', cardSheen.anim === 'sheen-pass' && cardSheen.op > 0.9,
+    JSON.stringify(cardSheen));
 
   // 图版画幅
   await page.evaluate(() => document.querySelector('.f-plates').scrollIntoView({ block: 'center' }));
@@ -398,6 +428,11 @@ try {
     hoverAfter !== 'none' && hoverAfter !== hoverBefore,
     `${hoverBefore} → ${hoverAfter}`,
   );
+  const plateSheen = await page.evaluate(() => {
+    const cs = getComputedStyle(document.querySelector('.f-plates > .f-plate .f-plate__frame'), '::after');
+    return { anim: cs.animationName, dur: cs.animationDuration };
+  });
+  check('流光：图版悬停触发画框扫光', plateSheen.anim === 'plate-sheen', JSON.stringify(plateSheen));
 
   // 尾页
   await page.evaluate(() => document.querySelector('.f-coda').scrollIntoView({ block: 'center' }));
@@ -527,6 +562,9 @@ try {
       hidden,
       titleOpacity: Number(getComputedStyle(document.querySelector('.f-hero__title')).opacity),
       ruleOpacity: Number(getComputedStyle(document.querySelector('.f-hero__domain-rule')).opacity),
+      lineSheen: getComputedStyle(document.querySelectorAll('.f-section-head')[0], '::after').animationName,
+      heroSheen: getComputedStyle(document.querySelector('.f-hero__domain-rule'), '::after').animationName,
+      headerSheen: getComputedStyle(document.querySelector('.f-header .f-double-rule'), '::after').animationName,
     };
     document.documentElement.classList.remove('fx');
     hero.classList.remove('is-fx');
@@ -536,6 +574,9 @@ try {
   check('减少动效：CSS 兜底能压住被强行启用的动效态',
     forcedFx.hidden === 0 && forcedFx.titleOpacity > 0.99 && Math.abs(forcedFx.ruleOpacity - 0.85) < 0.02,
     JSON.stringify(forcedFx));
+  check('减少动效：所有流光停止（分区线/首屏铜线/报头双线）',
+    forcedFx.lineSheen === 'none' && forcedFx.heroSheen === 'none' && forcedFx.headerSheen === 'none',
+    `${forcedFx.lineSheen}/${forcedFx.heroSheen}/${forcedFx.headerSheen}`);
   await page.evaluate(() => window.scrollTo(0, 0));
   await wait(120);
   await page.screenshot({ path: join(SHOTS, 'reduced-motion.png') });
@@ -674,11 +715,13 @@ try {
       .filter((el) => Number(getComputedStyle(el).opacity) < 0.9).length,
     titleOpacity: Number(getComputedStyle(document.querySelector('.f-hero__title')).opacity),
     ruleOpacity: Number(getComputedStyle(document.querySelector('.f-hero__domain-rule')).opacity),
+    sheen: getComputedStyle(document.querySelectorAll('.f-section-head')[0], '::after').animationName,
   }));
   await page.emulateMediaType('screen');
   check('打印：滚动中也不会把退场/隐藏态印出来',
     inPrint.hidden === 0 && inPrint.titleOpacity > 0.99 && Math.abs(inPrint.ruleOpacity - 0.85) < 0.03,
     JSON.stringify(inPrint));
+  check('打印：流光停止（纸上不印扫光）', inPrint.sheen === 'none', inPrint.sheen);
 
   /* ─────────────── 六、控制台 ─────────────── */
   check('没有未捕获的页面脚本异常', pageErrors.length === 0, pageErrors.join(' | '));

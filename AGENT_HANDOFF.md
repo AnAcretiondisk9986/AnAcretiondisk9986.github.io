@@ -2,6 +2,21 @@
 
 > 本文件已在用户授权下公开于 GitHub 仓库。每位 Agent 完成工作后在此记录变更。
 
+**✨ 首页流光（渐变扫光）系统（2026-10-17）**
+
+- **需求**：在既有滚动叙事之上"再丰富一点动效，加渐变跑马灯式流光溢彩，但不能土、依旧克制"。
+- **实现**（全部在 `src/styles/home-cinematic.css` 的「四、流光」一节，不新增元素、不新增色系、不新增依赖）：
+  - 高光 = 铜金提亮 + 主题强调色（约 1/4）做**双色虹彩**；只在既有"装帧细线"上通过，不铺满画面：
+    - 报头双线 `.f-header .f-double-rule::after`（17s 周期，2.2s 延迟）
+    - 首屏域名下的铜线 `.f-hero__domain-rule::after`（12s，1.4s）
+    - 三条分区标题分隔线：并入 `.f-section-head[data-reveal]::after` 的第二层背景（12s）
+    - 编目卡片底边线：悬停单次通过（1.1s）
+    - 图版画框：悬停斜向柔光扫过（1.1s）+ 画框描边"镀铜"（0.3s）
+  - 节奏：每次通过约 3s、其余时间完全静止（长停留），`ease-in-out`；只动 `background-position`（1px 面积）或画框内 `transform`，不触发布局、不产生横向溢出。
+  - 可调参数集中在 `--sheen-*`：`--sheen-band`（高光宽度）、`--sheen-duration` / `--sheen-duration-slow`（周期）、`--sheen-metal` / `--sheen-bright` / `--sheen-tint` / `--sheen-accent`（颜色）。
+- **降级**：所有流光都挂在 `html.fx` 下——无脚本 / 脚本失败时不生效；`prefers-reduced-motion: reduce` 与 `@media print` 下 `animation: none`（高光停在画面外，不会残留亮线）；悬停光只在 `@media (hover: hover) and (pointer: fine)` 启用，触屏不受影响。细线可见度沿用主题变量（trace / minimal 主题下依然成立）。
+- **验证**：`npm run build` 111 页；`npm run verify:home-cinematic` **69/69**（新增：5 处环境流光存在、分区线 12s 双背景层、卡片/图版悬停光触发、减少动效与打印下流光停止）；同时复核无横向溢出、无页面异常。截图 `perf-reports/home-cinematic/sheen-*.png`（含暗色主题）。
+
 **🧹 审计修复：目录页 resize 监听泄漏（2026-10-17）**
 
 - **症状/根因**：`src/scripts/catalog-layout.ts` 在 `initCatalogLayout()` 里匿名 `window.addEventListener('resize', …)`。ClientRouter 每次导航都会生成新的 `[data-catalog-list]`，`boundLists` WeakSet 只能防止同一元素重复绑定；旧列表卸载后监听器仍留在 window 上（闭包引用旧 list），每进入一次 `/blog/` 就多泄漏一个。实测两轮 home→blog→home 后 `resize` 监听数为 2→3→4。
