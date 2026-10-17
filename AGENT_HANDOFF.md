@@ -2,6 +2,17 @@
 
 > 本文件已在用户授权下公开于 GitHub 仓库。每位 Agent 完成工作后在此记录变更。
 
+**🧭 页头压缩 + 品牌条吸顶（2026-10-18）**
+
+- **需求**：顶部条太高；下滑后只让下面那一段（品牌 + 导航）常驻屏幕顶部。
+- **实现**：
+  - 新增 `src/styles/header-bar.css`：`.f-header` 改 `position: sticky; top: calc(-1 * var(--f-header-stick))`。负值 = 报头双行线高度 + 上内边距，于是上半条随页面正常滚出视口、下半条钉住；全幅纸面底放在 `::before`（`inset: 0 calc(50% - 50vw)`），吸顶时视口两翼不会漏出横幅图的出血区。
+  - 压缩：桌面页头 **约 160px → 94px**（报头线 22 / 品牌条 58 / 双线 4）。报头线内边距 16→6、字号 12→11px；品牌条上下内边距 24→8、印章 40→30px、站名 19→17px、短句 12→11px、图标按钮 34→30px、导航间距 24→16px。移动端 **105px**（品牌行 + 导航行 + 双线）。
+  - 新增 `src/scripts/header-bar.ts`：把「页头顶边 → 品牌条顶边」的距离量出来写到 `:root`（`--f-header-stick` / `--f-header-bar`），断点切换、字体替换、文案换行都会重测；`astro:page-load` 后重新绑定，避免 ClientRouter 换掉 header 后失效。无脚本时负值退回 0：整条页头一起吸顶，功能不受影响。
+  - `scroll-padding-top` 同步为常驻条高度 + 8px，页内锚点（如 `/blog/#catalog-search`）落点不会被页头盖住。
+- **兼容**：吸顶不接管滚轮、不锁定滚动、不改文档流；打印时页头本就隐藏；移动端报头线原本就隐藏，吸顶条只有品牌行 + 导航行 + 双线；旧版 `fusion-theme.css` 里的 `.site-header` 吸顶规则属于已废弃的旧头类名，未参与。
+- **验证**：`npm run build` 111 页；`npm run verify:home-cinematic` **85/85**（新增 8 项：页头 ≤110px、两段都压矮、全幅纸面底、吸顶偏移已标定、下滑后品牌条 top=0 且报头线滚出、导航可点、锚点不被遮挡、移动端 ≤115px 且无横向溢出）；另测 `/blog/`、`/gallery/`、`/about/` 三页吸顶一致（94px / mastheadTop 0 / 无溢出）、暗色主题、320px 窄屏；截图 `header-top / header-stuck / header-mobile-stuck / header-dark-stuck / header-blog-stuck.png`（在 `perf-reports/home-cinematic/`）。
+
 **🔁 流光改为「无限无缝循环」并提速（2026-10-18）**
 
 - **反馈**：用户指出「无法无限无缝循环，光的运动速度不够快」。

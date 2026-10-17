@@ -808,6 +808,96 @@ try {
     inPrint.rainbowFill === 'rgb(18, 16, 13)' && inPrint.rainbowBg === 'none',
     `${inPrint.rainbowFill} / ${inPrint.rainbowBg}`);
 
+  /* ─────────────── 五·六、页头：压缩 + 吸顶 ─────────────── */
+  await page.setViewport({ width: 1440, height: 900, deviceScaleFactor: 1 });
+  await page.goto(`${BASE}/`, { waitUntil: 'networkidle2' }).catch(() => {});
+  await page.addStyleTag({ content: 'html{scroll-behavior:auto !important}' });
+  await wait(1800);
+  const headerTop = await page.evaluate(() => {
+    const header = document.querySelector('.f-header');
+    const masthead = document.querySelector('.f-masthead');
+    const register = document.querySelector('.f-register');
+    const before = getComputedStyle(header, '::before');
+    const root = getComputedStyle(document.documentElement);
+    return {
+      height: Math.round(header.getBoundingClientRect().height),
+      mastheadHeight: Math.round(masthead.getBoundingClientRect().height),
+      registerHeight: Math.round(register.getBoundingClientRect().height),
+      stick: root.getPropertyValue('--f-header-stick').trim(),
+      bar: root.getPropertyValue('--f-header-bar').trim(),
+      beforePosition: before.position,
+      beforeLeft: Number.parseFloat(before.left),
+      beforeRight: Number.parseFloat(before.right),
+    };
+  });
+  check('页头：整体压缩到 110px 以内（原约 160px）',
+    headerTop.height > 60 && headerTop.height <= 110, `${headerTop.height}px`);
+  check('页头：报头线与品牌条两段都压矮',
+    headerTop.registerHeight <= 28 && headerTop.mastheadHeight <= 62,
+    `register=${headerTop.registerHeight} masthead=${headerTop.mastheadHeight}`);
+  check('页头：全幅纸面底（伪元素伸到视口两翼）',
+    headerTop.beforePosition === 'absolute' && headerTop.beforeLeft < 0 && headerTop.beforeRight < 0,
+    `${headerTop.beforePosition} ${headerTop.beforeLeft}/${headerTop.beforeRight}`);
+  check('页头：吸顶偏移由脚本标定',
+    headerTop.stick !== '' && headerTop.bar !== '', `${headerTop.stick} / ${headerTop.bar}`);
+
+  await page.evaluate(() => window.scrollTo(0, 700));
+  await wait(420);
+  const stuck = await page.evaluate(() => {
+    const header = document.querySelector('.f-header').getBoundingClientRect();
+    const masthead = document.querySelector('.f-masthead').getBoundingClientRect();
+    const register = document.querySelector('.f-register').getBoundingClientRect();
+    const nav = document.querySelector('.f-nav a');
+    const navRect = nav.getBoundingClientRect();
+    const hit = document.elementFromPoint(navRect.left + navRect.width / 2, navRect.top + navRect.height / 2);
+    return {
+      headerTop: Math.round(header.top),
+      mastheadTop: Math.round(masthead.top),
+      registerBottom: Math.round(register.bottom),
+      navVisible: navRect.top >= 0 && navRect.top < 90,
+      navClickable: !!hit?.closest('a'),
+    };
+  });
+  check('吸顶：下滑后品牌导航条钉在视口顶部、报头线滚出',
+    stuck.mastheadTop === 0 && stuck.headerTop < 0 && stuck.registerBottom <= 0, JSON.stringify(stuck));
+  check('吸顶：导航仍然可点', stuck.navVisible && stuck.navClickable);
+
+  await page.screenshot({ path: join(SHOTS, 'header-stuck.png') });
+
+  // 页内锚点（如 /blog/#catalog-search）落点不能被吸顶条盖住
+  await page.goto(`${BASE}/blog/#catalog-search`, { waitUntil: 'networkidle2' }).catch(() => {});
+  await wait(1000);
+  const anchor = await page.evaluate(() => {
+    const target = document.querySelector('#catalog-search');
+    const header = document.querySelector('.f-header').getBoundingClientRect();
+    return target
+      ? { targetTop: Math.round(target.getBoundingClientRect().top), headerBottom: Math.round(header.bottom) }
+      : null;
+  });
+  check('吸顶：页内锚点落点不在页头下面',
+    anchor && anchor.targetTop >= anchor.headerBottom - 2, JSON.stringify(anchor));
+
+  // 移动端：吸顶条高度受控、无横向溢出
+  await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2 });
+  await page.goto(`${BASE}/`, { waitUntil: 'networkidle2' }).catch(() => {});
+  await page.addStyleTag({ content: 'html{scroll-behavior:auto !important}' });
+  await wait(1600);
+  const mobileHeader = await page.evaluate(() => ({
+    height: Math.round(document.querySelector('.f-header').getBoundingClientRect().height),
+    overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  }));
+  await page.evaluate(() => window.scrollTo(0, 600));
+  await wait(400);
+  const mobileStuck = await page.evaluate(() => ({
+    mastheadTop: Math.round(document.querySelector('.f-masthead').getBoundingClientRect().top),
+    registerVisible: document.querySelector('.f-register')
+      ? document.querySelector('.f-register').getBoundingClientRect().bottom > 0
+      : false,
+  }));
+  check('移动端：页头 ≤ 115px 且吸顶生效、无横向溢出',
+    mobileHeader.height <= 115 && mobileHeader.overflow <= 1 && mobileStuck.mastheadTop === 0 && mobileStuck.registerVisible === false,
+    JSON.stringify({ ...mobileHeader, ...mobileStuck }));
+
   /* ─────────────── 六、控制台 ─────────────── */
   check('没有未捕获的页面脚本异常', pageErrors.length === 0, pageErrors.join(' | '));
 

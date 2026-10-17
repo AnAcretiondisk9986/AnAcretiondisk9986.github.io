@@ -1,0 +1,111 @@
+/* ============================================================================
+   HEADER BAR — 页头压缩 + 吸顶（2026-10-18）
+   ----------------------------------------------------------------------------
+   需求：
+     1. 顶部两段（报头双行线 .f-register / 品牌导航条 .f-masthead）都压矮；
+     2. 下滑后只让下面那段（品牌 + 导航 + 双线）常驻屏幕顶部。
+
+   做法：
+     · 整条 .f-header 用 position: sticky + 负 top：负值为"上面那段的高度"，
+       于是滚动时上半条正常滚出视口、下半条钉住；
+     · 负值随断点/字体变化，由 src/scripts/header-bar.ts 量出来写到
+       :root 的 --f-header-stick；没有脚本时 top 退回 0（整条一起吸顶，仍可用）。
+     · 吸顶条必须是不透明纸面，且要盖住横幅图在视口两翼的出血区，
+       所以背景放在一个全幅伪元素上（inset: 0 calc(50% - 50vw)）。
+   ========================================================================== */
+
+@layer components {
+  /* ── 吸顶骨架 ── */
+  .f-header {
+    position: sticky;
+    top: calc(-1 * var(--f-header-stick, 0px));
+    z-index: 60;
+    isolation: isolate;
+    padding-top: 10px;
+  }
+
+  /* 全幅纸面底：只盖住页头这一条，不参与任何交互 */
+  .f-header::before {
+    content: "";
+    position: absolute;
+    inset: 0 calc(50% - 50vw);
+    z-index: -1;
+    pointer-events: none;
+    background: var(--c-paper);
+  }
+
+  /* ── 上半段：报头双行线 ── */
+  .f-register {
+    padding-bottom: 6px;
+    font-size: 0.6875rem;
+    line-height: 1.35;
+    letter-spacing: 0.16em;
+  }
+
+  /* ── 下半段：品牌 + 导航 + 工具 ── */
+  .f-masthead {
+    padding-block: 8px;
+    gap: var(--p-sp-4);
+  }
+  .f-brand {
+    gap: 10px;
+  }
+  .f-brand__seal {
+    width: 30px;
+    height: 30px;
+    font-size: 0.6875rem;
+  }
+  .f-brand__name {
+    font-size: 1.0625rem;
+    line-height: 1.15;
+  }
+  .f-brand__tag {
+    font-size: 0.6875rem;
+    line-height: 1.5;
+  }
+  .f-nav {
+    gap: var(--p-sp-4);
+  }
+  .f-nav a {
+    padding-bottom: 2px;
+  }
+  .f-icon-btn {
+    width: 30px;
+    height: 30px;
+  }
+  .f-icon-btn svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  /* ── 移动端：品牌行与导航行都再收一档（报头双行线本身已隐藏） ── */
+  @media (max-width: 720px) {
+    .f-header {
+      padding-top: 8px;
+    }
+    .f-masthead {
+      padding-block: 6px;
+    }
+    .f-brand__seal {
+      width: 28px;
+      height: 28px;
+    }
+    .f-brand__name {
+      font-size: 1rem;
+    }
+    .f-brand__tag {
+      font-size: 0.65rem;
+    }
+    .f-nav-mobile {
+      margin-top: 4px;
+      padding-block: 5px;
+    }
+  }
+}
+
+@layer base {
+  /* 锚点跳转（如 /blog/#catalog-search）落点不要被吸顶条盖住 */
+  html {
+    scroll-padding-top: calc(var(--f-header-bar, 96px) + 8px);
+  }
+}
