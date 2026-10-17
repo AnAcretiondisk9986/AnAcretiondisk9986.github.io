@@ -27,10 +27,12 @@
     --motion-stagger: 60ms;
     --motion-rise: 16px;
 
-    /* 流光：一条很窄的高光，沿细线缓慢通过；周期长、停留久，不抢内容 */
-    --sheen-duration: 12s;
-    --sheen-duration-slow: 17s;
-    --sheen-band: 24%; /* 高光宽度（占所在细线的比例） */
+    /* 流光：高光做成"平铺图案里的一个亮带"，动画每次正好平移一个平铺周期，
+       首尾状态完全等价——因此是真正的无限无缝循环（不会在周期边界回跳）。
+       平铺周期是细线长度的 200%，亮带约 1/9 → 每一轮只看到一次快速的通过。 */
+    --sheen-duration: 3s; /* 一轮（恰好一个平铺周期）的时长 */
+    --sheen-duration-slow: 4s; /* 报头双线：稍慢，避免和正文线同频 */
+    --sheen-tile: 200%; /* 平铺周期（相对细线长度），一次平移正好一个周期 */
     /* 高光色 = 铜金提亮 + 一点点主题强调色，形成克制的双色虹彩，不引入新色系。
        细线只有 1px，纯色差读不出来，所以线上再提亮一档：
        铜 → 近白 → 淡强调色 → 铜。 */
@@ -39,14 +41,15 @@
     --sheen-bright: color-mix(in oklab, var(--c-metal) 34%, #fff);
     --sheen-tint: color-mix(in oklab, var(--c-accent) 26%, #fff);
     --sheen-gradient: linear-gradient(90deg, transparent, var(--sheen-metal), var(--sheen-accent), transparent);
+    /* 平铺用的亮带：两端留透明空档，平铺后就是"一道光 + 一段安静的线" */
     --sheen-line: linear-gradient(
       90deg,
-      transparent 0%,
-      var(--sheen-metal) 26%,
-      var(--sheen-bright) 44%,
-      var(--sheen-tint) 58%,
-      var(--sheen-metal) 76%,
-      transparent 100%
+      transparent 0% 45%,
+      var(--sheen-metal) 48%,
+      var(--sheen-bright) 49.6%,
+      var(--sheen-tint) 51%,
+      var(--sheen-metal) 53%,
+      transparent 56% 100%
     );
 
     /* 域名彩虹：完整色相环，每个色只保留一部分，其余混当前首屏文字色（--hero-ink）
@@ -63,7 +66,7 @@
     --rainbow-7: #ff6bd6; /* 洋红 */
     --rainbow-mix-strong: 82%; /* 暗底图（纸白字）下的含色量 */
     --rainbow-mix-light: 60%; /* 亮底图（墨字）下的含色量：更深，保证对比 */
-    --rainbow-sheen-duration: 14s; /* 彩虹色带漂移 + 高光扫过的周期 */
+    --rainbow-sheen-duration: 4s; /* 彩虹色带漂移 + 高光扫过一轮的周期（后台可调） */
   }
 }
 
@@ -163,13 +166,37 @@
   :root[data-hero-rainbow='on'] .f-hero__domain-zone {
     background-image: var(--rainbow-domain);
     background-size: 130% 100%;
+    /* 平铺：渐变首尾同为 --rainbow-1，接缝不可见 */
+    background-repeat: repeat-x;
+    background-position: 0% 50%;
     /* 原来的铜色辉光换成中性投影：彩虹字在照片上要"贴得住"，但别再叠一层色 */
     filter: drop-shadow(0 1px 14px color-mix(in oklab, var(--c-media-ink) 42%, transparent));
-    /* 扫光周期由后台控制（默认 14s），避免彩虹在眼前"跑" */
-    animation: f-domain-sheen var(--rainbow-sheen-duration, 14s) var(--p-ease) infinite;
+    /* 每次平移恰好一个平铺周期（130% 宽 → 位移 130%/30% = 433.33%），
+       循环边界与起点在视觉上完全等价，所以是无限无缝循环。
+       速度由后台的「流光周期」直接决定（默认 5s / 轮）。 */
+    animation: rainbow-drift var(--rainbow-sheen-duration, 5s) linear infinite;
   }
+  /* 高光层：同样是"平铺 + 平移一个周期"，与色带同速、同方向 */
   :root[data-hero-rainbow='on'] .f-hero__domain-zone::after {
-    animation: f-domain-sheen var(--rainbow-sheen-duration, 14s) var(--p-ease) infinite;
+    background-size: 200% 100%;
+    background-repeat: repeat-x;
+    background-position: 0% 50%;
+    animation: rainbow-gloss var(--rainbow-sheen-duration, 5s) linear infinite;
+  }
+
+  /* 关闭彩虹时仍用原来的铜金渐变；同样换成"平铺 + 平移一个周期"，
+     避免旧关键帧在周期边界回跳。铜金渐变首尾端点色几乎相同（86% / 82% 铜），
+     平铺接缝看不出来。 */
+  :root[data-hero-rainbow='off'] .f-hero__domain-zone {
+    background-repeat: repeat-x;
+    background-position: 0% 50%;
+    animation: copper-drift var(--rainbow-sheen-duration, 5s) linear infinite;
+  }
+  :root[data-hero-rainbow='off'] .f-hero__domain-zone::after {
+    background-size: 200% 100%;
+    background-repeat: repeat-x;
+    background-position: 0% 50%;
+    animation: rainbow-gloss var(--rainbow-sheen-duration, 5s) linear infinite;
   }
 
   /* 留白主题原本把域名退回纯墨字（不要任何滤镜与扫光）。既然要彩虹，
@@ -204,13 +231,15 @@
     right: 0;
     bottom: -1px;
     height: 1px;
-    /* 第一层是缓慢通过的高光，第二层是分隔线本身（颜色与原来的 border-bottom 相同）。
-       两条背景层各自独立定位，scaleX 展开只影响整体，不影响光带速度。 */
+    /* 第一层是平铺的高光图案（自带透明空档），第二层是分隔线本身
+       （颜色与原来的 border-bottom 相同）。两条背景层各自独立，scaleX 展开
+       只影响整体，不影响光带速度。 */
     background-image: var(--sheen-line), linear-gradient(var(--c-rule-strong), var(--c-rule-strong));
-    background-size: var(--sheen-band) 100%, 100% 100%;
-    background-position: -46% 0, 0 0;
-    background-repeat: no-repeat;
-    animation: sheen-ambient var(--sheen-duration) ease-in-out infinite;
+    background-size: var(--sheen-tile) 100%, 100% 100%;
+    background-position: 0 0, 0 0;
+    background-repeat: repeat-x, no-repeat;
+    /* 平移恰好一个平铺周期 → 视觉上首尾等价，无限循环没有回跳 */
+    animation: sheen-loop var(--sheen-duration) linear infinite;
     transform: scaleX(0);
     transform-origin: left center;
     transition: transform var(--motion-duration-slow) var(--motion-ease-out) 110ms;
@@ -342,8 +371,9 @@
        · 分区标题下的分隔线（见上方，已并入同一条 ::after）
        · 编目卡片底线的悬停流光
        · 图版画框的悬停扫光
-     颜色只用铜金提亮 + 主题强调色（约 1/3），不新增色系；周期 12–17s、
-     每次通过约 3s，其余时间完全静止。
+     颜色只用铜金提亮 + 主题强调色（约 1/3），不新增色系。环境光全部用
+     「平铺图案 + 每次平移一个周期」实现，所以是无限无缝循环；
+     周期就是一次通过的间隔（默认 4.5s，报头 6s）。
      ========================================================================== */
 
   /* 报头那条双线：一道很窄的光缓慢掠过 */
@@ -359,10 +389,10 @@
     height: 1px;
     pointer-events: none;
     background-image: var(--sheen-line);
-    background-size: 22% 100%;
-    background-repeat: no-repeat;
-    background-position: -40% 0;
-    animation: sheen-ambient var(--sheen-duration-slow) ease-in-out 2.2s infinite;
+    background-size: var(--sheen-tile) 100%;
+    background-repeat: repeat-x;
+    background-position: 0 0;
+    animation: sheen-loop var(--sheen-duration-slow) linear 1.2s infinite;
   }
 
   /* 首屏域名下的铜线：更亮一档，但同样只在 1px 高度上通过 */
@@ -376,17 +406,17 @@
     pointer-events: none;
     background-image: linear-gradient(
       90deg,
-      transparent,
-      color-mix(in oklab, var(--hero-ink) 46%, var(--hero-metal)),
-      var(--hero-ink),
-      color-mix(in oklab, var(--c-accent) 28%, var(--hero-ink)),
-      color-mix(in oklab, var(--hero-ink) 46%, var(--hero-metal)),
-      transparent
+      transparent 0% 45%,
+      color-mix(in oklab, var(--hero-ink) 46%, var(--hero-metal)) 48%,
+      var(--hero-ink) 49.6%,
+      color-mix(in oklab, var(--c-accent) 28%, var(--hero-ink)) 51%,
+      color-mix(in oklab, var(--hero-ink) 46%, var(--hero-metal)) 53%,
+      transparent 56% 100%
     );
-    background-size: var(--sheen-band) 100%;
-    background-repeat: no-repeat;
-    background-position: -40% 0;
-    animation: sheen-ambient var(--sheen-duration) ease-in-out 1.4s infinite;
+    background-size: var(--sheen-tile) 100%;
+    background-repeat: repeat-x;
+    background-position: 0 0;
+    animation: sheen-loop var(--sheen-duration) linear 0.8s infinite;
     /* 铜线本身随首屏退场淡出，这层高光跟着一起退 */
   }
 
@@ -438,18 +468,19 @@
   @media (hover: hover) and (pointer: fine) {
     html.fx .f-card:hover::after {
       opacity: 1;
-      animation: sheen-pass 1.1s ease-in-out;
+      animation: sheen-pass .8s ease-in-out;
     }
     html.fx .f-plate:hover .f-plate__frame::after {
-      animation: plate-sheen 1100ms ease-in-out;
+      animation: plate-sheen 900ms ease-in-out;
     }
   }
 
-  /* 环境光：一次通过约 3s，其余时间停在画面外，所以看起来是"偶尔有一束光" */
-  @keyframes sheen-ambient {
-    0%, 58% { background-position: -46% 0; }
-    62% { background-position: -46% 0; }
-    88%, 100% { background-position: 146% 0; }
+  /* 环境光：把平铺图案平移恰好一个周期（200% 宽 → 位移 200%）。因为图案首尾
+     相同，所以每一轮结束时画面与开始时完全一致 —— 无限循环没有回跳，
+     速度也由周期直接决定（默认 4.5s 一轮，报头 6s）。 */
+  @keyframes sheen-loop {
+    from { background-position: 0% 0; }
+    to { background-position: -200% 0; }
   }
   /* 悬停单次通过 */
   @keyframes sheen-pass {
@@ -461,6 +492,23 @@
     14% { opacity: .45; }
     70% { opacity: .45; }
     100% { transform: translateX(330%) rotate(12deg); opacity: 0; }
+  }
+
+  /* 域名彩虹的无缝循环：位移量 = 一个平铺周期，端点与起点视觉等价。
+     · rainbow-drift：130% 宽 → 位移 433.33%
+     · copper-drift ：260% 宽 → 位移 162.5%（关闭彩虹时的铜金渐变）
+     · rainbow-gloss：200% 宽 → 位移 200%（白色高光层） */
+  @keyframes rainbow-drift {
+    from { background-position: 0% 50%; }
+    to { background-position: -433.3333% 50%; }
+  }
+  @keyframes copper-drift {
+    from { background-position: 0% 50%; }
+    to { background-position: -162.5% 50%; }
+  }
+  @keyframes rainbow-gloss {
+    from { background-position: 0% 50%; }
+    to { background-position: -200% 50%; }
   }
 
   /* ==========================================================================

@@ -47,7 +47,7 @@ export function initFrontend(options = {}) { ctx = { ...ctx, ...options }; }
 
     function renderFrontendEditor(data) {
       data = data || {};
-      // 域名彩虹：7 个色相 + 含色量 + 扫光周期（服务端已校验，这里再兜一层默认值）
+      // 域名彩虹：7 个色相 + 含色量 + 流光周期（服务端已校验，这里再兜一层默认值）
       const RAINBOW_DEFAULT_COLORS = ['#ff6b5e', '#ffb84d', '#8fd14f', '#2ec5b6', '#4d8bff', '#b06bff', '#ff6bd6'];
       const rainbowColors = RAINBOW_DEFAULT_COLORS.map((fallback, index) => {
         const saved = Array.isArray(data.heroRainbowColors) ? data.heroRainbowColors[index] : null;
@@ -58,7 +58,7 @@ export function initFrontend(options = {}) { ctx = { ...ctx, ...options }; }
         return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback;
       };
       const rainbowMix = clampRainbow(data.heroRainbowMix, 82, 40, 100);
-      const rainbowSheen = clampRainbow(data.heroRainbowSheen, 14, 6, 30);
+      const rainbowSheen = clampRainbow(data.heroRainbowSheen, 4, 3, 20);
       const rainbowEnabled = data.heroRainbowEnabled !== false;
       $('#editorTitle').textContent = '前端定制';
       $('#btnDelete').style.display = 'none';
@@ -130,7 +130,7 @@ export function initFrontend(options = {}) { ctx = { ...ctx, ...options }; }
                 <option value="off"${rainbowEnabled ? '' : ' selected'}>关闭（铜金）</option>
               </select></div>
               <div class="form-group"><label>含色量（饱和度）</label><div class="frontend-range"><input id="fHeroRainbowMix" type="range" min="40" max="100" step="1" value="${rainbowMix}" /><output id="vHeroRainbowMix"></output></div></div>
-              <div class="form-group"><label>扫光周期</label><div class="frontend-range"><input id="fHeroRainbowSheen" type="range" min="6" max="30" step="1" value="${rainbowSheen}" /><output id="vHeroRainbowSheen"></output></div></div>
+              <div class="form-group"><label>流光周期（每 N 秒一轮）</label><div class="frontend-range"><input id="fHeroRainbowSheen" type="range" min="3" max="20" step="1" value="${rainbowSheen}" /><output id="vHeroRainbowSheen"></output></div></div>
             </div>
             <div class="frontend-rainbow-colors">
               ${rainbowColors.map((color, index) => `<label class="frontend-rainbow-color"><input id="fHeroRainbowColor${index + 1}" type="color" value="${escAttr(color)}" /><span>${index + 1}</span></label>`).join('')}
@@ -230,7 +230,7 @@ export function initFrontend(options = {}) { ctx = { ...ctx, ...options }; }
       const mixOut = $('#vHeroRainbowMix');
       if (mixOut) mixOut.textContent = Number($('#fHeroRainbowMix')?.value || 82) + '%';
       const sheenOut = $('#vHeroRainbowSheen');
-      if (sheenOut) sheenOut.textContent = Number($('#fHeroRainbowSheen')?.value || 14) + 's';
+      if (sheenOut) sheenOut.textContent = Number($('#fHeroRainbowSheen')?.value || 4) + 's';
       const rainbowPreview = $('#frontendRainbowPreview');
       if (rainbowPreview) {
         const colors = [1, 2, 3, 4, 5, 6, 7].map((i) => $('#fHeroRainbowColor' + i)?.value || '#000000');

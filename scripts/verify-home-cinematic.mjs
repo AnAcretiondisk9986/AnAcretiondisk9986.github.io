@@ -253,7 +253,7 @@ try {
   check('进度 0.5：铜线随首屏一同退场',
     (pMid.rule?.opacity ?? 1) < 0.8, pMid.rule?.opacity);
 
-  // 域名彩虹：整条色相环铺满字标，扫光放慢到 14s
+  // 域名彩虹：整条色相环铺满字标，用"平铺 + 平移一个周期"做无缝循环
   const rainbow = await page.evaluate(() => {
     const cs = getComputedStyle(document.querySelector('.f-hero__domain-zone'));
     return {
@@ -267,8 +267,8 @@ try {
   });
   check('域名：彩虹渐变已启用（≥7 个色相节点）',
     rainbow.hasGradient && rainbow.stops >= 7, `stops=${rainbow.stops}`);
-  check('域名：彩虹铺满字标（130%）且保留 14s 慢扫光',
-    rainbow.size === '130% 100%' && rainbow.anim === 'f-domain-sheen' && rainbow.dur === '14s',
+  check('域名：彩虹铺满字标（130%）且是无缝循环（4s/轮）',
+    rainbow.size === '130% 100%' && rainbow.anim === 'rainbow-drift' && rainbow.dur === '4s',
     `${rainbow.size} ${rainbow.anim} ${rainbow.dur}`);
   check('域名：彩虹以背景裁切绘制（文字填充透明）',
     rainbow.fill === 'rgba(0, 0, 0, 0)', rainbow.fill);
@@ -289,8 +289,43 @@ try {
     rainbowVars.attr === 'on' &&
       /^#[0-9a-f]{6}$/.test(rainbowVars.c1) && rainbowVars.c1 === '#ff6b5e' &&
       /^#[0-9a-f]{6}$/.test(rainbowVars.c7) &&
-      rainbowVars.mix === '82%' && rainbowVars.light === '60%' && rainbowVars.sheen === '14s',
+      rainbowVars.mix === '82%' && rainbowVars.light === '60%' && rainbowVars.sheen === '4s',
     JSON.stringify(rainbowVars));
+
+  // 无缝循环的两条硬指标：
+  //   1) 背景图案是平铺的（repeat-x）；
+  //   2) 一轮动画的位移恰好等于一个平铺周期 —— 首尾画面等价，循环边界不会回跳。
+  const loop = await page.evaluate(() => {
+    const repeat = (el, pseudo) => getComputedStyle(el, pseudo).backgroundRepeat;
+    const ends = {};
+    document.getAnimations().forEach((anim) => {
+      const name = anim.animationName || '';
+      if (!['rainbow-drift', 'rainbow-gloss', 'sheen-loop', 'copper-drift'].includes(name)) return;
+      const frames = anim.effect?.getKeyframes?.() || [];
+      if (!frames.length) return;
+      const last = frames[frames.length - 1] || {};
+      // getKeyframes 把 background-position 拆成 X/Y；多背景层用逗号分隔，取第一层
+      const raw = String(last.backgroundPositionX || last['background-position-x'] || '');
+      const firstLayer = Number.parseFloat(raw.split(',')[0]);
+      (ends[name] ||= []).push(Number.isFinite(firstLayer) ? firstLayer : null);
+    });
+    return {
+      zoneRepeat: repeat(document.querySelector('.f-hero__domain-zone')),
+      glossRepeat: repeat(document.querySelector('.f-hero__domain-zone'), '::after'),
+      lineRepeat: repeat(document.querySelectorAll('.f-section-head')[0], '::after'),
+      headerRepeat: repeat(document.querySelector('.f-header .f-double-rule'), '::after'),
+      ends,
+    };
+  });
+  // 一个平铺周期对应的位移：-s/(s-1)×100%（s = background-size / 100%）
+  const hasTravel = (name, expected) =>
+    (loop.ends[name] || []).some((value) => typeof value === 'number' && Math.abs(value - expected) < 0.01);
+  check('无缝循环：域名彩虹 / 高光 / 细线光带都是平铺图案',
+    [loop.zoneRepeat, loop.glossRepeat, loop.lineRepeat, loop.headerRepeat].every((r) => r.includes('repeat-x')),
+    `${loop.zoneRepeat} / ${loop.glossRepeat} / ${loop.lineRepeat} / ${loop.headerRepeat}`);
+  check('无缝循环：一轮位移恰好一个平铺周期（彩虹 -433.33%，高光与细线 -200%）',
+    hasTravel('rainbow-drift', -433.333) && hasTravel('rainbow-gloss', -200) && hasTravel('sheen-loop', -200),
+    `drift=${loop.ends['rainbow-drift']} gloss=${loop.ends['rainbow-gloss']} loop=${loop.ends['sheen-loop']}`);
 
   // 恢复滚动位置，验证真实滚动 ↔ 进度可逆
   await page.evaluate(() => {
@@ -381,7 +416,7 @@ try {
     const line = document.querySelectorAll('.f-section-head')[0];
     const cs = getComputedStyle(line, '::after');
     return {
-      ambient: anims.filter((a) => a.name === 'sheen-ambient').length,
+      ambient: anims.filter((a) => a.name === 'sheen-loop').length,
       lineAnim: cs.animationName,
       lineDur: cs.animationDuration,
       lineLayers: cs.backgroundImage.split('),').length,
@@ -389,8 +424,8 @@ try {
     };
   });
   check('流光：报头/首屏/三条分区线均挂上环境流光', sheen.ambient >= 5, `ambient=${sheen.ambient}`);
-  check('流光：分区线为 12s 循环光带（光带 + 线本体两层背景）',
-    sheen.lineAnim === 'sheen-ambient' && sheen.lineDur === '12s' && sheen.lineLayers >= 2,
+  check('流光：分区线为 3s 无缝循环光带（光带 + 线本体两层背景）',
+    sheen.lineAnim === 'sheen-loop' && sheen.lineDur === '3s' && sheen.lineLayers >= 2,
     `${sheen.lineAnim} ${sheen.lineDur} layers=${sheen.lineLayers}`);
 
   // 卡片错峰

@@ -1849,7 +1849,7 @@ const FRONTEND_DEFAULTS = {
   heroRainbowEnabled: true,
   heroRainbowColors: ['#ff6b5e', '#ffb84d', '#8fd14f', '#2ec5b6', '#4d8bff', '#b06bff', '#ff6bd6'],
   heroRainbowMix: 82,
-  heroRainbowSheen: 14,
+  heroRainbowSheen: 4,
 };
 
 const RAINBOW_COLOR_COUNT = 7;
@@ -1947,7 +1947,7 @@ app.route('/api/frontend')
         heroRainbowEnabled: cleanFrontendBoolean(body.heroRainbowEnabled, prev.heroRainbowEnabled !== false),
         heroRainbowColors: cleanRainbowColors(body.heroRainbowColors, prev.heroRainbowColors || FRONTEND_DEFAULTS.heroRainbowColors),
         heroRainbowMix: cleanFrontendNumber(body.heroRainbowMix, prev.heroRainbowMix, 40, 100),
-        heroRainbowSheen: cleanFrontendNumber(body.heroRainbowSheen, prev.heroRainbowSheen, 6, 30),
+        heroRainbowSheen: cleanFrontendNumber(body.heroRainbowSheen, prev.heroRainbowSheen, 3, 20),
       };
       const written = await frontendStore.write(next, { expectedHash: hashCheck.hash });
       res.setHeader('Content-Type', 'application/json; charset=utf-8');

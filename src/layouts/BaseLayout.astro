@@ -55,7 +55,7 @@ const clampNumber = (value: unknown, fallback: number, min: number, max: number)
 };
 const rainbowEnabled = frontend.heroRainbowEnabled !== false;
 const rainbowMix = clampNumber(frontend.heroRainbowMix, 82, 40, 100);
-const rainbowSheen = clampNumber(frontend.heroRainbowSheen, 14, 6, 30);
+const rainbowSheen = clampNumber(frontend.heroRainbowSheen, 4, 3, 20);
 // 亮底图（墨色文字）下的含色量：默认按 0.73 系数自动变深，保证浅色照片上可读
 const rainbowLightMix = Math.round(rainbowMix * 0.73);
 
