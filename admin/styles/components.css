@@ -347,6 +347,13 @@ textarea.content-area{flex:1;min-height:300px;font-family:'Cascadia Code','Conso
 
 input[type='color']{width:100%;min-height:38px;padding:4px;cursor:pointer}
 
+/* 域名彩虹：7 个色相 + 一条同款渐变色带预览 */
+.frontend-rainbow-colors{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:var(--sp-2)}
+.frontend-rainbow-color{display:grid;gap:4px;justify-items:center;font-size:var(--fs-2xs);color:var(--text-faint);font-variant-numeric:tabular-nums}
+.frontend-rainbow-color input[type='color']{min-height:30px;padding:2px;border-radius:var(--r-xs)}
+.frontend-rainbow-preview{height:14px;border:1px solid var(--border-strong);border-radius:var(--r-full);background:var(--surface-3);transition:opacity var(--dur-1) var(--ease)}
+.frontend-rainbow-preview[data-enabled='false']{opacity:.3}
+
 @media(prefers-reduced-motion:reduce){.btn,.toggle::after,.toast{transition:none}}
 
 /* 修订历史 diff */

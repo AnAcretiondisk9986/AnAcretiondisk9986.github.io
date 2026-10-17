@@ -47,6 +47,19 @@ export function initFrontend(options = {}) { ctx = { ...ctx, ...options }; }
 
     function renderFrontendEditor(data) {
       data = data || {};
+      // 域名彩虹：7 个色相 + 含色量 + 扫光周期（服务端已校验，这里再兜一层默认值）
+      const RAINBOW_DEFAULT_COLORS = ['#ff6b5e', '#ffb84d', '#8fd14f', '#2ec5b6', '#4d8bff', '#b06bff', '#ff6bd6'];
+      const rainbowColors = RAINBOW_DEFAULT_COLORS.map((fallback, index) => {
+        const saved = Array.isArray(data.heroRainbowColors) ? data.heroRainbowColors[index] : null;
+        return /^#[0-9a-f]{6}$/i.test(String(saved || '')) ? String(saved).toLowerCase() : fallback;
+      });
+      const clampRainbow = (value, fallback, min, max) => {
+        const n = Number(value);
+        return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback;
+      };
+      const rainbowMix = clampRainbow(data.heroRainbowMix, 82, 40, 100);
+      const rainbowSheen = clampRainbow(data.heroRainbowSheen, 14, 6, 30);
+      const rainbowEnabled = data.heroRainbowEnabled !== false;
       $('#editorTitle').textContent = '前端定制';
       $('#btnDelete').style.display = 'none';
       $('#btnSave').disabled = false;
@@ -106,6 +119,24 @@ export function initFrontend(options = {}) { ctx = { ...ctx, ...options }; }
               <div class="form-group"><label>图片焦点</label><select id="fStillImagePosition">${frontendPositionOptions(data.stillImagePosition)}</select></div>
             </div>
             <div class="field-hint">首页首屏共用这一张图，站内其它页面不使用。</div>
+          </section>
+
+          <section class="frontend-section">
+            <h3>域名彩虹</h3>
+            <div class="field-hint" style="margin-bottom:8px">首页首屏「Acretiondisk.top」这 15 个字符的彩虹渐变；blog. 前缀与域名下方铜线不变。关闭后回到原来的铜金渐变。</div>
+            <div class="form-row">
+              <div class="form-group"><label>彩虹字标</label><select id="fHeroRainbowEnabled">
+                <option value="on"${rainbowEnabled ? ' selected' : ''}>启用</option>
+                <option value="off"${rainbowEnabled ? '' : ' selected'}>关闭（铜金）</option>
+              </select></div>
+              <div class="form-group"><label>含色量（饱和度）</label><div class="frontend-range"><input id="fHeroRainbowMix" type="range" min="40" max="100" step="1" value="${rainbowMix}" /><output id="vHeroRainbowMix"></output></div></div>
+              <div class="form-group"><label>扫光周期</label><div class="frontend-range"><input id="fHeroRainbowSheen" type="range" min="6" max="30" step="1" value="${rainbowSheen}" /><output id="vHeroRainbowSheen"></output></div></div>
+            </div>
+            <div class="frontend-rainbow-colors">
+              ${rainbowColors.map((color, index) => `<label class="frontend-rainbow-color"><input id="fHeroRainbowColor${index + 1}" type="color" value="${escAttr(color)}" /><span>${index + 1}</span></label>`).join('')}
+            </div>
+            <div class="frontend-rainbow-preview" id="frontendRainbowPreview" aria-hidden="true"></div>
+            <div class="field-hint">1→7 依次为朱 / 琥珀 / 青柠 / 青碧 / 群青 / 紫罗兰 / 洋红。亮底图（照片偏亮）会自动加深，保证可读。</div>
           </section>
 
           <section class="frontend-section">
@@ -194,6 +225,19 @@ export function initFrontend(options = {}) { ctx = { ...ctx, ...options }; }
         ['vCardRadius', 'fCardRadius', ' px'],
       ];
       outputs.forEach(([outId, inputId, suffix]) => { const out = $('#' + outId); if (out) out.textContent = (outId.includes('Opacity') ? Math.round(Number($('#' + inputId)?.value || 0) * 100) + '%' : ($('#' + inputId)?.value || '') + suffix); });
+
+      // 域名彩虹：色带预览与两个数值输出
+      const mixOut = $('#vHeroRainbowMix');
+      if (mixOut) mixOut.textContent = Number($('#fHeroRainbowMix')?.value || 82) + '%';
+      const sheenOut = $('#vHeroRainbowSheen');
+      if (sheenOut) sheenOut.textContent = Number($('#fHeroRainbowSheen')?.value || 14) + 's';
+      const rainbowPreview = $('#frontendRainbowPreview');
+      if (rainbowPreview) {
+        const colors = [1, 2, 3, 4, 5, 6, 7].map((i) => $('#fHeroRainbowColor' + i)?.value || '#000000');
+        rainbowPreview.style.backgroundImage = `linear-gradient(90deg, ${colors.join(', ')})`;
+        const enabled = $('#fHeroRainbowEnabled')?.value !== 'off';
+        rainbowPreview.dataset.enabled = enabled ? 'true' : 'false';
+      }
     }
 
     async function saveFrontend() {
@@ -205,9 +249,12 @@ export function initFrontend(options = {}) { ctx = { ...ctx, ...options }; }
         displayFont: '#fDisplayFont', stillAccent: '#fStillAccent', fluidPrimary: '#fFluidPrimary', fluidSecondary: '#fFluidSecondary',
         stillGlassOpacity: '#fStillGlassOpacity', fluidGlassOpacity: '#fFluidGlassOpacity', heroOverlayOpacity: '#fHeroOverlayOpacity',
         glassBlur: '#fGlassBlur', cardRadius: '#fCardRadius',
+        heroRainbowEnabled: '#fHeroRainbowEnabled', heroRainbowMix: '#fHeroRainbowMix', heroRainbowSheen: '#fHeroRainbowSheen',
       };
       const body = new URLSearchParams();
       Object.entries(fields).forEach(([key, selector]) => body.set(key, $(selector)?.value ?? ''));
+      // 7 个色相合并为一个逗号分隔字段（服务端再逐个校验 #rrggbb）
+      body.set('heroRainbowColors', [1, 2, 3, 4, 5, 6, 7].map((i) => $(`#fHeroRainbowColor${i}`)?.value || '').join(','));
       body.set('expectedHash', frontendHash);
       try {
         const res = await apiFetch(FRONTEND_API, { method: 'PUT', body, headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });

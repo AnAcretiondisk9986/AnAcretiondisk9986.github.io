@@ -2,6 +2,24 @@
 
 > 本文件已在用户授权下公开于 GitHub 仓库。每位 Agent 完成工作后在此记录变更。
 
+**🌈 Acretiondisk.top 彩虹渐变字标（2026-10-18）**
+
+- **需求**：域名后缀从铜金渐变改为彩虹渐变（用户指定）。
+- **实现**（`src/styles/home-cinematic.css`「一·五」，只改 `.f-hero__domain-zone`；`blog.` 前缀与域名下方铜线不动）：
+  - 完整色相环铺满字标：朱 #ff6b5e → 琥珀 → 青柠 → 青碧 → 群青 → 紫罗兰 → 洋红，`background-size: 130%`（整条彩虹基本可见，同时给原有扫光留 30% 漂移），扫光放慢到 14s；渐变声明在 `.f-hero` 上，因为要用随首屏图片亮度切换的 `--hero-ink`。
+  - 每个色混入当前首屏文字色 18%（`--rainbow-ink-mix: 82%`）：暗底图（纸白字）自动柔成珠光；`home-media.ts` 判定亮底图并写 `data-tone="light"` 时压到 60%，色相变深，浅色照片上仍读得清。
+  - 铜色辉光换中性投影（彩虹外不再套一层色）；留白主题（minimal）给"静止彩虹"——保留颜色、去掉扫光与辉光，维持该主题安静的人格；打印时退回墨字（打印默认不输出背景，透明填充会印成空白）。
+- **可调**：`--rainbow-1..7`（色相）、`.f-hero` 的 `--rainbow-ink-mix`（82% = 更柔光，95% = 更艳）。
+- **后台可配（管理面板「外观 → 前端定制 → 域名彩虹」）**：
+  - 新增 4 个配置项：`heroRainbowEnabled`（启用 / 关闭回铜金）、`heroRainbowColors`（7 个色相，逐个 `#rrggbb` 校验）、`heroRainbowMix`（40–100，含色量）、`heroRainbowSheen`（6–30s，扫光周期）；保存在 `src/data/frontend.json`。
+  - 链路：`admin-server.mjs` 白名单校验（非法颜色整组回退、数值夹取）→ `PUT /api/frontend` 写入 → `BaseLayout.astro` 逐项再校验后注入行内 `:root` CSS 变量（`--rainbow-1..7` / `--rainbow-mix-strong` / `--rainbow-mix-light` / `--rainbow-sheen-duration`）与开关属性 `html[data-hero-rainbow]` → `home-cinematic.css` 只在 `data-hero-rainbow="on"` 时应用彩虹，关闭即回到 `folio-next.css` 的铜金原样（260% / 9.5s）。
+  - 亮底图的含色量按 `round(mix × 0.73)` 自动加深（默认 82% → 60%），无需单独再配一项。
+  - 后台 UI：开关下拉 + 7 个取色器 + 两个滑杆，并有一条实时色带预览；保存沿用既有的 `expectedHash` 冲突保护与 toast 反馈。
+- **验证**：`npm run build` 111 页；`npm run verify:home-cinematic` **75/75**（新增：后台配置下发的开关/7 色/含色量/扫光契约）；`npm run test:admin` 25/25、`npm run test:admin-api` 全部通过；另做两组针对性验证：
+  - 后台 API + UI（隔离临时数据目录）：默认值、保存持久化、非法颜色回退与数值夹取、7 个取色器与色带预览、保存后服务端生效 —— 9/9；
+  - 构建产物（改 JSON → build → 真实浏览器读数）：关闭时回到 260% / 9.5s 铜金、自定义色 `#ff0000` 生效、含色量 90% → 亮底 66%、周期 20s 全部生效，随后恢复原配置并重建 —— 4/4。
+  - 桌面 1440 / 390px 无横向溢出、无页面异常；后台截图 `perf-reports/home-cinematic/admin-rainbow.png`。
+
 **✨ 首页流光（渐变扫光）系统（2026-10-17）**
 
 - **需求**：在既有滚动叙事之上"再丰富一点动效，加渐变跑马灯式流光溢彩，但不能土、依旧克制"。

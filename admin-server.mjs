@@ -1845,7 +1845,14 @@ const FRONTEND_DEFAULTS = {
   heroOverlayOpacity: 0.34,
   glassBlur: 20,
   cardRadius: 8,
+  // 首页域名「Acretiondisk.top」的彩虹字标：开关 / 7 个色相 / 含色量 / 扫光周期
+  heroRainbowEnabled: true,
+  heroRainbowColors: ['#ff6b5e', '#ffb84d', '#8fd14f', '#2ec5b6', '#4d8bff', '#b06bff', '#ff6bd6'],
+  heroRainbowMix: 82,
+  heroRainbowSheen: 14,
 };
+
+const RAINBOW_COLOR_COUNT = 7;
 
 const VISUAL_THEMES = new Set(['cyanotype', 'still', 'fluid', 'minimal', 'trace']);
 const IMAGE_POSITIONS = new Set(['center', 'center top', 'center bottom', 'left center', 'right center']);
@@ -1873,6 +1880,24 @@ function cleanFrontendNumber(value, fallback, min, max) {
   const number = Number(value);
   if (!Number.isFinite(number)) return fallback;
   return Math.min(max, Math.max(min, number));
+}
+
+/** 表单布尔：on/true/1/yes → true，off/false/0/no → false，其它保持原值 */
+function cleanFrontendBoolean(value, fallback) {
+  if (value == null || value === '') return fallback;
+  const text = String(value).trim().toLowerCase();
+  if (['on', 'true', '1', 'yes'].includes(text)) return true;
+  if (['off', 'false', '0', 'no'].includes(text)) return false;
+  return fallback;
+}
+
+/** 7 个色相：接受逗号/空白分隔的字符串或数组；逐个校验 #rrggbb，不合格整组回退 */
+function cleanRainbowColors(value, fallback) {
+  if (value == null || value === '') return fallback;
+  const list = Array.isArray(value) ? value : String(value).split(/[\s,]+/).filter(Boolean);
+  if (list.length !== RAINBOW_COLOR_COUNT) return fallback;
+  if (!list.every((color) => HEX_COLOR_RE.test(String(color)))) return fallback;
+  return list.map((color) => String(color).toLowerCase());
 }
 
 app.route('/api/frontend')
@@ -1919,6 +1944,10 @@ app.route('/api/frontend')
         heroOverlayOpacity: cleanFrontendNumber(body.heroOverlayOpacity, prev.heroOverlayOpacity, 0.18, 0.62),
         glassBlur: cleanFrontendNumber(body.glassBlur, prev.glassBlur, 10, 32),
         cardRadius: cleanFrontendNumber(body.cardRadius, prev.cardRadius, 2, 8),
+        heroRainbowEnabled: cleanFrontendBoolean(body.heroRainbowEnabled, prev.heroRainbowEnabled !== false),
+        heroRainbowColors: cleanRainbowColors(body.heroRainbowColors, prev.heroRainbowColors || FRONTEND_DEFAULTS.heroRainbowColors),
+        heroRainbowMix: cleanFrontendNumber(body.heroRainbowMix, prev.heroRainbowMix, 40, 100),
+        heroRainbowSheen: cleanFrontendNumber(body.heroRainbowSheen, prev.heroRainbowSheen, 6, 30),
       };
       const written = await frontendStore.write(next, { expectedHash: hashCheck.hash });
       res.setHeader('Content-Type', 'application/json; charset=utf-8');

@@ -253,6 +253,45 @@ try {
   check('进度 0.5：铜线随首屏一同退场',
     (pMid.rule?.opacity ?? 1) < 0.8, pMid.rule?.opacity);
 
+  // 域名彩虹：整条色相环铺满字标，扫光放慢到 14s
+  const rainbow = await page.evaluate(() => {
+    const cs = getComputedStyle(document.querySelector('.f-hero__domain-zone'));
+    return {
+      hasGradient: cs.backgroundImage.startsWith('linear-gradient'),
+      stops: (cs.backgroundImage.match(/oklab\(|oklch\(|rgb\(|color\(/g) || []).length,
+      size: cs.backgroundSize,
+      anim: cs.animationName,
+      dur: cs.animationDuration,
+      fill: cs.webkitTextFillColor,
+    };
+  });
+  check('域名：彩虹渐变已启用（≥7 个色相节点）',
+    rainbow.hasGradient && rainbow.stops >= 7, `stops=${rainbow.stops}`);
+  check('域名：彩虹铺满字标（130%）且保留 14s 慢扫光',
+    rainbow.size === '130% 100%' && rainbow.anim === 'f-domain-sheen' && rainbow.dur === '14s',
+    `${rainbow.size} ${rainbow.anim} ${rainbow.dur}`);
+  check('域名：彩虹以背景裁切绘制（文字填充透明）',
+    rainbow.fill === 'rgba(0, 0, 0, 0)', rainbow.fill);
+
+  // 后台「前端定制」→ BaseLayout 的契约：开关属性 + 7 色 + 含色量 + 扫光周期
+  const rainbowVars = await page.evaluate(() => {
+    const cs = getComputedStyle(document.documentElement);
+    return {
+      attr: document.documentElement.dataset.heroRainbow,
+      c1: cs.getPropertyValue('--rainbow-1').trim(),
+      c7: cs.getPropertyValue('--rainbow-7').trim(),
+      mix: cs.getPropertyValue('--rainbow-mix-strong').trim(),
+      light: cs.getPropertyValue('--rainbow-mix-light').trim(),
+      sheen: cs.getPropertyValue('--rainbow-sheen-duration').trim(),
+    };
+  });
+  check('域名彩虹：后台配置已下发（开关 / 7 色 / 含色量 / 扫光）',
+    rainbowVars.attr === 'on' &&
+      /^#[0-9a-f]{6}$/.test(rainbowVars.c1) && rainbowVars.c1 === '#ff6b5e' &&
+      /^#[0-9a-f]{6}$/.test(rainbowVars.c7) &&
+      rainbowVars.mix === '82%' && rainbowVars.light === '60%' && rainbowVars.sheen === '14s',
+    JSON.stringify(rainbowVars));
+
   // 恢复滚动位置，验证真实滚动 ↔ 进度可逆
   await page.evaluate(() => {
     document.querySelector('[data-hero]').style.removeProperty('--hp');
@@ -577,6 +616,12 @@ try {
   check('减少动效：所有流光停止（分区线/首屏铜线/报头双线）',
     forcedFx.lineSheen === 'none' && forcedFx.heroSheen === 'none' && forcedFx.headerSheen === 'none',
     `${forcedFx.lineSheen}/${forcedFx.heroSheen}/${forcedFx.headerSheen}`);
+  const reducedRainbow = await page.evaluate(() => {
+    const cs = getComputedStyle(document.querySelector('.f-hero__domain-zone'));
+    return { anim: cs.animationName, hasGradient: cs.backgroundImage.includes('linear-gradient') };
+  });
+  check('减少动效：彩虹保留颜色但停止扫光',
+    reducedRainbow.anim === 'none' && reducedRainbow.hasGradient === true, JSON.stringify(reducedRainbow));
   await page.evaluate(() => window.scrollTo(0, 0));
   await wait(120);
   await page.screenshot({ path: join(SHOTS, 'reduced-motion.png') });
@@ -716,12 +761,17 @@ try {
     titleOpacity: Number(getComputedStyle(document.querySelector('.f-hero__title')).opacity),
     ruleOpacity: Number(getComputedStyle(document.querySelector('.f-hero__domain-rule')).opacity),
     sheen: getComputedStyle(document.querySelectorAll('.f-section-head')[0], '::after').animationName,
+    rainbowFill: getComputedStyle(document.querySelector('.f-hero__domain-zone')).webkitTextFillColor,
+    rainbowBg: getComputedStyle(document.querySelector('.f-hero__domain-zone')).backgroundImage,
   }));
   await page.emulateMediaType('screen');
   check('打印：滚动中也不会把退场/隐藏态印出来',
     inPrint.hidden === 0 && inPrint.titleOpacity > 0.99 && Math.abs(inPrint.ruleOpacity - 0.85) < 0.03,
-    JSON.stringify(inPrint));
+    JSON.stringify({ hidden: inPrint.hidden, title: inPrint.titleOpacity }));
   check('打印：流光停止（纸上不印扫光）', inPrint.sheen === 'none', inPrint.sheen);
+  check('打印：彩虹字标退回墨字（避免印成空白）',
+    inPrint.rainbowFill === 'rgb(18, 16, 13)' && inPrint.rainbowBg === 'none',
+    `${inPrint.rainbowFill} / ${inPrint.rainbowBg}`);
 
   /* ─────────────── 六、控制台 ─────────────── */
   check('没有未捕获的页面脚本异常', pageErrors.length === 0, pageErrors.join(' | '));

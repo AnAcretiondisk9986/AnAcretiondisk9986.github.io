@@ -39,9 +39,26 @@ const displayFonts: Record<string, string> = {
 };
 const displayFont = displayFonts[frontend.displayFont] || displayFonts['noto-serif'];
 
-// 后台可配项 → 新的语义 token。
-// 说明：调色板由主题 token 层拥有；这里只把后台真正可配的强调色/材质接到对应主题上，
-// 其余（圆角/模糊/Hero 遮罩）继续以旧变量名下发给 legacy 样式（图库/关于等页面仍在用）。
+/* ── 首页域名彩虹（后台「前端定制」可配）──────────────────────────────────────
+   只负责把后台的四项配置安全地落成 CSS 变量 + 一个开关属性，
+   具体渐变、混色与扫光在 src/styles/home-cinematic.css 里实现。
+   颜色在白名单里逐个校验（后台已校验，这里再兜一层，避免手改 JSON 造成注入）。 */
+const RAINBOW_DEFAULT_COLORS = ['#ff6b5e', '#ffb84d', '#8fd14f', '#2ec5b6', '#4d8bff', '#b06bff', '#ff6bd6'];
+const isHexColor = (value: unknown) => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value);
+const savedRainbowColors = Array.isArray(frontend.heroRainbowColors) ? frontend.heroRainbowColors : [];
+const rainbowColors = RAINBOW_DEFAULT_COLORS.map((fallback, index) =>
+  isHexColor(savedRainbowColors[index]) ? String(savedRainbowColors[index]).toLowerCase() : fallback,
+);
+const clampNumber = (value: unknown, fallback: number, min: number, max: number) => {
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback;
+};
+const rainbowEnabled = frontend.heroRainbowEnabled !== false;
+const rainbowMix = clampNumber(frontend.heroRainbowMix, 82, 40, 100);
+const rainbowSheen = clampNumber(frontend.heroRainbowSheen, 14, 6, 30);
+// 亮底图（墨色文字）下的含色量：默认按 0.73 系数自动变深，保证浅色照片上可读
+const rainbowLightMix = Math.round(rainbowMix * 0.73);
+
 const runtimeStyle = [
   ':root{',
   `--liquid-overlay:${frontend.heroOverlayOpacity};`,
@@ -50,6 +67,10 @@ const runtimeStyle = [
   `--liquid-art-font:${displayFont};`,
   `--liquid-still-surface:rgba(247,250,249,${frontend.stillGlassOpacity});`,
   `--liquid-fluid-surface:rgba(240,247,242,${frontend.fluidGlassOpacity});`,
+  rainbowColors.map((color, index) => `--rainbow-${index + 1}:${color};`).join(''),
+  `--rainbow-mix-strong:${rainbowMix}%;`,
+  `--rainbow-mix-light:${rainbowLightMix}%;`,
+  `--rainbow-sheen-duration:${rainbowSheen}s;`,
   '}',
   `:root[data-visual-theme="still"]{--c-accent-2:${frontend.stillAccent}}`,
   `:root[data-visual-theme="fluid"]{--c-accent:${frontend.fluidPrimary};--c-accent-2:${frontend.fluidSecondary}}`,
@@ -62,6 +83,7 @@ const runtimeStyle = [
   data-default-visual-theme={defaultVisualTheme}
   data-visual-theme={defaultVisualTheme}
   data-theme="light"
+  data-hero-rainbow={rainbowEnabled ? 'on' : 'off'}
 >
   <head>
     <meta charset="UTF-8" />

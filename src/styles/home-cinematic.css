@@ -48,6 +48,22 @@
       var(--sheen-metal) 76%,
       transparent 100%
     );
+
+    /* 域名彩虹：完整色相环，每个色只保留一部分，其余混当前首屏文字色（--hero-ink）
+       —— 暗底图（纸白字）柔成珠光，亮底图（墨字）加深保证可读。
+       这组变量是"兜底默认值"：后台「前端定制」保存后由 BaseLayout 以行内 :root
+       样式覆盖（--rainbow-1..7 / --rainbow-mix-strong / --rainbow-mix-light /
+       --rainbow-sheen-duration），因此后台改色不需要动这个文件。 */
+    --rainbow-1: #ff6b5e; /* 朱 */
+    --rainbow-2: #ffb84d; /* 琥珀 */
+    --rainbow-3: #8fd14f; /* 青柠 */
+    --rainbow-4: #2ec5b6; /* 青碧 */
+    --rainbow-5: #4d8bff; /* 群青 */
+    --rainbow-6: #b06bff; /* 紫罗兰 */
+    --rainbow-7: #ff6bd6; /* 洋红 */
+    --rainbow-mix-strong: 82%; /* 暗底图（纸白字）下的含色量 */
+    --rainbow-mix-light: 60%; /* 亮底图（墨字）下的含色量：更深，保证对比 */
+    --rainbow-sheen-duration: 14s; /* 彩虹色带漂移 + 高光扫过的周期 */
   }
 }
 
@@ -110,6 +126,64 @@
   /* 纱幕随退场稍稍退去，让画面在离开时更通透一点（不影响文字期对比度） */
   html.fx .f-hero.is-fx .f-hero__scrim {
     opacity: calc(1 - var(--hp) * .25);
+  }
+
+  /* ==========================================================================
+     一·五、Acretiondisk.top：彩虹渐变字标（用户指定）
+     --------------------------------------------------------------------------
+     只改组名后缀 .f-hero__domain-zone；blog. 前缀、域名下方的铜线都不动。
+     渐变声明在 .f-hero 上，因为里面要用 --hero-ink（随首屏图片亮度切换极性）——
+     自定义属性在"声明它的元素"上求值，放到 :root 会拿不到 hero 的极性。
+     background-size 用 130%：整条彩虹基本同时可见，同时给原有的慢扫光
+     （f-domain-sheen 改 background-position）留出 30% 的漂移空间。
+     ========================================================================== */
+  .f-hero {
+    /* 彩虹的"含色量"：默认取后台配置的暗底值；亮底图（墨字）改用更深的一档，
+       保证浅色照片上仍然读得清。两个值都由 BaseLayout 注入，缺省时用 CSS 里的兜底。 */
+    --rainbow-ink-mix: var(--rainbow-mix-strong);
+    --rainbow-domain: linear-gradient(
+      96deg,
+      color-mix(in oklab, var(--rainbow-1) var(--rainbow-ink-mix), var(--hero-ink)) 0%,
+      color-mix(in oklab, var(--rainbow-2) var(--rainbow-ink-mix), var(--hero-ink)) 15%,
+      color-mix(in oklab, var(--rainbow-3) var(--rainbow-ink-mix), var(--hero-ink)) 30%,
+      color-mix(in oklab, var(--rainbow-4) var(--rainbow-ink-mix), var(--hero-ink)) 45%,
+      color-mix(in oklab, var(--rainbow-5) var(--rainbow-ink-mix), var(--hero-ink)) 60%,
+      color-mix(in oklab, var(--rainbow-6) var(--rainbow-ink-mix), var(--hero-ink)) 74%,
+      color-mix(in oklab, var(--rainbow-7) var(--rainbow-ink-mix), var(--hero-ink)) 87%,
+      color-mix(in oklab, var(--rainbow-1) var(--rainbow-ink-mix), var(--hero-ink)) 100%
+    );
+  }
+  /* home-media.ts 判定底图偏亮时会写 data-tone="light"：文字转墨色，彩虹同步加深 */
+  .f-hero[data-tone='light'] {
+    --rainbow-ink-mix: var(--rainbow-mix-light);
+  }
+
+  /* 后台「前端定制」关掉彩虹时（html[data-hero-rainbow="off"]），
+     下面这一组全部不生效，域名回到 folio-next.css 的铜金渐变原样。 */
+  :root[data-hero-rainbow='on'] .f-hero__domain-zone {
+    background-image: var(--rainbow-domain);
+    background-size: 130% 100%;
+    /* 原来的铜色辉光换成中性投影：彩虹字在照片上要"贴得住"，但别再叠一层色 */
+    filter: drop-shadow(0 1px 14px color-mix(in oklab, var(--c-media-ink) 42%, transparent));
+    /* 扫光周期由后台控制（默认 14s），避免彩虹在眼前"跑" */
+    animation: f-domain-sheen var(--rainbow-sheen-duration, 14s) var(--p-ease) infinite;
+  }
+  :root[data-hero-rainbow='on'] .f-hero__domain-zone::after {
+    animation: f-domain-sheen var(--rainbow-sheen-duration, 14s) var(--p-ease) infinite;
+  }
+
+  /* 留白主题原本把域名退回纯墨字（不要任何滤镜与扫光）。既然要彩虹，
+     这里给它一条"静止的彩虹"：不扫、不发光，保留该主题"安静"的人格。
+     选择器特异性与 folio-next.css 里的 minimal 覆盖相同，靠加载顺序胜出。 */
+  :root[data-hero-rainbow='on'][data-visual-theme='minimal'] .f-hero__domain-zone {
+    background-image: var(--rainbow-domain);
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    filter: none;
+    animation: none;
+  }
+  :root[data-hero-rainbow='on'][data-visual-theme='minimal'] .f-hero__domain-zone::after {
+    display: none;
   }
 
   /* ==========================================================================
@@ -456,6 +530,15 @@
       animation: none;
       opacity: 0;
     }
+
+    /* 彩虹字标：变静态（保留颜色，不再扫光）。
+       前缀要把后台开关时的那条更高特异性的规则一并压住。 */
+    :root[data-hero-rainbow='on'] .f-hero__domain-zone,
+    :root[data-hero-rainbow='on'] .f-hero__domain-zone::after,
+    .f-hero__domain-zone,
+    .f-hero__domain-zone::after {
+      animation: none;
+    }
   }
 
   @media print {
@@ -490,5 +573,15 @@
     html.fx .f-hero__domain-rule::after { animation: none; }
     html.fx .f-card::after,
     html.fx .f-plate__frame::after { animation: none; opacity: 0; }
+
+    /* 彩虹字标退回墨字：打印默认不输出背景，占位透明填充会印成空白 */
+    :root[data-hero-rainbow='on'] .f-hero__domain-zone,
+    .f-hero__domain-zone {
+      background-image: none;
+      color: var(--c-media-ink);
+      -webkit-text-fill-color: var(--c-media-ink);
+      filter: none;
+      animation: none;
+    }
   }
 }

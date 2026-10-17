@@ -18,5 +18,17 @@
   "fluidGlassOpacity": 0.45,
   "heroOverlayOpacity": 0.3,
   "glassBlur": 10,
-  "cardRadius": 6
+  "cardRadius": 6,
+  "heroRainbowEnabled": true,
+  "heroRainbowColors": [
+    "#ff6b5e",
+    "#ffb84d",
+    "#8fd14f",
+    "#2ec5b6",
+    "#4d8bff",
+    "#b06bff",
+    "#ff6bd6"
+  ],
+  "heroRainbowMix": 82,
+  "heroRainbowSheen": 14
 }
