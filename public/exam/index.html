@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>期末考试时间表 · 2026–2027 学年第一学期</title>
+<meta name="description" content="2026–2027 学年第一学期期末考试时间表 · 滨海校区，共 8 场考试" />
+<meta name="color-scheme" content="light dark" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23a8322a'/%3E%3Cpath d='M16 8.5v15M8.5 16h15' stroke='%23faf8f2' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E" />
+<style>
+/* ============================================================
+   考试时间表 · 印刷公告牌方向
+   纸底、墨字、一条朱红强调、等宽数字；不用玻璃、渐变和光斑。
+   ============================================================ */
+*,*::before,*::after{ box-sizing:border-box; }
+
+:root{
+  --paper:#f1eee5;
+  --surface:#faf8f2;
+  --surface-2:#eae6db;
+  --ink:#16150f;
+  --ink-2:#4e4c42;
+  --ink-3:#625f50;
+  --line:#d7d2c3;
+  --line-strong:#b5af9d;
+  --accent:#a8322a;
+  --accent-ink:#8a211b;
+  --accent-wash:#f0ddd8;
+  --sans:"PingFang SC","HarmonyOS Sans SC","Source Han Sans SC","Noto Sans SC","Microsoft YaHei UI","Microsoft YaHei",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:ui-monospace,"SF Mono","Cascadia Mono","Roboto Mono",Consolas,"Liberation Mono",monospace;
+  --ease:cubic-bezier(.2,.7,.3,1);
+  --ease-out:cubic-bezier(.16,1,.3,1);
+  --c-base:#2763d8;
+  --c-marx:#a2611c;
+  --c-pharm:#1c6b4f;
+  --c-opt:#65489c;
+}
+
+html[data-theme="dark"]{
+  --paper:#0e0e0c;
+  --surface:#181814;
+  --surface-2:#22221d;
+  --ink:#ece8dc;
+  --ink-2:#b3ae9f;
+  --ink-3:#918d7c;
+  --line:#302f28;
+  --line-strong:#494838;
+  --accent:#e06a5c;
+  --accent-ink:#f08a7d;
+  --accent-wash:#2a1b18;
+  --c-base:#6f9bff;
+  --c-marx:#e0a45e;
+  --c-pharm:#54c396;
+  --c-opt:#a98ae0;
+}
+
+html{ -webkit-text-size-adjust:100%; }
+body{
+  margin:0;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:var(--sans);
+  font-size:15px;
+  line-height:1.65;
+  -webkit-font-smoothing:antialiased;
+  transition:background-color .24s var(--ease), color .24s var(--ease);
+}
+body::before{
+  content:"";
+  position:fixed; inset:0; pointer-events:none; z-index:0;
+  background-image:
+    linear-gradient(to right, rgba(0,0,0,.016) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0,0,0,.016) 1px, transparent 1px);
+  background-size:24px 24px;
+}
+html[data-theme="dark"] body::before{
+  background-image:
+    linear-gradient(to right, rgba(255,255,255,.02) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255,255,255,.02) 1px, transparent 1px);
+}
+
+.wrap{ position:relative; z-index:1; width:100%; max-width:1160px; margin:0 auto; padding:0 32px; }
+
+button{ font:inherit; color:inherit; }
+
+/* ---------- 顶栏 ---------- */
+header.top{
+  position:sticky; top:0; z-index:20;
+  background:color-mix(in srgb, var(--paper) 94%, transparent);
+  border-bottom:1px solid var(--line);
+}
+.top-in{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto auto;
+  grid-template-areas:"brand search tools";
+  align-items:end; gap:16px;
+  padding-block:20px 16px;
+}
+.brand{ grid-area:brand; min-width:0; display:flex; align-items:center; gap:12px; }
+.mark{
+  flex:none; width:34px; height:34px; display:grid; place-items:center;
+  border:1.5px solid var(--ink); border-radius:4px; color:var(--accent);
+  background:var(--surface);
+}
+.mark svg{ width:16px; height:16px; }
+.search{ grid-area:search; }
+.tools{ grid-area:tools; }
+.brand-kicker{ display:block; font-size:13px; color:var(--ink-3); letter-spacing:.02em; }
+.brand h1{ margin:2px 0 0; font-size:26px; line-height:1.25; font-weight:650; letter-spacing:-.01em; text-wrap:balance; }
+.tools{ display:flex; align-items:center; gap:10px; flex:none; }
+
+.search{
+  display:flex; align-items:center; gap:8px;
+  height:38px; padding:0 12px;
+  background:var(--surface);
+  border:1px solid var(--line); border-radius:4px;
+  transition:border-color .16s var(--ease), box-shadow .16s var(--ease);
+}
+.search:focus-within{ border-color:var(--ink-3); box-shadow:0 0 0 3px color-mix(in srgb, var(--ink) 8%, transparent); }
+.search svg{ width:15px; height:15px; flex:none; color:var(--ink-3); }
+.search input{ width:190px; border:0; outline:0; background:transparent; font:inherit; font-size:14px; color:var(--ink); }
+.search input::placeholder{ color:var(--ink-3); }
+
+.icon-btn{
+  width:38px; height:38px; display:grid; place-items:center;
+  background:var(--surface); border:1px solid var(--line); border-radius:4px;
+  cursor:pointer;
+  transition:background-color .16s var(--ease), border-color .16s var(--ease), transform .08s var(--ease);
+}
+.icon-btn:hover{ border-color:var(--line-strong); }
+.icon-btn:active{ transform:translateY(1px); }
+.icon-btn:focus-visible, .chip:focus-visible, .row-copy:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+.icon-btn svg{ width:16px; height:16px; }
+.i-moon{ display:none; }
+html[data-theme="dark"] .i-sun{ display:none; }
+html[data-theme="dark"] .i-moon{ display:block; }
+
+/* ---------- 下一场 ---------- */
+.next{
+  margin:24px 0 0;
+  padding:18px 24px 20px;
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-left:4px solid var(--accent);
+  border-radius:4px;
+}
+.next-hd{
+  display:flex; align-items:baseline; justify-content:space-between; gap:16px;
+  padding-bottom:14px; border-bottom:1px solid var(--line);
+}
+.next-hd .label{ font-size:13px; color:var(--ink-3); }
+.next-hd .label b{ color:var(--accent-ink); font-weight:600; }
+.next-when{ font-family:var(--mono); font-size:13px; color:var(--ink-3); font-variant-numeric:tabular-nums; }
+
+.next-main{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:end; gap:24px;
+  padding-top:14px;
+}
+.nx-date{ display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; font-family:var(--mono); font-variant-numeric:tabular-nums; }
+.nx-date .md{ font-size:36px; font-weight:600; letter-spacing:-.03em; line-height:1; }
+.nx-date .wd{ font-size:15px; color:var(--ink-2); font-family:var(--sans); }
+.nx-date .tm{ font-size:19px; color:var(--ink-2); }
+.nx-course{ margin-top:6px; font-size:21px; font-weight:620; line-height:1.35; text-wrap:pretty; }
+.nx-meta{ display:flex; align-items:center; gap:8px 18px; flex-wrap:wrap; margin-top:6px; font-size:14px; color:var(--ink-2); }
+.nx-meta .kv{ display:inline-flex; align-items:center; gap:7px; }
+.dot{ width:8px; height:8px; border-radius:2px; flex:none; background:var(--ink-3); }
+.nx-meta .room{ font-family:var(--mono); font-weight:600; color:var(--ink); }
+.nx-meta .sep{ color:var(--ink-3); margin:0 1px; }
+
+.count{ text-align:right; flex:none; }
+.count-line{ display:flex; align-items:baseline; justify-content:flex-end; gap:8px; }
+.count .n{
+  font-family:var(--mono); font-variant-numeric:tabular-nums;
+  font-size:44px; line-height:1; font-weight:600; letter-spacing:-.04em;
+  color:var(--accent-ink);
+}
+.count .u{ font-size:13px; color:var(--ink-3); }
+.count .hm{ display:block; margin-top:7px; font-family:var(--mono); font-size:13px; color:var(--ink-3); font-variant-numeric:tabular-nums; }
+.count .n.flip{ animation:flip .42s var(--ease-out); }
+@keyframes flip{
+  0%{ transform:translateY(-6px); opacity:.25; }
+  100%{ transform:none; opacity:1; }
+}
+
+/* 心电一条线：医学记录纸上的那一笔，入场时画出来 */
+.pulse{ margin-top:14px; height:30px; overflow:hidden; }
+.pulse svg{ display:block; width:100%; height:100%; }
+.pulse path{
+  fill:none; stroke:var(--line-strong); stroke-width:1.2;
+  stroke-linejoin:round; stroke-linecap:round;
+  vector-effect:non-scaling-stroke;
+  stroke-dasharray:1; stroke-dashoffset:1;
+  animation:draw 1.2s var(--ease-out) .15s forwards;
+}
+.pulse path.beat{
+  stroke:var(--accent); stroke-width:1.8;
+  animation-delay:.55s;
+}
+@keyframes draw{ to{ stroke-dashoffset:0; } }
+
+/* ---------- 主体两栏 ---------- */
+.body{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 268px;
+  gap:36px;
+  margin:26px 0 0;
+  padding-bottom:48px;
+}
+
+/* ---------- 清单 ---------- */
+.list-hd{
+  display:flex; align-items:baseline; justify-content:space-between; gap:16px; flex-wrap:wrap;
+  padding-bottom:8px; border-bottom:2px solid var(--ink);
+}
+.list-hd h2{ margin:0; font-size:16px; font-weight:650; letter-spacing:.01em; }
+.list-hd h2::before{ content:"✚"; font-size:11px; color:var(--accent); margin-right:7px; vertical-align:1px; }
+.list-hd .cnt{ font-family:var(--mono); font-size:13px; color:var(--ink-3); font-variant-numeric:tabular-nums; }
+
+.chips{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:10px 0 0; }
+.chip{
+  height:30px; padding:0 11px;
+  display:inline-flex; align-items:center; gap:7px;
+  background:transparent; border:1px solid var(--line); border-radius:3px;
+  font-size:13px; color:var(--ink-2); cursor:pointer;
+  transition:background-color .14s var(--ease), border-color .14s var(--ease), color .14s var(--ease);
+}
+.chip:hover{ border-color:var(--line-strong); color:var(--ink); }
+.chip[aria-pressed="true"]{ background:var(--ink); border-color:var(--ink); color:var(--paper); }
+.chip[aria-pressed="true"] .dot{ background:var(--paper) !important; }
+.chip .dot{ width:7px; height:7px; border-radius:2px; }
+
+.rows{ list-style:none; margin:0; padding:0; }
+.lh{
+  display:grid;
+  grid-template-columns:78px 46px 132px minmax(0,1fr) 96px;
+  gap:0 14px; padding:6px 4px 5px 14px;
+  font-size:12px; color:var(--ink-3); letter-spacing:.02em;
+  border-bottom:1px solid var(--line);
+}
+.row{
+  display:grid;
+  grid-template-columns:78px 46px 132px minmax(0,1fr) 96px;
+  align-items:center; gap:0 14px;
+  padding:11px 4px 11px 14px;
+  border-bottom:1px solid var(--line);
+  position:relative;
+  transition:background-color .16s var(--ease), opacity .2s var(--ease);
+  animation:rowIn .42s var(--ease-out) both;
+  animation-delay:calc(var(--i) * 26ms + 60ms);
+}
+.row::before{
+  content:""; position:absolute; left:0; top:11px; bottom:11px; width:3px; border-radius:2px;
+  background:var(--row-c, var(--ink-3)); opacity:.85;
+}
+.row:hover{ background:color-mix(in srgb, var(--ink) 4%, transparent); }
+.row:last-child{ border-bottom:1px solid var(--line-strong); }
+.row.passed{ opacity:.45; }
+.row.passed .rd, .row.passed .rt{ text-decoration:line-through; text-decoration-thickness:1px; }
+.row.hidden{ display:none; }
+.row.copied{ background:var(--accent-wash); }
+@keyframes rowIn{
+  from{ opacity:0; transform:translateY(6px); }
+  to{ opacity:1; transform:none; }
+}
+
+.rd{ font-family:var(--mono); font-variant-numeric:tabular-nums; font-size:16px; font-weight:600; line-height:1.2; }
+.rd small{ display:block; font-size:12px; font-weight:400; color:var(--ink-3); letter-spacing:.01em; }
+.rw{ font-size:13px; color:var(--ink-2); }
+.rt{ font-family:var(--mono); font-variant-numeric:tabular-nums; font-size:14px; color:var(--ink); white-space:nowrap; }
+.rc{ min-width:0; }
+.rc b{ display:block; font-size:15px; font-weight:560; line-height:1.4; text-wrap:pretty; }
+.rc .meta{ display:flex; align-items:center; gap:6px; margin-top:2px; font-size:12px; color:var(--ink-3); }
+.rr{ font-family:var(--mono); font-variant-numeric:tabular-nums; font-size:14px; color:var(--ink-2); }
+
+.empty{ display:none; padding:40px 0; text-align:center; color:var(--ink-3); font-size:14px; }
+.empty.on{ display:block; }
+
+/* ---------- 侧栏 ---------- */
+aside{ border-top:2px solid var(--ink); padding-top:14px; }
+aside h3{ margin:0 0 10px; font-size:13px; font-weight:600; color:var(--ink-2); letter-spacing:.02em; }
+.facts{ margin:0 0 26px; }
+.fact{
+  display:flex; align-items:baseline; justify-content:space-between; gap:12px;
+  padding:8px 0; border-bottom:1px solid var(--line);
+  font-size:13px; color:var(--ink-2);
+}
+.fact b{ font-family:var(--mono); font-variant-numeric:tabular-nums; font-size:14px; font-weight:600; color:var(--ink); }
+.mix{ margin:0 0 26px; }
+.mix-row{ display:grid; grid-template-columns:minmax(0,1fr) auto; gap:4px 10px; align-items:center; margin-bottom:12px; }
+.mix-row span{ font-size:12.5px; color:var(--ink-2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mix-row b{ font-family:var(--mono); font-size:12.5px; font-weight:600; font-variant-numeric:tabular-nums; color:var(--ink); }
+.mix-bar{ grid-column:1 / -1; height:3px; background:var(--surface-2); border-radius:2px; overflow:hidden; }
+.mix-bar i{ display:block; height:100%; background:var(--row-c, var(--ink-3)); transform-origin:left; animation:grow .7s var(--ease-out) both; animation-delay:.2s; }
+@keyframes grow{ from{ transform:scaleX(0); } to{ transform:scaleX(1); } }
+.tip{ font-size:12.5px; line-height:1.7; color:var(--ink-3); padding-top:12px; border-top:1px solid var(--line); }
+.tip kbd{
+  font-family:var(--mono); font-size:11.5px;
+  border:1px solid var(--line); border-bottom-width:2px; border-radius:3px;
+  padding:0 4px; margin:0 1px; color:var(--ink-2); background:var(--surface);
+}
+
+footer.foot{ border-top:1px solid var(--line); padding:14px 0 26px; font-size:12.5px; color:var(--ink-3); }
+footer.foot .wrap{ display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+
+/* ---------- 提示条 ---------- */
+.toast{
+  position:fixed; left:50%; bottom:28px; z-index:60;
+  transform:translate(-50%, 12px);
+  padding:10px 16px; background:var(--ink); color:var(--paper);
+  border-radius:4px; font-size:13px;
+  opacity:0; pointer-events:none;
+  transition:opacity .2s var(--ease), transform .2s var(--ease-out);
+}
+.toast.on{ opacity:1; transform:translate(-50%, 0); }
+
+/* ---------- 窄屏 ---------- */
+@media screen and (max-width: 900px){
+  .body{ grid-template-columns:minmax(0,1fr); gap:30px; }
+  aside{ display:grid; grid-template-columns:1fr 1fr; gap:0 28px; align-items:start; }
+  aside .tip{ grid-column:1 / -1; }
+}
+@media screen and (max-width: 720px){
+  .wrap{ padding:0 18px; }
+  .top-in{
+    grid-template-columns:minmax(0,1fr) auto;
+    grid-template-areas:"brand tools" "search search";
+    align-items:center; gap:10px 12px;
+    padding-block:14px 12px;
+  }
+  .brand h1{ font-size:19px; }
+  .brand-kicker{ font-size:11.5px; }
+  .brand{ gap:9px; }
+  .mark{ width:28px; height:28px; }
+  .mark svg{ width:13px; height:13px; }
+  .campus-kicker{ display:none; }
+  .search{ height:36px; }
+  .search input{ width:100%; }
+  .next{ margin-top:18px; padding:16px 18px 16px; }
+  .pulse{ margin-top:10px; height:22px; }
+  .next-main{ grid-template-columns:minmax(0,1fr) auto; gap:14px; align-items:end; }
+  .nx-date .md{ font-size:30px; }
+  .nx-date .tm{ font-size:16px; }
+  .nx-course{ font-size:19px; margin-top:6px; }
+  .nx-meta{ font-size:13px; gap:6px 12px; }
+  .count .n{ font-size:32px; }
+  .count .u, .count .hm{ font-size:12px; }
+  .lh{ display:none; }
+  .chips{ flex-wrap:nowrap; overflow-x:auto; padding-bottom:4px; padding-right:18px; scrollbar-width:none; }
+  .chips::-webkit-scrollbar{ display:none; }
+  .chips.scrollable{
+    -webkit-mask-image:linear-gradient(90deg, #000 calc(100% - 28px), transparent);
+    mask-image:linear-gradient(90deg, #000 calc(100% - 28px), transparent);
+  }
+  .chip{ flex:none; }
+  .row{ grid-template-columns:1fr auto; gap:2px 12px; padding:12px 2px 12px 12px; }
+  .rd{ grid-column:1; grid-row:1; font-size:14px; display:flex; gap:8px; align-items:baseline; }
+  .rd small{ display:inline; font-size:12px; }
+  .rw{ display:none; }
+  .rt{ grid-column:1; grid-row:2; font-size:13px; }
+  .rc{ grid-column:1; grid-row:3; margin-top:4px; }
+  .rc b{ font-size:14px; }
+  .rr{ grid-column:2; grid-row:2; justify-self:end; align-self:center; font-size:13px; color:var(--ink); }
+  aside{ grid-template-columns:1fr; }
+}
+
+/* ---------- 动效收敛 ---------- */
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{ animation-duration:.001ms !important; animation-delay:0ms !important; transition-duration:.001ms !important; }
+}
+
+/* ---------- 打印 ---------- */
+@media print{
+  @page{ size:A4; margin:14mm; }
+  :root, html[data-theme="dark"]{
+    --paper:#fff; --surface:#fff; --surface-2:#eee;
+    --ink:#000; --ink-2:#222; --ink-3:#444;
+    --line:#bbb; --line-strong:#777;
+    --accent:#000; --accent-ink:#000; --accent-wash:#f0f0f0;
+    --c-base:#1f4fa8; --c-marx:#8f231d; --c-pharm:#155c43; --c-opt:#4d3778;
+  }
+  html, body{ background:#fff; color:#000; font-size:10.5pt; }
+  body::before{ display:none; }
+  .wrap{ max-width:none; padding:0; }
+  .top-in{ display:block; padding:0 0 6pt; }
+  header.top{ position:static; border-bottom:1.5pt solid #000; background:none; }
+  .brand-kicker{ font-size:8.5pt; color:#444; }
+  .brand h1{ font-size:15pt; margin-top:1pt; }
+  .tools, .search, .chips, .row-copy, .toast, footer.foot, .lh{ display:none !important; }
+
+  .next{ margin:10pt 0 12pt; padding:7pt 9pt; border:0; border-left:3pt solid #000; background:#fff; }
+  .next-hd{ padding-bottom:5pt; }
+  .next-hd .label{ font-size:8.5pt; color:#333; }
+  .next-hd .label b{ color:#000; }
+  .next-when{ font-size:8.5pt; color:#444; }
+  .next-main{ padding-top:6pt; gap:12pt; }
+  .nx-date .md{ font-size:17pt; }
+  .nx-date .wd, .nx-date .tm{ font-size:9.5pt; color:#333; }
+  .nx-course{ font-size:13pt; margin-top:2pt; }
+  .nx-meta{ font-size:8.5pt; color:#333; margin-top:2pt; }
+  .nx-meta .room{ color:#000; }
+  .count .n{ font-size:26pt; color:#000; }
+  .count .u, .count .hm{ font-size:8pt; color:#444; }
+  .count{ display:none !important; }
+  .pulse{ display:none; }
+
+  .body{ display:block; margin:8pt 0 0; padding-bottom:0; }
+  aside{ display:none; }
+  .list-hd{ padding-bottom:3pt; border-bottom:1.5pt solid #000; }
+  .list-hd h2{ font-size:11pt; }
+  .list-hd .cnt{ font-size:8.5pt; color:#444; }
+
+  .rows{ margin-top:2pt; }
+  .row{
+    grid-template-columns:44pt 30pt 64pt minmax(0,1fr) 58pt;
+    gap:0 8pt; padding:4pt 0 4pt 7pt;
+    break-inside:avoid; animation:none; opacity:1;
+    border-bottom:.5pt solid #999;
+  }
+  .row.passed{ opacity:1; }
+  .row.passed .rd, .row.passed .rt{ text-decoration:none; }
+  .row::before{ background:#000 !important; top:4pt; bottom:4pt; width:2pt; }
+  .rd{ font-size:10pt; }
+  .rd small{ display:inline; margin-left:2pt; font-size:8pt; color:#444; }
+  .rw{ font-size:8.5pt; color:#333; }
+  .rt{ font-size:9.5pt; }
+  .rt small{ display:inline; margin-left:2pt; font-size:8pt; color:#444; }
+  .rc b{ font-size:10pt; }
+  .rc .meta{ font-size:8pt; color:#444; margin-top:0; }
+  .rr{ font-size:9.5pt; color:#333; }
+  .rows .row:nth-child(even){ background:#f7f7f7; }
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap top-in">
+    <div class="brand">
+      <span class="mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 4.5v15M4.5 12h15"/></svg>
+      </span>
+      <div class="brand-txt">
+        <span class="brand-kicker">2026–2027 学年 · 第一学期<span class="campus-kicker"> · 滨海校区</span></span>
+        <h1>期末考试时间表</h1>
+      </div>
+    </div>
+    <label class="search" for="q">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg>
+      <input id="q" type="search" placeholder="搜课程、考场、学院" autocomplete="off" aria-label="搜索考试" />
+    </label>
+    <div class="tools">
+      <button class="icon-btn" id="themeBtn" title="切换明暗（T）" aria-label="切换明暗主题">
+        <svg class="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6L17 7M7 17l-1.4 1.4"/></svg>
+        <svg class="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5z"/></svg>
+      </button>
+      <button class="icon-btn" id="printBtn" title="打印 / 导出 PDF（P）" aria-label="打印或导出 PDF">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 9V4h10v5"/><rect x="4.5" y="9" width="15" height="7.5" rx="1.5"/><path d="M7 14.5h10V20H7z"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section class="next" aria-labelledby="nextLabel">
+    <div class="next-hd">
+      <div class="label" id="nextLabel">下一场考试 <b id="nxState"></b></div>
+      <div class="next-when" id="nxWhen"></div>
+    </div>
+    <div class="next-main">
+      <div>
+        <div class="nx-date">
+          <span class="md" id="nxMD">—</span>
+          <span class="wd" id="nxWD">—</span>
+          <span class="tm" id="nxTM">—</span>
+        </div>
+        <div class="nx-course" id="nxCourse">—</div>
+        <div class="nx-meta">
+          <span class="kv"><i class="dot" id="nxDot"></i><span id="nxCollege">—</span></span>
+          <span class="kv">考场 <span class="room" id="nxRoom">—</span><span class="sep">·</span><span id="nxCampus">滨海校区</span></span>
+        </div>
+      </div>
+      <div class="count" aria-live="polite">
+        <div class="count-line"><b class="n" id="cdDays">—</b><span class="u" id="cdUnit">天后开考</span></div>
+        <span class="hm" id="cdHm"></span>
+      </div>
+    </div>
+    <div class="pulse" aria-hidden="true">
+      <svg viewBox="0 0 1200 36" preserveAspectRatio="none">
+        <path pathLength="1" d="M0 18 H120 L128 18 L134 10 L140 22 L146 6 L152 30 L158 16 L164 18 H240 L248 18 L254 10 L260 22 L266 6 L272 30 L278 16 L284 18 H360 L368 18 L374 10 L380 22 L386 6 L392 30 L398 16 L404 18 H480 L488 18 L494 10 L500 22 L506 6 L512 30 L518 16 L524 18 H600 L608 18 L614 10 L620 22 L626 6 L632 30 L638 16 L644 18 H720 L728 18 L734 10 L740 22 L746 6 L752 30 L758 16 L764 18 H840 L848 18 L854 10 L860 22 L866 6 L872 30 L878 16 L884 18 H960 L968 18 L974 10 L980 22 L986 6 L992 30 L998 16 L1004 18 H1080 L1088 18 L1094 10 L1100 22 L1106 6 L1112 30 L1118 16 L1124 18 H1200" />
+        <path class="beat" pathLength="1" d="M1080 18 L1088 18 L1094 10 L1100 22 L1106 6 L1112 30 L1118 16 L1124 18 H1200" />
+      </svg>
+    </div>
+  </section>
+
+  <div class="body">
+    <section aria-labelledby="listTitle">
+      <div class="list-hd">
+        <h2 id="listTitle">全部考试</h2>
+        <span class="cnt" id="listCnt">8 场</span>
+      </div>
+      <div class="chips" id="chips" role="group" aria-label="按学院筛选"></div>
+      <div class="lh" aria-hidden="true">
+        <span>日期</span><span>星期</span><span>时间</span><span>课程</span><span>考场</span>
+      </div>
+      <ol class="rows" id="rows"></ol>
+      <p class="empty" id="empty">没有匹配的考试，换个关键词或切回全部。</p>
+    </section>
+
+    <aside aria-label="概览">
+      <h3>时间与场次</h3>
+      <div class="facts">
+        <div class="fact"><span>场次</span><b id="fCount">—</b></div>
+        <div class="fact"><span>首场</span><b id="fFirst">—</b></div>
+        <div class="fact"><span>末场</span><b id="fLast">—</b></div>
+        <div class="fact"><span>跨度</span><b id="fSpan">—</b></div>
+        <div class="fact"><span>已考</span><b id="fDone">—</b></div>
+      </div>
+
+      <h3>按开课学院</h3>
+      <div class="mix" id="mix"></div>
+
+      <div class="tip">
+        点任意一行可复制该场信息；<kbd>/</kbd> 搜索、<kbd>T</kbd> 切主题、<kbd>P</kbd> 打印、<kbd>Esc</kbd> 退出搜索。打印时会自动隐藏筛选与侧栏。
+      </div>
+    </aside>
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <span id="footMeta">共 8 场考试 · 2026-12-23 至 2027-01-13</span>
+    <span>考场信息以教务系统为准，考前请再核对一次。</span>
+  </div>
+</footer>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------------- 数据 ---------------- */
+  var EXAMS = [
+    { course:"系统解剖学", date:"2027-01-13", start:"13:30", end:"15:00", room:"6111", campus:"滨海校区", college:"基础医学院" },
+    { course:"系统解剖学", date:"2027-01-13", start:"12:40", end:"13:20", room:"6111", campus:"滨海校区", college:"基础医学院" },
+    { course:"习近平新时代中国特色社会主义思想概论", date:"2027-01-07", start:"14:40", end:"16:10", room:"2315", campus:"滨海校区", college:"马克思主义学院" },
+    { course:"医用基础化学", date:"2027-01-05", start:"10:30", end:"12:00", room:"2401", campus:"滨海校区", college:"药学院" },
+    { course:"毛泽东思想和中国特色社会主义理论体系概论", date:"2027-01-04", start:"13:00", end:"14:30", room:"5128计算机房", campus:"滨海校区", college:"马克思主义学院" },
+    { course:"组织胚胎学", date:"2026-12-30", start:"18:30", end:"20:00", room:"6111", campus:"滨海校区", college:"基础医学院" },
+    { course:"医用物理学", date:"2026-12-29", start:"18:30", end:"20:00", room:"2403", campus:"滨海校区", college:"眼视光学院（生物医学工程学院）" },
+    { course:"组织胚胎学", date:"2026-12-23", start:"12:30", end:"13:00", room:"2203", campus:"滨海校区", college:"基础医学院" }
+  ];
+
+  var COLLEGE_COLOR = {
+    "基础医学院":"var(--c-base)",
+    "马克思主义学院":"var(--c-marx)",
+    "药学院":"var(--c-pharm)",
+    "眼视光学院（生物医学工程学院）":"var(--c-opt)"
+  };
+  var WD = ["周日","周一","周二","周三","周四","周五","周六"];
+
+  /* ---------------- 工具 ---------------- */
+  function pad(n){ return n < 10 ? "0" + n : "" + n; }
+  function parseDate(s){ var p = s.split("-"); return new Date(+p[0], +p[1] - 1, +p[2]); }
+  function startAt(e){
+    var d = parseDate(e.date), t = e.start.split(":");
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate(), +t[0], +t[1]);
+  }
+  function endAt(e){
+    var d = parseDate(e.date), t = e.end.split(":");
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate(), +t[0], +t[1]);
+  }
+  function dayStart(d){ return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+  function daysBetween(a, b){ return Math.round((dayStart(b) - dayStart(a)) / 864e5); }
+  function esc(s){ return String(s).replace(/[&<>"']/g, function(c){ return ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]; }); }
+  function colorOf(e){ return COLLEGE_COLOR[e.college] || "var(--ink-3)"; }
+  function mdText(d){ return (d.getMonth() + 1) + "月" + d.getDate() + "日"; }
+  function shortDate(d){ return pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+
+  /* ---------------- 派生 ---------------- */
+  var rows = EXAMS.map(function(e, i){
+    var s = startAt(e), en = endAt(e), d = parseDate(e.date);
+    return {
+      raw:e, id:"ex-" + i, start:s, end:en,
+      mins:Math.round((en - s) / 6e4),
+      wd:WD[d.getDay()], day:d.getDate(), mon:d.getMonth() + 1
+    };
+  }).sort(function(a, b){ return a.start - b.start; });
+
+  var state = { q:"", college:"all" };
+  var $ = function(s, r){ return (r || document).querySelector(s); };
+  var $$ = function(s, r){ return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
+
+  /* ---------------- 主题 ---------------- */
+  var root = document.documentElement;
+  try {
+    var saved = localStorage.getItem("exam-theme");
+    if (saved === "dark" || saved === "light") root.setAttribute("data-theme", saved);
+  } catch(err){}
+
+  function toggleTheme(){
+    var next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+    root.setAttribute("data-theme", next);
+    try { localStorage.setItem("exam-theme", next); } catch(err){}
+  }
+
+  /* ---------------- 下一场 ---------------- */
+  var nx = null;
+  (function(){
+    var now = new Date();
+    for (var i = 0; i < rows.length; i++){
+      if (rows[i].end > now){ nx = rows[i]; break; }
+    }
+  })();
+
+  var lastDays = null;
+
+  function tick(){
+    if (!nx) return;
+    var now = new Date();
+    var diff = nx.start - now;
+    var dayEl = $("#cdDays"), unitEl = $("#cdUnit"), hmEl = $("#cdHm");
+    if (diff <= 0){
+      dayEl.textContent = "00";
+      if (nx.end > now){
+        unitEl.textContent = "正在考试";
+        hmEl.textContent = "注意剩余时间";
+        $("#nxState").textContent = "进行中";
+      } else {
+        unitEl.textContent = "已结束";
+        hmEl.textContent = "";
+      }
+      return;
+    }
+    var days = Math.floor(diff / 864e5);
+    var hours = Math.floor((diff % 864e5) / 36e5);
+    var mins = Math.floor((diff % 36e5) / 6e4);
+    if (days !== lastDays && lastDays !== null){
+      dayEl.classList.remove("flip");
+      void dayEl.offsetWidth;
+      dayEl.classList.add("flip");
+    }
+    lastDays = days;
+    dayEl.textContent = pad(days);
+    unitEl.textContent = "天后开考";
+    hmEl.textContent = hours + " 小时 " + pad(mins) + " 分";
+    $("#nxState").textContent = days === 0 ? "就在今天" : (days === 1 ? "明天" : "");
+  }
+
+  function paintNext(){
+    if (!nx){
+      $("#nxState").textContent = "已全部结束";
+      $("#nxMD").textContent = "—";
+      $("#nxWD").textContent = "";
+      $("#nxTM").textContent = "";
+      $("#nxCourse").textContent = "本学期考试都已结束";
+      $("#nxCollege").textContent = "";
+      $("#nxRoom").textContent = "—";
+      $("#nxCampus").textContent = "";
+      $("#cdDays").textContent = "00";
+      $("#cdUnit").textContent = "场待考";
+      $("#nxWhen").textContent = "";
+      return;
+    }
+    var e = nx.raw, d = parseDate(e.date);
+    $("#nxMD").textContent = mdText(d);
+    $("#nxWD").textContent = nx.wd;
+    $("#nxTM").textContent = e.start + "–" + e.end;
+    $("#nxCourse").textContent = e.course;
+    $("#nxCollege").textContent = e.college;
+    $("#nxDot").style.background = colorOf(e);
+    $("#nxRoom").textContent = e.room;
+    $("#nxCampus").textContent = e.campus;
+    $("#nxWhen").textContent = "考试时长 " + nx.mins + " 分钟";
+    tick();
+  }
+
+  /* ---------------- 清单 ---------------- */
+  function renderRows(){
+    var now = new Date();
+    $("#rows").innerHTML = rows.map(function(r, i){
+      var e = r.raw;
+      var passed = r.end < now;
+      return ''
+        + '<li class="row' + (passed ? " passed" : "") + '" data-id="' + r.id + '" style="--i:' + i + '; --row-c:' + colorOf(e) + '">'
+        +   '<span class="rd">' + r.day + '<small>' + r.mon + '月</small></span>'
+        +   '<span class="rw">' + r.wd + '</span>'
+        +   '<span class="rt">' + e.start + '–' + e.end + '</span>'
+        +   '<span class="rc"><b>' + esc(e.course) + '</b>'
+        +     '<span class="meta"><i class="dot" style="background:' + colorOf(e) + '"></i>' + esc(e.college) + '</span>'
+        +   '</span>'
+        +   '<span class="rr">' + esc(e.room) + '</span>'
+        + '</li>';
+    }).join("");
+  }
+
+  function shortCollege(c){ return c.indexOf("眼视光学院") === 0 ? "眼视光学院" : c; }
+
+  function updateChipOverflow(){
+    var el = $("#chips");
+    if (el) el.classList.toggle("scrollable", el.scrollWidth > el.clientWidth + 1);
+  }
+
+  function renderChips(){
+    var colleges = [];
+    rows.forEach(function(r){ if (colleges.indexOf(r.raw.college) < 0) colleges.push(r.raw.college); });
+    $("#chips").innerHTML = '<button class="chip" type="button" data-college="all" aria-pressed="true">全部</button>'
+      + colleges.map(function(c){
+          return '<button class="chip" type="button" data-college="' + esc(c) + '" title="' + esc(c) + '" aria-pressed="false">'
+            + '<i class="dot" style="background:' + (COLLEGE_COLOR[c] || "var(--ink-3)") + '"></i>' + esc(shortCollege(c)) + '</button>';
+        }).join("");
+    updateChipOverflow();
+  }
+
+  function matches(r, q, college){
+    var e = r.raw;
+    if (college !== "all" && e.college !== college) return false;
+    if (!q) return true;
+    var hay = [e.course, e.room, e.college, e.campus, e.date, e.start, e.end, r.wd].join(" ").toLowerCase();
+    return hay.indexOf(q) > -1;
+  }
+
+  function applyFilter(){
+    var q = state.q.trim().toLowerCase();
+    var visible = 0;
+    $$(".row").forEach(function(el){
+      var r = rows.filter(function(x){ return x.id === el.dataset.id; })[0];
+      var ok = r && matches(r, q, state.college);
+      el.classList.toggle("hidden", !ok);
+      if (ok) visible++;
+    });
+    $("#listCnt").textContent = visible + " / " + rows.length + " 场";
+    $("#empty").classList.toggle("on", visible === 0);
+  }
+
+  /* ---------------- 复制与提示 ---------------- */
+  function copyText(t){
+    if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(t);
+    return new Promise(function(res, rej){
+      var ta = document.createElement("textarea");
+      ta.value = t;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand("copy") ? res() : rej(new Error("copy failed")); }
+      catch(err){ rej(err); }
+      finally { document.body.removeChild(ta); }
+    });
+  }
+
+  function toast(msg){
+    var el = $("#toast");
+    el.textContent = msg;
+    el.classList.add("on");
+    clearTimeout(el._t);
+    el._t = setTimeout(function(){ el.classList.remove("on"); }, 2200);
+  }
+
+  function lineOf(r){
+    var e = r.raw;
+    return e.course + "　" + mdText(parseDate(e.date)) + " " + r.wd + "　" + e.start + "–" + e.end + "　" + e.room;
+  }
+
+  /* ---------------- 概览 ---------------- */
+  function renderFacts(){
+    var first = rows[0], last = rows[rows.length - 1];
+    var span = daysBetween(parseDate(first.raw.date), parseDate(last.raw.date)) + 1;
+    var done = rows.filter(function(r){ return r.end < new Date(); }).length;
+    $("#fCount").textContent = rows.length + " 场";
+    $("#fFirst").textContent = shortDate(parseDate(first.raw.date));
+    $("#fLast").textContent = shortDate(parseDate(last.raw.date));
+    $("#fSpan").textContent = span + " 天";
+    $("#fDone").textContent = done + " / " + rows.length;
+    $("#footMeta").textContent = "共 " + rows.length + " 场考试 · 2026-12-23 至 2027-01-13";
+
+    var counts = {};
+    rows.forEach(function(r){ counts[r.raw.college] = (counts[r.raw.college] || 0) + 1; });
+    var max = Math.max.apply(null, Object.keys(counts).map(function(k){ return counts[k]; }));
+    $("#mix").innerHTML = Object.keys(counts).map(function(c){
+      var pct = counts[c] / rows.length * 100;
+      var pctTxt = (Math.round(pct) === pct) ? String(pct) : pct.toFixed(1);
+      return '<div class="mix-row" style="--row-c:' + (COLLEGE_COLOR[c] || "var(--ink-3)") + '">'
+        + '<span title="' + esc(c) + '">' + esc(c) + '</span>'
+        + '<b>' + counts[c] + ' 场 · ' + pctTxt + '%</b>'
+        + '<div class="mix-bar"><i style="width:' + (counts[c] / max * 100) + '%"></i></div>'
+        + '</div>';
+    }).join("");
+  }
+
+  /* ---------------- 事件 ---------------- */
+  function bind(){
+    $("#themeBtn").addEventListener("click", toggleTheme);
+    $("#printBtn").addEventListener("click", function(){ window.print(); });
+
+    var search = $("#q");
+    search.addEventListener("input", function(){
+      state.q = this.value;
+      applyFilter();
+    });
+
+    $("#chips").addEventListener("click", function(ev){
+      var btn = ev.target.closest(".chip");
+      if (!btn) return;
+      state.college = btn.dataset.college;
+      $$(".chip").forEach(function(c){ c.setAttribute("aria-pressed", String(c === btn)); });
+      applyFilter();
+    });
+
+    $("#rows").addEventListener("click", function(ev){
+      var row = ev.target.closest(".row");
+      if (!row) return;
+      var r = rows.filter(function(x){ return x.id === row.dataset.id; })[0];
+      if (!r) return;
+      copyText(lineOf(r)).then(function(){
+        row.classList.add("copied");
+        setTimeout(function(){ row.classList.remove("copied"); }, 700);
+        toast("已复制：" + r.raw.course + " · " + r.raw.room);
+      }).catch(function(){
+        toast("复制失败，请手动选中文字");
+      });
+    });
+
+    document.addEventListener("keydown", function(ev){
+      var tag = (ev.target.tagName || "").toLowerCase();
+      var typing = tag === "input" || tag === "textarea";
+      if (ev.key === "/" && !typing){
+        ev.preventDefault();
+        search.focus();
+      } else if ((ev.key === "t" || ev.key === "T") && !typing){
+        toggleTheme();
+      } else if ((ev.key === "p" || ev.key === "P") && !typing){
+        ev.preventDefault();
+        window.print();
+      } else if (ev.key === "Escape" && state.q){
+        search.value = "";
+        state.q = "";
+        applyFilter();
+        search.blur();
+      }
+    });
+  }
+
+  /* ---------------- 启动 ---------------- */
+  renderRows();
+  renderChips();
+  renderFacts();
+  paintNext();
+  applyFilter();
+  bind();
+  window.addEventListener("resize", updateChipOverflow);
+  setInterval(tick, 1000);
+})();
+</script>
+</body>
+</html>
