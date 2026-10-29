@@ -302,6 +302,32 @@
   .article-page .article-toc--margin { display: none; }
   @media (min-width: 1101px) and (max-width: 1399.98px) {
     .article-page .article-toc--margin { display: block; }
+
+    /* 左边注整栏随正文拉伸、不再吸顶：元信息随页面滚走，
+       只把目录钉在视口内，目录过长时在自身范围内滚动 */
+    .article-page .article-margin {
+      position: static;
+      align-self: stretch;
+      max-height: none;
+      overflow: visible;
+      display: flex;
+      flex-direction: column;
+    }
+    /* 目录排在边注最后，吸顶时不会盖住下方的边注说明 */
+    .article-page .article-margin > * { flex: none; }
+    .article-page .article-margin > .print-action { align-self: flex-start; }
+    .article-page .article-margin > .margin-note { order: 1; }
+    .article-page .article-toc--margin {
+      order: 2;
+      position: sticky;
+      top: 92px;
+      max-height: calc(100vh - 116px);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      scrollbar-width: thin;
+      scrollbar-color: var(--c-rule) transparent;
+      padding-right: 6px;
+    }
   }
 
   /* 宽屏：右边注的目录做成一列编号索引 */

@@ -98,12 +98,10 @@
     --hero-font: var(--latin-display), var(--cjk-display), "Source Han Serif SC", "Songti SC", "SimSun", serif;
     --hero-weight: 900;
 
-    /* ---------- 字号音阶（按四槽位字体重新校准，2026-10 版） ----------
-       依据：Anthropic Sans 的 x-height 比 Inter 略高、字面更方，13px 已相当于旧版
-       13.5–14px 的观感；Noto Serif SC / 宋体的字面中心比拉丁衬线低且笔画细，
-       同字号下"小一号"。所以拉丁侧收窄、中文展示侧整体抬高一档，而不是全站等比放大。
-       音阶比例 ≈1.22（正文→条目）与 1.33+（条目→标题），符合中文阅读的视觉节奏。 */
-    --type-display: clamp(2.9rem, 4.2vw + 1rem, 6.2rem); /* 中文展示行 */
+    /* ---------- 字号音阶（2026-10 版，收敛跨度） ----------
+       展示级从 clamp(2.9→6.2rem) 收到 clamp(2.4→4.8rem)：桌面端不再撑到 99px，
+       移动端不再断崖到 46px，阶梯更柔和。其余阶不变。 */
+    --type-display: clamp(2.4rem, 3.6vw + 1rem, 4.8rem); /* 中文展示行 */
     --type-title: clamp(2.125rem, 1.75vw + 1.35rem, 3.25rem);
     --type-h2: clamp(1.75rem, 1.15vw + 1.3rem, 2.5rem);
     --type-h3: clamp(1.375rem, .5vw + 1.2rem, 1.625rem);

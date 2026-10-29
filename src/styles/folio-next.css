@@ -37,19 +37,9 @@
   /* 全幅块：相对自身中心对称地向视口两侧扩展 100vw。
      用「左右各半」而不是 width:100vw，避免滚动条宽度带来的单侧偏移——
      即使 100vw 比可视区宽出 15px，左右也只各多出 7.5px，文字中心不动。 */
-  .f-bleed {
-    position: relative;
-    margin-inline: calc(50% - 50vw);
-    width: auto;
-  }
   html { overflow-x: clip; }
 
   /* 内容列：文字类块永远落在可读行宽内，网格类块用满 shell 内容宽 */
-  .f-col {
-    width: 100%;
-    max-width: var(--measure);
-    margin-inline: auto;
-  }
 }
 
 /* ───────────────────────── base：排版基线 ───────────────────────── */
@@ -74,7 +64,6 @@
   p { line-height: inherit; }
 
   /* 小型大写：拉丁用小号 + 宽字距；中文不用大写，改用字号与颜色区分 */
-  .f-caps { font-size: var(--type-micro); letter-spacing: var(--track-caps); }
 }
 
 /* ───────────────────────── components：首屏横幅 ───────────────────────── */
@@ -401,6 +390,23 @@
     justify-content: center;
     gap: var(--p-sp-3);
   }
+  /* 首屏按钮跟随横幅文字极性（--hero-ink），不跟页面明暗：
+     否则明色模式下幽灵按钮是墨字压在暗图上，几乎看不见。 */
+  .f-hero__actions .f-btn {
+    background: var(--hero-ink);
+    color: var(--hero-veil-color);
+    border-color: var(--hero-ink);
+  }
+  .f-hero__actions .f-btn--ghost {
+    background: color-mix(in oklab, var(--hero-veil-color) 18%, transparent);
+    color: var(--hero-ink);
+    border-color: var(--hero-ink-3);
+    backdrop-filter: blur(6px);
+  }
+  .f-hero__actions .f-btn--ghost:hover {
+    border-color: var(--hero-metal);
+    color: var(--hero-ink);
+  }
 
   /* 入场：内容整体轻轻上浮（一次性，不循环）。
      domain-rule 有自己的「细线展开」动画，因此从这条通用规则里排除。 */
@@ -488,7 +494,7 @@
 /* ───────────────────────── components：首页编目卡片 ───────────────────────── */
 @layer components {
   .f-recent {
-    --_gap: clamp(1.25rem, 1.6vw, 2rem);
+    --_gap: clamp(1.5rem, 1.8vw, 2rem);
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: var(--_gap) var(--_gap);

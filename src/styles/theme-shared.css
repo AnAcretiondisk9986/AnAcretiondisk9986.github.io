@@ -127,8 +127,7 @@
 }
 
 /* ── Liquid 主题的 hero 层：默认隐藏，由 still/fluid 主题规则再打开 ── */
-.liquid-hero-media,
-.liquid-hero-copy {
+.liquid-hero-media {
   display: none;
 }
 }

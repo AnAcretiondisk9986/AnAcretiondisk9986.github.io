@@ -36,9 +36,9 @@
 
   /* ── 上半段：报头双行线 ── */
   .f-register {
-    padding-bottom: 6px;
-    font-size: 0.6875rem;
-    line-height: 1.35;
+    padding-bottom: 4px;
+    font-size: 0.625rem;
+    line-height: 1.4;
     letter-spacing: 0.16em;
   }
 

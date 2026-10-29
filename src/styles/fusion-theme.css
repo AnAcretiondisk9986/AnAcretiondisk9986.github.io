@@ -56,25 +56,11 @@
   background: var(--paper);
 }
 
-:root[data-visual-theme] .paper-grain {
-  opacity: 0.06;
-  mix-blend-mode: normal;
-}
-
-:root[data-theme='dark'][data-visual-theme] .paper-grain {
-  opacity: 0.04;
-}
-
 :root[data-visual-theme] .site-shell {
   width: min(100% - 32px, 1280px);
   padding-inline: clamp(16px, 4vw, 56px);
   border: 0;
   box-shadow: none;
-}
-
-:root[data-visual-theme] .edge-note,
-:root[data-visual-theme] .header-register {
-  display: none;
 }
 
 :root[data-visual-theme] .site-header {
@@ -86,42 +72,12 @@
   backdrop-filter: blur(18px) saturate(135%);
 }
 
-:root[data-visual-theme] .header-main {
-  min-height: 70px;
-  gap: 24px;
-}
-
-:root[data-visual-theme] .site-name {
-  gap: 11px;
-}
-
-:root[data-visual-theme] .site-seal {
-  width: 38px;
-  height: 38px;
-}
-
-:root[data-visual-theme] .site-name b {
-  font-family: var(--sans);
-  font-size: 1rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-}
-
-:root[data-visual-theme] .site-name small {
-  margin-top: 3px;
-  color: var(--ink-faint);
-  font-family: var(--sans);
-  font-size: 0.68rem;
-  letter-spacing: 0;
-}
-
 :root[data-visual-theme] .site-header nav {
   min-height: 70px;
   gap: 3px;
 }
 
 :root[data-visual-theme] .site-header nav a,
-:root[data-visual-theme] .header-search-link,
 :root[data-visual-theme] .theme-toggle {
   min-width: 0;
   min-height: 42px;
@@ -136,7 +92,6 @@
 }
 
 :root[data-visual-theme] .site-header nav a:hover,
-:root[data-visual-theme] .header-search-link:hover,
 :root[data-visual-theme] .theme-toggle:hover,
 :root[data-visual-theme] .site-header nav a[aria-current='page'] {
   color: var(--ink);
@@ -152,22 +107,6 @@
   background: var(--gold);
 }
 
-:root[data-visual-theme] .site-header nav a .nav-index {
-  display: none;
-}
-
-:root[data-visual-theme] .header-search-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  text-decoration: none;
-}
-
-:root[data-visual-theme] .header-search-link .ui-icon {
-  width: 16px;
-  height: 16px;
-}
-
 :root[data-visual-theme] .theme-toggle {
   flex-direction: row;
   gap: 6px;
@@ -179,159 +118,7 @@
   color: var(--gold);
 }
 
-:root[data-visual-theme] .theme-toggle__label {
-  font-size: 0.72rem;
-}
-
 /* 首页 Hero：用一张图建立氛围，文字和操作保持高对比度。 */
-:root[data-visual-theme] .fusion-hero {
-  position: relative;
-  min-height: clamp(540px, 68vh, 720px);
-  margin-top: 22px;
-  overflow: hidden;
-  border: 1px solid var(--rule-strong);
-  border-radius: 24px;
-  isolation: isolate;
-  background: var(--paper-deep);
-}
-
-:root[data-visual-theme] .fusion-hero__media,
-:root[data-visual-theme] .fusion-hero__media::after {
-  position: absolute;
-  inset: 0;
-}
-
-:root[data-visual-theme] .fusion-hero__media::after {
-  z-index: 1;
-  content: '';
-  background:
-    linear-gradient(90deg, rgba(6, 15, 18, 0.82) 0%, rgba(6, 15, 18, 0.53) 40%, rgba(6, 15, 18, 0.08) 82%),
-    linear-gradient(0deg, rgba(6, 15, 18, 0.5), transparent 42%);
-}
-
-:root[data-visual-theme] .fusion-hero__media img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  filter: saturate(0.88) contrast(1.04);
-  transform: scale(1.015);
-}
-
-:root[data-visual-theme] .fusion-hero__content {
-  position: relative;
-  z-index: 2;
-  display: flex;
-  min-height: inherit;
-  max-width: 1040px;
-  flex-direction: column;
-  justify-content: flex-end;
-  padding: clamp(34px, 7vw, 86px);
-  color: #fff;
-}
-
-:root[data-visual-theme] .fusion-hero__eyebrow {
-  margin: 0 0 20px;
-  color: #a9e6ea;
-  font-family: var(--latin);
-  font-size: 0.68rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-:root[data-visual-theme] .fusion-hero h1 {
-  /* 标题是中英混排（「欢迎来到Blog.Acretiondisk.top」）且词间没有空格，
-     排版空间要按最长的不可断片段 Blog.Acretiondisk.top（≈10.2em）来算：
-     字号一旦超过「可用宽 / 10.2em」，拉丁串就横向溢出，被
-     .fusion-hero 的 overflow:hidden 直接裁掉（390px 手机端曾把 .top 整段吃掉）。
-     上限 5rem 配合内容区 1040px（扣除内边距后标题可用宽 ≈868px）留有余量；
-     overflow-wrap 只作为标题被改得更长时的兜底。 */
-  max-width: 100%;
-  margin: 0 0 24px;
-  color: #fff;
-  font-family: var(--sans);
-  font-size: clamp(2.6rem, 5.4vw, 5rem);
-  font-weight: 700;
-  /* 原 -0.08em 对中文过度压缩（字形相贴），收到 -0.02em 只保留紧凑感 */
-  letter-spacing: -0.02em;
-  /* 原 0.98 让折行后的中文字形上下相碰 */
-  line-height: 1.1;
-  overflow-wrap: break-word;
-}
-
-:root[data-visual-theme] .fusion-hero h1 span,
-:root[data-visual-theme] .fusion-hero h1 em {
-  display: block;
-}
-
-:root[data-visual-theme] .fusion-hero h1 em {
-  color: #ffb49f;
-  font-style: normal;
-}
-
-:root[data-visual-theme] .fusion-hero__description {
-  max-width: 530px;
-  margin: 0;
-  color: rgba(255, 255, 255, 0.82);
-  font-size: clamp(1rem, 1.6vw, 1.18rem);
-  line-height: 1.8;
-}
-
-:root[data-visual-theme] .fusion-hero__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-top: 32px;
-}
-
-:root[data-visual-theme] .fusion-button {
-  display: inline-flex;
-  min-height: 46px;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 0 17px;
-  border: 1px solid rgba(255, 255, 255, 0.36);
-  border-radius: 999px;
-  color: #fff;
-  font-size: 0.84rem;
-  text-decoration: none;
-  transition: transform 180ms ease, background-color 180ms ease, border-color 180ms ease;
-}
-
-:root[data-visual-theme] .fusion-button:hover {
-  transform: translateY(-2px);
-}
-
-:root[data-visual-theme] .fusion-button--primary {
-  border-color: var(--fusion-coral);
-  background: var(--fusion-coral);
-  color: #fff;
-}
-
-:root[data-visual-theme] .fusion-button--primary:hover {
-  background: #f39c87;
-}
-
-:root[data-visual-theme] .fusion-button--ghost {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(12px);
-}
-
-:root[data-visual-theme] .fusion-button--ghost:hover {
-  border-color: rgba(255, 255, 255, 0.7);
-  background: rgba(255, 255, 255, 0.18);
-}
-
-:root[data-visual-theme] .fusion-hero__meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px 22px;
-  margin-top: 48px;
-  color: rgba(255, 255, 255, 0.62);
-  font-family: var(--latin);
-  font-size: 0.62rem;
-  letter-spacing: 0.05em;
-}
 
 /* 内容分区 */
 :root[data-visual-theme] .fusion-section {
@@ -339,7 +126,6 @@
   border-bottom: 1px solid var(--rule);
 }
 
-:root[data-visual-theme] .fusion-section__header,
 :root[data-visual-theme] .fusion-section .section-heading {
   display: flex;
   align-items: flex-end;
@@ -348,7 +134,6 @@
   margin-bottom: 30px;
 }
 
-:root[data-visual-theme] .fusion-section__header h2,
 :root[data-visual-theme] .fusion-section .section-heading h2 {
   margin: 0;
   color: var(--ink);
@@ -359,8 +144,7 @@
   line-height: 1;
 }
 
-:root[data-visual-theme] .fusion-section .eyebrow,
-:root[data-visual-theme] .fusion-section__header .eyebrow {
+:root[data-visual-theme] .fusion-section .eyebrow {
   margin-bottom: 13px;
   color: var(--fusion-cyan);
   font-family: var(--latin);
@@ -368,7 +152,6 @@
   letter-spacing: 0.08em;
 }
 
-:root[data-visual-theme] .fusion-section__aside,
 :root[data-visual-theme] .fusion-section .heading-note {
   display: flex;
   align-items: center;
@@ -377,7 +160,6 @@
   font-size: 0.78rem;
 }
 
-:root[data-visual-theme] .fusion-section__aside a,
 :root[data-visual-theme] .fusion-section .heading-note a {
   display: inline-flex;
   align-items: center;
@@ -392,59 +174,8 @@
 }
 
 /* 首页「最新文章」底部的「查看更多」按钮 */
-:root[data-visual-theme] .fusion-section__more {
-  display: flex;
-  justify-content: center;
-  margin-top: 34px;
-}
-
-:root[data-visual-theme] .fusion-section__more .fusion-button {
-  min-width: 168px;
-  justify-content: center;
-}
 
 /* 目录页 */
-:root[data-visual-theme] .fusion-catalog-header {
-  grid-template-columns: minmax(0, 1.2fr) minmax(260px, 0.8fr);
-  min-height: 350px;
-  margin-top: 22px;
-  padding: clamp(32px, 6vw, 72px);
-  border: 1px solid var(--rule);
-  border-radius: 24px;
-  background: color-mix(in srgb, var(--paper-light) 84%, var(--gold) 4%);
-}
-
-:root[data-visual-theme] .fusion-catalog-header .catalog-title {
-  justify-content: center;
-  padding: 0 clamp(28px, 5vw, 74px) 0 0;
-  border-right: 1px solid var(--rule);
-}
-
-:root[data-visual-theme] .fusion-catalog-header .catalog-title h1 {
-  margin-bottom: 18px;
-  color: var(--ink);
-  font-family: var(--sans);
-  font-size: clamp(2.8rem, 6vw, 5.7rem);
-  font-weight: 700;
-  letter-spacing: -0.08em;
-}
-
-:root[data-visual-theme] .fusion-catalog-header .catalog-title > p:last-child {
-  color: var(--ink-soft);
-  font-family: var(--sans);
-  letter-spacing: 0;
-  line-height: 1.8;
-}
-
-:root[data-visual-theme] .fusion-catalog-header .catalog-mark {
-  padding: 0 0 0 clamp(28px, 5vw, 72px);
-}
-
-:root[data-visual-theme] .fusion-catalog-header .catalog-mark .archive-seal {
-  width: min(58%, 190px);
-  margin-bottom: 24px;
-  opacity: 0.62;
-}
 
 :root[data-visual-theme] .catalog-collection {
   width: 100%;
@@ -683,53 +414,6 @@
 /* 图库页：把原来的高留白档案头压缩成可直接进入图片内容的视觉入口。 */
 :root[data-visual-theme] .gallery-shell {
   border-bottom: 0;
-}
-
-:root[data-visual-theme] .gallery-header {
-  grid-template-columns: minmax(0, 1.25fr) minmax(260px, 0.75fr);
-  min-height: 360px;
-  margin-top: 22px;
-  padding: clamp(32px, 6vw, 68px);
-  border: 1px solid var(--rule);
-  border-radius: 24px;
-  background: color-mix(in srgb, var(--paper-light) 84%, var(--gold) 4%);
-}
-
-:root[data-visual-theme] .gallery-header-copy {
-  justify-content: center;
-  padding: 0 clamp(28px, 5vw, 72px) 0 0;
-  border-right: 1px solid var(--rule);
-}
-
-:root[data-visual-theme] .gallery-header-copy .folio-kicker {
-  margin-bottom: 24px;
-}
-
-:root[data-visual-theme] .gallery-header h1 {
-  margin-bottom: 18px;
-  color: var(--ink);
-  font-family: var(--sans);
-  font-size: clamp(3rem, 7vw, 6rem);
-  font-weight: 700;
-  letter-spacing: -0.08em;
-  line-height: 0.96;
-}
-
-:root[data-visual-theme] .gallery-intro {
-  color: var(--ink-soft);
-  font-family: var(--sans);
-  line-height: 1.8;
-}
-
-:root[data-visual-theme] .gallery-header-mark {
-  justify-content: center;
-  padding: 0 0 0 clamp(28px, 5vw, 72px);
-}
-
-:root[data-visual-theme] .gallery-header-mark .archive-seal {
-  width: min(70%, 240px);
-  margin: 0 auto 24px;
-  opacity: 0.66;
 }
 
 :root[data-visual-theme] .gallery-tabs {
@@ -1026,22 +710,6 @@
   color: var(--fusion-cyan);
 }
 
-:root[data-visual-theme] .index-coda {
-  padding-block: 92px 130px;
-}
-
-:root[data-visual-theme] .index-coda .coda-seal {
-  width: 92px;
-  opacity: 0.62;
-}
-
-:root[data-visual-theme] .index-coda blockquote {
-  max-width: 650px;
-  font-family: var(--serif);
-  font-size: clamp(1.3rem, 3vw, 2rem);
-  letter-spacing: 0;
-}
-
 :root[data-visual-theme] .site-footer {
   width: 100%;
   padding-block: 28px 46px;
@@ -1090,12 +758,6 @@
     padding-inline: 16px;
   }
 
-  :root[data-visual-theme] .header-main {
-    flex-wrap: wrap;
-    gap: 8px;
-    padding-block: 12px;
-  }
-
   :root[data-visual-theme] .site-header nav {
     width: 100%;
     min-height: 48px;
@@ -1104,62 +766,12 @@
   }
 
   :root[data-visual-theme] .site-header nav a,
-  :root[data-visual-theme] .header-search-link,
   :root[data-visual-theme] .theme-toggle {
     min-height: 42px;
     padding-inline: 9px;
     font-size: 0.75rem;
   }
 
-  :root[data-visual-theme] .theme-toggle__label {
-    display: none;
-  }
-
-  :root[data-visual-theme] .fusion-hero {
-    min-height: 620px;
-    margin-top: 16px;
-    border-radius: 18px;
-  }
-
-  :root[data-visual-theme] .fusion-hero__media::after {
-    background:
-      linear-gradient(0deg, rgba(6, 15, 18, 0.86) 0%, rgba(6, 15, 18, 0.45) 55%, rgba(6, 15, 18, 0.06) 100%);
-  }
-
-  :root[data-visual-theme] .fusion-hero__content {
-    padding: 26px 22px 28px;
-  }
-
-  :root[data-visual-theme] .fusion-hero h1 {
-    margin-bottom: 18px;
-    /* 窄屏同样受「域名整串必须放下」约束：360px 视口（含滚动条）下标题
-       可用宽约 267px，字号 ≤ 约 26px 才能让 Blog.Acretiondisk.top 不被折断 */
-    font-size: clamp(1.55rem, 5.2vw, 2.6rem);
-    letter-spacing: -0.02em;
-    line-height: 1.14;
-  }
-
-  :root[data-visual-theme] .fusion-hero__description {
-    font-size: 0.98rem;
-    line-height: 1.72;
-  }
-
-  :root[data-visual-theme] .fusion-hero__actions {
-    align-items: stretch;
-    margin-top: 24px;
-  }
-
-  :root[data-visual-theme] .fusion-button {
-    flex: 1 1 auto;
-    min-height: 46px;
-  }
-
-  :root[data-visual-theme] .fusion-hero__meta {
-    margin-top: 28px;
-    font-size: 0.58rem;
-  }
-
-  :root[data-visual-theme] .fusion-section__header,
   :root[data-visual-theme] .fusion-section .section-heading {
     align-items: flex-start;
     flex-direction: column;
@@ -1167,77 +779,13 @@
     margin-bottom: 22px;
   }
 
-  :root[data-visual-theme] .fusion-section__header h2,
   :root[data-visual-theme] .fusion-section .section-heading h2 {
     font-size: 2.25rem;
   }
 
-  :root[data-visual-theme] .fusion-section__aside,
   :root[data-visual-theme] .fusion-section .heading-note {
     width: 100%;
     justify-content: space-between;
-  }
-
-  :root[data-visual-theme] .fusion-catalog-header {
-    grid-template-columns: 1fr;
-    min-height: 0;
-    margin-top: 16px;
-    padding: 28px 22px;
-    border-radius: 18px;
-  }
-
-  :root[data-visual-theme] .fusion-catalog-header .catalog-title {
-    padding: 0 0 26px;
-    border-right: 0;
-    border-bottom: 1px solid var(--rule);
-  }
-
-  :root[data-visual-theme] .fusion-catalog-header .catalog-title h1 {
-    font-size: clamp(2.8rem, 13vw, 4.7rem);
-  }
-
-  :root[data-visual-theme] .fusion-catalog-header .catalog-mark {
-    grid-template-columns: 88px minmax(0, 1fr);
-    display: grid;
-    align-items: center;
-    gap: 18px;
-    padding: 24px 0 0;
-  }
-
-  :root[data-visual-theme] .fusion-catalog-header .catalog-mark .archive-seal {
-    width: 88px;
-    margin: 0;
-  }
-
-  :root[data-visual-theme] .gallery-header {
-    grid-template-columns: 1fr;
-    min-height: 0;
-    margin-top: 16px;
-    padding: 28px 22px;
-    border-radius: 18px;
-  }
-
-  :root[data-visual-theme] .gallery-header-copy {
-    padding: 0 0 26px;
-    border-right: 0;
-    border-bottom: 1px solid var(--rule);
-  }
-
-  :root[data-visual-theme] .gallery-header h1 {
-    font-size: clamp(3rem, 15vw, 5rem);
-  }
-
-  :root[data-visual-theme] .gallery-header-mark {
-    display: grid;
-    grid-template-columns: 88px minmax(0, 1fr);
-    align-items: center;
-    gap: 18px;
-    padding: 24px 0 0;
-  }
-
-  :root[data-visual-theme] .gallery-header-mark .archive-seal {
-    width: 88px;
-    margin: 0;
   }
 
   :root[data-visual-theme] .gallery-tab {

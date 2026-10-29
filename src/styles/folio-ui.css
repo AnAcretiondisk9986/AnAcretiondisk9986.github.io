@@ -67,26 +67,11 @@
 
   h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 500; letter-spacing: -.012em; }
   a { color: inherit; text-decoration: none; }
-
-  .f-caps {
-    font-family: var(--font-body);
-    font-size: var(--type-micro);
-    letter-spacing: var(--track-caps);
-    text-transform: uppercase;
-    font-weight: 600;
-    color: var(--c-ink-3);
-  }
   .f-num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: .02em; }
-  .f-sr-only {
-    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
-    overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
-  }
 }
 
 /* ───────────────────────── layout ───────────────────────── */
 @layer layout {
-  .f-shell { width: min(100% - 48px, var(--content-w)); margin-inline: auto; }
-  @media (max-width: 720px) { .f-shell { width: min(100% - 32px, var(--content-w)); } }
   .f-section { padding-block: var(--p-sp-8); }
 }
 
@@ -153,7 +138,6 @@
   .f-fleuron i { width: 5px; height: 5px; rotate: 45deg; border: 1px solid var(--c-metal); }
 
   /* ===== 封面 ===== */
-  .f-cover { padding-block: var(--p-sp-9) var(--p-sp-8); }
   .f-frame {
     position: relative;
     padding: clamp(28px, 6vw, 84px) clamp(20px, 5vw, 72px);
@@ -185,25 +169,6 @@
     font-family: var(--font-mono); font-size: var(--type-micro);
     letter-spacing: .16em; color: var(--c-metal); text-transform: uppercase;
   }
-  .f-cover__title {
-    margin-top: var(--p-sp-6);
-    display: grid; gap: .04em;
-    font-family: var(--hero-font);
-    line-height: var(--lh-display);
-    font-weight: var(--hero-weight);
-    font-synthesis-weight: none;
-    letter-spacing: -.028em;
-  }
-  .f-cover__line1 { font-size: var(--type-display); }
-  .f-cover__line2 {
-    /* 域名是 21 字符的不可断片段：vw 系数按「最窄 320px 仍放得下」反解得出 */
-    font-size: clamp(1rem, 6.4vw, 5.1rem);
-    font-family: var(--hero-font);
-    letter-spacing: -.012em;
-    overflow-wrap: normal;
-    word-break: keep-all;
-  }
-  .f-cover__line2 em, .f-cover__title em { font-style: italic; letter-spacing: -.005em; }
   .f-cover__deck {
     margin-top: var(--p-sp-5);
     font-family: var(--font-display);
@@ -276,7 +241,7 @@
   .f-entry__date { font-family: var(--font-mono); font-size: var(--type-meta); color: var(--c-ink-3); text-align: right; }
 
   /* ===== 图版（图志精选 / 图集） ===== */
-  .f-plates { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--p-sp-5); }
+  .f-plates { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(1.5rem, 2vw, 2rem); }
   .f-plate { display: block; min-width: 0; }
   .f-plate__frame {
     position: relative; display: block; overflow: hidden;
@@ -292,25 +257,11 @@
   .f-plate__no { font-family: var(--font-mono); font-size: var(--type-micro); color: var(--c-metal); letter-spacing: .1em; }
 
   /* ===== 文章正文 ===== */
-  .f-article { display: grid; grid-template-columns: 180px minmax(0, var(--measure)) 180px; gap: clamp(24px, 4vw, 64px); justify-content: center; }
   .f-article__aside { font-size: var(--type-micro); line-height: 1.75; color: var(--c-ink-3); }
   .f-article__aside::before { content: ""; display: block; width: 24px; height: 1px; background: var(--c-metal); margin-bottom: 12px; }
   .f-article__eyebrow { font-family: var(--font-mono); font-size: var(--type-micro); letter-spacing: .18em; text-transform: uppercase; color: var(--c-metal); }
   .f-article__title { font-size: var(--type-title); line-height: 1.28; text-wrap: balance; margin-top: 12px; }
   .f-article__meta { display: flex; flex-wrap: wrap; gap: var(--p-sp-4); margin-top: 20px; font-family: var(--font-mono); font-size: var(--type-micro); letter-spacing: .08em; color: var(--c-ink-3); }
-  .f-article__body { font-family: var(--font-body); font-size: var(--type-lead); line-height: var(--lh-body); margin-top: var(--p-sp-5); }
-  .f-article__body p + p { margin-top: var(--p-sp-4); }
-  .f-article__body > p:first-of-type::first-letter {
-    float: left; font-family: var(--font-display);
-    font-size: 3.6em; line-height: .92; padding-right: .08em; padding-top: .04em;
-    color: var(--c-accent); font-weight: 500;
-  }
-  .f-pull {
-    margin-block: var(--p-sp-6); padding-left: var(--p-sp-5);
-    border-left: 1px solid var(--c-metal);
-    font-family: var(--font-display); font-style: italic;
-    font-size: var(--type-h2); line-height: 1.6; color: var(--c-ink-2);
-  }
 
   /* ===== 页脚 ===== */
   .f-footer { margin-top: var(--p-sp-9); padding-block: var(--p-sp-7); }
@@ -358,7 +309,6 @@
 
   /* ===== 响应式 ===== */
   @media (max-width: 1100px) {
-    .f-article { grid-template-columns: minmax(0, var(--measure)); }
     .f-article__aside { display: none; }
   }
   @media (max-width: 860px) {
@@ -379,7 +329,6 @@
     .f-nav-mobile a .idx { font-family: var(--font-mono); font-size: var(--type-micro); color: var(--c-metal); }
     .f-nav-mobile a[aria-current="page"] { color: var(--c-ink); }
     .f-nav-mobile a[aria-current="page"] .idx { color: var(--c-accent); }
-    .f-cover { padding-block: var(--p-sp-7) var(--p-sp-6); }
     .f-plates { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--p-sp-4); }
     .f-plate:last-child:nth-child(odd) { grid-column: span 2; }
   }
@@ -410,20 +359,6 @@
 /* ── FOLIO 补充：封面幽灵图 / 尾页 ── */
 @layer components {
   /* 首页首屏图：作为封面的"底片"存在——极低透明度、去饱和，只在纸上留一点光 */
-  .f-frame--ghost { isolation: isolate; }
-  .f-frame--ghost::after {
-    content: "";
-    position: absolute; inset: 0;
-    border-radius: inherit;
-    background-image: var(--cover-image);
-    background-size: cover;
-    background-position: center;
-    filter: grayscale(.72) contrast(.9) brightness(1.04);
-    opacity: .048;
-    z-index: -1;
-    pointer-events: none;
-  }
-  .f-frame--ghost::before { background: none; border-color: color-mix(in oklab, var(--c-metal) 34%, transparent); }
 
   .f-coda { text-align: center; padding-block: var(--p-sp-8) var(--p-sp-7); }
   .f-coda blockquote {
@@ -440,14 +375,6 @@
 
 /* ── FOLIO 补充：封面第三行（副标题） ── */
 @layer components {
-  .f-cover__line3 {
-    font-family: var(--font-display);
-    font-size: clamp(1.05rem, 2vw, 1.75rem);
-    font-weight: 500;
-    letter-spacing: 0;
-    margin-top: .5em;
-    color: var(--c-ink-2);
-  }
 }
 
 /* ── FOLIO：文案副本全局收口 ──
@@ -492,5 +419,4 @@
 
 @layer components {
   /* 留白主题是纯白纸，不该出现任何底片 */
-  :root[data-visual-theme='minimal'] .f-frame--ghost::after { opacity: 0; }
 }
