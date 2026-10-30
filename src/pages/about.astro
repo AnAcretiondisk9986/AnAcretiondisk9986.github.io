@@ -43,7 +43,6 @@ function linkify(text = '') {
   <article class="dossier">
     <header class="dossier-header">
       <div>
-        <p class="eyebrow"><ThemeCopy minimal={about.eyebrow} trace={about.eyebrow} cyanotype="BEHIND THE PRINT / 04" /></p>
         <h1><ThemeCopy minimal={about.title} trace={about.title} cyanotype="底片背面" /></h1>
         <p><ThemeCopy minimal={about.subtitle} trace={about.subtitle} cyanotype="作品之外，还有一个不断观察、尝试、偶尔推翻自己的我。" /></p>
       </div>
@@ -51,13 +50,12 @@ function linkify(text = '') {
     </header>
 
     <a class="private-channel private-channel--dossier" href="/private/">
-      <span class="private-channel__copy"><ThemeCopy minimal="私密文章" trace="私密卷册" /><small>PRIVATE ARCHIVE · 需要密码</small></span>
+      <span class="private-channel__copy"><ThemeCopy minimal="私密文章" trace="私密卷册" /><small>需要密码</small></span>
       <span class="private-channel__arrow" aria-hidden="true"><Icon name="arrow-up-right" /></span>
     </a>
 
     <section class="appearance-settings" aria-labelledby="appearance-heading">
       <div class="appearance-heading">
-        <p class="eyebrow">APPEARANCE</p>
         <h2 id="appearance-heading"><ThemeCopy minimal="外观" trace="界面主题" /></h2>
       </div>
       <div class="appearance-selector" role="group" aria-label="界面主题">

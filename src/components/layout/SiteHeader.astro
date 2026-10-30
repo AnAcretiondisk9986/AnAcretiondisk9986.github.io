@@ -16,11 +16,6 @@ const isActive = (href: string) => (href === '/' ? pathname === '/' : pathname.s
 ---
 
 <header class="f-header">
-  <div class="f-register">
-    <span>ACR—FOLIO · PERSONAL ARCHIVE</span>
-    <span>EST. MMXXVI · VOL. III</span>
-  </div>
-
   <div class="f-masthead">
     <a class="f-brand" href="/" aria-label={`${siteName} 首页`}>
       <span class="f-brand__seal" aria-hidden="true">A</span>
@@ -33,7 +28,7 @@ const isActive = (href: string) => (href === '/' ? pathname === '/' : pathname.s
     <nav class="f-nav" aria-label="主导航">
       {navigation.map((item) => (
         <a href={item.href} aria-current={isActive(item.href) ? 'page' : undefined}>
-          <span class="idx">{item.index}</span>{item.label}
+          {item.label}
         </a>
       ))}
     </nav>
@@ -51,12 +46,10 @@ const isActive = (href: string) => (href === '/' ? pathname === '/' : pathname.s
     </div>
   </div>
 
-  <div class="f-double-rule"></div>
-
   <nav class="f-nav-mobile" aria-label="主导航（移动端）">
     {navigation.map((item) => (
       <a href={item.href} aria-current={isActive(item.href) ? 'page' : undefined}>
-        <span class="idx">{item.index}</span>{item.label}
+        {item.label}
       </a>
     ))}
   </nav>

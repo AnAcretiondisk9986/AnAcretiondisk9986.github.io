@@ -1,0 +1,345 @@
+/* ============================================================================
+   CYANOTYPE — 蓝晒主题的视觉层（2026-10 重绘）
+   ----------------------------------------------------------------------------
+   取「蓝晒」的字面工艺：棉纸 + 普鲁士蓝。全站只有一种强调色。
+     · 首屏图做成真正的蓝晒：灰度图 screen 到普鲁士蓝底上 → 暗部变蓝、亮部留纸白；
+       这是全站唯一的"大动作"，其余一律安静。
+     · 去掉中文伪斜体、全大写追踪字距的标签、等宽小字、饰花与双线；
+       元信息改用正文无衬线小字，数字用 tabular-nums。
+     · 只作用于 data-visual-theme="cyanotype"；落在 theme 层，晚于 components 层胜出。
+   ========================================================================== */
+
+@layer theme {
+  :root[data-visual-theme="cyanotype"] {
+    --cy-label: var(--font-body);
+    --cy-serif: var(--latin-display), var(--cjk-display), "Source Han Serif SC", "Songti SC", "STSong", serif;
+    --hero-font: var(--cy-serif);
+    --hero-weight: 700;
+    --font-display: var(--cy-serif);
+    --type-title: clamp(2rem, 1.6vw + 1.3rem, 3rem);
+    --type-h2: clamp(1.5rem, .8vw + 1.2rem, 2rem);
+  }
+
+  /* ── 全局：中文不用伪斜体；标签不用全大写追踪字距 ── */
+  :root[data-visual-theme="cyanotype"] :is(
+    .f-opener__deck, .f-cover__deck, .f-gallery-head__deck, .article-deck,
+    .f-plate__title, .f-about__quote, .prose blockquote, .catalog-empty,
+    .dossier-header p, .f-coda blockquote
+  ) { font-style: normal; }
+
+  :root[data-visual-theme="cyanotype"] :is(
+    .f-section-more, .f-card__meta, .catalog-entry time, .catalog-entry time b,
+    .catalog-day-index, .catalog-open, .catalog-rule, .catalog-index span,
+    .f-article__eyebrow, .article-register__brand, .article-meta,
+    .catalog-entry .tag-list li, .catalog-entry .tag-list a,
+    .f-footer__meta, .f-btn, .gallery-order-label span, .gallery-view-label span,
+    .gallery-index-bar, .gallery-tab b, .f-hero__meta, .article-toc > p,
+    .article-margin dt, .article-margin dd, .private-channel__copy small
+  ) {
+    font-family: var(--cy-label);
+    letter-spacing: 0;
+    text-transform: none;
+    font-variant-numeric: tabular-nums;
+  }
+
+  :root[data-visual-theme="cyanotype"] :is(.f-fleuron, .f-crop, .f-double-rule) { display: none; }
+
+  /* ── 页头：一行，品牌 / 导航 / 工具，底部一条细线 ── */
+  :root[data-visual-theme="cyanotype"] .f-header { padding-top: 0; }
+  :root[data-visual-theme="cyanotype"] .f-header::before {
+    border-bottom: 1px solid var(--c-rule);
+    background: color-mix(in oklab, var(--c-paper) 92%, transparent);
+    backdrop-filter: blur(10px);
+  }
+  :root[data-visual-theme="cyanotype"] .f-masthead { padding-block: 14px; }
+  :root[data-visual-theme="cyanotype"] .f-brand__seal {
+    width: 30px; height: 30px;
+    border: 0; border-radius: 0;
+    background: var(--c-plate); color: #fafbf9;
+    font-family: var(--cy-serif); font-size: .9375rem; font-weight: 600;
+  }
+  :root[data-visual-theme="cyanotype"] .f-brand__name { font-size: 1.0625rem; font-weight: 600; letter-spacing: 0; }
+  :root[data-visual-theme="cyanotype"] .f-brand__tag { font-size: .75rem; letter-spacing: 0; }
+  :root[data-visual-theme="cyanotype"] .f-nav { gap: 28px; }
+  :root[data-visual-theme="cyanotype"] .f-nav a {
+    font-size: .9375rem; letter-spacing: .02em; padding-bottom: 3px;
+  }
+  :root[data-visual-theme="cyanotype"] .f-nav a::after { height: 2px; background: var(--c-accent); }
+  :root[data-visual-theme="cyanotype"] .f-icon-btn { border-color: transparent; }
+  :root[data-visual-theme="cyanotype"] .f-icon-btn:hover { border-color: var(--c-rule-strong); color: var(--c-accent); }
+  :root[data-visual-theme="cyanotype"] .f-nav-mobile { border-top: 1px solid var(--c-rule); border-bottom: 0; }
+  :root[data-visual-theme="cyanotype"] .f-nav-mobile a { font-size: .9375rem; letter-spacing: 0; }
+  :root[data-visual-theme="cyanotype"] .f-nav-mobile a[aria-current="page"] { color: var(--c-accent); }
+
+  /* ── 按钮：句式大小写、无追踪字距 ── */
+  :root[data-visual-theme="cyanotype"] .f-btn {
+    padding: 12px 22px; font-size: .9375rem; font-weight: 500;
+    background: var(--c-accent); border-color: var(--c-accent); color: var(--c-paper);
+  }
+  :root[data-visual-theme="cyanotype"] .f-btn:hover { background: var(--c-plate-deep); border-color: var(--c-plate-deep); color: #fafbf9; }
+  :root[data-visual-theme="cyanotype"] .f-btn--ghost { background: transparent; color: var(--c-ink); border-color: var(--c-rule-strong); }
+  :root[data-visual-theme="cyanotype"] .f-btn--ghost:hover { background: transparent; color: var(--c-accent); border-color: var(--c-accent); }
+
+  /* ── 首屏：一张嵌在纸上的蓝晒图版 ──
+     灰度图以 screen 叠在普鲁士蓝底上：暗部 → 蓝，亮部 → 纸白，就是蓝晒的成像方式。
+     图版不再全幅出血，而是落在版心里、硬边，像一张放在纸上的晒图。 */
+  :root[data-visual-theme="cyanotype"] .f-hero,
+  :root[data-visual-theme="cyanotype"] .f-hero[data-tone='light'] {
+    --hero-ink: #fafbf9;
+    --hero-ink-2: rgba(250, 251, 249, .86);
+    --hero-ink-3: rgba(250, 251, 249, .68);
+    --hero-metal: #fafbf9;
+    --hero-veil-color: var(--c-plate-deep);
+    min-height: clamp(26rem, 64vh, 44rem);
+    margin-block: clamp(16px, 2vw, 28px) var(--p-sp-9);
+    padding-inline: clamp(20px, 4vw, 64px);
+  }
+  :root[data-visual-theme="cyanotype"] .f-hero__media,
+  :root[data-visual-theme="cyanotype"] .f-hero__scrim { inset: 0; }
+  :root[data-visual-theme="cyanotype"] .f-hero__media { background: var(--c-plate); }
+  :root[data-visual-theme="cyanotype"] .f-hero__image {
+    filter: grayscale(1) contrast(1.12) brightness(1.04);
+    mix-blend-mode: screen;
+  }
+  :root[data-visual-theme="cyanotype"][data-theme="dark"] .f-hero__image { opacity: .78; }
+  :root[data-visual-theme="cyanotype"] .f-hero__scrim {
+    background:
+      radial-gradient(ellipse 70% 62% at 50% 52%,
+        color-mix(in oklab, var(--c-plate-deep) 62%, transparent) 0%,
+        color-mix(in oklab, var(--c-plate-deep) 30%, transparent) 55%,
+        transparent 85%),
+      color-mix(in oklab, var(--c-plate-deep) 16%, transparent);
+  }
+  :root[data-visual-theme="cyanotype"] :is(.f-hero__title, .f-hero__line3, .f-hero__deck) {
+    text-shadow: 0 1px 24px color-mix(in oklab, var(--c-plate-deep) 60%, transparent);
+  }
+  :root[data-visual-theme="cyanotype"] .f-hero__line1 { font-weight: 700; letter-spacing: .04em; margin-right: -.04em; }
+  :root[data-visual-theme="cyanotype"] .f-hero__domain-rule { display: none; }
+  :root[data-visual-theme="cyanotype"] .f-hero__line3 { font-weight: 500; }
+  :root[data-visual-theme="cyanotype"] .f-hero__meta { font-size: .875rem; gap: 6px 20px; }
+  :root[data-visual-theme="cyanotype"] .f-hero__meta > * + *::before { width: 3px; height: 3px; border-radius: 50%; opacity: .7; }
+  :root[data-visual-theme="cyanotype"] .f-hero__actions .f-btn {
+    background: #fafbf9; color: var(--c-plate-deep); border-color: #fafbf9;
+  }
+  :root[data-visual-theme="cyanotype"] .f-hero__actions .f-btn:hover { background: transparent; color: #fafbf9; }
+  :root[data-visual-theme="cyanotype"] .f-hero__actions .f-btn--ghost {
+    background: transparent; color: #fafbf9; border-color: rgba(250, 251, 249, .5); backdrop-filter: none;
+  }
+  :root[data-visual-theme="cyanotype"] .f-hero__actions .f-btn--ghost:hover { border-color: #fafbf9; }
+
+  /* ── 栏目标题 ── */
+  :root[data-visual-theme="cyanotype"] .f-section { padding-block: var(--p-sp-7); }
+  :root[data-visual-theme="cyanotype"] .f-section-head {
+    align-items: baseline;
+    padding-bottom: 14px; margin-bottom: 28px;
+    border-bottom-color: var(--c-rule);
+  }
+  :root[data-visual-theme="cyanotype"] .f-section-title {
+    font-family: var(--cy-serif); font-size: var(--type-h2); font-weight: 600; letter-spacing: .01em;
+  }
+  :root[data-visual-theme="cyanotype"] .f-section-more { font-size: .875rem; color: var(--c-accent); }
+  :root[data-visual-theme="cyanotype"] .f-section-more:hover { color: var(--c-ink); }
+
+  /* ── 首页文章卡片：图 / 标题 / 摘要 / 落款 ── */
+  :root[data-visual-theme="cyanotype"] .f-recent { --_gap: clamp(28px, 2.6vw, 44px); row-gap: 48px; }
+  :root[data-visual-theme="cyanotype"] .f-card { border-bottom: 0; padding-bottom: 0; gap: 16px; }
+  :root[data-visual-theme="cyanotype"] .f-card__frame { border: 0; aspect-ratio: 3 / 2; }
+  :root[data-visual-theme="cyanotype"] .f-card__frame[data-empty='true'] { background: var(--c-plate); }
+  :root[data-visual-theme="cyanotype"] .f-card__frame[data-empty='true']::before { content: none; }
+  :root[data-visual-theme="cyanotype"] .f-card__body { gap: 8px; }
+  :root[data-visual-theme="cyanotype"] .f-card__title {
+    font-family: var(--cy-serif); font-size: 1.25rem; font-weight: 600; line-height: 1.45; min-height: 0;
+  }
+  :root[data-visual-theme="cyanotype"] .f-card__excerpt {
+    font-size: .9375rem; line-height: 1.7; color: var(--c-ink-2);
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
+  }
+  :root[data-visual-theme="cyanotype"] .f-card__meta { margin-top: 2px; font-size: .8125rem; color: var(--c-ink-3); justify-content: flex-start; gap: 12px; }
+  :root[data-visual-theme="cyanotype"] .f-card__tag { color: var(--c-accent); }
+  :root[data-visual-theme="cyanotype"] .f-card:hover .f-card__title { color: var(--c-accent); }
+
+  /* ── 图版 ── */
+  :root[data-visual-theme="cyanotype"] .f-plates { gap: clamp(20px, 2.2vw, 36px); }
+  :root[data-visual-theme="cyanotype"] .f-plate__frame { border: 0; aspect-ratio: 4 / 5; }
+  :root[data-visual-theme="cyanotype"] .f-plate__cap { margin-top: 10px; }
+  :root[data-visual-theme="cyanotype"] .f-plate__title { font-family: var(--font-body); font-size: .875rem; color: var(--c-ink-2); }
+
+  /* ── 首页「关于我」与尾句 ── */
+  :root[data-visual-theme="cyanotype"] .f-about__portrait { border: 0; border-radius: 0; }
+  :root[data-visual-theme="cyanotype"] .f-about__lead { font-family: var(--cy-serif); }
+  :root[data-visual-theme="cyanotype"] .f-about__quote { border-left: 2px solid var(--c-accent); }
+  :root[data-visual-theme="cyanotype"] .f-coda { padding-block: var(--p-sp-8); }
+  :root[data-visual-theme="cyanotype"] .f-coda blockquote {
+    font-family: var(--cy-serif); font-size: clamp(1.25rem, .8vw + 1rem, 1.625rem); color: var(--c-ink-2);
+  }
+
+  /* ── 页脚 ── */
+  :root[data-visual-theme="cyanotype"] .f-footer { margin-top: var(--p-sp-8); padding-block: 32px 40px; border-top: 1px solid var(--c-rule); }
+  :root[data-visual-theme="cyanotype"] .f-footer__inner { align-items: center; }
+  :root[data-visual-theme="cyanotype"] .f-footer__brand { display: flex; align-items: center; gap: 12px; }
+  :root[data-visual-theme="cyanotype"] .f-stamp {
+    width: 28px; height: 28px; border: 0; border-radius: 0; opacity: 1;
+    background: var(--c-plate); color: #fafbf9; font-family: var(--cy-serif); font-size: .875rem;
+  }
+  :root[data-visual-theme="cyanotype"] .f-footer__name { display: block; font-weight: 600; font-size: .9375rem; color: var(--c-ink); }
+  :root[data-visual-theme="cyanotype"] .f-footer__meta { font-size: .8125rem; line-height: 1.6; }
+  :root[data-visual-theme="cyanotype"] .f-footer__end { display: flex; gap: 16px; }
+  :root[data-visual-theme="cyanotype"] .f-footer a:hover { color: var(--c-accent); }
+
+  /* ── 文章页 ──
+     左边注收成一列安静的纯文字：返回 / 标签 / 两个文字操作；不加框、不加分隔线。
+     元信息里重复的「编号 / 作者 / 状态」隐藏，标签保留。 */
+  :root[data-visual-theme="cyanotype"] .article-page { padding-block: 48px var(--p-sp-9); }
+  :root[data-visual-theme="cyanotype"] .article-page .f-article__aside::before,
+  :root[data-visual-theme="cyanotype"] .article-page .article-rail__inner::before,
+  :root[data-visual-theme="cyanotype"] .article-page .margin-note,
+  :root[data-visual-theme="cyanotype"] .article-page .article-margin dl div:not(:nth-child(2)) { display: none; }
+  :root[data-visual-theme="cyanotype"] .article-page .back-link {
+    font-size: .875rem; color: var(--c-ink-2); margin-bottom: 28px;
+  }
+  :root[data-visual-theme="cyanotype"] .article-page .back-link:hover { color: var(--c-accent); }
+  :root[data-visual-theme="cyanotype"] .article-page .article-margin dl { margin: 0 0 20px; border: 0; }
+  :root[data-visual-theme="cyanotype"] .article-page .article-margin dl div { padding: 0; border: 0; }
+  :root[data-visual-theme="cyanotype"] .article-page .article-margin dt { font-size: .8125rem; color: var(--c-ink-3); margin-bottom: 4px; }
+  :root[data-visual-theme="cyanotype"] .article-page .article-margin dd { font-size: .875rem; line-height: 1.7; color: var(--c-ink-2); }
+  :root[data-visual-theme="cyanotype"] .article-page :is(.print-action, .private-channel, .share-link__btn) {
+    display: flex; width: auto; margin: 0 0 10px; padding: 0;
+    border: 0; background: none;
+    font-size: .875rem; letter-spacing: 0; text-transform: none; color: var(--c-ink-2);
+  }
+  :root[data-visual-theme="cyanotype"] .article-page .private-channel { justify-content: flex-start; gap: 6px; }
+  :root[data-visual-theme="cyanotype"] .article-page .private-channel__copy { font-size: .875rem; letter-spacing: 0; }
+  :root[data-visual-theme="cyanotype"] .article-page :is(.print-action, .private-channel, .share-link__btn):hover { color: var(--c-accent); background: none; }
+  :root[data-visual-theme="cyanotype"] .article-page :is(.private-channel__arrow, .print-action svg) { color: currentColor; }
+
+  :root[data-visual-theme="cyanotype"] .article-page .article-header { padding-bottom: 28px; }
+  :root[data-visual-theme="cyanotype"] .article-page .article-register { margin-bottom: 16px; flex-direction: row; flex-wrap: wrap; align-items: baseline; justify-content: flex-start; gap: 0 12px; }
+  :root[data-visual-theme="cyanotype"] .article-page .f-article__eyebrow { font-size: .875rem; color: var(--c-accent); }
+  :root[data-visual-theme="cyanotype"] .article-page .article-register__brand { font-size: .875rem; color: var(--c-ink-3); }
+  :root[data-visual-theme="cyanotype"] .article-page .article-register__brand::before { content: "/"; margin-right: 12px; color: var(--c-rule-strong); }
+  :root[data-visual-theme="cyanotype"] .article-page .article-header h1 { font-weight: 600; line-height: 1.3; letter-spacing: .005em; }
+  :root[data-visual-theme="cyanotype"] .article-page .article-deck {
+    font-family: var(--font-body); font-size: 1.125rem; line-height: 1.75; margin: 16px 0 20px;
+  }
+  :root[data-visual-theme="cyanotype"] .article-page .article-meta { font-size: .875rem; gap: 6px 14px; }
+  :root[data-visual-theme="cyanotype"] .article-page .article-meta > * + * { border-left: 0; padding-left: 0; }
+  :root[data-visual-theme="cyanotype"] .article-page .article-meta > * + *::before { content: "·"; margin-right: 14px; color: var(--c-ink-3); }
+  :root[data-visual-theme="cyanotype"] .article-page .article-cover img { border-radius: 0; }
+
+  :root[data-visual-theme="cyanotype"] .article-page .prose > p:first-of-type::first-letter {
+    float: none; font-size: inherit; padding: 0; color: inherit; line-height: inherit; font-family: inherit;
+  }
+  :root[data-visual-theme="cyanotype"] .article-page .prose h2 { border-bottom: 0; padding-bottom: 0; margin-block: 2.4em .7em; font-weight: 600; }
+  :root[data-visual-theme="cyanotype"] .article-page .prose h2::before { content: none; }
+  :root[data-visual-theme="cyanotype"] .article-page .prose :is(h3, h4) { font-weight: 600; }
+  :root[data-visual-theme="cyanotype"] .article-page .prose blockquote { border-left: 2px solid var(--c-accent); color: var(--c-ink-2); font-family: var(--font-body); }
+  :root[data-visual-theme="cyanotype"] .article-page .prose a { text-decoration-color: color-mix(in oklab, var(--c-accent) 40%, transparent); }
+  :root[data-visual-theme="cyanotype"] .article-page .prose a:hover { color: var(--c-accent); text-decoration-color: currentColor; }
+  :root[data-visual-theme="cyanotype"] .article-page .prose mark { background: color-mix(in oklab, var(--c-accent) 16%, transparent); }
+
+  /* 目录：不编号、不加分隔线；当前项靠左侧蓝条表示 */
+  :root[data-visual-theme="cyanotype"] .article-page .article-toc { border-top: 0; padding-top: 0; }
+  :root[data-visual-theme="cyanotype"] .article-page .article-toc > p { font-size: .8125rem; color: var(--c-ink-3); margin-bottom: 12px; }
+  :root[data-visual-theme="cyanotype"] .article-page .article-toc--rail ol {
+    gap: 0; border-left: 1px solid var(--c-rule);
+  }
+  :root[data-visual-theme="cyanotype"] .article-page .article-toc--rail li {
+    display: block; padding: 4px 0 4px 14px; border-bottom: 0;
+  }
+  :root[data-visual-theme="cyanotype"] .article-page .article-toc--rail li::before { content: none; }
+  :root[data-visual-theme="cyanotype"] .article-page .article-toc--rail li.article-toc__subitem { padding-left: 28px; }
+  :root[data-visual-theme="cyanotype"] .article-page .article-toc--rail li.article-toc__subitem a { padding-left: 0; }
+  :root[data-visual-theme="cyanotype"] .article-page .article-toc a { font-size: .8125rem; line-height: 1.45; color: var(--c-ink-3); }
+  :root[data-visual-theme="cyanotype"] .article-page .article-toc--rail a { display: block; }
+  :root[data-visual-theme="cyanotype"] .article-page .article-toc a:hover { color: var(--c-accent); }
+
+  :root[data-visual-theme="cyanotype"] .article-page .article-endmark span { font-family: var(--font-body); letter-spacing: 0; text-transform: none; }
+
+  :root[data-visual-theme="cyanotype"] .article-page .article-endmark p { font-family: var(--font-body); font-style: normal; letter-spacing: 0; }
+
+  /* ── 列表页 / 图志页的页首：左对齐，标题 + 一句说明 + 一行计数 ── */
+  :root[data-visual-theme="cyanotype"] :is(.f-cover, .f-gallery-head, .f-opener) {
+    text-align: left; justify-items: start; align-items: start;
+    padding-block: clamp(48px, 6vw, 88px) 36px;
+  }
+  :root[data-visual-theme="cyanotype"] .f-cover__inner { text-align: left; max-width: none; margin-inline: 0; }
+  :root[data-visual-theme="cyanotype"] :is(.f-cover, .f-gallery-head) h1,
+  :root[data-visual-theme="cyanotype"] .f-opener__title {
+    font-family: var(--cy-serif); font-size: var(--type-title); font-weight: 600; letter-spacing: .01em; margin: 0;
+  }
+  :root[data-visual-theme="cyanotype"] :is(.f-cover__deck, .f-gallery-head__deck, .f-opener__deck) {
+    margin: 12px 0 0; font-family: var(--font-body); font-size: 1.0625rem; color: var(--c-ink-2); max-width: 36em;
+  }
+  :root[data-visual-theme="cyanotype"] .f-opener__meta { margin: 16px 0 0; font-size: .875rem; color: var(--c-ink-3); font-variant-numeric: tabular-nums; }
+
+  /* ── 图志：每篇文章一组，标题在上、日期张数在下，缩略图不再压编号角标 ── */
+  :root[data-visual-theme="cyanotype"] .gallery-album-head {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "title link" "meta meta";
+    align-items: baseline; gap: 6px 24px;
+  }
+  :root[data-visual-theme="cyanotype"] .gallery-album-head h2 {
+    grid-area: title; font-family: var(--cy-serif); font-style: normal; font-weight: 600; font-size: 1.375rem; line-height: 1.4;
+  }
+  :root[data-visual-theme="cyanotype"] .gallery-album-head > div { grid-area: meta; display: flex; gap: 12px; }
+  :root[data-visual-theme="cyanotype"] .gallery-album-head [data-gallery-sequence] { display: none; }
+  :root[data-visual-theme="cyanotype"] .gallery-album-head .gallery-card-label {
+    font-family: var(--font-body); font-size: .8125rem; letter-spacing: 0; text-transform: none; color: var(--c-ink-3);
+  }
+  :root[data-visual-theme="cyanotype"] .gallery-album-head a { grid-area: link; font-size: .8125rem; letter-spacing: 0; color: var(--c-accent); }
+  :root[data-visual-theme="cyanotype"] .gallery-album-thumb-index { display: none; }
+  :root[data-visual-theme="cyanotype"] .gallery-album-thumb { border: 0; }
+
+  /* ── 列表工具栏：分段按钮选中态用蓝，不用墨黑块 ── */
+  :root[data-visual-theme="cyanotype"] .catalog-toolbar { border-block-end-color: var(--c-rule); }
+  :root[data-visual-theme="cyanotype"] .catalog-results { font-family: var(--font-body); font-size: .8125rem; letter-spacing: 0; text-transform: none; }
+  :root[data-visual-theme="cyanotype"] .catalog-toolbar .gallery-order-label { display: none; }
+  :root[data-visual-theme="cyanotype"] .catalog-toolbar :is(.gallery-sort, .catalog-view-switch) { border-color: var(--c-rule-strong); }
+  :root[data-visual-theme="cyanotype"] .catalog-toolbar :is(.gallery-sort, .catalog-view-switch) button { font-size: .8125rem; letter-spacing: 0; }
+  :root[data-visual-theme="cyanotype"] .catalog-toolbar :is(.gallery-sort, .catalog-view-switch) button + button { border-left-color: var(--c-rule-strong); }
+  :root[data-visual-theme="cyanotype"] .catalog-toolbar :is(.gallery-sort, .catalog-view-switch) button[aria-pressed='true'] {
+    background: var(--c-accent); color: var(--c-paper);
+  }
+  :root[data-visual-theme="cyanotype"] .catalog-search:focus-within { border-bottom-color: var(--c-accent); }
+
+  /* ── 横栏条目 ── */
+  :root[data-visual-theme="cyanotype"] .catalog-entry { border-bottom-color: var(--c-rule); }
+  :root[data-visual-theme="cyanotype"] .catalog-entry :is(h2, h3, .catalog-title) { font-family: var(--cy-serif); font-weight: 600; }
+  :root[data-visual-theme="cyanotype"] .catalog-entry:hover :is(h2, h3, .catalog-title) { color: var(--c-accent); }
+  :root[data-visual-theme="cyanotype"] .catalog-entry :is(img, .catalog-thumb, .catalog-image) { border: 0; border-radius: 0; }
+  :root[data-visual-theme="cyanotype"] .catalog-entry .tag-list :is(li, a) {
+    border: 0; padding: 0; background: none; font-size: .8125rem; color: var(--c-accent);
+  }
+  :root[data-visual-theme="cyanotype"] .catalog-entry .tag-list { gap: 4px 14px; }
+  :root[data-visual-theme="cyanotype"] .catalog-entry time { font-size: .875rem; color: var(--c-ink-3); }
+  :root[data-visual-theme="cyanotype"] .catalog-day-index { display: none; }
+  :root[data-visual-theme="cyanotype"] .catalog-index span { font-size: .8125rem; color: var(--c-ink-3); }
+
+  /* ── 图志 ── */
+  :root[data-visual-theme="cyanotype"] .gallery-tab { font-size: .9375rem; letter-spacing: 0; }
+  :root[data-visual-theme="cyanotype"] .gallery-tab[aria-selected='true'] { color: var(--c-ink); border-bottom-color: var(--c-accent); }
+  :root[data-visual-theme="cyanotype"] .gallery-tab b { color: var(--c-ink-3); font-weight: 400; }
+  :root[data-visual-theme="cyanotype"] :is(.gallery-order-label, .gallery-view-label) span { font-size: .8125rem; color: var(--c-ink-3); }
+  :root[data-visual-theme="cyanotype"] :is(.gallery-order-label, .gallery-view-label) strong { display: none; }
+  :root[data-visual-theme="cyanotype"] :is(.gallery-sort, .gallery-view-switch) button[aria-pressed='true'] { color: var(--c-accent); border-bottom-color: var(--c-accent); }
+  :root[data-visual-theme="cyanotype"] .gallery-post-title { font-style: normal; font-family: var(--cy-serif); font-weight: 600; font-size: clamp(1.25rem, .8vw + 1rem, 1.625rem); }
+  :root[data-visual-theme="cyanotype"] :is(.gallery-plate-no, .plate-no) { display: none; }
+  :root[data-visual-theme="cyanotype"] :is(.gallery-item, .gallery-card) :is(img, figure) { border: 0; border-radius: 0; }
+
+  /* ── 关于页 ── */
+  :root[data-visual-theme="cyanotype"] .dossier-header h1 { font-family: var(--cy-serif); font-weight: 600; }
+  :root[data-visual-theme="cyanotype"] .dossier-header p { font-family: var(--font-body); color: var(--c-ink-2); }
+  :root[data-visual-theme="cyanotype"] :is(.about-portrait, .about-portrait img) { border: 0; border-radius: 0; }
+  :root[data-visual-theme="cyanotype"] .visual-theme-switch button[aria-pressed='true'] { background: var(--c-accent); border-color: var(--c-accent); color: var(--c-paper); }
+
+  /* ── 焦点：一处统一的蓝色外框 ── */
+  :root[data-visual-theme="cyanotype"] :is(a, button, input, select, textarea, summary):focus-visible {
+    outline: 2px solid var(--c-accent); outline-offset: 3px;
+  }
+
+  @media (max-width: 720px) {
+    :root[data-visual-theme="cyanotype"] .f-hero { min-height: 30rem; padding-inline: 0; margin-top: 0; }
+    :root[data-visual-theme="cyanotype"] .f-recent { row-gap: 40px; }
+    :root[data-visual-theme="cyanotype"] .f-footer__inner { gap: 16px; }
+    :root[data-visual-theme="cyanotype"] .f-footer__end { justify-content: flex-start; }
+  }
+}

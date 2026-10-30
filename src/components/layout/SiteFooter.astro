@@ -9,16 +9,18 @@ const year = new Date().getFullYear();
 ---
 
 <footer class="f-footer">
-  <div class="f-double-rule" style="margin-bottom:32px"></div>
   <div class="f-footer__inner">
-    <div class="f-stamp" aria-hidden="true">ARS<br />LONGA</div>
-    <div class="f-footer__meta">
-      {siteName} · {siteTagline}<br />
-      内容以 CC BY-NC 4.0 授权 · 图片来源见各图版
+    <div class="f-footer__brand">
+      <span class="f-stamp" aria-hidden="true">A</span>
+      <span>
+        <span class="f-footer__name">{siteName}</span>
+        <span class="f-footer__meta">{siteTagline}</span>
+      </span>
     </div>
-    <div class="f-footer__meta" style="text-align:right">
-      <a href="https://github.com/AnAcretiondisk9986">GITHUB ↗</a> · © {year} {siteName.toUpperCase()}<br />
-      编目与图版持续增补
-    </div>
+    <p class="f-footer__meta">文字以 CC BY-NC 4.0 授权，图片版权归原作者。</p>
+    <p class="f-footer__meta f-footer__end">
+      <a href="https://github.com/AnAcretiondisk9986">GitHub</a>
+      <span>© {year}</span>
+    </p>
   </div>
 </footer>

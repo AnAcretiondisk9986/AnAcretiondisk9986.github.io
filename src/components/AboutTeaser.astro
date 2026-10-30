@@ -1,5 +1,4 @@
 ---
-import Icon from './Icon.astro';
 
 interface Props {
   avatar: string;
@@ -15,8 +14,8 @@ const { avatar, lead, paragraphs, quoteText } = Astro.props;
   {/* data-reveal：首页滚动动效的挂载点（见 src/styles/home-cinematic.css）。
       本组件只被首页使用；属性本身不改变任何样式与语义。 */}
   <div class="f-section-head" data-reveal="head">
-    <h2 class="f-section-title" id="about-title"><small>IV</small>编目者档案</h2>
-    <a class="f-section-more" href="/about/">了解我 <Icon name="arrow-right" /></a>
+    <h2 class="f-section-title" id="about-title">关于我</h2>
+    <a class="f-section-more" href="/about/">更多</a>
   </div>
 
   <div class="f-about__grid">

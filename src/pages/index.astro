@@ -48,6 +48,7 @@ const recentCards = recentPosts.map((post, index) => {
   return {
     href: `/blog/${post.id}/`,
     title: post.data.title,
+    excerpt: post.data.description,
     tag: post.data.tags?.[0] ?? '',
     date: fmtDate(post.data.pubDate),
     iso: post.data.pubDate.toISOString(),
@@ -78,8 +79,6 @@ const heroPosition = String(frontend.stillImagePosition || 'center');
     <div class="f-hero__scrim" aria-hidden="true"></div>
 
     <div class="f-hero__body">
-      <p class="f-hero__folio"><span>PLATE I</span><i></i><span>MMXXVI</span></p>
-
       <h1 id="cover-title" class="f-hero__title">
         <span class="f-hero__line1">{titleCjk}</span>
         {titleLatin && (
@@ -112,8 +111,8 @@ const heroPosition = String(frontend.stillImagePosition || 'center');
 
   <section class="f-section">
     <div class="f-section-head" data-reveal="head">
-      <h2 class="f-section-title"><small>II</small>近期编目</h2>
-      <a class="f-section-more" href="/blog/">全部 {posts.length} 篇 →</a>
+      <h2 class="f-section-title">近期文章</h2>
+      <a class="f-section-more" href="/blog/">全部 {posts.length} 篇</a>
     </div>
     <div class="f-recent">
       {recentCards.map((card) => (
@@ -135,8 +134,8 @@ const heroPosition = String(frontend.stillImagePosition || 'center');
             )}
           </span>
           <span class="f-card__body">
-            <span class="f-card__no">NO. {card.no}</span>
             <span class="f-card__title">{card.title}</span>
+            {card.excerpt && <span class="f-card__excerpt">{card.excerpt}</span>}
             <span class="f-card__meta">
               <span class="f-card__tag">{card.tag || '未分类'}</span>
               <time datetime={card.iso}>{card.date}</time>
@@ -149,8 +148,8 @@ const heroPosition = String(frontend.stillImagePosition || 'center');
 
   <section class="f-section">
     <div class="f-section-head" data-reveal="head">
-      <h2 class="f-section-title"><small>III</small>最新图版</h2>
-      <a class="f-section-more" href="/gallery/">进入图志 →</a>
+      <h2 class="f-section-title">最近收藏的图</h2>
+      <a class="f-section-more" href="/gallery/">打开图志</a>
     </div>
     <div class="f-plates">
       {galleryTeaserImages.map((img, i) => (
@@ -160,7 +159,6 @@ const heroPosition = String(frontend.stillImagePosition || 'center');
           </span>
           <span class="f-plate__cap">
             <span class="f-plate__title">{img.title || '未命名'}</span>
-            <span class="f-plate__no">PL. {String(99 - i).padStart(3, '0')}</span>
           </span>
         </a>
       ))}
@@ -175,9 +173,7 @@ const heroPosition = String(frontend.stillImagePosition || 'center');
   />
 
   <section class="f-section f-coda" data-reveal="coda">
-    <div class="f-fleuron" aria-hidden="true"><i></i></div>
-    <blockquote>"写下来，是为了更清楚地看见自己。"</blockquote>
-    <p class="f-num">FINIS PAGINAE · INITIUM SEQUENTIS</p>
+    <blockquote>写下来，是为了更清楚地看见自己。</blockquote>
   </section>
 </BaseLayout>
 

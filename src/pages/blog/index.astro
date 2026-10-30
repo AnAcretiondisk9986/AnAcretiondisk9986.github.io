@@ -4,28 +4,17 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import PostCatalog from '../../components/PostCatalog.astro';
 
 const posts = await getPublicPosts();
-const year = new Date().getFullYear();
 ---
 
 <BaseLayout title="编目" description="Acretiondisk 的全部文章。">
   <section class="f-section f-opener">
-    <div class="f-fleuron" aria-hidden="true"><i></i></div>
-    <div class="f-cover__folio"><span>CATALOGUS</span><span>·</span><span>MMXXVI</span></div>
     <h1 class="f-opener__title">全部文章</h1>
     <p class="f-opener__deck">技术、医学、艺术，以及日常生活中的记录。</p>
-    <div class="f-cover__meta">
-      <span>{String(posts.length).padStart(3, '0')} 篇</span>
-      <span>持续编目</span>
-      <span data-order-text>由新至旧</span>
-    </div>
+    <p class="f-opener__meta">共 {posts.length} 篇</p>
   </section>
 
   <PostCatalog posts={posts} />
 
-  <footer class="f-section f-coda">
-    <div class="f-fleuron" aria-hidden="true"><i></i></div>
-    <p class="f-num">ACR / CATALOGUS / {year}</p>
-  </footer>
 </BaseLayout>
 
 <!-- 编目页版式（页头 + 工具栏 + 条目网格）统一定义在 src/styles/pages-next.css 的

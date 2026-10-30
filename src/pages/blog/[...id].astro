@@ -66,7 +66,7 @@ const fmtMinute = (d: Date) => {
     <aside class="article-margin f-article__aside">
       <a class="back-link" href="/blog/"><Icon name="arrow-left" /> <ThemeCopy minimal="返回文章" trace="返回卷册目录" /></a>
       <a class="private-channel" href="/private/">
-        <span class="private-channel__copy"><ThemeCopy minimal="私密文章" trace="私密卷册" /><small>PRIVATE ARCHIVE</small></span>
+        <span class="private-channel__copy"><ThemeCopy minimal="私密文章" trace="私密卷册" /></span>
         <span class="private-channel__arrow" aria-hidden="true"><Icon name="arrow-up-right" /></span>
       </a>
       <button class="print-action" type="button" onclick="window.print()">
@@ -101,23 +101,23 @@ const fmtMinute = (d: Date) => {
     <article class="article">
       <header class="article-header">
         <div class="article-register">
-          <span class="f-article__eyebrow"><ThemeCopy cyanotype={`NOTE / ${folioCode}`} minimal={`ARTICLE ${folioCode}`} trace={`FOLIO ${folioCode}`} /></span>
-          <span class="article-register__brand"><ThemeCopy minimal="ACRETIONDISK" trace="ARCHIVUM PERSONAE" /></span>
+          <a class="f-article__eyebrow" href="/blog/">文章</a>
+          {post.data.tags[0] && <span class="article-register__brand">{post.data.tags[0]}</span>}
         </div>
         <h1 class="f-article__title">{post.data.title}</h1>
         <p class="article-deck">{post.data.description}</p>
         <div class="article-meta f-article__meta">
           <time datetime={post.data.pubDate.toISOString()}>
-            发布 · {fmtMinute(post.data.pubDate)}
+            {fmtMinute(post.data.pubDate)}
           </time>
           <span class="article-meta__read">约 {readingMinutes} 分钟</span>
           {post.data.updatedDate && (
             <time datetime={post.data.updatedDate.toISOString()}>
-              修订 · {fmtMinute(post.data.updatedDate)}
+              修订于 {fmtMinute(post.data.updatedDate)}
             </time>
           )}
           <span class="article-meta__pv" id="busuanzi_container_page_pv" hidden>
-            阅读 · <span id="busuanzi_value_page_pv">—</span>
+            <span id="busuanzi_value_page_pv">—</span> 次阅读
           </span>
         </div>
       </header>
@@ -127,8 +127,6 @@ const fmtMinute = (d: Date) => {
           <img src={articleCover} alt="" loading="eager" decoding="async" />
         </figure>
       )}
-
-      <div class="article-ornament" aria-hidden="true"><Icon name="aperture" /></div>
 
       {isAuthorized ? (
         <div class="access-gate" data-authorized-gate data-authorized-article={post.id}>
@@ -158,7 +156,6 @@ const fmtMinute = (d: Date) => {
           <p>文章目录</p>
           <ol></ol>
         </nav>
-        <p class="article-rail__stamp" aria-hidden="true">FOLIO {folioCode}</p>
       </div>
     </aside>
   </div>

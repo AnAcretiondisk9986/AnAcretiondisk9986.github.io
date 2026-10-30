@@ -93,35 +93,25 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
 <BaseLayout title="照片" description="Acretiondisk 的照片。">
   <div class="gallery-shell">
     <header class="f-gallery-head">
-      <div class="f-fleuron" aria-hidden="true"><i></i></div>
-      <div class="f-cover__folio">
-        <span>IMAGO</span><span>·</span><span>图志</span><span>·</span><span>VOL. I</span>
-      </div>
       <h1 class="f-gallery-head__title">照片</h1>
       <p class="f-gallery-head__deck"><ThemeCopy minimal="文章中的图片，以及单独收藏的照片。" trace="从文字中显影的片段，以及尚未归入卷册的独立收藏。" /></p>
-      <div class="f-cover__meta f-gallery-head__stats">
-        <span><span>图版</span><b class="f-num">{String(totalImages).padStart(3, '0')}</b></span>
-        <span><span>随文图像</span><b class="f-num">{String(journalImages.length).padStart(2, '0')}</b></span>
-        <span><span>独立收藏</span><b class="f-num">{String(standaloneImages.length).padStart(2, '0')}</b></span>
-      </div>
+      <p class="f-opener__meta">共 {totalImages} 张，其中 {standaloneImages.length} 张单独收藏</p>
     </header>
 
     <div class="gallery-tabs" role="tablist" aria-label="图像档案视图">
       <button class="gallery-tab" type="button" role="tab" aria-selected="true" aria-controls="gallery-journal" id="tab-journal" data-gallery-tab="journal">
-        <span class="gallery-tab-index">I</span>
-        <span><ThemeCopy minimal="文章图片" trace="随文图像" /></span>
+                <span><ThemeCopy minimal="文章图片" trace="随文图像" /></span>
         <b>{String(journalImages.length).padStart(2, '0')}</b>
       </button>
       <button class="gallery-tab" type="button" role="tab" aria-selected="false" aria-controls="gallery-independent" id="tab-independent" data-gallery-tab="independent">
-        <span class="gallery-tab-index">II</span>
-        <span><ThemeCopy minimal="独立照片" trace="独立收藏" /></span>
+                <span><ThemeCopy minimal="独立照片" trace="独立收藏" /></span>
         <b>{String(standaloneImages.length).padStart(2, '0')}</b>
       </button>
     </div>
 
     <div class="gallery-order-bar">
       <div class="gallery-order-label">
-        <span>DISPLAY ORDER</span>
+        <span>排序</span>
         <strong data-gallery-order-status>从新至旧</strong>
       </div>
       <div class="gallery-sort" role="group" aria-label="照片展示顺序">
@@ -141,7 +131,7 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
       </div>
       <div class="gallery-view-bar">
         <div class="gallery-view-label">
-          <span>VIEW MODE</span>
+          <span>查看方式</span>
           <strong data-gallery-view-status><ThemeCopy minimal="按文章" trace="文章图集" /></strong>
         </div>
         <div class="gallery-view-switch" role="group" aria-label="随文图像展示方式">
@@ -175,7 +165,7 @@ const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
                 <header class="gallery-album-head">
                   <div>
                     <span class="gallery-card-label" data-gallery-sequence data-gallery-sequence-cyanotype-prefix="手记 " data-gallery-sequence-minimal-prefix="文章 " data-gallery-sequence-trace-prefix="FOLIO "><ThemeCopy cyanotype={`手记 ${String(groupIndex + 1).padStart(2, '0')}`} minimal={`文章 ${String(groupIndex + 1).padStart(2, '0')}`} trace={`FOLIO ${String(groupIndex + 1).padStart(2, '0')}`} /></span>
-                    <span class="gallery-card-label">{lead.date} · {group.images.length} IMAGES</span>
+                    <span class="gallery-card-label"><ThemeCopy minimal={`${lead.date} · ${group.images.length} 张`} trace={`${lead.date} · ${group.images.length} IMAGES`} /></span>
                   </div>
                   <h2>{lead.sourceTitle}</h2>
                   <a href={lead.sourceUrl}><ThemeCopy minimal="阅读全文" trace="阅览全文" /> <Icon name="arrow-up-right" /></a>

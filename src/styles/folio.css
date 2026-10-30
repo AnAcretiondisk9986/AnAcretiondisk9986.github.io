@@ -152,23 +152,29 @@
      两个轴同时出现在选择器里，杜绝「实现块被通用暗色块反超」。
      ========================================================================== */
 
-  /* ── 蓝晒 cyanotype：铜线双框 / 裁切标记 / 网点 ── */
+  /* ── 蓝晒 cyanotype（2026-10 重绘）──
+     取「蓝晒」字面：明色 = 曝光前的棉纸（冷白）+ 普鲁士蓝墨；
+     暗色 = 曝光后的晒图本身（深普鲁士蓝底 + 纸白字）。
+     全主题只有一种强调色（普鲁士蓝），--c-metal 也指向蓝，旧的铜色线饰因此统一变蓝。 */
   :root[data-visual-theme="cyanotype"][data-theme="light"] {
-    --c-paper: #f6f3ec; --c-paper-raised: #fcfaf6; --c-paper-sunken: #ede8de;
-    --c-ink: #12100d; --c-ink-2: #4d463c; --c-ink-3: #7c7366;
-    --c-rule: rgba(18, 16, 13, .15); --c-rule-strong: rgba(18, 16, 13, .34);
-    --c-metal: var(--p-copper-500); --c-accent: var(--p-blue-600); --c-accent-2: var(--p-red-600);
+    --c-paper: #f3f4f1; --c-paper-raised: #fafbf9; --c-paper-sunken: #e7eae8;
+    --c-ink: #142037; --c-ink-2: #46526a; --c-ink-3: #75809a;
+    --c-rule: rgba(20, 32, 55, .13); --c-rule-strong: rgba(20, 32, 55, .28);
+    --c-metal: #2a5aa8; --c-accent: #1f4f9e; --c-accent-2: #1f4f9e;
+    --c-plate: #1f4f9e; --c-plate-deep: #12305f;
     --r-frame: 0; --frame-color: var(--c-rule-strong);
-    --deco-crops: 1; --deco-fleuron: 1; --deco-double: 1;
-    --texture-op: .022;
+    --deco-crops: 0; --deco-fleuron: 0; --deco-double: 0;
+    --texture-op: .018;
   }
   :root[data-visual-theme="cyanotype"][data-theme="dark"] {
-    --c-paper: #12151a; --c-paper-raised: #171b21; --c-paper-sunken: #0a0c10;
-    --c-ink: #e8e3d9; --c-ink-2: #b9b2a5; --c-ink-3: #8b8477;
-    --c-rule: rgba(232, 227, 217, .16); --c-rule-strong: rgba(232, 227, 217, .34);
-    --c-metal: var(--p-copper-300); --c-accent: #86a9dc; --c-accent-2: #c9715a;
+    --c-paper: #0f1d33; --c-paper-raised: #142540; --c-paper-sunken: #0b1628;
+    --c-ink: #e7ecf3; --c-ink-2: #b4c0d3; --c-ink-3: #8393ad;
+    --c-rule: rgba(231, 236, 243, .13); --c-rule-strong: rgba(231, 236, 243, .28);
+    --c-metal: #94b4e8; --c-accent: #a9c4ef; --c-accent-2: #a9c4ef;
+    --c-plate: #1d4a94; --c-plate-deep: #0a1a33;
     --frame-color: var(--c-rule-strong);
-    --texture-op: .038;
+    --deco-crops: 0; --deco-fleuron: 0; --deco-double: 0;
+    --texture-op: .03;
   }
 
   /* ── 行迹 trace：纸本的去装饰变体（单线框、无线饰） ── */
