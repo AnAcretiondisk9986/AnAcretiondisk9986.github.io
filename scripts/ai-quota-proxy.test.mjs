@@ -248,7 +248,12 @@ test('六个上游全部成功时返回完整契约数据', async () => {
     remaining: null,
   });
   assert.equal(taffcloud.meta.mode, 'billing');
-  assert.equal(taffcloud.meta.hardLimitUsd, 100000000);
+  assert.equal(taffcloud.meta.usageScope, 'cumulative-per-key');
+  assert.equal(taffcloud.meta.keyCount, 1);
+  // 单把 key 时也走 accounts 形状：唯一下游数值留在 account 里
+  assert.equal(taffcloud.accounts.length, 1);
+  assert.equal(taffcloud.accounts[0].hardLimitUsd, 100000000);
+  assert.equal(taffcloud.accounts[0].label, '…0004');
 
   const deepseek = providerOf(payload, 'deepseek');
   assert.equal(deepseek.status, 'ok');
@@ -425,4 +430,35 @@ test('密钥文件损坏时 ok:false，全部 provider 标 config-error', async 
     assert.equal(provider.status, 'config-error');
     assert.ok(provider.message.includes('密钥文件'));
   }
+});
+
+test('TaffCloud 按令牌分别记账：两把 key 各查一次，用量相加', async () => {
+  const keys = {
+    ...KEYS,
+    taffcloud: { apiKeys: ['sk-TEST-taff-a', 'sk-TEST-taff-b'], accessToken: '', userId: '' },
+  };
+  const rules = [
+    ...successRules().filter(([matcher]) => !String(matcher).includes('/v1/dashboard/billing/usage')),
+    [
+      'https://api.taffcloud.xyz/v1/dashboard/billing/usage',
+      (_target, headers) => ({
+        body: {
+          object: 'list',
+          total_usage: String(headers.Authorization || '').endsWith('-b') ? 2619.2652 : 104.5904,
+        },
+      }),
+    ],
+  ];
+  const { service, fetchImpl } = await buildService({ rules, keys });
+  const payload = await service.readAll({ force: true });
+  const taffcloud = providerOf(payload, 'taffcloud');
+
+  assert.equal(taffcloud.status, 'ok');
+  assert.equal(fetchImpl.countOf('https://api.taffcloud.xyz/v1/dashboard/billing/usage'), 2);
+  assert.equal(taffcloud.accounts.length, 2);
+  assert.deepEqual(taffcloud.accounts.map((item) => item.used), [1.045904, 26.192652]);
+  assert.equal(Math.round(taffcloud.quota.used * 1e6) / 1e6, 27.238556);
+  assert.equal(taffcloud.quota.unlimited, true);
+  // 完整 key 不得出现在返回值里
+  assert.ok(!JSON.stringify(payload).includes('sk-TEST-taff-a'));
 });

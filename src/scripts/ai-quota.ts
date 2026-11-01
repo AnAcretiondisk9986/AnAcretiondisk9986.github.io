@@ -58,6 +58,14 @@ interface UsageShape {
   totalTokens?: number | null;
 }
 
+interface ProviderAccount {
+  label?: string | null;
+  used?: number | null;
+  unlimited?: boolean | null;
+  remaining?: number | null;
+  error?: string | null;
+}
+
 interface SeriesPoint {
   date?: string | null;
   cost?: number | null;
@@ -77,6 +85,8 @@ interface ProviderShape {
   windows?: QuotaWindow[] | null;
   usage?: UsageShape | null;
   series?: SeriesPoint[] | null;
+  /** new-api 这类按令牌记账的上游：一个服务多把 key 各算各的 */
+  accounts?: ProviderAccount[] | null;
   meta?: Record<string, unknown> | null;
 }
 
@@ -779,7 +789,17 @@ function renderProvider(card: HTMLElement, provider: ProviderShape | null): void
       if (isNumber(tokens.cacheRead)) parts.push(`缓存 ${formatTokens(tokens.cacheRead)}`);
       if (parts.length) kvRows.push(['拆分', parts.join(' · ')]);
     }
-    if (isNumber(usage.totalCost) && group !== 'platform') kvRows.push(['累计花费', formatMoney(usage.totalCost, currency)]);
+    if (isNumber(usage.totalCost) && group !== 'platform' && !(Array.isArray(provider.accounts) && provider.accounts.length > 1)) {
+      kvRows.push(['累计花费', formatMoney(usage.totalCost, currency)]);
+    }
+    // 按令牌记账的上游（TaffCloud）：一把 key 一行，合计已在上面
+    const accounts = Array.isArray(provider.accounts) ? provider.accounts : [];
+    for (const account of accounts) {
+      if (!account) continue;
+      const label = `令牌 ${account.label || '—'}`;
+      if (isNumber(account.used)) kvRows.push([label, formatMoney(account.used, currency)]);
+      else if (account.error) kvRows.push([label, '读取失败']);
+    }
     if (usage.mode) kvRows.push(['计费模式', String(usage.mode)]);
   }
   renderKv(card, kvRows);

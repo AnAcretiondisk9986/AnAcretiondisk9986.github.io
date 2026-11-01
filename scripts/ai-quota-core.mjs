@@ -370,11 +370,54 @@ async function loadToolcode(ctx, entry) {
 
 // ── TaffCloud（new-api）：面板 token 优先，否则回落 OpenAI 兼容计费 ────────
 
+/** 令牌脱敏：只留后 4 位，够人认出是哪一把，又不会把密钥写进页面。 */
+function maskKey(key) {
+  const raw = str(key);
+  if (!raw) return '未命名令牌';
+  const tail = raw.slice(-4);
+  return `…${tail}`;
+}
+
+async function taffcloudAccount(ctx, key) {
+  const today = ctx.ymd;
+  const start = `${today.slice(0, 8)}01`;
+  const headers = { Authorization: `Bearer ${key}`, accept: 'application/json' };
+
+  const [sub, usg] = await Promise.all([
+    requestJson(ctx, `${TAFFCLOUD_BASE}/v1/dashboard/billing/subscription`, headers),
+    requestJson(ctx, `${TAFFCLOUD_BASE}/v1/dashboard/billing/usage?start_date=${start}&end_date=${today}`, headers),
+  ]);
+  if (!sub.ok) throw httpError(sub.status);
+  if (!usg.ok) throw httpError(usg.status);
+  if (!sub.json || !usg.json) throw new QuotaError('upstream', '上游返回内容无法解析');
+
+  const hardLimit = num(sub.json.hard_limit_usd);
+  const totalUsageCents = num(usg.json.total_usage);
+  const used = totalUsageCents == null ? null : totalUsageCents / 100;
+  const unlimited = hardLimit != null && hardLimit >= 1e8;
+
+  return {
+    label: maskKey(key),
+    used,
+    unlimited,
+    remaining: !unlimited && hardLimit != null && used != null ? hardLimit - used : null,
+    hardLimitUsd: hardLimit,
+    totalUsageCents,
+  };
+}
+
 async function loadTaffcloud(ctx, entry) {
-  const apiKey = str(entry.apiKey);
   const accessToken = str(entry.accessToken);
   const userId = str(entry.userId);
-  if (!apiKey && !accessToken) return { status: 'missing-key', message: '未配置 TaffCloud API Key' };
+  // 这个站（new-api）的用量是按「单个令牌」记账的：多把 key 各算各的，
+  // 所以配置里支持 apiKeys 数组，卡片按令牌分列，再给一个合计。
+  const keys = (
+    Array.isArray(entry.apiKeys) ? entry.apiKeys : entry.apiKey ? [entry.apiKey] : []
+  )
+    .map((item) => str(item))
+    .filter(Boolean);
+
+  if (!keys.length && !accessToken) return { status: 'missing-key', message: '未配置 TaffCloud API Key' };
 
   let panelError = null;
   if (accessToken) {
@@ -410,41 +453,40 @@ async function loadTaffcloud(ctx, entry) {
     }
   }
 
-  if (!apiKey) throw panelError || new QuotaError('upstream', '上游均不可用');
+  if (!keys.length) throw panelError || new QuotaError('upstream', '上游均不可用');
 
-  const today = ctx.ymd;
-  const start = `${today.slice(0, 8)}01`;
-  const sub = await requestJson(ctx, `${TAFFCLOUD_BASE}/v1/dashboard/billing/subscription`, {
-    Authorization: `Bearer ${apiKey}`,
-    accept: 'application/json',
+  const settled = await Promise.allSettled(keys.map((key) => taffcloudAccount(ctx, key)));
+  const accounts = settled.map((entry, index) => {
+    if (entry.status === 'fulfilled') return entry.value;
+    return {
+      label: maskKey(keys[index]),
+      used: null,
+      unlimited: null,
+      remaining: null,
+      error: entry.reason && entry.reason.message ? entry.reason.message : '令牌查询失败',
+    };
   });
-  if (!sub.ok) throw httpError(sub.status);
-  if (!sub.json) throw new QuotaError('upstream', '上游返回内容无法解析');
 
-  const usg = await requestJson(
-    ctx,
-    `${TAFFCLOUD_BASE}/v1/dashboard/billing/usage?start_date=${start}&end_date=${today}`,
-    { Authorization: `Bearer ${apiKey}`, accept: 'application/json' },
-  );
-  if (!usg.ok) throw httpError(usg.status);
-  if (!usg.json) throw new QuotaError('upstream', '上游返回内容无法解析');
+  const okAccounts = accounts.filter((item) => !item.error);
+  if (!okAccounts.length) {
+    throw new QuotaError('upstream', accounts[0] && accounts[0].error ? accounts[0].error : '所有令牌查询失败');
+  }
 
-  const hardLimit = num(sub.json.hard_limit_usd);
-  const totalUsageCents = num(usg.json.total_usage);
-  const used = totalUsageCents == null ? null : totalUsageCents / 100;
-  const unlimited = hardLimit != null && hardLimit >= 1e8;
-  const remaining = !unlimited && hardLimit != null && used != null ? hardLimit - used : null;
+  const usedValues = okAccounts.map((item) => item.used).filter((value) => num(value) != null);
+  const usedSum = usedValues.length ? usedValues.reduce((sum, value) => sum + value, 0) : null;
+  const unlimited = okAccounts.every((item) => item.unlimited);
 
   return {
     currency: 'USD',
-    balance: remaining,
-    quota: { unlimited, limit: unlimited ? null : hardLimit, used, remaining },
-    usage: { todayRequests: null, todayCost: null, totalCost: used },
+    balance: null,
+    quota: { unlimited, limit: null, used: usedSum, remaining: null },
+    usage: { todayRequests: null, todayCost: null, totalCost: usedSum },
+    accounts,
     meta: {
       mode: 'billing',
-      hardLimitUsd: hardLimit,
-      totalUsageCents,
-      period: { start, end: today },
+      usageScope: 'cumulative-per-key',
+      keyCount: accounts.length,
+      okCount: okAccounts.length,
       ...(panelError && panelError.message ? { panelError: panelError.message } : {}),
     },
   };

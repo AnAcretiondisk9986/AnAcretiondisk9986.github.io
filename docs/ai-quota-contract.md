@@ -43,6 +43,7 @@ HTTP 状态恒为 200（单个上游失败写进 `providers[].status`，不整�
 | `usage` | Usage \| null | 用量汇总 |
 | `series` | Point[] \| null | 按日用量序列（升序，最多 30 天） |
 | `meta` | object | 各后端的补充事实（只放可公开展示的） |
+| `accounts` | Account[] \| null | 按令牌记账的上游（目前只有 TaffCloud）：一把 key 一条 |
 
 ```ts
 type Quota = {
@@ -75,6 +76,14 @@ type TokenCounts = {
   output: number | null;
   cacheRead: number | null;
   total: number | null;
+};
+
+type Account = {
+  label: string;            // 脱敏后的令牌标识，如 "…J7mi"（只留后 4 位）
+  used: number | null;      // 该令牌累计已用（原币种）
+  unlimited: boolean | null;
+  remaining: number | null;
+  error?: string;           // 该把 key 查询失败时的中文原因
 };
 
 type Point = { date: string; cost: number | null; requests: number | null };

@@ -22,7 +22,7 @@
     "taffcloud": {
       "label": "TaffCloud",
       "home": "",
-      "note": "面板额度按站点口径折算为美元；配了 access token 时直接取面板原始额度。"
+      "note": "按令牌分别记账：卡片列出每把 key 的累计已用，额度为站点声明的「不限」。"
     },
     "deepseek": {
       "label": "DeepSeek",
