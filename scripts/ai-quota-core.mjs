@@ -406,11 +406,37 @@ async function taffcloudAccount(ctx, key) {
   };
 }
 
+async function taffcloudPanel(ctx, accessToken, userId) {
+  const headers = { Authorization: `Bearer ${accessToken}`, accept: 'application/json' };
+  if (userId) headers['New-Api-User'] = userId;
+  const res = await requestJson(ctx, `${TAFFCLOUD_BASE}/api/user/self`, headers);
+  if (!res.ok) throw httpError(res.status);
+  if (!res.json) throw new QuotaError('upstream', '上游返回内容无法解析');
+  if (res.json.success === false) throw new QuotaError('auth', 'TaffCloud 面板令牌无效或已过期');
+  const data = res.json.data;
+  if (!data || typeof data !== 'object') throw new QuotaError('upstream', '上游未返回账号额度');
+
+  const quotaRaw = num(data.quota);
+  const usedRaw = num(data.used_quota);
+  const remaining = quotaRaw == null ? null : quotaRaw / NEW_API_QUOTA_PER_USD;
+  const used = usedRaw == null ? null : usedRaw / NEW_API_QUOTA_PER_USD;
+  return {
+    remaining,
+    used,
+    limit: remaining != null && used != null ? remaining + used : null,
+    quotaRaw,
+    usedRaw,
+    requestCount: num(data.request_count),
+    userId: num(data.id),
+    displayName: str(data.display_name || data.username),
+  };
+}
+
 async function loadTaffcloud(ctx, entry) {
   const accessToken = str(entry.accessToken);
   const userId = str(entry.userId);
-  // 这个站（new-api）的用量是按「单个令牌」记账的：多把 key 各算各的，
-  // 所以配置里支持 apiKeys 数组，卡片按令牌分列，再给一个合计。
+  // 这个站（new-api 内核）的用量按「单个令牌」记账：多把 key 各算各的，
+  // 账号级的真实剩余则要面板登录态（access token）才读得到。两条线都取，合并成一张卡。
   const keys = (
     Array.isArray(entry.apiKeys) ? entry.apiKeys : entry.apiKey ? [entry.apiKey] : []
   )
@@ -419,75 +445,76 @@ async function loadTaffcloud(ctx, entry) {
 
   if (!keys.length && !accessToken) return { status: 'missing-key', message: '未配置 TaffCloud API Key' };
 
+  let panel = null;
   let panelError = null;
   if (accessToken) {
     try {
-      const headers = { Authorization: `Bearer ${accessToken}` };
-      if (userId) headers['New-Api-User'] = userId;
-      const res = await requestJson(ctx, `${TAFFCLOUD_BASE}/api/user/self`, headers);
-      if (!res.ok) throw httpError(res.status);
-      const data = res.json && res.json.data;
-      if (res.json && res.json.success === false) throw new QuotaError('auth', 'TaffCloud 面板令牌无效或已过期');
-      if (!data || typeof data !== 'object') throw new QuotaError('upstream', '上游未返回账号额度');
-
-      const quotaRaw = num(data.quota);
-      const usedRaw = num(data.used_quota);
-      const remaining = quotaRaw == null ? null : quotaRaw / NEW_API_QUOTA_PER_USD;
-      const used = usedRaw == null ? null : usedRaw / NEW_API_QUOTA_PER_USD;
-      const limit = remaining != null && used != null ? remaining + used : null;
-
-      return {
-        currency: 'USD',
-        balance: remaining,
-        quota: { unlimited: false, limit, used, remaining },
-        usage: { todayRequests: null, todayCost: null, totalCost: used },
-        meta: {
-          mode: 'panel',
-          quotaRaw,
-          usedQuotaRaw: usedRaw,
-          quotaPerUsd: NEW_API_QUOTA_PER_USD,
-        },
-      };
+      panel = await taffcloudPanel(ctx, accessToken, userId);
     } catch (err) {
       panelError = err;
     }
   }
 
-  if (!keys.length) throw panelError || new QuotaError('upstream', '上游均不可用');
-
-  const settled = await Promise.allSettled(keys.map((key) => taffcloudAccount(ctx, key)));
-  const accounts = settled.map((entry, index) => {
-    if (entry.status === 'fulfilled') return entry.value;
-    return {
-      label: maskKey(keys[index]),
-      used: null,
-      unlimited: null,
-      remaining: null,
-      error: entry.reason && entry.reason.message ? entry.reason.message : '令牌查询失败',
-    };
-  });
-
-  const okAccounts = accounts.filter((item) => !item.error);
-  if (!okAccounts.length) {
-    throw new QuotaError('upstream', accounts[0] && accounts[0].error ? accounts[0].error : '所有令牌查询失败');
+  let accounts = null;
+  let accountsError = null;
+  if (keys.length) {
+    const settled = await Promise.allSettled(keys.map((key) => taffcloudAccount(ctx, key)));
+    accounts = settled.map((entry2, index) => {
+      if (entry2.status === 'fulfilled') return entry2.value;
+      return {
+        label: maskKey(keys[index]),
+        used: null,
+        unlimited: null,
+        remaining: null,
+        error: entry2.reason && entry2.reason.message ? entry2.reason.message : '令牌查询失败',
+      };
+    });
+    if (!accounts.some((item) => !item.error)) {
+      accountsError = new QuotaError(
+        'upstream',
+        accounts[0] && accounts[0].error ? accounts[0].error : '所有令牌查询失败',
+      );
+    }
   }
 
+  if (!panel && !accounts) throw panelError || accountsError || new QuotaError('upstream', '上游均不可用');
+
+  const okAccounts = accounts ? accounts.filter((item) => !item.error) : [];
   const usedValues = okAccounts.map((item) => item.used).filter((value) => num(value) != null);
   const usedSum = usedValues.length ? usedValues.reduce((sum, value) => sum + value, 0) : null;
-  const unlimited = okAccounts.every((item) => item.unlimited);
+  const allUnlimited = okAccounts.length > 0 && okAccounts.every((item) => item.unlimited);
+  const panelUsed = panel ? panel.used : null;
+
+  const messages = [];
+  if (panelError && panelError.message) messages.push(`面板额度不可用：${panelError.message}`);
+  if (accountsError && accountsError.message) messages.push(`令牌用量不可用：${accountsError.message}`);
 
   return {
     currency: 'USD',
-    balance: null,
-    quota: { unlimited, limit: null, used: usedSum, remaining: null },
-    usage: { todayRequests: null, todayCost: null, totalCost: usedSum },
+    balance: panel ? panel.remaining : null,
+    quota: panel
+      ? {
+          unlimited: false,
+          limit: panel.limit,
+          used: panelUsed,
+          remaining: panel.remaining,
+        }
+      : { unlimited: allUnlimited, limit: null, used: usedSum, remaining: null },
+    usage: {
+      todayRequests: null,
+      // 面板的 request_count 是账号累计请求数，不是"今日"，别贴错标签
+      totalRequests: panel ? panel.requestCount : null,
+      todayCost: null,
+      totalCost: panelUsed != null ? panelUsed : usedSum,
+    },
     accounts,
     meta: {
-      mode: 'billing',
+      mode: panel && accounts ? 'panel+billing' : panel ? 'panel' : 'billing',
       usageScope: 'cumulative-per-key',
-      keyCount: accounts.length,
+      keyCount: accounts ? accounts.length : 0,
       okCount: okAccounts.length,
-      ...(panelError && panelError.message ? { panelError: panelError.message } : {}),
+      ...(panel ? { quotaRaw: panel.quotaRaw, usedQuotaRaw: panel.usedRaw, quotaPerUsd: NEW_API_QUOTA_PER_USD, accountId: panel.userId } : {}),
+      ...(messages.length ? { partialError: messages.join('；') } : {}),
     },
   };
 }

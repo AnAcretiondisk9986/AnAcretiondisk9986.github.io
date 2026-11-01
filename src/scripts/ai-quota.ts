@@ -56,6 +56,7 @@ interface UsageShape {
   /** 云渡 / ToolCode 的 /v1/usage 直接给了今日 token 口径 */
   todayTokens?: TokenCounts | null;
   totalTokens?: number | null;
+  totalRequests?: number | null;
 }
 
 interface ProviderAccount {
@@ -750,7 +751,10 @@ function renderProvider(card: HTMLElement, provider: ProviderShape | null): void
     else if (isNumber(quota?.remaining)) subText = `剩余 ${formatMoney(quota.remaining, currency)}`;
   } else {
     amountText = formatMoney(provider.balance ?? null, currency);
-    if (isNumber(quota?.remaining) && quota.remaining !== provider.balance) {
+    // 余额之上再给一句已用：面板额度能读到时（TaffCloud），两个数合起来才是充值总额
+    if (isNumber(quota?.used) && quota?.unlimited !== true) {
+      subText = `已用 ${formatMoney(quota.used, currency)}`;
+    } else if (isNumber(quota?.remaining) && quota.remaining !== provider.balance) {
       subText = `剩余 ${formatMoney(quota.remaining, currency)}`;
     }
   }
@@ -789,6 +793,7 @@ function renderProvider(card: HTMLElement, provider: ProviderShape | null): void
       if (isNumber(tokens.cacheRead)) parts.push(`缓存 ${formatTokens(tokens.cacheRead)}`);
       if (parts.length) kvRows.push(['拆分', parts.join(' · ')]);
     }
+    if (isNumber(usage.totalRequests)) kvRows.push(['请求总数', `${formatCount(usage.totalRequests)} 次`]);
     if (isNumber(usage.totalCost) && group !== 'platform' && !(Array.isArray(provider.accounts) && provider.accounts.length > 1)) {
       kvRows.push(['累计花费', formatMoney(usage.totalCost, currency)]);
     }

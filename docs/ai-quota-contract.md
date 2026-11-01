@@ -69,6 +69,7 @@ type Usage = {
   mode?: string | null;       // 上游计费模式原文
   todayTokens?: TokenCounts | null; // 只有云渡 / ToolCode 给，其它家恒 null
   totalTokens?: number | null;      // 云渡 / ToolCode 累计 token；智谱填资源包剩余
+  totalRequests?: number | null;    // 账号累计请求数（目前只有 TaffCloud 面板给）
 };
 
 type TokenCounts = {
@@ -98,7 +99,7 @@ type Point = { date: string; cost: number | null; requests: number | null };
 | `opencode-go` | `GET https://opencode.ai/zen/go/v1/usage` | `Authorization: Bearer <key>` + `x-opencode-session: <uuid>` | `usage.{rolling,weekly,monthly}.{status,percent,resetsAt}` → `windows` |
 | `yundu` | `GET https://gd.yundu.lol/v1/usage` | `Bearer <sk>` | `balance`、`daily_usage[]`、`isValid`、`mode` |
 | `toolcode` | `GET https://toolcode.cc/v1/usage`（失败回落 `https://toolcode.top/v1/usage`） | `Bearer <sk>` | 同上 |
-| `taffcloud` | 优先 `GET /api/user/self`（需面板 access token）→ `data.quota/used_quota`；否则回落 `GET /v1/dashboard/billing/subscription` + `/v1/dashboard/billing/usage` | `Bearer <sk>`；access token 模式另加 `New-Api-User: <userId>` | 回落时 `quota.unlimited = hard_limit_usd >= 1e8`，`used = total_usage / 100`（分→美元） |
+| `taffcloud` | 两条线并行：面板 `GET /api/user/self`（access token）→ `data.quota/used_quota`；每个 API 令牌 `GET /v1/dashboard/billing/subscription` + `/v1/dashboard/billing/usage` | 面板：`Bearer <accessToken>` + `New-Api-User: <userId>`；令牌：`Bearer <sk>` | 面板 `quota/500000` = 剩余美元，`used_quota/500000` = 已用；令牌的 `total_usage/100` = 该令牌累计已用（区间参数无效）；两者同时可用时 `meta.mode = "panel+billing"` |
 | `deepseek` | `GET https://api.deepseek.com/user/balance` | `Bearer <sk>` | `balance_infos[0].{currency,total_balance,granted_balance,topped_up_balance}` |
 | `glm` | 余额 `GET https://open.bigmodel.cn/api/biz/account/query-customer-account-report`；资源包 `GET https://open.bigmodel.cn/api/biz/tokenAccounts/list/my`；计划用量 `GET https://open.bigmodel.cn/api/monitor/usage/quota/limit` | **裸 key**（不加 `Bearer`，中国站） | `data.availableBalance/rechargeAmount/giveAmount/totalSpendAmount/todaySpendAmount`；资源包 `rows[].tokenBalance`（只算未过期且 >0 的包）→ `meta.tokenBalanceTotal`；计划 `data.limits[]` → `windows` |
 

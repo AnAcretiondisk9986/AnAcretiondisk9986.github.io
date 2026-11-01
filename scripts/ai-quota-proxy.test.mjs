@@ -462,3 +462,41 @@ test('TaffCloud 按令牌分别记账：两把 key 各查一次，用量相加',
   // 完整 key 不得出现在返回值里
   assert.ok(!JSON.stringify(payload).includes('sk-TEST-taff-a'));
 });
+
+test('TaffCloud 面板模式：access token 读真实余额，与按令牌用量并存', async () => {
+  const keys = {
+    ...KEYS,
+    taffcloud: {
+      apiKeys: ['sk-TEST-taff-a', 'sk-TEST-taff-b'],
+      accessToken: 'panel-token-test',
+      userId: '1408',
+    },
+  };
+  const rules = [
+    ...successRules(),
+    [
+      'https://api.taffcloud.xyz/api/user/self',
+      {
+        body: {
+          success: true,
+          data: { id: 1408, quota: 1380633, used_quota: 13619367, request_count: 295, display_name: 'tester' },
+        },
+      },
+    ],
+  ];
+  const { service, fetchImpl } = await buildService({ rules, keys });
+  const payload = await service.readAll({ force: true });
+  const taffcloud = providerOf(payload, 'taffcloud');
+
+  assert.equal(taffcloud.status, 'ok');
+  assert.equal(taffcloud.meta.mode, 'panel+billing');
+  assert.equal(Number(taffcloud.balance.toFixed(6)), 2.761266);
+  assert.equal(Number(taffcloud.quota.used.toFixed(6)), 27.238734);
+  assert.equal(Number(taffcloud.quota.limit.toFixed(6)), 30);
+  assert.equal(taffcloud.quota.unlimited, false);
+  assert.equal(taffcloud.usage.totalRequests, 295);
+  assert.equal(taffcloud.accounts.length, 2);
+  // 面板请求必须带 New-Api-User，否则 new-api 直接 401
+  const panelCall = fetchImpl.calls.find((call) => call.url.includes('/api/user/self'));
+  assert.equal(panelCall.headers['New-Api-User'], '1408');
+});

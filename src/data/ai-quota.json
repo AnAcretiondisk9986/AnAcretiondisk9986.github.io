@@ -22,7 +22,7 @@
     "taffcloud": {
       "label": "TaffCloud",
       "home": "",
-      "note": "按令牌分别记账：卡片列出每把 key 的累计已用，额度为站点声明的「不限」。"
+      "note": "面板登录态读账号余额，API 令牌读各自累计用量；两者都来自站点接口，口径互相印证。"
     },
     "deepseek": {
       "label": "DeepSeek",
