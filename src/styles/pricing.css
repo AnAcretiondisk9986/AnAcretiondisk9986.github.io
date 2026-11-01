@@ -1,0 +1,487 @@
+/* ============================================================================
+   OpenCode GO 计价页 /ai-quota/pricing/
+   与额度页同一套版式语言：语义 token、细边框、tabular-nums。
+   三种图：对数横条 / 双对数散点 / 100% 堆叠。窄屏单列，桌面散点与堆叠并排。
+   ========================================================================== */
+
+@layer components {
+  .pr-page {
+    width: 100%;
+    max-width: 1180px;
+    margin-inline: auto;
+    padding-block: var(--p-sp-5);
+    color: var(--c-ink);
+    font-size: var(--type-sm);
+    line-height: var(--lh-snug);
+  }
+  .pr-page [hidden] {
+    display: none !important;
+  }
+
+  /* ── 页头 ── */
+  .pr-top {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--p-sp-5);
+    flex-wrap: wrap;
+    padding-bottom: var(--p-sp-3);
+    border-bottom: 1px solid var(--c-rule);
+  }
+  .pr-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: var(--type-meta);
+    color: var(--c-ink-3);
+    text-decoration: none;
+  }
+  .pr-back svg {
+    width: 11px;
+    height: 11px;
+    transform: rotate(-135deg);
+  }
+  .pr-back:hover {
+    color: var(--c-accent);
+  }
+  .pr-top__title {
+    margin: 2px 0 0;
+    font-family: var(--hero-font);
+    font-size: clamp(1.5rem, 1.1vw + 1.1rem, 1.95rem);
+    font-weight: 700;
+    line-height: 1.08;
+  }
+  .pr-top__deck {
+    margin: 3px 0 0;
+    font-size: var(--type-meta);
+    color: var(--c-ink-3);
+  }
+  .pr-top__deck code,
+  .pr-foot code {
+    font-family: var(--font-mono);
+    font-size: 0.94em;
+    padding: 0 3px;
+    background: color-mix(in oklab, var(--c-ink) 6%, transparent);
+  }
+  .pr-kpis {
+    display: flex;
+    gap: var(--p-sp-5);
+    margin: 0;
+    flex-wrap: wrap;
+  }
+  .pr-kpis div {
+    display: grid;
+    gap: 1px;
+  }
+  .pr-kpis dt {
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--c-ink-3);
+  }
+  .pr-kpis dd {
+    margin: 0;
+    font-family: var(--hero-font);
+    font-size: 1.05rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ── 面板 ── */
+  .pr-panel {
+    margin-top: var(--p-sp-4);
+    padding: var(--p-sp-4);
+    border: 1px solid var(--c-rule);
+    background: color-mix(in oklab, var(--c-paper-raised) 86%, var(--c-paper));
+    min-width: 0;
+  }
+  .pr-panel__head {
+    display: flex;
+    align-items: baseline;
+    gap: var(--p-sp-3);
+    flex-wrap: wrap;
+    padding-bottom: var(--p-sp-3);
+    border-bottom: 1px solid var(--c-rule);
+  }
+  .pr-panel__head h2 {
+    margin: 0;
+    font-size: var(--type-body);
+    font-weight: 700;
+  }
+  .pr-panel__deck {
+    margin: 0;
+    font-size: var(--type-meta);
+    color: var(--c-ink-3);
+  }
+  .pr-legend {
+    display: flex;
+    gap: var(--p-sp-4);
+    margin: 0 0 0 auto;
+    padding: 0;
+    list-style: none;
+    font-size: 11.5px;
+    color: var(--c-ink-2);
+  }
+  .pr-legend li {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .pr-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 1px;
+  }
+  .pr-dot--cache {
+    background: color-mix(in oklab, var(--c-ink) 32%, transparent);
+  }
+  .pr-dot--in {
+    background: color-mix(in oklab, var(--c-accent) 52%, transparent);
+  }
+  .pr-dot--out {
+    background: var(--c-accent);
+  }
+
+  /* ── 主图：对数横条 ── */
+  .pr-chart {
+    padding-top: var(--p-sp-3);
+  }
+  .pr-axis {
+    position: relative;
+    height: 14px;
+    margin-left: 208px;
+    margin-right: 132px;
+    border-bottom: 1px solid var(--c-rule);
+  }
+  .pr-axis span {
+    position: absolute;
+    bottom: 2px;
+    transform: translateX(-50%);
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    color: var(--c-ink-3);
+    white-space: nowrap;
+  }
+  .pr-rows {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .pr-row {
+    display: grid;
+    grid-template-columns: 200px minmax(0, 1fr) 132px;
+    align-items: center;
+    gap: var(--p-sp-2);
+    padding-block: 5px;
+    border-bottom: 1px dotted color-mix(in oklab, var(--c-rule) 70%, transparent);
+  }
+  .pr-row:last-child {
+    border-bottom: 0;
+  }
+  .pr-who {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+  }
+  .pr-logo {
+    flex: 0 0 auto;
+    width: 14px;
+    height: 14px;
+    background-color: var(--c-ink-2);
+    -webkit-mask-image: var(--logo);
+    mask-image: var(--logo);
+    -webkit-mask-size: contain;
+    mask-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+  }
+  .pr-mark {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    border: 1px solid var(--c-rule-strong);
+    border-radius: 2px;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    line-height: 1;
+    color: var(--c-ink-2);
+  }
+  .pr-name {
+    font-size: 12.5px;
+    color: var(--c-ink);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .pr-vendor {
+    flex: 0 0 auto;
+    font-size: 10px;
+    color: var(--c-ink-3);
+    white-space: nowrap;
+  }
+  .pr-bars {
+    display: grid;
+    gap: 2px;
+    align-content: center;
+    /* 给条形末端的数值标签留出空间，否则最贵的那一档会被卡片边缘裁掉 */
+    padding-right: 42px;
+  }
+  .pr-bar {
+    position: relative;
+    display: block;
+    width: var(--w, 0%);
+    height: 5px;
+    min-width: 2px;
+  }
+  /* 三色必须互相分得开：缓存=中性灰、输入=主色半调、输出=主色实心。
+     蓝晒/静澈这类主题里 --c-accent 与 --c-accent-2 同色，靠明度而不是色相区分。 */
+  .pr-bar--cache {
+    background: color-mix(in oklab, var(--c-ink) 32%, transparent);
+  }
+  .pr-bar--in {
+    background: color-mix(in oklab, var(--c-accent) 52%, transparent);
+  }
+  .pr-bar--out {
+    background: var(--c-accent);
+  }
+  .pr-bar b {
+    position: absolute;
+    left: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    margin-left: 5px;
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    font-weight: 500;
+    color: var(--c-ink-2);
+    white-space: nowrap;
+  }
+  .pr-bars--free {
+    align-content: center;
+  }
+  .pr-free {
+    display: inline-block;
+    width: max-content;
+    font-size: 10.5px;
+    color: var(--c-ink-3);
+    border: 1px solid var(--c-rule);
+    padding: 0 5px;
+    border-radius: 2px;
+  }
+  .pr-note {
+    font-size: 10px;
+    line-height: 1.35;
+    color: var(--c-ink-3);
+    text-align: right;
+  }
+
+  /* ── 散点 + 堆叠：桌面并排 ── */
+  .pr-split {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: var(--p-sp-4);
+  }
+  .pr-scatter {
+    display: block;
+    width: 100%;
+    max-width: 460px;
+    margin: var(--p-sp-3) auto 0;
+    overflow: visible;
+  }
+  .pr-grid line {
+    stroke: var(--c-rule);
+    stroke-width: 0.6;
+  }
+  .pr-grid text {
+    font-family: var(--font-mono);
+    font-size: 8px;
+    fill: var(--c-ink-3);
+  }
+  .pr-axis-label {
+    font-family: var(--font-mono);
+    font-size: 8.5px;
+    fill: var(--c-ink-3);
+    letter-spacing: 0.04em;
+  }
+  .pr-point {
+    fill: var(--c-accent);
+    fill-opacity: 0.55;
+    stroke: var(--c-accent);
+    stroke-width: 0.8;
+  }
+  .pr-point--openai,
+  .pr-point--anthropic,
+  .pr-point--google {
+    fill: var(--c-metal);
+    stroke: var(--c-metal);
+    fill-opacity: 0.45;
+  }
+  .pr-point-label {
+    font-family: var(--font-mono);
+    font-size: 7.5px;
+    fill: var(--c-ink-2);
+  }
+  .pr-point-free {
+    font-family: var(--font-mono);
+    font-size: 8px;
+    fill: var(--c-ink-3);
+  }
+
+  .pr-stack {
+    margin: var(--p-sp-3) 0 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 3px;
+  }
+  .pr-stack__row {
+    display: grid;
+    grid-template-columns: 132px minmax(0, 1fr);
+    align-items: center;
+    gap: var(--p-sp-2);
+  }
+  .pr-stack__name {
+    font-size: 10.5px;
+    color: var(--c-ink-2);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .pr-stack__bar {
+    display: flex;
+    height: 7px;
+    background: color-mix(in oklab, var(--c-ink) 8%, transparent);
+  }
+  .pr-stack__seg {
+    height: 100%;
+  }
+  .pr-stack__seg--cache {
+    background: color-mix(in oklab, var(--c-ink) 32%, transparent);
+  }
+  .pr-stack__seg--in {
+    background: color-mix(in oklab, var(--c-accent) 52%, transparent);
+  }
+  .pr-stack__seg--out {
+    background: var(--c-accent);
+  }
+
+  /* ── 明细表 ── */
+  .pr-table {
+    margin-top: var(--p-sp-4);
+    border-top: 1px solid var(--c-rule);
+    font-size: 12px;
+  }
+  .pr-table summary {
+    padding: 8px 0;
+    cursor: pointer;
+    color: var(--c-ink-2);
+    font-size: var(--type-meta);
+    list-style: none;
+  }
+  .pr-table summary::-webkit-details-marker {
+    display: none;
+  }
+  .pr-table summary::before {
+    content: '+';
+    font-family: var(--font-mono);
+    margin-right: 6px;
+    color: var(--c-metal);
+  }
+  .pr-table[open] summary::before {
+    content: '−';
+  }
+  .pr-table table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .pr-table th,
+  .pr-table td {
+    padding: 5px 8px;
+    text-align: left;
+    border-bottom: 1px solid var(--c-rule);
+    white-space: nowrap;
+  }
+  .pr-table thead th {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--c-metal);
+  }
+  .pr-table tbody th {
+    font-weight: 600;
+  }
+  .pr-table td {
+    color: var(--c-ink-2);
+    font-variant-numeric: tabular-nums;
+  }
+  .pr-table__note {
+    white-space: normal;
+    font-size: 11px;
+    color: var(--c-ink-3);
+  }
+  .pr-foot {
+    margin: var(--p-sp-3) 0 0;
+    font-size: 11px;
+    color: var(--c-ink-3);
+  }
+
+  /* ── 窄屏 ── */
+  @media (max-width: 1024px) {
+    .pr-split {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+  @media (max-width: 720px) {
+    .pr-page {
+      padding-block: var(--p-sp-4);
+    }
+    .pr-row {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 3px;
+      padding-block: 6px;
+    }
+    .pr-bars {
+      padding-right: 52px;
+    }
+    .pr-axis {
+      display: none;
+    }
+    .pr-bars--free {
+    align-content: center;
+  }
+  .pr-free {
+    display: inline-block;
+    width: max-content;
+    font-size: 10.5px;
+    color: var(--c-ink-3);
+    border: 1px solid var(--c-rule);
+    padding: 0 5px;
+    border-radius: 2px;
+  }
+  .pr-note {
+      text-align: left;
+    }
+    .pr-kpis {
+      gap: var(--p-sp-4);
+    }
+    .pr-stack__row {
+      grid-template-columns: 110px minmax(0, 1fr);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pr-page *,
+    .pr-page *::before,
+    .pr-page *::after {
+      animation: none !important;
+      transition: none !important;
+    }
+  }
+}

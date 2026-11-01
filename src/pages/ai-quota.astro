@@ -142,6 +142,9 @@ const amountLabel = (group: string) =>
               <h2 class="aq-card__label">
                 {labelOf(id)}
                 <span class="aq-card__group">{shortOf(group)}</span>
+                {id === 'opencode-go' && (
+                  <a class="aq-card__jump" href="/ai-quota/pricing/">计价明细 →</a>
+                )}
               </h2>
               <span class="aq-card__chip" data-aq-chip>
                 <i class="aq-chip__dot" aria-hidden="true" />

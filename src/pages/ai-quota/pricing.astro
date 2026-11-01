@@ -1,0 +1,247 @@
+---
+/**
+ * OpenCode GO 计价明细 /ai-quota/pricing/
+ *
+ * 数据：src/data/opencode-go-pricing.json（由 scripts/fetch-opencode-go-pricing.mjs 从
+ * `GET https://opencode.ai/zen/go/v1/models` 拉取，单位 USD / 1M tokens）。
+ * 页面完全在构建期算好 SVG / 条形宽度，不发任何请求，也没有密钥。
+ *
+ * 三种图表形式：
+ *   1. 对数横向条形：三色分别是被缓存价/输入价/输出价，宽度按 log10 比例，才看得见 0.003 这一档；
+ *   2. 输入 × 输出双对数散点：气泡大小是上下文长度，用来找「便宜且能吃长上下文」的组合；
+ *   3. 100% 堆叠条：每个模型把输入/缓存/输出摊成成本结构，看钱主要花在输出还是输入。
+ */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Icon from '../../components/Icon.astro';
+import pricing from '../../data/opencode-go-pricing.json';
+import '../../styles/pricing.css';
+
+const models = pricing.models;
+const unit = pricing.perTokens === 1_000_000 ? '1M tokens' : `${pricing.perTokens} tokens`;
+const fetchedAt = new Date(pricing.fetchedAt);
+const fetchedLabel = `${fetchedAt.getFullYear()}-${String(fetchedAt.getMonth() + 1).padStart(2, '0')}-${String(fetchedAt.getDate()).padStart(2, '0')}`;
+
+/* ── 比例尺 ────────────────────────────────────────────────────────────────
+   价格跨 3 个数量级（0.003 → 15），线性条会让便宜档全挤成 1px，所以主图用 log10。 */
+const prices = models.flatMap((model) => [model.input, model.output, model.cacheRead]).filter((value) => value > 0);
+const MIN = Math.min(...prices, 0.001);
+const MAX = Math.max(...prices, 1);
+const LOG_MIN = Math.log10(MIN * 0.9);
+const LOG_MAX = Math.log10(MAX * 1.15);
+const widthOf = (value: number) => {
+  if (!Number.isFinite(value) || value <= 0) return 0;
+  const ratio = (Math.log10(value) - LOG_MIN) / (LOG_MAX - LOG_MIN);
+  return Math.max(1.2, Math.min(100, ratio * 100));
+};
+const ticks = [0.001, 0.01, 0.1, 1, 10].filter((value) => value >= MIN * 0.9 && value <= MAX * 1.15);
+const tickLeft = (value: number) => ((Math.log10(value) - LOG_MIN) / (LOG_MAX - LOG_MIN)) * 100;
+
+const fmt = (value: number) => {
+  if (value === 0) return '免费';
+  if (value >= 1) return `$${value % 1 === 0 ? value : value.toFixed(2)}`;
+  if (value >= 0.1) return `$${value.toFixed(2)}`;
+  return `$${value.toFixed(value < 0.01 ? 4 : 3)}`;
+};
+const short = (value: number) => (value >= 1 ? `$${Number(value.toFixed(2))}` : `$${Number(value.toFixed(4))}`);
+const contextLabel = (value: number) =>
+  value >= 1_000_000 ? `${Math.round(value / 100_000) / 10}M` : value >= 1000 ? `${Math.round(value / 1000)}K` : String(value);
+
+/* 散点：输入 × 输出，双对数；气泡半径按上下文长度（log）映射 */
+const scatterPad = { left: 46, right: 16, top: 18, bottom: 34 };
+const scatterSize = 440;
+const plotW = scatterSize - scatterPad.left - scatterPad.right;
+const plotH = scatterSize - scatterPad.top - scatterPad.bottom;
+const axisMin = 0.05;
+const axisMax = 30;
+const sx = (value: number) =>
+  scatterPad.left + ((Math.log10(Math.max(value, axisMin)) - Math.log10(axisMin)) / (Math.log10(axisMax) - Math.log10(axisMin))) * plotW;
+const sy = (value: number) =>
+  scatterPad.top + plotH - ((Math.log10(Math.max(value, axisMin)) - Math.log10(axisMin)) / (Math.log10(axisMax) - Math.log10(axisMin))) * plotH;
+const radius = (context: number) => 3 + Math.min(6, Math.log10(Math.max(context, 1000) / 1000) * 2.2);
+const scatterTicks = [0.1, 1, 10];
+const labelled = new Set(['Kimi K3', 'Gemini 4 Argon', 'Grok 4.7', 'DeepSeek V4.1 Flash', 'Claude Haiku 5.5']);
+const labelShift: Record<string, number> = { 'Kimi K3': -5, 'Gemini 4 Argon': 9, 'Grok 4.7': 4, 'DeepSeek V4.1 Flash': 10, 'Claude Haiku 5.5': -6 };
+
+/* 堆叠：成本结构（输入 / 缓存读 / 输出 的占比） */
+const stacked = models
+  .map((model) => {
+    const total = model.input + model.cacheRead + model.output;
+    return {
+      model,
+      total,
+      parts: total > 0
+        ? [
+            { key: 'in', value: model.input, pct: (model.input / total) * 100 },
+            { key: 'cache', value: model.cacheRead, pct: (model.cacheRead / total) * 100 },
+            { key: 'out', value: model.output, pct: (model.output / total) * 100 },
+          ]
+        : [],
+    };
+  })
+  .filter((row) => row.total > 0);
+
+const paid = models.filter((model) => model.output > 0);
+const free = models.filter((model) => model.output === 0);
+const cheapest = paid.reduce((best, model) => (model.output < best.output ? model : best), paid[0]);
+const priciest = paid.reduce((best, model) => (model.output > best.output ? model : best), paid[0]);
+const avgInput = paid.reduce((sum, model) => sum + model.input, 0) / paid.length;
+---
+
+<BaseLayout title="OpenCode GO 计价" description="OpenCode GO 各模型每 1M tokens 的输入、缓存与输出价格，按比例柱状对比。" bodyClass="page-pricing">
+  <article class="pr-page">
+    <header class="pr-top">
+      <div class="pr-top__lead">
+        <a class="pr-back" href="/ai-quota/"><Icon name="arrow-up-right" /> 额度</a>
+        <h1 class="pr-top__title">OpenCode GO 计价</h1>
+        <p class="pr-top__deck">
+          每 {unit} 单价（USD）· 数据 {fetchedLabel} 取自 <code>opencode.ai/zen/go/v1/models</code>
+        </p>
+      </div>
+      <dl class="pr-kpis">
+        <div><dt>模型</dt><dd>{models.length}</dd></div>
+        <div><dt>免费</dt><dd>{free.length}</dd></div>
+        <div><dt>输出价区间</dt><dd>{short(cheapest.output)} – {short(priciest.output)}</dd></div>
+        <div><dt>输入均价</dt><dd>{short(avgInput)}</dd></div>
+      </dl>
+    </header>
+
+    <section class="pr-panel" aria-labelledby="pr-bars-title">
+      <header class="pr-panel__head">
+        <h2 id="pr-bars-title">按 1M tokens 单价的比例</h2>
+        <p class="pr-panel__deck">横条按 log10 比例；同一行三条分别是被缓存价、输入价、输出价。</p>
+        <ul class="pr-legend">
+          <li><i class="pr-dot pr-dot--cache"></i>缓存读取</li>
+          <li><i class="pr-dot pr-dot--in"></i>输入</li>
+          <li><i class="pr-dot pr-dot--out"></i>输出</li>
+        </ul>
+      </header>
+
+      <div class="pr-chart" role="img" aria-label="各模型每 1M tokens 价格对数条形图">
+        <div class="pr-axis">
+          {ticks.map((tick) => <span style={`left:${tickLeft(tick).toFixed(2)}%`}>{short(tick)}</span>)}
+        </div>
+        <ol class="pr-rows">
+          {models.map((model) => (
+            <li class="pr-row">
+              <div class="pr-who">
+                {model.logo
+                  ? <span class="pr-logo" style={`--logo:url(/logos/${model.logo}.svg)`} aria-hidden="true"></span>
+                  : <span class="pr-mark" aria-hidden="true">{model.mark}</span>}
+                <span class="pr-name" title={model.name}>{model.name}</span>
+                <span class="pr-vendor">{model.vendorLabel}</span>
+              </div>
+              {model.input === 0 && model.output === 0 && model.cacheRead === 0 ? (
+                <div class="pr-bars pr-bars--free"><span class="pr-free">免费</span></div>
+              ) : (
+                <div class="pr-bars">
+                  <span class="pr-bar pr-bar--cache" style={`--w:${widthOf(model.cacheRead).toFixed(2)}%`}>
+                    <b>{fmt(model.cacheRead)}</b>
+                  </span>
+                  <span class="pr-bar pr-bar--in" style={`--w:${widthOf(model.input).toFixed(2)}%`}>
+                    <b>{fmt(model.input)}</b>
+                  </span>
+                  <span class="pr-bar pr-bar--out" style={`--w:${widthOf(model.output).toFixed(2)}%`}>
+                    <b>{fmt(model.output)}</b>
+                  </span>
+                </div>
+              )}
+              {model.note && <span class="pr-note" title={model.note}>{model.note}</span>}
+            </li>
+          ))}
+        </ol>
+      </div>
+    </section>
+
+    <div class="pr-split">
+      <section class="pr-panel" aria-labelledby="pr-scatter-title">
+        <header class="pr-panel__head">
+          <h2 id="pr-scatter-title">输入 × 输出（双对数）</h2>
+          <p class="pr-panel__deck">气泡越大上下文越长；越靠左下越便宜。</p>
+        </header>
+        <svg class="pr-scatter" viewBox={`0 0 ${scatterSize} ${scatterSize}`} role="img" aria-label="输入价与输出价散点图">
+          {scatterTicks.map((tick) => (
+            <g class="pr-grid">
+              <line x1={sx(tick)} y1={scatterPad.top} x2={sx(tick)} y2={scatterPad.top + plotH} />
+              <line x1={scatterPad.left} y1={sy(tick)} x2={scatterPad.left + plotW} y2={sy(tick)} />
+              <text x={sx(tick)} y={scatterSize - 14} text-anchor="middle">{short(tick)}</text>
+              <text x={scatterPad.left - 8} y={sy(tick) + 3} text-anchor="end">{short(tick)}</text>
+            </g>
+          ))}
+          <text class="pr-axis-label" x={scatterPad.left + plotW / 2} y={scatterSize - 2} text-anchor="middle">输入价 / 1M tokens</text>
+          <text class="pr-axis-label" transform={`rotate(-90 12 ${scatterPad.top + plotH / 2})`} x="12" y={scatterPad.top + plotH / 2} text-anchor="middle">输出价</text>
+          {models.filter((model) => model.output > 0).map((model) => (
+            <>
+              <circle
+                class:list={['pr-point', `pr-point--${model.vendor}`]}
+                cx={sx(model.input).toFixed(1)}
+                cy={sy(model.output).toFixed(1)}
+                r={radius(model.context).toFixed(1)}
+              >
+                <title>{`${model.name}（${model.vendorLabel}）输入 ${fmt(model.input)} / 输出 ${fmt(model.output)}`}</title>
+              </circle>
+              {labelled.has(model.name) && (
+                <text class="pr-point-label" x={sx(model.input) + radius(model.context) + 3} y={sy(model.output) + 3 + (labelShift[model.name] || 0)}>
+                  {model.name}
+                </text>
+              )}
+            </>
+          ))}
+          {free.length > 0 && (
+            <text class="pr-point-free" x={scatterPad.left + 4} y={scatterPad.top + plotH - 4}>
+              另有 {free.length} 个免费模型（$0）未入图
+            </text>
+          )}
+        </svg>
+      </section>
+
+      <section class="pr-panel" aria-labelledby="pr-stack-title">
+        <header class="pr-panel__head">
+          <h2 id="pr-stack-title">成本构成（100%）</h2>
+          <p class="pr-panel__deck">按输出价排序；同一段宽度里，输出占比永远是最大的一块。</p>
+        </header>
+        <ol class="pr-stack">
+          {stacked.map(({ model, parts }) => (
+            <li class="pr-stack__row">
+              <span class="pr-stack__name">{model.name}</span>
+              <span class="pr-stack__bar">
+                {parts.map((part) => (
+                  <i
+                    class:list={['pr-stack__seg', `pr-stack__seg--${part.key}`]}
+                    style={`width:${part.pct.toFixed(2)}%`}
+                    title={`${part.key === 'in' ? '输入' : part.key === 'cache' ? '缓存' : '输出'} ${fmt(part.value)}`}
+                  ></i>
+                ))}
+              </span>
+            </li>
+          ))}
+        </ol>
+      </section>
+    </div>
+
+    <details class="pr-table">
+      <summary>逐项单价表（{models.length} 个模型）</summary>
+      <table>
+        <thead>
+          <tr><th>模型</th><th>供应商</th><th>输入</th><th>缓存读</th><th>输出</th><th>上下文</th><th>备注</th></tr>
+        </thead>
+        <tbody>
+          {models.map((model) => (
+            <tr>
+              <th scope="row">{model.name}</th>
+              <td>{model.vendorLabel}</td>
+              <td>{fmt(model.input)}</td>
+              <td>{fmt(model.cacheRead)}</td>
+              <td>{fmt(model.output)}</td>
+              <td>{contextLabel(model.context)}</td>
+              <td class="pr-table__note">{model.note || '—'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p class="pr-foot">
+        价格来自 OpenCode 模型目录的 <code>cost.text</code> 字段，未含峰时倍率与订阅额度折扣；
+        刷新数据：<code>node scripts/fetch-opencode-go-pricing.mjs</code>。
+      </p>
+    </details>
+  </article>
+</BaseLayout>
