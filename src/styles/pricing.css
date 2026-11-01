@@ -142,6 +142,48 @@
     background: var(--c-accent);
   }
 
+  /* 排序控制：三档 + 方向 */
+  .pr-sort {
+    flex-basis: 100%;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: var(--p-sp-2);
+  }
+  .pr-sort__label {
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--c-ink-3);
+  }
+  .pr-sort button {
+    appearance: none;
+    font: inherit;
+    font-size: 11.5px;
+    line-height: 1;
+    padding: 4px 9px;
+    border: 1px solid var(--c-rule);
+    border-radius: 2px;
+    background: transparent;
+    color: var(--c-ink-2);
+    cursor: pointer;
+    transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+  }
+  .pr-sort button:hover {
+    background: color-mix(in oklab, var(--c-ink) 6%, transparent);
+  }
+  .pr-sort button[aria-pressed='true'] {
+    border-color: var(--c-accent);
+    background: color-mix(in oklab, var(--c-accent) 16%, transparent);
+    color: var(--c-ink);
+    font-weight: 600;
+  }
+  .pr-sort__dir {
+    margin-left: auto;
+    min-width: 68px;
+    font-variant-numeric: tabular-nums;
+  }
+
   /* ── 主图：对数横条 ── */
   .pr-chart {
     padding-top: var(--p-sp-3);
@@ -249,6 +291,15 @@
   }
   .pr-bar--out {
     background: var(--c-accent);
+  }
+  /* 当前排序档位对应的那条高亮，其余降一档，扫一眼就知道在按什么排 */
+  .pr-chart .pr-bar {
+    opacity: 0.5;
+  }
+  .pr-chart[data-sort='cache'] .pr-bar--cache,
+  .pr-chart[data-sort='in'] .pr-bar--in,
+  .pr-chart[data-sort='out'] .pr-bar--out {
+    opacity: 1;
   }
   .pr-bar b {
     position: absolute;

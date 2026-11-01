@@ -114,15 +114,28 @@ const avgInput = paid.reduce((sum, model) => sum + model.input, 0) / paid.length
           <li><i class="pr-dot pr-dot--in"></i>输入</li>
           <li><i class="pr-dot pr-dot--out"></i>输出</li>
         </ul>
+        <div class="pr-sort" role="group" aria-label="排序档位与方向">
+          <span class="pr-sort__label">排序</span>
+          <button type="button" data-pr-sort="cache" aria-pressed="false" title="按缓存命中价排序（cache read）">缓存命中</button>
+          <button type="button" data-pr-sort="in" aria-pressed="false" title="按缓存未命中价排序（即输入价 input）">缓存未命中</button>
+          <button type="button" data-pr-sort="out" aria-pressed="true" title="按输出价排序（output）">输出</button>
+          <button type="button" class="pr-sort__dir" data-pr-dir aria-label="当前倒序，点击改为正序">倒序 ↓</button>
+        </div>
       </header>
 
-      <div class="pr-chart" role="img" aria-label="各模型每 1M tokens 价格对数条形图">
+      <div class="pr-chart" data-pr-chart data-sort="out" role="img" aria-label="各模型每 1M tokens 价格对数条形图">
         <div class="pr-axis">
           {ticks.map((tick) => <span style={`left:${tickLeft(tick).toFixed(2)}%`}>{short(tick)}</span>)}
         </div>
-        <ol class="pr-rows">
+        <ol class="pr-rows" data-pr-rows>
           {models.map((model) => (
-            <li class="pr-row">
+            <li
+              class="pr-row"
+              data-name={model.name}
+              data-cache={model.cacheRead}
+              data-in={model.input}
+              data-out={model.output}
+            >
               <div class="pr-who">
                 {model.logo
                   ? <span class="pr-logo" style={`--logo:url(/logos/${model.logo}.svg)`} aria-hidden="true"></span>
@@ -199,9 +212,9 @@ const avgInput = paid.reduce((sum, model) => sum + model.input, 0) / paid.length
           <h2 id="pr-stack-title">成本构成（100%）</h2>
           <p class="pr-panel__deck">按输出价排序；同一段宽度里，输出占比永远是最大的一块。</p>
         </header>
-        <ol class="pr-stack">
+        <ol class="pr-stack" data-pr-stack>
           {stacked.map(({ model, parts }) => (
-            <li class="pr-stack__row">
+            <li class="pr-stack__row" data-name={model.name}>
               <span class="pr-stack__name">{model.name}</span>
               <span class="pr-stack__bar">
                 {parts.map((part) => (
@@ -245,3 +258,7 @@ const avgInput = paid.reduce((sum, model) => sum + model.input, 0) / paid.length
     </details>
   </article>
 </BaseLayout>
+
+<script>
+  import '../../scripts/pricing-sort.ts';
+</script>
