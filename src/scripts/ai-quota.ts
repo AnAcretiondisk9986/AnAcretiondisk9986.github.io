@@ -805,7 +805,6 @@ function renderProvider(card: HTMLElement, provider: ProviderShape | null): void
       if (isNumber(account.used)) kvRows.push([label, formatMoney(account.used, currency)]);
       else if (account.error) kvRows.push([label, '读取失败']);
     }
-    if (usage.mode) kvRows.push(['计费模式', String(usage.mode)]);
   }
   renderKv(card, kvRows);
 

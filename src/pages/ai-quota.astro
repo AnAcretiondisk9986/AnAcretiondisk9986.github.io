@@ -2,11 +2,13 @@
 /**
  * 额度页 /ai-quota/ —— 与「首页 / 编目 / 图志 / 关于」并列的第五个导航项。
  *
+ * 版式目标：桌面一屏看完（不滚动）。6 张卡按 3×2 平铺，页头压成一行，
+ * 「可读口径」收进 <details>；窄屏才退回单列长页。
+ *
  * 这一页只负责结构与取数入口，不持有任何密钥：
  *   · 页面请求 `endpoint`（本站 /api/ai-quota，或部署后的 Cloudflare Worker），
  *     由服务端持钥访问各上游，浏览器只拿到已经脱敏的读数；
  *   · 字段口径完全按 docs/ai-quota-contract.md；
- *   · 三块分区顺序固定：订阅配额 → 中转站 → 开放平台；
  *   · 卡片先以骨架占位，脚本按状态把内容填进 [data-aq-*] 槽位；
  *     失败时只显示状态说明，绝不回落成 0。
  *
@@ -30,35 +32,27 @@ const metaMap = (quota.providers || {}) as Record<string, ProviderMeta>;
 const endpoint = import.meta.env.PUBLIC_AI_QUOTA_ENDPOINT || quota.endpoint || '/api/ai-quota';
 const pollSeconds = Number(quota.pollSeconds) > 0 ? Math.round(Number(quota.pollSeconds)) : 60;
 
-/* 分区与成员按契约固定，避免上游改了返回顺序就换版式；
-   展示名/主页/注脚来自 ai-quota.json，缺失时退回 id。 */
+/* 分区元数据；卡片平铺后只在卡头留一个字的分区标记 */
 const groups = [
-  {
-    id: 'subscription',
-    index: '01',
-    title: '订阅配额',
-    deck: '订阅制服务按时间窗口计费，这里只看各窗口已用比例与重置时刻。',
-    ids: ['opencode-go'],
-  },
-  {
-    id: 'relay',
-    index: '02',
-    title: '中转站',
-    deck: '三家中转站的原币种余额、今日用量，以及近 14 天的迷你走势。',
-    ids: ['yundu', 'toolcode', 'taffcloud'],
-  },
-  {
-    id: 'platform',
-    index: '03',
-    title: '开放平台',
-    deck: '官方平台的可用余额与赠送/充值拆分；GLM 另带计划窗口。',
-    ids: ['deepseek', 'glm'],
-  },
+  { id: 'subscription', short: '订阅', title: '订阅配额', ids: ['opencode-go'] },
+  { id: 'relay', short: '中转', title: '中转站', ids: ['yundu', 'toolcode', 'taffcloud'] },
+  { id: 'platform', short: '平台', title: '开放平台', ids: ['deepseek', 'glm'] },
+];
+
+/* 一屏版式：第一行 订阅 + 两家中转，第二行 第三家中转 + 两家平台 */
+const flatCards = [
+  { id: 'opencode-go', group: 'subscription' },
+  { id: 'yundu', group: 'relay' },
+  { id: 'toolcode', group: 'relay' },
+  { id: 'taffcloud', group: 'relay' },
+  { id: 'deepseek', group: 'platform' },
+  { id: 'glm', group: 'platform' },
 ];
 
 const labelOf = (id: string) => metaMap[id]?.label || id;
 const homeOf = (id: string) => metaMap[id]?.home || '';
 const noteOf = (id: string) => metaMap[id]?.note || '';
+const shortOf = (groupId: string) => groups.find((item) => item.id === groupId)?.short || '';
 const hostOf = (url: string) => {
   try {
     return new URL(url).host;
@@ -66,12 +60,12 @@ const hostOf = (url: string) => {
     return url.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
   }
 };
-const totalProviders = groups.reduce((sum, group) => sum + group.ids.length, 0);
+const totalProviders = flatCards.length;
 const amountLabel = (group: string) =>
   group === 'subscription' ? '总额度' : group === 'platform' ? '可用余额' : '余额';
 ---
 
-<BaseLayout title={quota.title} description={quota.subtitle}>
+<BaseLayout title={quota.title} description={quota.subtitle} bodyClass="page-quota">
   <div
     class="aq-page"
     data-aq-page
@@ -79,14 +73,23 @@ const amountLabel = (group: string) =>
     data-poll-seconds={String(pollSeconds)}
     data-conn="pending"
   >
-    <header class="f-opener aq-opener">
-      <div class="f-fleuron" aria-hidden="true"><i></i></div>
-      <p class="aq-opener__folio"><span>V · 05</span><span aria-hidden="true">·</span><span>QUOTA</span></p>
-      <h1 class="f-opener__title">{quota.title}</h1>
-      <p class="f-opener__deck">{quota.subtitle}</p>
-      <p class="f-opener__meta">
-        共 {totalProviders} 个服务 · 每 {pollSeconds} 秒自动刷新 · 数字由本站查询代理在服务端取回
-      </p>
+    {/* 页头压成一行：标题 + 一句说明 + 状态 + 两个按钮 */}
+    <header class="aq-top">
+      <div class="aq-top__lead">
+        <h1 class="aq-top__title">{quota.title}</h1>
+        <p class="aq-top__deck">
+          {quota.subtitle}
+          <span class="aq-top__sep" aria-hidden="true">/</span>
+          {totalProviders} 个服务 · 每 {pollSeconds} 秒刷新 · 服务端取数，页面无密钥
+        </p>
+      </div>
+      <div class="aq-top__ctrl">
+        <span class="aq-stat"><i>最近</i><b data-aq-updated>—</b></span>
+        <span class="aq-stat"><i>下次</i><b data-aq-next>—</b></span>
+        <span class="aq-stat aq-stat--conn"><i>连接</i><b data-aq-conn>待连接</b></span>
+        <button type="button" class="aq-btn" data-aq-refresh>刷新</button>
+        <button type="button" class="aq-btn aq-btn--ghost" data-aq-auto aria-pressed="true">自动刷新：开</button>
+      </div>
     </header>
 
     {/* 整页级状态 1：代理没起来 / 返回的不是 JSON。默认隐藏，脚本按实际响应打开。 */}
@@ -124,130 +127,100 @@ const amountLabel = (group: string) =>
       <button type="button" class="aq-btn" data-aq-retry>重新查询</button>
     </section>
 
-    <div class="aq-bar" data-aq-bar>
-      <div class="aq-bar__stats">
-        <div class="aq-bar__stat">
-          <span class="aq-bar__label">最近刷新</span>
-          <b class="aq-bar__value" data-aq-updated>—</b>
-        </div>
-        <div class="aq-bar__stat">
-          <span class="aq-bar__label">下次刷新</span>
-          <b class="aq-bar__value" data-aq-next>—</b>
-        </div>
-        <div class="aq-bar__stat">
-          <span class="aq-bar__label">连接</span>
-          <b class="aq-bar__value" data-aq-conn>待连接</b>
-        </div>
-      </div>
-      <div class="aq-bar__actions">
-        <button type="button" class="aq-btn" data-aq-refresh>立即刷新</button>
-        <button type="button" class="aq-btn aq-btn--ghost" data-aq-auto aria-pressed="true">自动刷新：开</button>
-      </div>
+    <div class="aq-board">
+      {
+        flatCards.map(({ id, group }) => (
+          <article
+            class:list={['aq-card', `aq-card--${group}`]}
+            data-aq-card
+            data-provider={id}
+            data-group={group}
+            data-state="loading"
+            aria-busy="true"
+          >
+            <header class="aq-card__head">
+              <h2 class="aq-card__label">
+                {labelOf(id)}
+                <span class="aq-card__group">{shortOf(group)}</span>
+              </h2>
+              <span class="aq-card__chip" data-aq-chip>
+                <i class="aq-chip__dot" aria-hidden="true" />
+                <span data-aq-chip-text>读取中</span>
+              </span>
+            </header>
+
+            <div class="aq-card__main" data-aq-amount-wrap>
+              <span class="aq-card__amount-label" data-aq-amount-label>{amountLabel(group)}</span>
+              <p class="aq-card__amount" data-aq-amount>—</p>
+              <p class="aq-card__amount-sub" data-aq-amount-sub />
+            </div>
+
+            {/* 订阅窗口：订阅制与 GLM 计划共用同一套渲染 */}
+            {(group === 'subscription' || group === 'platform') && (
+              <div class="aq-windows" data-aq-windows hidden />
+            )}
+
+            {/* 开放平台：赠送 / 充值 / 累计消费拆分 */}
+            {group === 'platform' && <dl class="aq-split" data-aq-split hidden />}
+
+            {/* 用量键值行（中转站与开放平台） */}
+            {group !== 'subscription' && <dl class="aq-kv" data-aq-kv hidden />}
+
+            {/* 近 14 天迷你折线：内联 SVG，无图表库 */}
+            {group === 'relay' && (
+              <figure class="aq-chart" data-aq-chart hidden>
+                <svg
+                  class="aq-chart__svg"
+                  viewBox="0 0 100 32"
+                  preserveAspectRatio="none"
+                  role="img"
+                  aria-label="近 14 天用量折线"
+                >
+                  <line class="aq-chart__axis" x1="0" y1="31.5" x2="100" y2="31.5" />
+                  <g data-aq-chart-lines />
+                </svg>
+                <figcaption class="aq-chart__cap" data-aq-chart-cap>近 14 天</figcaption>
+              </figure>
+            )}
+
+            <div class="aq-skeleton" data-aq-skeleton aria-hidden="true">
+              <span class="aq-skeleton__bar" />
+              <span class="aq-skeleton__bar aq-skeleton__bar--lead" />
+              <span class="aq-skeleton__bar" />
+            </div>
+
+            <div class="aq-state" data-aq-panel hidden>
+              <p class="aq-state__title" data-aq-panel-title />
+              <p class="aq-state__note" data-aq-panel-note />
+            </div>
+
+            <p class="aq-card__note" data-aq-note>{noteOf(id)}</p>
+
+            <footer class="aq-card__foot">
+              {homeOf(id) ? (
+                <a class="aq-card__home" href={homeOf(id)} target="_blank" rel="noopener noreferrer">
+                  {hostOf(homeOf(id))}
+                  <Icon name="arrow-up-right" />
+                </a>
+              ) : (
+                <span class="aq-card__home aq-card__home--plain">内部面板</span>
+              )}
+              <span class="aq-card__time" data-aq-time>—</span>
+            </footer>
+          </article>
+        ))
+      }
     </div>
 
-    {
-      groups.map((group) => (
-        <section class="aq-group" aria-labelledby={`aq-${group.id}-title`} data-aq-group={group.id}>
-          <header class="aq-group__head">
-            <span class="aq-group__index" aria-hidden="true">{group.index}</span>
-            <h2 class="aq-group__title" id={`aq-${group.id}-title`}>{group.title}</h2>
-            <p class="aq-group__deck">{group.deck}</p>
-          </header>
-
-          <div class="aq-grid" data-group={group.id}>
-            {group.ids.map((id) => (
-              <article
-                class:list={['aq-card', `aq-card--${group.id}`]}
-                data-aq-card
-                data-provider={id}
-                data-group={group.id}
-                data-state="loading"
-                aria-busy="true"
-              >
-                <header class="aq-card__head">
-                  <h3 class="aq-card__label">{labelOf(id)}</h3>
-                  <span class="aq-card__chip" data-aq-chip>
-                    <i class="aq-chip__dot" aria-hidden="true" />
-                    <span data-aq-chip-text>读取中</span>
-                  </span>
-                </header>
-
-                <div class="aq-card__main" data-aq-amount-wrap>
-                  <span class="aq-card__amount-label" data-aq-amount-label>{amountLabel(group.id)}</span>
-                  <p class="aq-card__amount" data-aq-amount>—</p>
-                  <p class="aq-card__amount-sub" data-aq-amount-sub />
-                </div>
-
-                {/* 订阅窗口：订阅制与 GLM 计划共用同一套渲染 */}
-                {(group.id === 'subscription' || group.id === 'platform') && (
-                  <div class="aq-windows" data-aq-windows hidden />
-                )}
-
-                {/* 开放平台：赠送 / 充值 / 累计消费拆分 */}
-                {group.id === 'platform' && <dl class="aq-split" data-aq-split hidden />}
-
-                {/* 用量键值行（中转站与开放平台） */}
-                {group.id !== 'subscription' && <dl class="aq-kv" data-aq-kv hidden />}
-
-                {/* 近 14 天迷你折线：内联 SVG，无图表库 */}
-                {group.id === 'relay' && (
-                  <figure class="aq-chart" data-aq-chart hidden>
-                    <svg
-                      class="aq-chart__svg"
-                      viewBox="0 0 100 32"
-                      preserveAspectRatio="none"
-                      role="img"
-                      aria-label="近 14 天用量折线"
-                    >
-                      <line class="aq-chart__axis" x1="0" y1="31.5" x2="100" y2="31.5" />
-                      <g data-aq-chart-lines />
-                    </svg>
-                    <figcaption class="aq-chart__cap" data-aq-chart-cap>近 14 天</figcaption>
-                  </figure>
-                )}
-
-                <div class="aq-skeleton" data-aq-skeleton aria-hidden="true">
-                  <span class="aq-skeleton__bar" />
-                  <span class="aq-skeleton__bar aq-skeleton__bar--lead" />
-                  <span class="aq-skeleton__bar" />
-                </div>
-
-                <div class="aq-state" data-aq-panel hidden>
-                  <p class="aq-state__title" data-aq-panel-title />
-                  <p class="aq-state__note" data-aq-panel-note />
-                </div>
-
-                {/* 静态说明放在动态内容之后：状态在上、出处在下，失败时读起来是"结论 + 注脚" */}
-                <p class="aq-card__note" data-aq-note>{noteOf(id)}</p>
-
-                <footer class="aq-card__foot">
-                  {homeOf(id) ? (
-                    <a class="aq-card__home" href={homeOf(id)} target="_blank" rel="noopener noreferrer">
-                      {hostOf(homeOf(id))}
-                      <Icon name="arrow-up-right" />
-                    </a>
-                  ) : (
-                    <span class="aq-card__home aq-card__home--plain">内部面板</span>
-                  )}
-                  <span class="aq-card__time" data-aq-time>—</span>
-                </footer>
-              </article>
-            ))}
-          </div>
-        </section>
-      ))
-    }
-
-    {/* 04 可读口径：把"哪家能读到 token / 金额"摊开写清楚，避免把百分比当成余额 */}
+    {/* 可读口径：一屏优先，默认收起；要看细节再展开 */}
     {
       quota.reads && (
-        <section class="aq-group aq-group--reads" aria-labelledby="aq-reads-title">
-          <header class="aq-group__head">
-            <span class="aq-group__index" aria-hidden="true">04</span>
-            <h2 class="aq-group__title" id="aq-reads-title">可读口径</h2>
-            <p class="aq-group__deck">{quota.reads.caption}</p>
-          </header>
-          <div class="aq-reads__wrap">
+        <details class="aq-refs">
+          <summary class="aq-refs__summary">
+            <span>可读口径</span>
+            <span class="aq-refs__hint">哪家能读到额度/金额、今日花费与 Token</span>
+          </summary>
+          <div class="aq-refs__wrap">
             <table class="aq-reads">
               <thead>
                 <tr>
@@ -264,8 +237,9 @@ const amountLabel = (group: string) =>
                 ))}
               </tbody>
             </table>
+            <p class="aq-refs__caption">{quota.reads.caption}</p>
           </div>
-        </section>
+        </details>
       )
     }
 

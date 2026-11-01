@@ -18,11 +18,14 @@ import frontend from '../data/frontend.json';
 interface Props {
   title?: string;
   description?: string;
+  /** 可选：给 <body> 加类名，便于单页做版式（如额度页要一屏放下、隐藏页脚） */
+  bodyClass?: string;
 }
 
 const {
   title = 'Acretiondisk',
   description = '记录技术、医学、艺术与生活。',
+  bodyClass = '',
 } = Astro.props;
 
 const siteName = frontend.siteName || 'Acretiondisk';
@@ -124,7 +127,7 @@ const runtimeStyle = [
       import '../scripts/cdn-fallback.ts';
     </script>
   </head>
-  <body>
+  <body class={bodyClass}>
     <ClientRouter />
     <div class="site-shell">
       <SiteHeader siteName={siteName} siteTagline={siteTagline} pathname={Astro.url.pathname} />
