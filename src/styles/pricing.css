@@ -127,19 +127,24 @@
     align-items: center;
     gap: 5px;
   }
+  .pr-legend__note {
+    color: var(--c-ink-3);
+    font-size: 10.5px;
+  }
   .pr-dot {
     width: 8px;
     height: 8px;
     border-radius: 1px;
   }
+  /* 图例只表达「浅/中/深」三档明度，具体颜色由每行的品牌色决定 */
   .pr-dot--cache {
-    background: color-mix(in oklab, var(--c-ink) 32%, transparent);
+    background: color-mix(in oklab, var(--c-ink) 26%, transparent);
   }
   .pr-dot--in {
-    background: color-mix(in oklab, var(--c-accent) 52%, transparent);
+    background: color-mix(in oklab, var(--c-ink) 55%, transparent);
   }
   .pr-dot--out {
-    background: var(--c-accent);
+    background: var(--c-ink);
   }
 
   /* 排序控制：三档 + 方向 */
@@ -191,7 +196,7 @@
   .pr-axis {
     position: relative;
     height: 14px;
-    margin-left: 208px;
+    margin-left: 238px;
     margin-right: 132px;
     border-bottom: 1px solid var(--c-rule);
   }
@@ -211,7 +216,7 @@
   }
   .pr-row {
     display: grid;
-    grid-template-columns: 200px minmax(0, 1fr) 132px;
+    grid-template-columns: 230px minmax(0, 1fr) 132px;
     align-items: center;
     gap: var(--p-sp-2);
     padding-block: 5px;
@@ -219,6 +224,25 @@
   }
   .pr-row:last-child {
     border-bottom: 0;
+  }
+  /* 主用行：横向淡底 + 左侧竖条，排序怎么变都跟着这一行走 */
+  .pr-row--hot {
+    background: color-mix(in oklab, var(--c-accent) 10%, transparent);
+    box-shadow: inset 2px 0 0 var(--c-accent);
+  }
+  .pr-stack__row--hot .pr-stack__name {
+    color: var(--c-ink);
+    font-weight: 600;
+  }
+  .pr-hot {
+    flex: 0 0 auto;
+    font-size: 9px;
+    line-height: 1;
+    padding: 2px 4px;
+    border: 1px solid var(--c-accent);
+    border-radius: 2px;
+    color: var(--c-accent);
+    white-space: nowrap;
   }
   .pr-who {
     display: flex;
@@ -281,16 +305,33 @@
     height: 5px;
     min-width: 2px;
   }
-  /* 三色必须互相分得开：缓存=中性灰、输入=主色半调、输出=主色实心。
-     蓝晒/静澈这类主题里 --c-accent 与 --c-accent-2 同色，靠明度而不是色相区分。 */
+  /* 供应商品牌色：同一行三档靠明度区分（浅=缓存、中=输入、深=输出）。
+     黑/灰黑这类在暗色主题里会糊掉，所以统一往 --c-ink 靠，跟随明暗翻转。 */
+  .pr-row[data-vendor='deepseek'],
+  .pr-stack__row[data-vendor='deepseek'] {
+    --brand: #4d6bfe;
+  }
+  .pr-row[data-vendor='openai'],
+  .pr-stack__row[data-vendor='openai'] {
+    --brand: color-mix(in oklab, var(--c-ink) 82%, var(--c-paper));
+  }
+  .pr-row[data-vendor='anthropic'],
+  .pr-stack__row[data-vendor='anthropic'] {
+    --brand: #d97757;
+  }
+  .pr-row[data-vendor='zhipuai'],
+  .pr-stack__row[data-vendor='zhipuai'] {
+    --brand: var(--c-ink);
+  }
+
   .pr-bar--cache {
-    background: color-mix(in oklab, var(--c-ink) 32%, transparent);
+    background: color-mix(in oklab, var(--brand, var(--c-ink)) 26%, transparent);
   }
   .pr-bar--in {
-    background: color-mix(in oklab, var(--c-accent) 52%, transparent);
+    background: color-mix(in oklab, var(--brand, var(--c-accent)) 55%, transparent);
   }
   .pr-bar--out {
-    background: var(--c-accent);
+    background: var(--brand, var(--c-accent));
   }
   /* 当前排序档位对应的那条高亮，其余降一档，扫一眼就知道在按什么排 */
   .pr-chart .pr-bar {
@@ -413,13 +454,13 @@
     height: 100%;
   }
   .pr-stack__seg--cache {
-    background: color-mix(in oklab, var(--c-ink) 32%, transparent);
+    background: color-mix(in oklab, var(--brand, var(--c-ink)) 26%, transparent);
   }
   .pr-stack__seg--in {
-    background: color-mix(in oklab, var(--c-accent) 52%, transparent);
+    background: color-mix(in oklab, var(--brand, var(--c-accent)) 55%, transparent);
   }
   .pr-stack__seg--out {
-    background: var(--c-accent);
+    background: var(--brand, var(--c-accent));
   }
 
   /* ── 明细表 ── */

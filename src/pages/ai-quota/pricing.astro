@@ -110,9 +110,10 @@ const avgInput = paid.reduce((sum, model) => sum + model.input, 0) / paid.length
         <h2 id="pr-bars-title">按 1M tokens 单价的比例</h2>
         <p class="pr-panel__deck">横条按 log10 比例；同一行三条分别是被缓存价、输入价、输出价。</p>
         <ul class="pr-legend">
-          <li><i class="pr-dot pr-dot--cache"></i>缓存读取</li>
-          <li><i class="pr-dot pr-dot--in"></i>输入</li>
-          <li><i class="pr-dot pr-dot--out"></i>输出</li>
+          <li><i class="pr-dot pr-dot--cache"></i>缓存读取（浅）</li>
+          <li><i class="pr-dot pr-dot--in"></i>输入（中）</li>
+          <li><i class="pr-dot pr-dot--out"></i>输出（深）</li>
+          <li class="pr-legend__note">同一行用该供应商的品牌色，由浅到深区分三档</li>
         </ul>
         <div class="pr-sort" role="group" aria-label="排序档位与方向">
           <span class="pr-sort__label">排序</span>
@@ -130,8 +131,9 @@ const avgInput = paid.reduce((sum, model) => sum + model.input, 0) / paid.length
         <ol class="pr-rows" data-pr-rows>
           {models.map((model) => (
             <li
-              class="pr-row"
+              class:list={['pr-row', model.id === 'deepseek-v4.1-flash' && 'pr-row--hot']}
               data-name={model.name}
+              data-vendor={model.vendor}
               data-cache={model.cacheRead}
               data-in={model.input}
               data-out={model.output}
@@ -141,6 +143,7 @@ const avgInput = paid.reduce((sum, model) => sum + model.input, 0) / paid.length
                   ? <span class="pr-logo" style={`--logo:url(/logos/${model.logo}.svg)`} aria-hidden="true"></span>
                   : <span class="pr-mark" aria-hidden="true">{model.mark}</span>}
                 <span class="pr-name" title={model.name}>{model.name}</span>
+                {model.id === 'deepseek-v4.1-flash' && <span class="pr-hot">主用</span>}
                 <span class="pr-vendor">{model.vendorLabel}</span>
               </div>
               {model.input === 0 && model.output === 0 && model.cacheRead === 0 ? (
@@ -214,7 +217,11 @@ const avgInput = paid.reduce((sum, model) => sum + model.input, 0) / paid.length
         </header>
         <ol class="pr-stack" data-pr-stack>
           {stacked.map(({ model, parts }) => (
-            <li class="pr-stack__row" data-name={model.name}>
+            <li
+              class:list={['pr-stack__row', model.id === 'deepseek-v4.1-flash' && 'pr-stack__row--hot']}
+              data-name={model.name}
+              data-vendor={model.vendor}
+            >
               <span class="pr-stack__name">{model.name}</span>
               <span class="pr-stack__bar">
                 {parts.map((part) => (
