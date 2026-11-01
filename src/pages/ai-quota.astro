@@ -1,0 +1,282 @@
+---
+/**
+ * 额度页 /ai-quota/ —— 与「首页 / 编目 / 图志 / 关于」并列的第五个导航项。
+ *
+ * 这一页只负责结构与取数入口，不持有任何密钥：
+ *   · 页面请求 `endpoint`（本站 /api/ai-quota，或部署后的 Cloudflare Worker），
+ *     由服务端持钥访问各上游，浏览器只拿到已经脱敏的读数；
+ *   · 字段口径完全按 docs/ai-quota-contract.md；
+ *   · 三块分区顺序固定：订阅配额 → 中转站 → 开放平台；
+ *   · 卡片先以骨架占位，脚本按状态把内容填进 [data-aq-*] 槽位；
+ *     失败时只显示状态说明，绝不回落成 0。
+ *
+ * 样式见 src/styles/ai-quota.css，逻辑见 src/scripts/ai-quota.ts。
+ */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Icon from '../components/Icon.astro';
+import quota from '../data/ai-quota.json';
+import '../styles/ai-quota.css';
+
+interface ProviderMeta {
+  label?: string;
+  home?: string;
+  note?: string;
+}
+
+const metaMap = (quota.providers || {}) as Record<string, ProviderMeta>;
+
+/* endpoint 三级回落：构建期环境变量 → src/data/ai-quota.json → 本站默认路径。
+   Astro 只注入 PUBLIC_ 前缀的变量，所以键名必须原样写成 PUBLIC_AI_QUOTA_ENDPOINT。 */
+const endpoint = import.meta.env.PUBLIC_AI_QUOTA_ENDPOINT || quota.endpoint || '/api/ai-quota';
+const pollSeconds = Number(quota.pollSeconds) > 0 ? Math.round(Number(quota.pollSeconds)) : 60;
+
+/* 分区与成员按契约固定，避免上游改了返回顺序就换版式；
+   展示名/主页/注脚来自 ai-quota.json，缺失时退回 id。 */
+const groups = [
+  {
+    id: 'subscription',
+    index: '01',
+    title: '订阅配额',
+    deck: '订阅制服务按时间窗口计费，这里只看各窗口已用比例与重置时刻。',
+    ids: ['opencode-go'],
+  },
+  {
+    id: 'relay',
+    index: '02',
+    title: '中转站',
+    deck: '三家中转站的原币种余额、今日用量，以及近 14 天的迷你走势。',
+    ids: ['yundu', 'toolcode', 'taffcloud'],
+  },
+  {
+    id: 'platform',
+    index: '03',
+    title: '开放平台',
+    deck: '官方平台的可用余额与赠送/充值拆分；GLM 另带计划窗口。',
+    ids: ['deepseek', 'glm'],
+  },
+];
+
+const labelOf = (id: string) => metaMap[id]?.label || id;
+const homeOf = (id: string) => metaMap[id]?.home || '';
+const noteOf = (id: string) => metaMap[id]?.note || '';
+const hostOf = (url: string) => {
+  try {
+    return new URL(url).host;
+  } catch {
+    return url.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+  }
+};
+const totalProviders = groups.reduce((sum, group) => sum + group.ids.length, 0);
+const amountLabel = (group: string) =>
+  group === 'subscription' ? '总额度' : group === 'platform' ? '可用余额' : '余额';
+---
+
+<BaseLayout title={quota.title} description={quota.subtitle}>
+  <div
+    class="aq-page"
+    data-aq-page
+    data-endpoint={endpoint}
+    data-poll-seconds={String(pollSeconds)}
+    data-conn="pending"
+  >
+    <header class="f-opener aq-opener">
+      <div class="f-fleuron" aria-hidden="true"><i></i></div>
+      <p class="aq-opener__folio"><span>V · 05</span><span aria-hidden="true">·</span><span>QUOTA</span></p>
+      <h1 class="f-opener__title">{quota.title}</h1>
+      <p class="f-opener__deck">{quota.subtitle}</p>
+      <p class="f-opener__meta">
+        共 {totalProviders} 个服务 · 每 {pollSeconds} 秒自动刷新 · 数字由本站查询代理在服务端取回
+      </p>
+    </header>
+
+    {/* 整页级状态 1：代理没起来 / 返回的不是 JSON。默认隐藏，脚本按实际响应打开。 */}
+    <section class="aq-notice" data-aq-offline hidden aria-labelledby="aq-offline-title">
+      <p class="aq-notice__kicker">OFFLINE</p>
+      <h2 class="aq-notice__title" id="aq-offline-title">查询代理未连接</h2>
+      <p class="aq-notice__note">
+        这一页的数字全部由本站的查询代理在服务端取回，浏览器里没有任何密钥。现在这个接口没有给出可用的 JSON，
+        所以所有卡片都停在「未取到」，不会显示 0 或占位数字。
+      </p>
+      <ol class="aq-notice__steps">
+        <li>
+          本地：开两个终端 —— <code>npm run admin</code>（管理服务，127.0.0.1:4322，提供
+          <code>/api/ai-quota</code>）与 <code>npm run dev</code>（默认 4321，已把 <code>/api</code>
+          代理到 4322），然后访问 <code>http://127.0.0.1:4321/ai-quota/</code>。
+        </li>
+        <li>
+          线上：部署 <code>scripts/ai-quota-worker.js</code> 到 Cloudflare Worker，再把地址写进
+          <code>src/data/ai-quota.json</code> 的 <code>endpoint</code> 字段（或用构建变量
+          <code>PUBLIC_AI_QUOTA_ENDPOINT</code> 覆盖）后重新构建。
+        </li>
+      </ol>
+      <button type="button" class="aq-btn" data-aq-retry>重新连接</button>
+    </section>
+
+    {/* 整页级状态 2：代理在线但读不到密钥文件（ok:false；六个 provider 全 config-error 也归到这里）。 */}
+    <section class="aq-notice" data-aq-empty hidden aria-labelledby="aq-empty-title">
+      <p class="aq-notice__kicker">NO KEYS</p>
+      <h2 class="aq-notice__title" id="aq-empty-title">查询代理已连接，但读不到密钥文件</h2>
+      <p class="aq-notice__note">
+        代理进程没有读到可用的 <code>.ai-quota.keys.json</code>。把各服务的密钥填进项目根目录的这份文件
+        （模板见 <code>.ai-quota.keys.example.json</code>），重启 <code>npm run admin</code> 后本页会自动恢复；
+        线上用 <code>wrangler secret</code> 写入同一份键名。
+      </p>
+      <button type="button" class="aq-btn" data-aq-retry>重新查询</button>
+    </section>
+
+    <div class="aq-bar" data-aq-bar>
+      <div class="aq-bar__stats">
+        <div class="aq-bar__stat">
+          <span class="aq-bar__label">最近刷新</span>
+          <b class="aq-bar__value" data-aq-updated>—</b>
+        </div>
+        <div class="aq-bar__stat">
+          <span class="aq-bar__label">下次刷新</span>
+          <b class="aq-bar__value" data-aq-next>—</b>
+        </div>
+        <div class="aq-bar__stat">
+          <span class="aq-bar__label">连接</span>
+          <b class="aq-bar__value" data-aq-conn>待连接</b>
+        </div>
+      </div>
+      <div class="aq-bar__actions">
+        <button type="button" class="aq-btn" data-aq-refresh>立即刷新</button>
+        <button type="button" class="aq-btn aq-btn--ghost" data-aq-auto aria-pressed="true">自动刷新：开</button>
+      </div>
+    </div>
+
+    {
+      groups.map((group) => (
+        <section class="aq-group" aria-labelledby={`aq-${group.id}-title`} data-aq-group={group.id}>
+          <header class="aq-group__head">
+            <span class="aq-group__index" aria-hidden="true">{group.index}</span>
+            <h2 class="aq-group__title" id={`aq-${group.id}-title`}>{group.title}</h2>
+            <p class="aq-group__deck">{group.deck}</p>
+          </header>
+
+          <div class="aq-grid" data-group={group.id}>
+            {group.ids.map((id) => (
+              <article
+                class:list={['aq-card', `aq-card--${group.id}`]}
+                data-aq-card
+                data-provider={id}
+                data-group={group.id}
+                data-state="loading"
+                aria-busy="true"
+              >
+                <header class="aq-card__head">
+                  <h3 class="aq-card__label">{labelOf(id)}</h3>
+                  <span class="aq-card__chip" data-aq-chip>
+                    <i class="aq-chip__dot" aria-hidden="true" />
+                    <span data-aq-chip-text>读取中</span>
+                  </span>
+                </header>
+
+                <div class="aq-card__main" data-aq-amount-wrap>
+                  <span class="aq-card__amount-label" data-aq-amount-label>{amountLabel(group.id)}</span>
+                  <p class="aq-card__amount" data-aq-amount>—</p>
+                  <p class="aq-card__amount-sub" data-aq-amount-sub />
+                </div>
+
+                {/* 订阅窗口：订阅制与 GLM 计划共用同一套渲染 */}
+                {(group.id === 'subscription' || group.id === 'platform') && (
+                  <div class="aq-windows" data-aq-windows hidden />
+                )}
+
+                {/* 开放平台：赠送 / 充值 / 累计消费拆分 */}
+                {group.id === 'platform' && <dl class="aq-split" data-aq-split hidden />}
+
+                {/* 用量键值行（中转站与开放平台） */}
+                {group.id !== 'subscription' && <dl class="aq-kv" data-aq-kv hidden />}
+
+                {/* 近 14 天迷你折线：内联 SVG，无图表库 */}
+                {group.id === 'relay' && (
+                  <figure class="aq-chart" data-aq-chart hidden>
+                    <svg
+                      class="aq-chart__svg"
+                      viewBox="0 0 100 32"
+                      preserveAspectRatio="none"
+                      role="img"
+                      aria-label="近 14 天用量折线"
+                    >
+                      <line class="aq-chart__axis" x1="0" y1="31.5" x2="100" y2="31.5" />
+                      <g data-aq-chart-lines />
+                    </svg>
+                    <figcaption class="aq-chart__cap" data-aq-chart-cap>近 14 天</figcaption>
+                  </figure>
+                )}
+
+                <div class="aq-skeleton" data-aq-skeleton aria-hidden="true">
+                  <span class="aq-skeleton__bar" />
+                  <span class="aq-skeleton__bar aq-skeleton__bar--lead" />
+                  <span class="aq-skeleton__bar" />
+                </div>
+
+                <div class="aq-state" data-aq-panel hidden>
+                  <p class="aq-state__title" data-aq-panel-title />
+                  <p class="aq-state__note" data-aq-panel-note />
+                </div>
+
+                {/* 静态说明放在动态内容之后：状态在上、出处在下，失败时读起来是"结论 + 注脚" */}
+                <p class="aq-card__note" data-aq-note>{noteOf(id)}</p>
+
+                <footer class="aq-card__foot">
+                  {homeOf(id) ? (
+                    <a class="aq-card__home" href={homeOf(id)} target="_blank" rel="noopener noreferrer">
+                      {hostOf(homeOf(id))}
+                      <Icon name="arrow-up-right" />
+                    </a>
+                  ) : (
+                    <span class="aq-card__home aq-card__home--plain">内部面板</span>
+                  )}
+                  <span class="aq-card__time" data-aq-time>—</span>
+                </footer>
+              </article>
+            ))}
+          </div>
+        </section>
+      ))
+    }
+
+    {/* 04 可读口径：把"哪家能读到 token / 金额"摊开写清楚，避免把百分比当成余额 */}
+    {
+      quota.reads && (
+        <section class="aq-group aq-group--reads" aria-labelledby="aq-reads-title">
+          <header class="aq-group__head">
+            <span class="aq-group__index" aria-hidden="true">04</span>
+            <h2 class="aq-group__title" id="aq-reads-title">可读口径</h2>
+            <p class="aq-group__deck">{quota.reads.caption}</p>
+          </header>
+          <div class="aq-reads__wrap">
+            <table class="aq-reads">
+              <thead>
+                <tr>
+                  <th scope="col">服务</th>
+                  {quota.reads.columns.map((column) => <th scope="col">{column}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {quota.reads.rows.map((row) => (
+                  <tr>
+                    <th scope="row">{labelOf(row.id)}</th>
+                    {row.cells.map((cell) => <td>{cell}</td>)}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )
+    }
+
+    <noscript>
+      <p class="aq-notice__note aq-noscript">
+        本页需要 JavaScript 才能读取额度读数；数字由本站查询代理在服务端取回，这个页面本身不含任何密钥。
+      </p>
+    </noscript>
+  </div>
+</BaseLayout>
+
+<script>
+  import '../scripts/ai-quota.ts';
+</script>

@@ -1,0 +1,28 @@
+{
+  "opencode-go": {
+    "apiKey": "",
+    "note": "OpenCode 控制台 https://opencode.ai/console 订阅 Go / Go Plus 后复制的 API Key（sk-...），用于 GET https://opencode.ai/zen/go/v1/usage"
+  },
+  "yundu": {
+    "apiKey": "",
+    "note": "云渡 https://gd.yundu.lol 控制台里的 API 令牌（sk-...），可读 /v1/usage 的余额与按日用量"
+  },
+  "toolcode": {
+    "apiKey": "",
+    "note": "ToolCode https://toolcode.top（与 .cc 同一后端）的 API 令牌"
+  },
+  "taffcloud": {
+    "apiKey": "",
+    "accessToken": "",
+    "userId": "",
+    "note": "apiKey 走 OpenAI 兼容计费接口；若想显示真实剩余额度，另填面板登录后的 access token（浏览器 localStorage 的 token）与数字 userId（New-Api-User）"
+  },
+  "deepseek": {
+    "apiKey": "",
+    "note": "DeepSeek 开放平台 https://platform.deepseek.com/api_keys"
+  },
+  "glm": {
+    "apiKey": "",
+    "note": "智谱开放平台 https://open.bigmodel.cn/usercenter/proj-mgmt/apikeys；中国站按裸 key 放在 Authorization 里"
+  }
+}

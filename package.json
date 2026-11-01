@@ -9,6 +9,7 @@
     "preview": "astro preview",
     "astro": "astro",
     "admin": "node admin-server.mjs",
+    "quota:check": "node scripts/ai-quota-proxy.mjs",
     "perf:baseline": "node scripts/perf-baseline.mjs",
     "perf:images": "node scripts/optimize-images.mjs --dry-run",
     "perf:verify": "node scripts/verify-gallery-perf.mjs",

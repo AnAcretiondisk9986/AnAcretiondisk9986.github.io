@@ -1,0 +1,103 @@
+{
+  "endpoint": "https://ai-quota.anacretiondisk.workers.dev/api/ai-quota",
+  "title": "额度",
+  "subtitle": "AI 订阅配额、中转余额与开放平台账户，一次读完。",
+  "pollSeconds": 60,
+  "providers": {
+    "opencode-go": {
+      "label": "OpenCode GO",
+      "home": "https://opencode.ai/console",
+      "note": "订阅制额度，按滚动 5 小时 / 每周 / 每月三个窗口计算余量。"
+    },
+    "yundu": {
+      "label": "云渡",
+      "home": "https://gd.yundu.lol",
+      "note": "OpenAI 兼容中转，余额按美元记账。"
+    },
+    "toolcode": {
+      "label": "ToolCode",
+      "home": "https://toolcode.cc",
+      "note": "主站 toolcode.cc，读不到时服务端回落到 toolcode.top。"
+    },
+    "taffcloud": {
+      "label": "TaffCloud",
+      "home": "",
+      "note": "面板额度按站点口径折算为美元；配了 access token 时直接取面板原始额度。"
+    },
+    "deepseek": {
+      "label": "DeepSeek",
+      "home": "https://platform.deepseek.com",
+      "note": "官方开放平台，余额分赠送与充值两部分。"
+    },
+    "glm": {
+      "label": "智谱 GLM",
+      "home": "https://open.bigmodel.cn",
+      "note": "中国站账户：余额与资源包、今日消费分别来自不同接口。"
+    }
+  },
+  "reads": {
+    "caption": "各家接口能读到什么：额度/余额、今日花费、今日 Token、明细，都是服务端实际取回的字段，页面没有补算。",
+    "columns": [
+      "额度",
+      "今日花费",
+      "今日 Token",
+      "明细"
+    ],
+    "rows": [
+      {
+        "id": "opencode-go",
+        "cells": [
+          "三窗口百分比",
+          "—",
+          "—",
+          "重置时间"
+        ]
+      },
+      {
+        "id": "yundu",
+        "cells": [
+          "钱包余额",
+          "✓",
+          "✓ 含缓存",
+          "按模型"
+        ]
+      },
+      {
+        "id": "toolcode",
+        "cells": [
+          "钱包余额",
+          "✓",
+          "✓ 含缓存",
+          "按模型"
+        ]
+      },
+      {
+        "id": "taffcloud",
+        "cells": [
+          "不限 + 本月已用",
+          "—",
+          "—",
+          "—"
+        ]
+      },
+      {
+        "id": "deepseek",
+        "cells": [
+          "余额（赠送/充值）",
+          "—",
+          "—",
+          "—"
+        ]
+      },
+      {
+        "id": "glm",
+        "cells": [
+          "余额 + 资源包",
+          "按账号返回",
+          "资源包剩余",
+          "计划窗口"
+        ]
+      }
+    ]
+  }
+}

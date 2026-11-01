@@ -1,0 +1,15 @@
+# AI 额度查询代理（Cloudflare Worker）。契约见 docs/ai-quota-contract.md。
+# 只放部署配置：入口仍是仓库里的 scripts/ai-quota-worker.js，不复制第二份代码。
+#
+#   npx wrangler login
+#   npx wrangler secret put AI_QUOTA_KEYS_JSON --config deploy/ai-quota-worker/wrangler.toml
+#   npx wrangler deploy --config deploy/ai-quota-worker/wrangler.toml
+#
+# 密钥内容与项目根 .ai-quota.keys.json 相同（整份 JSON 粘进去，一次写全部六个服务）。
+name = "ai-quota"
+main = "../../scripts/ai-quota-worker.js"
+compatibility_date = "2026-01-01"
+
+[vars]
+# 逗号分隔；本地 astro preview/dev 是 http://127.0.0.1:4321
+ALLOWED_ORIGIN = "https://blog.acretiondisk.top,http://127.0.0.1:4321"

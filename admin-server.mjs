@@ -23,6 +23,7 @@ import { atomicWriteFile, sha256 } from './admin/atomic-file.mjs';
 import { createGitService, GitCommandError, redactSecrets } from './admin/git-service.mjs';
 import { createJsonStore, InvalidDataError, parseExpectedHash, VersionConflictError } from './admin/json-store.mjs';
 import { parseFile as parseAudioMeta } from 'music-metadata';
+import { createQuotaService } from './scripts/ai-quota-proxy.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // 内容 / 数据目录支持环境变量覆盖（自动化测试使用隔离目录，不触碰真实数据）
@@ -722,6 +723,28 @@ function buildPostMarkdown(body, allPosts, { excludeSlug = '' } = {}) {
   fm.push('---', '', body.content || '');
   return fm.join('\n');
 }
+
+// ── AI 额度查询代理：公开只读接口 ──
+// 必须注册在 app.use('/api', auth) 之前才有匿名访问权限；契约见 docs/ai-quota-contract.md。
+// 恒 200 + Cache-Control: no-store；服务端持钥访问上游，密钥不出服务端。本地同源，不开 CORS。
+const aiQuotaService = createQuotaService({ env: process.env });
+app.get('/api/ai-quota', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  res.type('application/json');
+  try {
+    const payload = await aiQuotaService.readAll({ force: req.query.force === '1' });
+    res.json(payload);
+  } catch (err) {
+    console.error('AI quota proxy error:', err && err.message ? err.message : err);
+    res.json({
+      ok: false,
+      generatedAt: new Date().toISOString(),
+      cacheSeconds: 30,
+      providers: [],
+      error: '额度查询服务异常',
+    });
+  }
+});
 
 // Auth for all API routes
 app.use('/api', auth);
