@@ -7,7 +7,7 @@
     "opencode-go": {
       "label": "OpenCode GO",
       "home": "https://opencode.ai/console",
-      "note": "订阅制额度，按滚动 5 小时 / 每周 / 每月三个窗口计算余量。"
+      "note": "订阅制额度，按滚动 5 小时 / 每周 / 每月三个窗口计算余量；竖线＝按时间匀速用完的参考值。"
     },
     "yundu": {
       "label": "云渡",

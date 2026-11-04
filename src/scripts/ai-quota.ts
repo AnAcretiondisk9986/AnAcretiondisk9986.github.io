@@ -37,6 +37,8 @@ interface QuotaWindow {
   label?: string | null;
   percent?: number | null;
   resetsAt?: string | null;
+  /** 窗口起点：上游没给，由服务端按已知周期反推，用于画「匀速参考线」 */
+  startAt?: string | null;
   status?: string | null;
 }
 
@@ -439,6 +441,9 @@ function tick(): void {
     node.textContent = formatCountdown(node.dataset.countdown, now);
   });
 
+  // 参考线随时间自己往前爬，不用等下一次请求
+  paintReference(state.root, now);
+
   const nextNode = qs<HTMLElement>(state.root, '[data-aq-next]');
   if (nextNode) {
     if (!state.auto) nextNode.textContent = '已关闭';
@@ -561,6 +566,30 @@ function renderUnavailable(card: HTMLElement, state: CardState, provider: Provid
   if (time) time.textContent = formatClock(provider?.updatedAt ?? null);
 }
 
+/**
+ * 匀速参考值：窗口已过去的时间占整段的比例。
+ * 比如 5 小时窗口过了 34 分钟 → 100% × 34/300 ≈ 11%，
+ * 用量柱超过这条线，就说明比「刚好用完」跑得快。
+ */
+function referencePercent(startAt: string | null | undefined, resetsAt: string | null | undefined, now: number): number | null {
+  const start = Date.parse(startAt ?? '');
+  const end = Date.parse(resetsAt ?? '');
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return null;
+  const ratio = (now - start) / (end - start);
+  return Math.max(0, Math.min(100, ratio * 100));
+}
+
+function paintReference(root: HTMLElement, now: number): void {
+  root.querySelectorAll<HTMLElement>('[data-ref-mark]').forEach((node) => {
+    const pct = referencePercent(node.dataset.startAt, node.dataset.endAt, now);
+    if (pct !== null) node.style.left = `${pct}%`;
+  });
+  root.querySelectorAll<HTMLElement>('[data-ref-label]').forEach((node) => {
+    const pct = referencePercent(node.dataset.startAt, node.dataset.endAt, now);
+    if (pct !== null) node.textContent = `均值 ${Math.round(pct)}%`;
+  });
+}
+
 function renderWindows(card: HTMLElement, windows: QuotaWindow[] | null | undefined): void {
   const host = qs<HTMLElement>(card, '[data-aq-windows]');
   if (!host) return;
@@ -569,6 +598,7 @@ function renderWindows(card: HTMLElement, windows: QuotaWindow[] | null | undefi
     return;
   }
 
+  const now = Date.now();
   host.replaceChildren();
   for (const item of windows) {
     const row = make('div', 'aq-window');
@@ -579,6 +609,9 @@ function renderWindows(card: HTMLElement, windows: QuotaWindow[] | null | undefi
     head.append(make('b', 'aq-window__pct', percent === null ? '—' : percentFormatter.format(percent / 100)));
     row.append(head);
 
+    const ref = referencePercent(item.startAt, item.resetsAt, now);
+
+    const rail = make('div', 'aq-window__rail');
     const track = make('div', 'aq-window__track');
     const fill = make('i', 'aq-window__fill');
     if (percent === null) {
@@ -590,13 +623,34 @@ function renderWindows(card: HTMLElement, windows: QuotaWindow[] | null | undefi
       if (percent >= 85) fill.dataset.level = 'high';
     }
     track.append(fill);
-    row.append(track);
+    rail.append(track);
+
+    // 匀速参考线：竖刻度 + 轨道上方的小帽，超过它就是对不齐节奏
+    if (ref !== null) {
+      const mark = make('i', 'aq-window__mark');
+      mark.dataset.refMark = '';
+      mark.dataset.startAt = item.startAt ?? '';
+      mark.dataset.endAt = item.resetsAt ?? '';
+      mark.style.left = `${ref}%`;
+      mark.setAttribute('aria-hidden', 'true');
+      rail.append(mark);
+    }
+    row.append(rail);
 
     const meta = make('p', 'aq-window__meta');
     meta.append(make('span', undefined, '重置'));
     const countdown = make('b', 'aq-window__countdown', formatCountdown(item.resetsAt, Date.now()));
     if (item.resetsAt) countdown.dataset.countdown = item.resetsAt;
     meta.append(countdown);
+    if (ref !== null) {
+      const refLabel = make('span', 'aq-window__ref');
+      refLabel.dataset.refLabel = '';
+      refLabel.dataset.startAt = item.startAt ?? '';
+      refLabel.dataset.endAt = item.resetsAt ?? '';
+      refLabel.textContent = `均值 ${Math.round(ref)}%`;
+      if (percent !== null && percent > ref + 2) refLabel.dataset.pace = 'over';
+      meta.append(make('span', 'aq-window__sep', '·'), refLabel);
+    }
     row.append(meta);
 
     host.append(row);

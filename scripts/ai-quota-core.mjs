@@ -24,6 +24,8 @@ const GLM_TOKEN_PACKAGES_PATH = '/api/biz/tokenAccounts/list/my?pageNum=1&pageSi
 const NEW_API_QUOTA_PER_USD = 500_000;
 
 const OPENCODE_WINDOW_LABELS = { rolling: '滚动 5 小时', weekly: '每周', monthly: '每月' };
+// 上游只给 resetsAt，没有窗口起点：按已知周期反推，供「匀速用完」参考线使用
+const OPENCODE_WINDOW_PERIOD_MS = { rolling: 5 * 3_600_000, weekly: 7 * 86_400_000 };
 const GLM_WINDOW_LABELS = { session: '会话', weekly: '每周', monthly: '每月', daily: '每日', rolling: '滚动窗口' };
 
 const YMD_FORMATTER = new Intl.DateTimeFormat('en-CA', {
@@ -284,6 +286,31 @@ function walletPatch(json) {
   };
 }
 
+/** 按日历月平移 ISO 时间（月末自动收敛到该月最后一天） */
+function shiftMonths(iso, delta) {
+  const base = new Date(iso);
+  if (!Number.isFinite(base.getTime())) return null;
+  const day = base.getUTCDate();
+  const cursor = new Date(base.getTime());
+  cursor.setUTCDate(1);
+  cursor.setUTCMonth(cursor.getUTCMonth() + delta);
+  const lastDay = new Date(Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth() + 1, 0)).getUTCDate();
+  cursor.setUTCDate(Math.min(day, lastDay));
+  return cursor.toISOString();
+}
+
+/**
+ * 反推窗口起点。上游只回 resetsAt：rolling/weekly 用固定周期相减，
+ * monthly 取「上一个自然月同日」，即 resetsAt 往前推一个日历月。
+ */
+function opencodeWindowStart(windowKey, resetsAt) {
+  if (!resetsAt) return null;
+  if (windowKey === 'monthly') return shiftMonths(resetsAt, -1);
+  const period = OPENCODE_WINDOW_PERIOD_MS[windowKey];
+  if (!period) return null;
+  return new Date(Date.parse(resetsAt) - period).toISOString();
+}
+
 async function loadOpencodeGo(ctx, entry) {
   const key = str(entry.apiKey);
   if (!key) return { status: 'missing-key', message: '未配置 OpenCode GO API Key' };
@@ -303,11 +330,14 @@ async function loadOpencodeGo(ctx, entry) {
   for (const windowKey of ['rolling', 'weekly', 'monthly']) {
     const raw = usageDoc[windowKey];
     if (!raw || typeof raw !== 'object') continue;
+    const resetsAt = isoOrNull(raw.resetsAt);
     windows.push({
       key: windowKey,
       label: OPENCODE_WINDOW_LABELS[windowKey] || windowKey,
       percent: clampPercent(raw.percent),
-      resetsAt: isoOrNull(raw.resetsAt),
+      resetsAt,
+      // 起点只用于前端画「匀速参考线」，上游没有这个字段
+      startAt: opencodeWindowStart(windowKey, resetsAt),
       status: str(raw.status) || 'unknown',
     });
   }

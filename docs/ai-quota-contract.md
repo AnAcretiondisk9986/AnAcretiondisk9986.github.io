@@ -58,6 +58,7 @@ type Window = {
   label: string;           // 中文标签，如"滚动 5 小时"
   percent: number | null;  // 已用百分比 0..100
   resetsAt: string | null; // 重置时刻 ISO
+  startAt?: string | null; // 窗口起点 ISO；上游不给，OpenCode GO 按已知周期反推，见 §4.1
   status: string;          // 上游原文状态，如 active
 };
 
@@ -145,6 +146,21 @@ type Point = { date: string; cost: number | null; requests: number | null };
 - 响应写入 `sessionStorage`（键 `ai-quota:v1`），20s 内重载页面先用缓存渲染再回源。
 - `/api/ai-quota` 404 / 非 JSON / 网络失败 → 整页进入"代理未连接"提示，文案说明需要启动本地管理服务或配置 Worker 地址；不得显示假数字。
 - 所有 `percent` 截断到 0..100；`resetsAt` 倒计时每秒更新，超过 24h 显示日期。
+
+### 5.1 时间进度参考线（匀速基线）
+
+上游只给 `resetsAt`，所以 `startAt` 由服务端按已知周期反推，只用于前端画参考线，不参与余额计算：
+
+| 窗口 | 起点 | 例（整段 → 参考值） |
+|---|---|---|
+| `rolling` | `resetsAt - 5h` | 已过 34 分钟 → 100% × 34/300 ≈ 11% |
+| `weekly` | `resetsAt - 7d` | 已过 4 天 → 100% × 4/7 ≈ 57% |
+| `monthly` | `resetsAt` 往前推一个日历月 | 已过 2 天 / 30 天月 → ≈ 7% |
+
+前端以 `(now - startAt) / (resetsAt - startAt)` 算「匀速用完参考值」，画成轨道上的竖刻度，
+并在重置倒计时后显示 `均值 N%`；该值每秒重算，不用等下一次请求。
+用量百分比超过参考值 2 个百分点时，`均值 N%` 转强调色，表示比匀速跑得快。
+没有 `startAt` 的窗口（如智谱计划）不画参考线。
 
 ## 6. 部署形态
 

@@ -303,11 +303,45 @@
     font-weight: 600;
     font-variant-numeric: tabular-nums;
   }
-  .aq-window__track {
+  .aq-window__rail {
     grid-column: 1 / -1;
+    position: relative;
+    height: 3px;
+    margin: 1px 0 0;
+  }
+  .aq-window__track {
     height: 3px;
     background: color-mix(in oklab, var(--c-ink) 13%, transparent);
     overflow: hidden;
+  }
+  /* 时间进度参考线：用法量条和它对齐，就知道自己是不是跑得比时间快 */
+  .aq-window__mark {
+    position: absolute;
+    top: -3px;
+    width: 1.5px;
+    height: 9px;
+    margin-left: -0.75px;
+    background: color-mix(in oklab, var(--c-ink) 62%, transparent);
+    transition: left 0.42s linear;
+    pointer-events: none;
+  }
+  .aq-window__mark::before {
+    content: '';
+    position: absolute;
+    top: -1px;
+    left: -1.75px;
+    width: 5px;
+    height: 2px;
+    background: inherit;
+  }
+  .aq-window__ref {
+    font-variant-numeric: tabular-nums;
+  }
+  .aq-window__ref[data-pace='over'] {
+    color: var(--c-accent-2);
+  }
+  .aq-window__sep {
+    opacity: 0.55;
   }
   .aq-window__track[data-empty='true'] {
     background: repeating-linear-gradient(
