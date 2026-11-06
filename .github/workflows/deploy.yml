@@ -32,6 +32,13 @@ jobs:
         uses: actions/configure-pages@v6
       - name: Install dependencies
         run: npm ci
+      - name: Restore localized images cache
+        uses: actions/cache@v4
+        with:
+          path: public/images/ext
+          key: images-ext-${{ hashFiles('src/content/**', 'src/data/**') }}
+          restore-keys: |
+            images-ext-
       - name: Build
         run: npm run build
       - name: Upload artifact

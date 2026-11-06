@@ -5,8 +5,10 @@
   "private": true,
   "scripts": {
     "dev": "astro dev",
-    "prebuild": "node scripts/ai-quota-snapshot.mjs",
+    "prebuild": "node scripts/ai-quota-snapshot.mjs && node scripts/localize-images.mjs",
+    "postbuild": "node scripts/postbuild-rewrite.mjs",
     "snapshot:quota": "node scripts/ai-quota-snapshot.mjs",
+    "images:localize": "node scripts/localize-images.mjs",
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",

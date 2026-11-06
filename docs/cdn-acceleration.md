@@ -141,15 +141,26 @@ server {
 
 ---
 
-## 图片：把 jsDelivr 换成本地或自家域名
+## 图片：构建期本地化
 
-文章里大量 `https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/...`。jsDelivr 在国内不稳定，两条路：
+原先全站 502 张正文图与卡片封面都挂在 `cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/`，
+国内冷缓存要回源 GitHub，经常 1–3 s 才出图，而且和本站不同源、吃不到自己的缓存规则。
+现在改成构建期本地化，产物里 1959 处引用全部换成本地路径（实测文章页对外请求 0 次 jsDelivr）：
 
-- **推荐**：把 `blog-images` 仓库的 `image/` 目录同步到本仓库 `public/images/external/`，构建时改写链接；
-  静态站本来就要跟 CDN 一起走，图片同源后缓存规则、HTTP/2 复用全部生效。
-- **临时**：把域名换成 `fastly.jsdelivr.net` 或 `gcore.jsdelivr.net`（同一套 CDN 的不同入口，国内可达性不同）。
+| 环节 | 脚本 | 做什么 |
+| --- | --- | --- |
+| 取数 | `scripts/localize-images.mjs`（`prebuild` 自动跑） | 扫 `src/**`（md / json / astro / ts）里的引用，缺哪张下哪张（走 `raw.githubusercontent.com`），sharp 压到长边 1600 / webp q80，同时补 480 px 缩略图，写进 `public/images/ext/` |
+| 改写 | `scripts/postbuild-rewrite.mjs`（`postbuild` 自动跑） | 产物里凡是 `/images/ext/` 有对应文件的就换成本地路径；`og:image` 输出站点绝对地址；每页第一张图 `fetchpriority=high`，其余补 `loading="lazy" decoding="async"` |
 
----
+要点：
+
+- **幂等**：已存在的文件直接跳过，构建期只补新增（当前 502 张全尺寸 + 502 张缩略图，约 66 MB）；单张失败只 warning，链接保持远端，不会 404。
+- **按存在性改写**：卡片封面/缩略图是 `thumbOf()` 在构建时拼出来的，源码里没有字面量，所以改写不查映射表，而是判断本地文件是否存在——宁可慢，也不改出 404。
+- **原图不搬**：gallery「查看原图」指向的 54 张 `image/original/*` 合计 287 MB，只在点击时加载，继续留在 jsDelivr。
+- **不进仓库**：`public/images/ext/` 与 `scripts/lib/image-map.json` 已 gitignore；CI 用 `actions/cache` 缓存该目录（key 按内容哈希，`restore-keys` 兜底），冷构建一次性下载约 160 MB。
+
+`blog-images` 仓库同时做了瘦身：只保留博客实际引用到的文件（523 个 / 466.9 MB），
+删掉 804 个从未被引用的图片（1.40 GB）。清理前的状态留在 `backup/pre-prune-2026-11-06` 分支上。
 
 ## 验收
 

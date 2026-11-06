@@ -19,3 +19,7 @@ blog-template/
 design/
 reports/
 public/quota/snapshot.json
+
+# 构建期本地化的图片（npm run images:localize / prebuild 生成）
+public/images/ext/
+scripts/lib/image-map.json
