@@ -109,11 +109,26 @@ function corsHeaders(env, request) {
 }
 
 function jsonResponse(payload, env, request, status = 200) {
+  // 允许 Cloudflare 边缘缓存一小会儿：国内用户不必每次都等 Worker 回源六家上游。
+  // force=1（手动刷新）显式绕过；契约里的 cacheSeconds 就是这份 TTL。
+  const ttl = Number(payload && payload.cacheSeconds) > 0 ? Math.round(Number(payload.cacheSeconds)) : 30;
+  const force = (() => {
+    try {
+      return new URL(request.url).searchParams.get('force') === '1';
+    } catch {
+      return false;
+    }
+  })();
+  const cacheControl =
+    status === 200 && !force
+      ? `public, max-age=${ttl}, s-maxage=${ttl}, stale-while-revalidate=${ttl * 4}`
+      : 'no-store';
+
   return new Response(JSON.stringify(payload), {
     status,
     headers: {
       'Content-Type': 'application/json; charset=utf-8',
-      'Cache-Control': 'no-store',
+      'Cache-Control': cacheControl,
       ...corsHeaders(env, request),
     },
   });

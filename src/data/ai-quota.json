@@ -1,5 +1,6 @@
 {
-  "endpoint": "https://ai-quota.anacretiondisk.workers.dev/api/ai-quota",
+  "endpoint": "/api/ai-quota",
+  "fallbackEndpoint": "https://ai-quota.anacretiondisk.workers.dev/api/ai-quota",
   "title": "额度",
   "subtitle": "AI 订阅配额、中转余额与开放平台账户，一次读完。",
   "pollSeconds": 60,

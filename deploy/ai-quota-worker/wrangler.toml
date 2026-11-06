@@ -12,4 +12,16 @@ compatibility_date = "2026-01-01"
 
 [vars]
 # 逗号分隔；本地 astro preview/dev 是 http://127.0.0.1:4321
+# 同源路由生效后，页面用自己的域名请求，这里仍保留两项以防本地联调
 ALLOWED_ORIGIN = "https://blog.acretiondisk.top,http://127.0.0.1:4321"
+
+# ── 同源路由（方案 A：把 acretiondisk.top 的 NS 交给 Cloudflare 之后取消注释）──
+# 作用：/api/ai-quota 变成 blog.acretiondisk.top 自己的路径，前端不必再碰 workers.dev。
+# 前置：zone acretiondisk.top 已在本账号下，否则 wrangler deploy 会报 zone not found。
+#
+# routes = [
+#   { pattern = "blog.acretiondisk.top/api/*", zone_name = "acretiondisk.top" }
+# ]
+#
+# 另外建议给 Worker 单独挂一个自定义域名，便于 CDN/EdgeOne 以域名形式回源：
+# routes = [{ pattern = "api.acretiondisk.top/*", zone_name = "acretiondisk.top" }]

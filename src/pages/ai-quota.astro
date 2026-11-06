@@ -14,6 +14,8 @@
  *
  * 样式见 src/styles/ai-quota.css，逻辑见 src/scripts/ai-quota.ts。
  */
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Icon from '../components/Icon.astro';
 import quota from '../data/ai-quota.json';
@@ -28,9 +30,29 @@ interface ProviderMeta {
 const metaMap = (quota.providers || {}) as Record<string, ProviderMeta>;
 
 /* endpoint 三级回落：构建期环境变量 → src/data/ai-quota.json → 本站默认路径。
-   Astro 只注入 PUBLIC_ 前缀的变量，所以键名必须原样写成 PUBLIC_AI_QUOTA_ENDPOINT。 */
+   Astro 只注入 PUBLIC_ 前缀的变量，所以键名必须原样写成 PUBLIC_AI_QUOTA_ENDPOINT。
+
+   默认走「本站 /api/ai-quota」，由 Cloudflare Worker 路由承接：同源请求不用二次 DNS、
+   不用重新 TLS 握手，也不会撞上 workers.dev 在国内的限速。Worker 路由还没上时，
+   请求会 404 得很快，前端再退回 fallbackEndpoint（workers.dev 原地址）。 */
 const endpoint = import.meta.env.PUBLIC_AI_QUOTA_ENDPOINT || quota.endpoint || '/api/ai-quota';
+const fallbackEndpoint =
+  import.meta.env.PUBLIC_AI_QUOTA_FALLBACK || quota.fallbackEndpoint || '';
 const pollSeconds = Number(quota.pollSeconds) > 0 ? Math.round(Number(quota.pollSeconds)) : 60;
+
+/* 构建期快照内联进 HTML：浏览器拿到第一块 HTML 就能画出上一份读数，
+   一个网络请求都不用等。没有快照（本地没跑 prebuild）时整段自动省略。 */
+const snapshotJson = (() => {
+  try {
+    const raw = readFileSync(resolve(process.cwd(), 'public/quota/snapshot.json'), 'utf8');
+    const parsed = JSON.parse(raw) as { payload?: { providers?: unknown[] } };
+    if (!parsed?.payload || !Array.isArray(parsed.payload.providers)) return '';
+    // 内联进 <script> 必须掐掉 "<"，否则数据里出现 </script> 会提前闭合标签
+    return JSON.stringify(parsed).replace(/</g, '\\u003c');
+  } catch {
+    return '';
+  }
+})();
 
 /* 分区元数据；卡片平铺后只在卡头留一个字的分区标记 */
 const groups = [
@@ -70,9 +92,13 @@ const amountLabel = (group: string) =>
     class="aq-page"
     data-aq-page
     data-endpoint={endpoint}
+    data-endpoint-fallback={fallbackEndpoint}
     data-poll-seconds={String(pollSeconds)}
     data-conn="pending"
   >
+    {snapshotJson ? (
+      <script type="application/json" data-aq-snapshot is:inline set:html={snapshotJson}></script>
+    ) : null}
     {/* 页头压成一行：标题 + 一句说明 + 状态 + 两个按钮 */}
     <header class="aq-top">
       <div class="aq-top__lead">
@@ -95,10 +121,14 @@ const amountLabel = (group: string) =>
     {/* 整页级状态 1：代理没起来 / 返回的不是 JSON。默认隐藏，脚本按实际响应打开。 */}
     <section class="aq-notice" data-aq-offline hidden aria-labelledby="aq-offline-title">
       <p class="aq-notice__kicker">OFFLINE</p>
-      <h2 class="aq-notice__title" id="aq-offline-title">查询代理未连接</h2>
-      <p class="aq-notice__note">
+      <h2 class="aq-notice__title" id="aq-offline-title" data-aq-offline-title>查询代理未连接</h2>
+      <p class="aq-notice__note" data-aq-offline-plain>
         这一页的数字全部由本站的查询代理在服务端取回，浏览器里没有任何密钥。现在这个接口没有给出可用的 JSON，
         所以所有卡片都停在「未取到」，不会显示 0 或占位数字。
+      </p>
+      <p class="aq-notice__note" data-aq-offline-stale hidden>
+        当前显示的是最近一次成功读数（构建快照或本地缓存），数字没有清零，也没有经过任何编造。
+        接口恢复后本页会自动覆盖成实时值。
       </p>
       <ol class="aq-notice__steps">
         <li>

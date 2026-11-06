@@ -103,6 +103,8 @@ interface QuotaPayload {
 interface Runtime {
   root: HTMLElement;
   endpoint: string;
+  /** 主端点不通时的退路（workers.dev 原地址）；为空表示不回退 */
+  fallback: string;
   pollMs: number;
   auto: boolean;
   nextAt: number;
@@ -111,13 +113,24 @@ interface Runtime {
   controller: AbortController | null;
   requestSeq: number;
   lastForceSecond: number;
+  /** 连续失败次数：用来做指数退避，别在弱网下每 60s 白扔一次请求 */
+  failures: number;
+  /** 是否已经有内容铺到屏上（快照 / 长缓存 / 一次成功回源都算） */
+  painted: boolean;
 }
 
 /* ───────────────────────── 常量与格式化器 ───────────────────────── */
 
 const CACHE_KEY = 'ai-quota:v1';
 const CACHE_TTL_MS = 20_000;
-const REQUEST_TIMEOUT_MS = 12_000;
+/** 跨会话长缓存：弱网下先把上一次的读数铺出来，再后台回源 */
+const PERSIST_KEY = 'ai-quota:persist:v1';
+const PERSIST_TTL_MS = 7 * 86_400_000;
+/** 首屏还没有任何内容时的耐心：4.5s 内没回就先把骨架换成「未连接」，别让用户干等 */
+const FIRST_PAINT_TIMEOUT_MS = 4_500;
+const REQUEST_TIMEOUT_MS = 8_000;
+/** 连续失败后的退避上限：最多 5 分钟试一次 */
+const MAX_BACKOFF_MS = 300_000;
 const DAY_MS = 86_400_000;
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -324,6 +337,55 @@ function writeCache(payload: QuotaPayload): void {
   }
 }
 
+/** 长缓存：同一浏览器下次打开也能秒出，弱网/离线时至少还能看到上一份读数 */
+function readPersist(): QuotaPayload | null {
+  try {
+    const raw = window.localStorage.getItem(PERSIST_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { savedAt?: number; payload?: QuotaPayload };
+    if (!parsed || !isNumber(parsed.savedAt) || !parsed.payload) return null;
+    if (Date.now() - parsed.savedAt > PERSIST_TTL_MS) return null;
+    if (!Array.isArray(parsed.payload.providers)) return null;
+    return parsed.payload;
+  } catch {
+    return null;
+  }
+}
+
+function writePersist(payload: QuotaPayload): void {
+  try {
+    window.localStorage.setItem(PERSIST_KEY, JSON.stringify({ savedAt: Date.now(), payload }));
+  } catch {
+    /* 隐私模式 / 配额满：忽略 */
+  }
+}
+
+/** 构建期快照（构建时内联进 HTML）：任何网络请求之前就能画出上一份读数 */
+function readSnapshot(root: HTMLElement): QuotaPayload | null {
+  const node = root.querySelector<HTMLScriptElement>('script[data-aq-snapshot]');
+  const raw = node?.textContent;
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as { payload?: QuotaPayload };
+    if (!parsed?.payload || !Array.isArray(parsed.payload.providers)) return null;
+    return parsed.payload;
+  } catch {
+    return null;
+  }
+}
+
+/** 取「更新的一份」：快照是构建时抓的，长缓存可能更旧也可能更新 */
+function newerOf(a: QuotaPayload | null, b: QuotaPayload | null): { payload: QuotaPayload; mode: 'cache' | 'snapshot' } | null {
+  const at = (payload: QuotaPayload | null) => {
+    const time = payload?.generatedAt ? Date.parse(payload.generatedAt) : NaN;
+    return Number.isFinite(time) ? time : 0;
+  };
+  if (a && b) return at(a) >= at(b) ? { payload: a, mode: 'cache' } : { payload: b, mode: 'snapshot' };
+  if (a) return { payload: a, mode: 'cache' };
+  if (b) return { payload: b, mode: 'snapshot' };
+  return null;
+}
+
 /* ───────────────────────── 取数 ───────────────────────── */
 
 type FetchOutcome =
@@ -332,12 +394,12 @@ type FetchOutcome =
   /** 代理在线、但没读到密钥：仍把响应体带上，好让控制条显示代理自己的 generatedAt */
   | { kind: 'empty'; payload: QuotaPayload };
 
-async function request(endpoint: string, force: boolean): Promise<FetchOutcome> {
+async function request(endpoint: string, force: boolean, timeoutMs: number): Promise<FetchOutcome> {
   // 新请求覆盖旧请求：先掐掉上一次，避免手动刷新与轮询撞在同一秒时堆两条连接
   runtime?.controller?.abort();
   const controller = new AbortController();
   if (runtime) runtime.controller = controller;
-  const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
   try {
     const url = force ? `${endpoint}${endpoint.includes('?') ? '&' : '?'}force=1` : endpoint;
     const response = await fetch(url, {
@@ -377,21 +439,42 @@ async function refresh(force: boolean): Promise<void> {
   const token = ++state.requestSeq;
   setBusy(state.root, true);
 
-  const outcome = await request(state.endpoint, force);
+  // 屏上还空着就少等一点：4.5s 拿不到先显示「未连接」，后台继续补
+  const firstPaint = !state.painted;
+  let outcome = await request(
+    state.endpoint,
+    force,
+    firstPaint ? FIRST_PAINT_TIMEOUT_MS : REQUEST_TIMEOUT_MS,
+  );
+
+  // 主端点（本站 /api/ai-quota）挂了再退回 workers.dev：同源 404 只要几十毫秒，
+  // 真正慢的是 workers.dev 那条路，所以只在必要时才走，而且只等一次。
+  if (outcome.kind === 'offline' && state.fallback && state.fallback !== state.endpoint) {
+    if (!runtime || runtime !== state || token !== state.requestSeq) return;
+    outcome = await request(state.fallback, force, REQUEST_TIMEOUT_MS);
+  }
 
   // 页面已经切走，或已有更新的请求：这次结果直接丢弃
   if (!runtime || runtime !== state || token !== state.requestSeq) return;
   setBusy(state.root, false);
 
   if (outcome.kind === 'ok') {
+    state.failures = 0;
+    state.painted = true;
     applyPayload(outcome.payload, 'live');
     writeCache(outcome.payload);
+    writePersist(outcome.payload);
     setConn(state.root, 'live');
   } else if (outcome.kind === 'empty') {
+    state.failures = 0;
+    state.painted = true;
     applyEmpty(state.root, outcome.payload);
     setConn(state.root, 'empty');
   } else {
-    markAllOffline(state.root);
+    state.failures += 1;
+    // 已经画出来的读数（快照 / 长缓存）不要因为一次回源失败就抹掉：
+    // 只把连接状态标红，数值留着，用户至少还能看到上一次的口径。
+    if (!state.painted) markAllOffline(state.root);
     setConn(state.root, 'offline');
   }
 
@@ -412,10 +495,15 @@ function schedule(): void {
     tick();
     return;
   }
-  state.nextAt = Date.now() + state.pollMs;
+  // 失败后指数退避：弱网下别再每 60 秒往一条走不通的路上砸请求
+  const delay =
+    state.failures > 0
+      ? Math.min(state.pollMs * 2 ** Math.min(state.failures, 4), MAX_BACKOFF_MS)
+      : state.pollMs;
+  state.nextAt = Date.now() + delay;
   state.timer = window.setTimeout(() => {
     void refresh(false);
-  }, state.pollMs);
+  }, delay);
   tick();
 }
 
@@ -470,6 +558,14 @@ function setConn(root: HTMLElement, mode: 'pending' | 'live' | 'offline' | 'empt
   const empty = qs<HTMLElement>(root, '[data-aq-empty]');
   if (offline) offline.hidden = mode !== 'offline';
   if (empty) empty.hidden = mode !== 'empty';
+
+  // 屏上已经有读数（快照 / 缓存）时，断线提示要说实话：数字还在，只是不是实时的
+  const stale = mode === 'offline' && !!runtime?.painted;
+  const title = qs<HTMLElement>(root, '[data-aq-offline-title]');
+  if (title) title.textContent = stale ? '回源失败 · 显示最近一次读数' : '查询代理未连接';
+  qs<HTMLElement>(root, '[data-aq-offline-plain]')?.toggleAttribute('hidden', stale);
+  qs<HTMLElement>(root, '[data-aq-offline-stale]')?.toggleAttribute('hidden', !stale);
+
   const chip = qs<HTMLElement>(root, '[data-aq-conn]');
   if (chip) chip.textContent = CONN_LABEL[mode] || mode;
 }
@@ -888,7 +984,7 @@ function renderProvider(card: HTMLElement, provider: ProviderShape | null): void
 
 /* ───────────────────────── 渲染：整页 ───────────────────────── */
 
-function applyPayload(payload: QuotaPayload, mode: 'live' | 'cache'): void {
+function applyPayload(payload: QuotaPayload, mode: 'live' | 'cache' | 'snapshot'): void {
   const state = runtime;
   if (!state) return;
 
@@ -901,11 +997,14 @@ function applyPayload(payload: QuotaPayload, mode: 'live' | 'cache'): void {
   const updated = qs<HTMLElement>(state.root, '[data-aq-updated]');
   if (updated) {
     const clock = formatClock(payload.generatedAt ?? null);
-    updated.textContent = mode === 'cache' ? `缓存 · ${clock}` : clock;
+    updated.textContent =
+      mode === 'cache' ? `缓存 · ${clock}` : mode === 'snapshot' ? `快照 · ${clock}` : clock;
   }
 
   const connChip = qs<HTMLElement>(state.root, '[data-aq-conn]');
-  if (connChip && mode === 'cache') connChip.textContent = '读取缓存';
+  if (connChip && mode !== 'live') {
+    connChip.textContent = mode === 'cache' ? '读取缓存' : '构建快照';
+  }
 
   tick();
 }
@@ -970,12 +1069,14 @@ function init(): void {
   if (!root) return;
 
   const endpoint = (root.dataset.endpoint || '/api/ai-quota').trim() || '/api/ai-quota';
+  const fallback = (root.dataset.endpointFallback || '').trim();
   const seconds = Number(root.dataset.pollSeconds);
   const pollMs = (Number.isFinite(seconds) && seconds > 0 ? seconds : 60) * 1000;
 
   runtime = {
     root,
     endpoint,
+    fallback,
     pollMs,
     auto: true,
     nextAt: 0,
@@ -984,15 +1085,22 @@ function init(): void {
     controller: null,
     requestSeq: 0,
     lastForceSecond: 0,
+    failures: 0,
+    painted: false,
   };
   booted = true;
 
   bind(root);
   setBusy(root, false);
 
-  // 20s 内的缓存先铺屏，避免来回切换时闪一下骨架；随后仍然回源
-  const cached = readCache();
-  if (cached) applyPayload(cached, 'cache');
+  // 三档铺屏，全部零网络：会话缓存（20s）> localStorage 长缓存（7 天）> 构建期快照。
+  // 取「更新的一份」，标注来源，随后无条件回源覆盖。
+  const local = readCache() ?? readPersist();
+  const boot = newerOf(local, readSnapshot(root));
+  if (boot) {
+    applyPayload(boot.payload, boot.mode);
+    if (runtime) runtime.painted = true;
+  }
 
   startTicker(root);
   void refresh(false);

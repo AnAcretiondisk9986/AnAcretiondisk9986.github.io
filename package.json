@@ -5,6 +5,8 @@
   "private": true,
   "scripts": {
     "dev": "astro dev",
+    "prebuild": "node scripts/ai-quota-snapshot.mjs",
+    "snapshot:quota": "node scripts/ai-quota-snapshot.mjs",
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",
