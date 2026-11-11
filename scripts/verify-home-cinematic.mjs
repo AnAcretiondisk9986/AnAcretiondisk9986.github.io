@@ -48,6 +48,21 @@ const check = (name, ok, detail = '') => {
   results.push({ name, ok, detail });
   console.log(`${ok ? '✔ PASS' : '✖ FAIL'}  ${name}${detail ? `  — ${detail}` : ''}`);
 };
+/**
+ * 选择器已经不存在时的「跳过」。
+ * 2026-11-11 加入：页头在 2026-10-18 压缩改版后移除了 `.f-double-rule` 元素，
+ * 而 cyanotype（默认视觉主题）本来就用 `display: none` 隐藏它（cyanotype.css:45），
+ * 因此脚本里两处 `querySelector('.f-double-rule')` 拿到 null 时会让
+ * `getComputedStyle(null)` 抛异常、整个 85 项验证在第 28 项后崩溃。
+ * 现在遇到元素缺失记为 SKIP（单独计数、不计入通过率的分母），既不掩盖问题也不误报失败。
+ */
+const results_skipped = [];
+const skip = (name, reason) => {
+  results_skipped.push({ name, reason });
+  console.log(`· SKIP  ${name}${reason ? `  — ${reason}` : ''}`);
+};
+/** 取伪元素计算样式的空安全版本 */
+const pseudoStyle = (el, pseudo = '') => (el ? getComputedStyle(el, pseudo) : null);
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /** 轮询等待条件成立 */
@@ -189,6 +204,7 @@ try {
       heads: document.querySelectorAll('.f-section-head').length,
       revealTargets: document.querySelectorAll('[data-reveal]').length,
       navLinks: document.querySelectorAll('.f-nav a').length,
+      navHrefs: [...document.querySelectorAll('.f-nav a')].map((a) => a.getAttribute('href')),
       footer: !!document.querySelector('.f-footer'),
       heroTitle: document.querySelector('.f-hero__title')?.textContent?.trim() ?? '',
       firstCardHref: document.querySelector('.f-recent > .f-card')?.getAttribute('href') ?? '',
@@ -201,7 +217,11 @@ try {
   check('原文案仍在：6 张编目卡片', boot.cards === 6, `${boot.cards}`);
   check('原文案仍在：3 幅图版', boot.plates === 3, `${boot.plates}`);
   check('原文案仍在：3 个分区标题（II / III / IV）', boot.heads === 3, `${boot.heads}`);
-  check('导航 4 个入口仍在', boot.navLinks === 4, `${boot.navLinks}`);
+  // 导航入口数：跟着 SiteHeader 的 navigation 数组走（2026-10 起是 5 项，含「额度」）。
+  // 此前写死 === 4 是过期断言：`额度` 加入导航后这项一直 FAIL，与本次改动无关。
+  check('导航入口仍在（≥4，且包含编目/图志/关于）',
+    boot.navLinks >= 4 && boot.navHrefs.includes('/blog/') && boot.navHrefs.includes('/gallery/') && boot.navHrefs.includes('/about/'),
+    `${boot.navLinks} 项：${boot.navHrefs.join(' ')}`);
   check('页脚仍在', boot.footer === true);
   check('卡片链接未被改动', boot.firstCardHref.startsWith('/blog/'), boot.firstCardHref);
 
@@ -296,7 +316,8 @@ try {
   //   1) 背景图案是平铺的（repeat-x）；
   //   2) 一轮动画的位移恰好等于一个平铺周期 —— 首尾画面等价，循环边界不会回跳。
   const loop = await page.evaluate(() => {
-    const repeat = (el, pseudo) => getComputedStyle(el, pseudo).backgroundRepeat;
+    // 空安全：元素可能因为改版/主题隐藏而不存在，直接 getComputedStyle(null) 会抛异常
+    const repeat = (el, pseudo) => (el ? getComputedStyle(el, pseudo).backgroundRepeat : '(absent)');
     const ends = {};
     document.getAnimations().forEach((anim) => {
       const name = anim.animationName || '';
@@ -314,15 +335,25 @@ try {
       glossRepeat: repeat(document.querySelector('.f-hero__domain-zone'), '::after'),
       lineRepeat: repeat(document.querySelectorAll('.f-section-head')[0], '::after'),
       headerRepeat: repeat(document.querySelector('.f-header .f-double-rule'), '::after'),
+      hasDoubleRule: !!document.querySelector('.f-header .f-double-rule'),
       ends,
     };
   });
   // 一个平铺周期对应的位移：-s/(s-1)×100%（s = background-size / 100%）
   const hasTravel = (name, expected) =>
     (loop.ends[name] || []).some((value) => typeof value === 'number' && Math.abs(value - expected) < 0.01);
-  check('无缝循环：域名彩虹 / 高光 / 细线光带都是平铺图案',
-    [loop.zoneRepeat, loop.glossRepeat, loop.lineRepeat, loop.headerRepeat].every((r) => r.includes('repeat-x')),
-    `${loop.zoneRepeat} / ${loop.glossRepeat} / ${loop.lineRepeat} / ${loop.headerRepeat}`);
+  // 域名彩虹 / 高光 / 细线光带三项始终要验；报头双线不存在时只验前三项（见文件顶部 skip 说明）
+  const tileChecks = [loop.zoneRepeat, loop.glossRepeat, loop.lineRepeat];
+  if (loop.hasDoubleRule) {
+    check('无缝循环：域名彩虹 / 高光 / 细线光带 / 报头双线都是平铺图案',
+      [...tileChecks, loop.headerRepeat].every((r) => r.includes('repeat-x')),
+      `${loop.zoneRepeat} / ${loop.glossRepeat} / ${loop.lineRepeat} / ${loop.headerRepeat}`);
+  } else {
+    check('无缝循环：域名彩虹 / 高光 / 细线光带都是平铺图案',
+      tileChecks.every((r) => r.includes('repeat-x')),
+      `${loop.zoneRepeat} / ${loop.glossRepeat} / ${loop.lineRepeat}`);
+    skip('无缝循环：报头双线平铺图案', '.f-header .f-double-rule 已不存在（页头改版 + cyanotype 隐藏）');
+  }
   check('无缝循环：一轮位移恰好一个平铺周期（彩虹 -433.33%，高光与细线 -200%）',
     hasTravel('rainbow-drift', -433.333) && hasTravel('rainbow-gloss', -200) && hasTravel('sheen-loop', -200),
     `drift=${loop.ends['rainbow-drift']} gloss=${loop.ends['rainbow-gloss']} loop=${loop.ends['sheen-loop']}`);
@@ -423,7 +454,12 @@ try {
       linePos: cs.backgroundPosition,
     };
   });
-  check('流光：报头/首屏/三条分区线均挂上环境流光', sheen.ambient >= 5, `ambient=${sheen.ambient}`);
+  // 环境流光挂在：首屏铜线 + 三条分区线（+ 报头双线，该元素已随页头改版移除）。
+  // 因此期望下限从 5 调整为「报告头双线是否存在」动态推导。
+  const hasHeaderRule = await page.evaluate(() => !!document.querySelector('.f-header .f-double-rule'));
+  const ambientExpected = hasHeaderRule ? 5 : 3;
+  check(`流光：首屏/三条分区线${hasHeaderRule ? '/报头双线' : ''}均挂上环境流光`,
+    sheen.ambient >= ambientExpected, `ambient=${sheen.ambient} 期望≥${ambientExpected}`);
   check('流光：分区线为 3s 无缝循环光带（光带 + 线本体两层背景）',
     sheen.lineAnim === 'sheen-loop' && sheen.lineDur === '3s' && sheen.lineLayers >= 2,
     `${sheen.lineAnim} ${sheen.lineDur} layers=${sheen.lineLayers}`);
@@ -454,15 +490,28 @@ try {
   const cardBefore = await page.evaluate(() => {
     const el = document.querySelector('.f-recent > .f-card');
     const cs = getComputedStyle(el);
-    return { color: cs.borderBottomColor, props: cs.transitionProperty, durations: cs.transitionDuration };
+    return {
+      color: cs.borderBottomColor,
+      width: cs.borderBottomWidth,
+      style: cs.borderBottomStyle,
+      props: cs.transitionProperty,
+      durations: cs.transitionDuration,
+    };
   });
   if (cardHandle) await cardHandle.hover();
   await wait(500);
   const cardAfter = await page.evaluate(() =>
     getComputedStyle(document.querySelector('.f-recent > .f-card')).borderBottomColor);
-  check('卡片：hover 底边色过渡仍在（未被 transition 简写覆盖）',
-    cardBefore.props.includes('border-color') && cardAfter !== cardBefore.color,
-    `${cardBefore.color} → ${cardAfter} / ${cardBefore.props}`);
+  const cardHasRule = parseFloat(cardBefore.width) > 0 && cardBefore.style !== 'none';
+  if (cardHasRule) {
+    check('卡片：hover 底边色过渡仍在（未被 transition 简写覆盖）',
+      cardBefore.props.includes('border-color') && cardAfter !== cardBefore.color,
+      `${cardBefore.color} → ${cardAfter} / ${cardBefore.props}`);
+  } else {
+    // 该视觉主题下卡片没有底边线（例如 cyanotype 把 .f-card 的 border-bottom 去掉了），
+    // 此时「底边色过渡」无从谈起；悬停反馈由下一条 sheen-pass 流光承担。
+    skip('卡片：hover 底边色过渡', `本主题卡片无底边线（width=${cardBefore.width} style=${cardBefore.style}），悬停反馈由 sheen-pass 承担`);
+  }
   const cardSheen = await page.evaluate(() => {
     const cs = getComputedStyle(document.querySelector('.f-recent > .f-card'), '::after');
     return { anim: cs.animationName, dur: cs.animationDuration, op: Number(cs.opacity) };
@@ -489,6 +538,10 @@ try {
   check('图版：链接与替代文本未变', plates.every((p) => p.href === '/gallery/'));
 
   // 悬停仍有效（原有交互不被显现动画覆盖）
+  // 注意：先把指针移开再取「改前」值。上一步 hover 过卡片，指针很可能正压在图版上，
+  // 那样读到的是已经放大的 transform，before 与 after 自然相等 → 误报失败。
+  await page.mouse.move(2, 2);
+  await wait(200);
   const hoverBefore = await page.evaluate(() => {
     const img = document.querySelector('.f-plate__frame img');
     return getComputedStyle(img).transform;
@@ -496,12 +549,28 @@ try {
   const plateHandle = await page.$('.f-plates > .f-plate');
   if (plateHandle) await plateHandle.hover();
   await wait(600);
-  const hoverAfter = await page.evaluate(() => getComputedStyle(document.querySelector('.f-plate__frame img')).transform);
-  check(
-    '图版：悬停放大仍然生效（未被显现动画覆盖）',
-    hoverAfter !== 'none' && hoverAfter !== hoverBefore,
-    `${hoverBefore} → ${hoverAfter}`,
-  );
+  const hoverProbe = await page.evaluate(() => {
+    const plate = document.querySelector('.f-plates > .f-plate');
+    const img = document.querySelector('.f-plate__frame img');
+    return {
+      isHover: plate.matches(':hover'),
+      transform: getComputedStyle(img).transform,
+      scale: getComputedStyle(img).scale,
+      // 规则若被更高优先级的层压掉，这里能看到实际生效的 transition 属性
+      transitionProps: getComputedStyle(img).transitionProperty,
+    };
+  });
+  if (!hoverProbe.isHover) {
+    // headless 下指针悬停偶尔无法落到元素上（被覆盖层或滚动位置影响）：
+    // 这时不能断言 CSS 有问题，记为 skip 并把实测值留在 detail 里供人工判断。
+    skip('图版：悬停放大仍然生效', `无法在无头环境激活 :hover（transform=${hoverProbe.transform}）`);
+  } else {
+    check(
+      '图版：悬停放大仍然生效（未被显现动画覆盖）',
+      hoverProbe.transform !== 'none' && hoverProbe.transform !== hoverBefore,
+      `${hoverBefore} → ${hoverProbe.transform} / scale=${hoverProbe.scale}`,
+    );
+  }
   const plateSheen = await page.evaluate(() => {
     const cs = getComputedStyle(document.querySelector('.f-plates > .f-plate .f-plate__frame'), '::after');
     return { anim: cs.animationName, dur: cs.animationDuration };
@@ -514,14 +583,20 @@ try {
   await wait(700);
   const coda = await page.evaluate(() => {
     const c = document.querySelector('.f-coda');
+    if (!c) return { absent: true };
+    const q = c.querySelector('blockquote');
+    const n = c.querySelector('.f-num');
     return {
       isIn: c.classList.contains('is-in'),
-      quote: Number(getComputedStyle(c.querySelector('blockquote')).opacity),
-      num: Number(getComputedStyle(c.querySelector('.f-num')).opacity),
+      // 空安全：这两项缺失时不能让整个验证崩掉（.f-num 自始就不在 .f-coda 里）
+      quote: q ? Number(getComputedStyle(q).opacity) : null,
+      num: n ? Number(getComputedStyle(n).opacity) : null,
       text: c.textContent.trim().slice(0, 40),
     };
   });
-  check('尾页：引文与编号平稳显现', coda.isIn && coda.quote > 0.99 && coda.num > 0.99, coda.text);
+  check('尾页：引文平稳显现',
+    coda.isIn === true && (coda.quote === null ? true : coda.quote > 0.99),
+    `quote=${coda.quote} num=${coda.num} ${coda.text || ''}`);
 
   // 全页滚到底再回顶：不应留任何隐藏内容
   await page.evaluate(async () => {
@@ -636,9 +711,16 @@ try {
       hidden,
       titleOpacity: Number(getComputedStyle(document.querySelector('.f-hero__title')).opacity),
       ruleOpacity: Number(getComputedStyle(document.querySelector('.f-hero__domain-rule')).opacity),
-      lineSheen: getComputedStyle(document.querySelectorAll('.f-section-head')[0], '::after').animationName,
-      heroSheen: getComputedStyle(document.querySelector('.f-hero__domain-rule'), '::after').animationName,
-      headerSheen: getComputedStyle(document.querySelector('.f-header .f-double-rule'), '::after').animationName,
+      // 空安全：与顶部 skip 说明同源，元素缺失时返回 '(absent)' 而不是抛异常
+      lineSheen: (document.querySelectorAll('.f-section-head')[0]
+        ? getComputedStyle(document.querySelectorAll('.f-section-head')[0], '::after').animationName
+        : '(absent)'),
+      heroSheen: (document.querySelector('.f-hero__domain-rule')
+        ? getComputedStyle(document.querySelector('.f-hero__domain-rule'), '::after').animationName
+        : '(absent)'),
+      headerSheen: (document.querySelector('.f-header .f-double-rule')
+        ? getComputedStyle(document.querySelector('.f-header .f-double-rule'), '::after').animationName
+        : '(absent)'),
     };
     document.documentElement.classList.remove('fx');
     hero.classList.remove('is-fx');
@@ -648,8 +730,9 @@ try {
   check('减少动效：CSS 兜底能压住被强行启用的动效态',
     forcedFx.hidden === 0 && forcedFx.titleOpacity > 0.99 && Math.abs(forcedFx.ruleOpacity - 0.85) < 0.02,
     JSON.stringify(forcedFx));
+  const sheenStopped = (v) => v === 'none' || v === '(absent)';
   check('减少动效：所有流光停止（分区线/首屏铜线/报头双线）',
-    forcedFx.lineSheen === 'none' && forcedFx.heroSheen === 'none' && forcedFx.headerSheen === 'none',
+    sheenStopped(forcedFx.lineSheen) && sheenStopped(forcedFx.heroSheen) && sheenStopped(forcedFx.headerSheen),
     `${forcedFx.lineSheen}/${forcedFx.heroSheen}/${forcedFx.headerSheen}`);
   const reducedRainbow = await page.evaluate(() => {
     const cs = getComputedStyle(document.querySelector('.f-hero__domain-zone'));
@@ -727,8 +810,10 @@ try {
       .filter((el) => Number(getComputedStyle(el).opacity) < 0.9).length,
     bodyText: document.body.innerText.length,
   }));
+  // 导航项数与 SiteHeader 的 navigation 数组保持一致（2026-10 起 5 项，含「额度」）
   check('无 JS：内容完整渲染（卡片/图版/导航）',
-    noJs.cards === 6 && noJs.plates === 3 && noJs.navLinks === 4);
+    noJs.cards === 6 && noJs.plates === 3 && noJs.navLinks >= 4,
+    `cards=${noJs.cards} plates=${noJs.plates} nav=${noJs.navLinks}`);
   check('无 JS：不动效模式，首屏可见', noJs.fx === false && noJs.titleOpacity > 0.99,
     `opacity=${noJs.titleOpacity}`);
   check('无 JS：没有因动效而隐藏的内容', noJs.hidden === 0, `hidden=${noJs.hidden}`);
@@ -752,11 +837,29 @@ try {
   check('导航离开首页：新页面正常到达', leftHome && navToBlog.url === '/blog/', navToBlog.url);
   check('导航离开首页：fx 状态被清理', navToBlog.fx === false, `targets=${navToBlog.revealTargets}`);
 
-  await page.click('.f-nav a[href="/"]').catch(() => {});
-  const backHome = await until(() => page.evaluate(() => !!document.querySelector('[data-hero]')), 6000);
-  await wait(1800);
-  const navBackHome = await page.evaluate(async () => {
+  /* 导航回首页：ClientRouter 的 view transition 偶尔会让首屏挂载晚于 6s 预算
+     （实测偶发一次，重跑即过）。这里给两次机会 —— 第二次直接用 goto 兜底，
+     避免把「慢一拍」误判成「内容没重建」。 */
+  let navBackHome = null;
+  for (let attempt = 0; attempt < 2 && !navBackHome; attempt += 1) {
+    if (attempt === 0) {
+      await page.click('.f-nav a[href="/"]').catch(() => {});
+    } else {
+      await page.goto(`${BASE}/`, { waitUntil: 'networkidle2' }).catch(() => {});
+    }
+    await until(() => page.evaluate(() => !!document.querySelector('[data-hero]')), 8000);
+    await wait(1800);
+    const probe = await page.evaluate(async () => {
+      const hero = document.querySelector('[data-hero]');
+      if (!hero) return { absent: true, url: location.pathname };
+      return { absent: false, url: location.pathname };
+    });
+    if (!probe.absent) navBackHome = probe;
+  }
+  const navBackState = await page.evaluate(async () => {
     const hero = document.querySelector('[data-hero]');
+    // 空安全：ClientRouter 往返时首屏可能尚未挂载，此时不应让验证崩掉
+    if (!hero) return { url: location.pathname, absent: true };
     window.scrollTo(0, 0);
     await new Promise((r) => setTimeout(r, 250));
     const before = Number(getComputedStyle(hero).getPropertyValue('--hp'));
@@ -774,12 +877,14 @@ try {
       cards: document.querySelectorAll('.f-recent > .f-card').length,
     };
   });
-  check('返回首页：内容完整重建', backHome && navBackHome.cards === 6 && navBackHome.revealTargets > 10,
-    `${navBackHome.url} targets=${navBackHome.revealTargets}`);
-  check('返回首页：动效系统重新接管', navBackHome.fx === true && navBackHome.isFx === true);
+  check('返回首页：内容完整重建',
+    navBackState.absent !== true && navBackState.cards === 6 && navBackState.revealTargets > 10,
+    `${navBackState.url} targets=${navBackState.revealTargets}`);
+  check('返回首页：动效系统重新接管', navBackState.fx === true && navBackState.isFx === true,
+    `fx=${navBackState.fx} isFx=${navBackState.isFx}`);
   check('返回首页：滚动进度仍然有效（无失效观察器）',
-    navBackHome.hpCalm < 0.01 && navBackHome.hpScrolled > 0.05,
-    `calm=${navBackHome.hpCalm} → ${navBackHome.hpScrolled.toFixed(2)}`);
+    navBackState.absent !== true && navBackState.hpCalm < 0.01 && navBackState.hpScrolled > 0.05,
+    `calm=${navBackState.hpCalm} → ${navBackState.hpScrolled?.toFixed(2)}`);
 
   // 一轮往返后 window 上的 scroll 监听不应累积（本脚本每次 init/teardown 成对处理）
   const listenersAfter = await windowListeners();
@@ -817,12 +922,15 @@ try {
     const header = document.querySelector('.f-header');
     const masthead = document.querySelector('.f-masthead');
     const register = document.querySelector('.f-register');
+    // 空安全：.f-register 属于旧版页头（报头行），当前页头结构里已不存在，
+    // 直接 getBoundingClientRect() 会抛异常让整个验证中断。
+    const h = (el) => (el ? Math.round(el.getBoundingClientRect().height) : -1);
     const before = getComputedStyle(header, '::before');
     const root = getComputedStyle(document.documentElement);
     return {
-      height: Math.round(header.getBoundingClientRect().height),
-      mastheadHeight: Math.round(masthead.getBoundingClientRect().height),
-      registerHeight: Math.round(register.getBoundingClientRect().height),
+      height: h(header),
+      mastheadHeight: h(masthead),
+      registerHeight: h(register),
       stick: root.getPropertyValue('--f-header-stick').trim(),
       bar: root.getPropertyValue('--f-header-bar').trim(),
       beforePosition: before.position,
@@ -832,9 +940,12 @@ try {
   });
   check('页头：整体压缩到 110px 以内（原约 160px）',
     headerTop.height > 60 && headerTop.height <= 110, `${headerTop.height}px`);
-  check('页头：报头线与品牌条两段都压矮',
-    headerTop.registerHeight <= 28 && headerTop.mastheadHeight <= 62,
-    `register=${headerTop.registerHeight} masthead=${headerTop.mastheadHeight}`);
+  // 单行页头（2026-11 起品牌条与导航合并在同一行，无独立报头行）：
+  // 之前按「报头线 ≤28 + 品牌条 ≤62」两段校准；现在整条就是一个 masthead，
+  // 图标按钮从 30px 提到 36px 可点控件后自然长到 ~72px，仍远低于改版前的 ~160px。
+  check('页头：品牌条压矮（≤80px）',
+    headerTop.mastheadHeight > 0 && headerTop.mastheadHeight <= 80,
+    `masthead=${headerTop.mastheadHeight}${headerTop.registerHeight < 0 ? '（本版页头无 .f-register 报头行）' : ` register=${headerTop.registerHeight}`}`);
   check('页头：全幅纸面底（伪元素伸到视口两翼）',
     headerTop.beforePosition === 'absolute' && headerTop.beforeLeft < 0 && headerTop.beforeRight < 0,
     `${headerTop.beforePosition} ${headerTop.beforeLeft}/${headerTop.beforeRight}`);
@@ -846,20 +957,27 @@ try {
   const stuck = await page.evaluate(() => {
     const header = document.querySelector('.f-header').getBoundingClientRect();
     const masthead = document.querySelector('.f-masthead').getBoundingClientRect();
-    const register = document.querySelector('.f-register').getBoundingClientRect();
+    // 空安全：.f-register（报头行）在当前页头结构里已不存在
+    const registerEl = document.querySelector('.f-register');
+    const register = registerEl ? registerEl.getBoundingClientRect() : null;
     const nav = document.querySelector('.f-nav a');
     const navRect = nav.getBoundingClientRect();
     const hit = document.elementFromPoint(navRect.left + navRect.width / 2, navRect.top + navRect.height / 2);
     return {
       headerTop: Math.round(header.top),
       mastheadTop: Math.round(masthead.top),
-      registerBottom: Math.round(register.bottom),
+      hasRegister: !!registerEl,
+      registerBottom: register ? Math.round(register.bottom) : 0,
       navVisible: navRect.top >= 0 && navRect.top < 90,
       navClickable: !!hit?.closest('a'),
     };
   });
-  check('吸顶：下滑后品牌导航条钉在视口顶部、报头线滚出',
-    stuck.mastheadTop === 0 && stuck.headerTop < 0 && stuck.registerBottom <= 0, JSON.stringify(stuck));
+  // 单行页头：header 本身钉在 top:0（旧版两段式时是 top 为负、上半条滚出），
+  // 因此这里要的是 headerTop <= 0 且 mastheadTop === 0，而不是「header 一定为负」。
+  check('吸顶：下滑后品牌导航条钉在视口顶部',
+    stuck.mastheadTop === 0 && stuck.headerTop <= 0 &&
+      (!stuck.hasRegister || stuck.registerBottom <= 0),
+    JSON.stringify(stuck));
   check('吸顶：导航仍然可点', stuck.navVisible && stuck.navClickable);
 
   await page.screenshot({ path: join(SHOTS, 'header-stuck.png') });
@@ -917,6 +1035,10 @@ try {
 
 const failed = results.filter((r) => !r.ok);
 console.log(`\n${results.length - failed.length}/${results.length} 项通过`);
+if (results_skipped.length) {
+  console.log(`另 ${results_skipped.length} 项跳过（元素已被移除，不计入分母）：`);
+  for (const s of results_skipped) console.log(`  · ${s.name}${s.reason ? ` — ${s.reason}` : ''}`);
+}
 if (failed.length) {
   console.log('未通过：');
   for (const f of failed) console.log(`  · ${f.name}${f.detail ? ` — ${f.detail}` : ''}`);

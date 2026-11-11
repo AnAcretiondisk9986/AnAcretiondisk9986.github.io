@@ -633,3 +633,132 @@
     }
   }
 }
+
+/* ============================================================================
+   七、版式打磨（polish）：间距节奏与首屏纱幕配平
+   ----------------------------------------------------------------------------
+   为什么单独开一层：本页默认视觉主题是 cyanotype，它的覆写在 cyanotype.css 的
+   `@layer theme` 里，而 @layer 的顺序是
+     reset, tokens, legacy, base, layout, components, theme, print   （folio.css:11）
+   —— **层序优先于特异性**，所以写在 components 层里的任何声明都压不住 theme 层
+   （哪怕选择器更长）。要替默认主题调整首屏间距与纱幕，只能落在 theme 之后的层。
+
+   这一层只在首页加载（本文件只被 index.astro 引入），并且每条规则都用
+   「首页才有的钩子」限定作用域：
+     · `.f-hero[data-hero]`        —— 首屏（全站只有首页有）
+     · `.f-hero + .f-section`      —— 紧接首屏的那一段
+     · `.f-about*` / `.f-coda`     —— 只在首页渲染（AboutTeaser 仅首页使用）
+   因此它不会波及 /blog/、/about/ 等其他页面。
+
+   ⚠ 不变量：这一层**不碰** `.f-hero__domain-zone` 的任何属性
+   （background-image / background-size / animation / filter / color），
+   也不碰 `--rainbow-*`、`--hero-ink*`、`--hero-veil`。
+   彩虹字标与无缝流光的契约（130% ↔ -433.3333%、200% ↔ -200%）因此完全不受影响。
+   ========================================================================== */
+@layer polish {
+
+  /* ★ 全部限定在 screen：新层排在 print 之后，若不限定，纸面样式会被这里顶掉 */
+  @media screen {
+
+    /* ── 7.1 首屏 → 第一段：「近期文章」不再是断层 ────────────────────────────
+       改前：hero margin-bottom 96（cyanotype 的 --p-sp-9）+ section padding-top 48
+             = 144 盒间距 ⇒ 首屏底边到标题墨迹 143（≤1024）/ 159（≥1440）
+       改后：44 + 40 = 84 盒间距 ⇒ 目标墨迹间距 ~83 / ~99                       */
+    .f-hero[data-hero] {
+      margin-block-end: 44px;
+    }
+    .f-hero[data-hero] + .f-section {
+      padding-block-start: 40px;
+    }
+
+    /* ── 7.2 首屏内部微节奏：标题-域名 / 域名-副题 / 统计-按钮 ──────────────
+       改前 1440：域名 margin-top 10.8（大字号下几乎贴住中文行）、副题 21.6、
+                 按钮 30.6（离统计行最远）。
+       改后：域名 ~17、副题 ~26、按钮 ~25 —— 三档递增，不再头重脚轻。       */
+    .f-hero[data-hero] .f-hero__domain {
+      margin-top: clamp(.75rem, 1.9vh, 1.25rem);
+    }
+    .f-hero[data-hero] .f-hero__line3 {
+      margin-top: clamp(1.3rem, 2.9vh, 1.7rem);
+    }
+    .f-hero[data-hero] .f-hero__actions {
+      margin-top: clamp(1.2rem, 2.8vh, 1.6rem);
+    }
+
+    /* 中文断行：pretty 让最后一行不留孤字，strict 禁止在「、」「，」等标点后断行 */
+    .f-hero[data-hero] :is(.f-hero__line3, .f-hero__deck) {
+      text-wrap: pretty;
+      line-break: strict;
+      /* 首屏说明文字本来就很短，别让它在宽屏被拉成一条横线 */
+      max-width: min(22em, 100%);
+    }
+
+    /* ── 7.3 窄屏统计行：320 下原本只剩 0.4px 余量 ────────────────────────────
+       320 内容宽 280，三项 + 分隔点实测 279.6 —— 图版数变成三位数或换 CJK
+       回退字就会当场折行，且折行后新行以分隔点开头。这里按宽度分两档让位。   */
+    @media (max-width: 420px) {
+      .f-hero[data-hero] .f-hero__meta {
+        gap: 4px 12px;
+        /* 320 下三项 + 两个分隔点原本正好顶满 280 内容宽（实测 279.6）；
+           收一档字号把余量拉到 ~25px，图版数将来变成三位数也不会折行。 */
+        font-size: .8125rem;
+        letter-spacing: .04em;
+      }
+    }
+    @media (min-width: 421px) and (max-width: 720px) {
+      .f-hero[data-hero] .f-hero__meta {
+        gap: 6px 16px;
+      }
+    }
+
+    /* ── 7.4「关于我」内部的悬空：圆形头像比文字列高，grid 行高把空白留在引文下面
+       实测 1440 头像比文字列高 61.7px、1920 高 127.5px ⇒ 引文到「写下来…」
+       竟然是 179 / 244.8。两列时把文字列与头像**底对齐**，悬空即消失
+       （单列布局 ≤860px 不适用，那里的空白来自 padding，见 7.5）。           */
+    @media (min-width: 861px) {
+      .f-about .f-about__grid {
+        align-items: end;
+      }
+    }
+
+    /* ── 7.5「关于我」→ 尾句：改前 116.3（窄屏）/ 179（1440）/ 244.8（1920）
+       由 about padding-bottom 48 + coda padding-top 64 + 行距余量构成。
+       收紧到：引文墨迹底 → 尾句墨迹顶 ≈ 70–90，且首尾都不至于贴住。        */
+    .f-section.f-about {
+      padding-block-end: 40px;
+    }
+    .f-section.f-coda {
+      padding-block: 32px 40px;
+    }
+
+    /* ── 7.6 默认主题（cyanotype / 蓝晒）首屏纱幕重新配平 ────────────────────
+       「文字可读」与「照片可见」之间重新配平：原来中央径向 62% + 全幅 16% 的
+       plate-deep，把照片压成一片均匀的普鲁士蓝。
+       这里只调**浓度与范围**，不换色、不改混合模式（screen 仍是蓝晒的成像方式）：
+         · 中央 62% → 50%，55% 处 30% → 24%，85% → 82% 淡出
+         · 全幅薄纱 16% → 9%（四角因此回到接近原图）
+         · 图版亮度 1.04 → 1.12、对比 1.12 → 1.07（抬中间调，让暗部层次出来）
+       文字仍然靠 7.7 的投影保可读；--hero-ink 与 data-tone 分支**不动**。     */
+    :root[data-visual-theme='cyanotype'] .f-hero[data-hero] .f-hero__scrim {
+      background:
+        radial-gradient(ellipse 68% 58% at 50% 50%,
+          color-mix(in oklab, var(--c-plate-deep) 52%, transparent) 0%,
+          color-mix(in oklab, var(--c-plate-deep) 25%, transparent) 52%,
+          transparent 82%),
+        color-mix(in oklab, var(--c-plate-deep) 10%, transparent);
+    }
+    :root[data-visual-theme='cyanotype'] .f-hero[data-hero] .f-hero__image {
+      filter: grayscale(1) contrast(1.08) brightness(1.1);
+    }
+
+    /* ── 7.7 文字投影：纱幕变薄之后，靠"贴身的暗影"而不是整片遮罩保住可读性
+       保留原来那层大半径柔影，再加一层 10px 的近影，让笔画在亮部也有边界。   */
+    :root[data-visual-theme='cyanotype'] .f-hero[data-hero] :is(
+      .f-hero__title, .f-hero__line3, .f-hero__deck
+    ) {
+      text-shadow:
+        0 1px 24px color-mix(in oklab, var(--c-plate-deep) 58%, transparent),
+        0 1px 10px color-mix(in oklab, var(--c-plate-deep) 36%, transparent);
+    }
+  }
+}

@@ -63,7 +63,14 @@
   :root[data-theme='dark'] body::before { mix-blend-mode: screen; }
 
   ::selection { background: var(--c-selection); color: var(--c-ink); }
-  :focus-visible { outline: 1px solid var(--c-accent); outline-offset: 3px; }
+  /* 焦点环：必须同时给出 style/width/color —— 只写 outline-width 而 style 仍是 none 时
+     浏览器把宽度算成 3px 但根本不画环，实测会退化成「有宽度、无描边」的假焦点态。 */
+  :focus-visible {
+    outline-style: solid;
+    outline-width: 2px;
+    outline-color: var(--c-accent);
+    outline-offset: 3px;
+  }
 
   h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 500; letter-spacing: -.012em; }
   a { color: inherit; text-decoration: none; }
@@ -198,6 +205,16 @@
   .f-btn:hover { background: transparent; color: var(--c-ink); }
   .f-btn--ghost { background: transparent; color: var(--c-ink); border-color: var(--c-rule-strong); }
   .f-btn--ghost:hover { border-color: var(--c-metal); color: var(--c-accent); }
+  /* 实心按钮是「深底纸字」的反色块：环画在外侧（offset），底色是纸，因此用 --c-accent
+     与纸底 ≥5:1；同时补一圈纸色内衬，保证按钮自带深底时环与按钮之间也有分离度。
+     只对 :focus-visible 生效——鼠标点击不画环。 */
+  .f-btn:focus-visible {
+    outline-style: solid;
+    outline-width: 2px;
+    outline-color: var(--c-accent);
+    outline-offset: 3px;
+    box-shadow: 0 0 0 1px var(--c-paper);
+  }
   .f-btn svg { width: 12px; height: 12px; }
 
   /* ===== 栏目标题 ===== */
@@ -215,8 +232,20 @@
     font-family: var(--font-mono); font-size: var(--type-micro);
     color: var(--c-metal); margin-right: 10px; letter-spacing: .1em;
   }
-  .f-section-more { font-size: var(--type-micro); letter-spacing: .14em; text-transform: uppercase; color: var(--c-ink-3); }
-  .f-section-more:hover { color: var(--c-metal); }
+  /* 「全部 N 篇 / 打开图志」这类分区跳转是移动端的主力入口，视觉保持小字距的
+     标签感，但触控盒要 ≥44px：用 inline-flex + min-height 撑开，靠负 margin
+     抵掉多出来的垂直空间，避免把分区标题行撑高。 */
+  .f-section-more {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    margin-block: -12px;
+    font-size: var(--type-micro); letter-spacing: .14em; text-transform: uppercase; color: var(--c-ink-3);
+  }
+  .f-section-more:focus-visible {
+    outline-style: solid; outline-width: 2px; outline-color: var(--c-accent); outline-offset: 2px;
+  }
+  .f-section-more:hover { color: var(--c-metal-ink); }
 
   /* ===== 编目（文章列表） ===== */
   .f-catalog { display: grid; }
@@ -273,7 +302,7 @@
     letter-spacing: .1em; text-align: center; line-height: 1.3;
     opacity: var(--deco-fleuron);
   }
-  .f-footer__meta { font-size: var(--type-micro); letter-spacing: .08em; color: var(--c-ink-3); line-height: 2; }
+  .f-footer__meta { font-size: var(--type-meta); letter-spacing: .08em; color: var(--c-ink-3); line-height: 2; }
 
   /* ===== 正文排印：接管 legacy 的 .prose（文章 Markdown 输出） ===== */
   .prose {

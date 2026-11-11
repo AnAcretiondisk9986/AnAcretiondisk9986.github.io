@@ -2,6 +2,69 @@
 
 > 本文件已在用户授权下公开于 GitHub 仓库。每位 Agent 完成工作后在此记录变更。
 
+**🎛 全站前端细节打磨（2026-11-11）**
+
+- **需求**：用多层子智能体对全站做一次前端优化，细节打磨到位。
+- **组织**：Lead + 8 个子智能体，每人一个互不重叠的写入范围（tokens / home-ui / header-ui /
+  catalog-ui / article-ui / gallery-ui / about-ui / quota-ui），各自再派 layer-3 子智能体做测量，
+  最后由 Lead 统一构建、跑回归、对照巡检、合并报告。
+- **新增基础设施** `scripts/qa-audit.mjs`：9 路由 × 明暗 × 桌面/移动 = 36 次采样，同时产出
+  整页+首屏截图与 `audit.md`/`audit.json`。度量 12 类：`contrast`（WCAG AA，向上找真实不透明底并做
+  alpha 合成）、`font-small`、`clipped`、`overflow`、`tap-tiny`/`tap-small`、`img-no-dims`/
+  `img-no-alt`/`img-broken`/`img-lazy-above-fold`、`heading-skip`/`heading-multi-h1`、
+  `no-accessible-name`、`dead-space`、`focus-invisible`、`header-overlap`。
+  截图前强制 `img.loading='eager'` + `decode()`，避免整页截图把懒加载图拍成灰块（旧 `shoot-site.mjs` 的假阳性）。
+  支持 `QA_BASE=<已跑的 dev server>` 以便多人并行不抢端口。
+- **总体结果**（同一口径 36 次采样，`perf-reports/qa/baseline` → `perf-reports/qa/final6`）：
+
+  | 指标 | 基线 | 之后 |
+  | --- | --- | --- |
+  | `contrast`（<AA） | 790 | **0** |
+  | `clipped`（文字被切） | 56 | **0** |
+  | `tap-tiny`（<24×24） | 128 | **0** |
+  | `header-overlap` | 4 | **0** |
+  | `font-small`（<12px） | 1332 | 56 |
+  | `tap-small`（24–44） | 244 | 60 |
+  | `overflow`（横向） | 0 | 0 |
+
+- **根因与修法（按域）**：
+  - **令牌**（`folio.css` / `global.css` / `folio-ui.css` / `fusion-theme.css`）：690 处对比度问题
+    是**单一根因**——cyanotype 的 `--c-ink-3` 在纸底只有 3.58:1，却被大量用在 12–14px 元信息上。
+    按「最坏情况纸底」重算十套主题的墨色阶梯：ink-2 ≥7:1、ink-3 ≥4.75:1，另立 `--c-ink-4`（≈3.2:1）
+    **只允许 ≥24px 大字或纯装饰**。另发现 `--c-metal` 是半透明线饰色（当文字只有 2.2:1），
+    新增实心 `--c-metal-ink`。47 处裸 px/rem 字号并入 `--type-micro`/`--type-meta`。
+    **焦点环**：全局 `:focus-visible` 只写了 `outline-width` 没写 `outline-style`，
+    浏览器算成 3px 却不画环——这是「看着有焦点样式、实际没有」的隐蔽 bug，已显式补齐。
+  - **首页**（`home-cinematic.css`）：首屏→「近期文章」空档 **159→83px**、「关于我」引文→尾句
+    **179→77px**；纱幕径向 62%→52%、薄纱 16%→10%、图版 brightness 1.10，照片层次回来了。
+    **彩虹字标与无缝流光的契约一行未动**，用 16 项断言回归（循环边界像素差 0.046/255）。
+  - **页头**（`SiteHeader.astro`）：新增 **skip link**（全站此前没有，键盘用户每页都要穿过整个导航）；
+    图标按钮 30×30/透明边框/14px 图标 → 36×36/可见边框/17px 图标（用户指出「看不清」的那处）。
+    页头 72px（桌面）/107px（移动）。`main` 补 4px 亚像素安全带修掉「71 被 72 遮住」的取整假重叠。
+  - **编目页**（`pages-next.css`）：`.catalog-content > p` 只写了 `-webkit-line-clamp: 3` 却漏了
+    `display: -webkit-box`，所以 line-clamp 从未生效，实际是父级 `overflow: hidden` 硬切
+    （中英混排切掉半行、无省略号）。补齐后 46 处裁切归零。
+  - **文章页**（`article-next.css` / `[...id].astro`）：24 处 3.58:1 元信息在阅读面作用域内
+    `--c-ink-3: var(--c-ink-2)`（逐条改会被 `@layer theme` 压掉）；正文首行的重复 `# 标题`
+    降级为 `h2.prose-duplicate-title`（h1 2→1）；代码块注释色 **3.05→5.86:1**
+    ——坑是 Shiki 输出**大写**十六进制，属性选择器必须写 `[style*='#6a737d' i]`。
+  - **图志页**（`gallery-next.css` / `gallery-page.ts`）：基线 `contrast 121`/`tap-tiny 92` 全清；
+    **补上灯箱缺失的 ←/→ 切换**、Home/End、+/-/0 缩放、Tab 焦点锁定与恢复；
+    修 `thumbOf()` 对无扩展名原图拼出 `…?x.webp` 被 ORB 丢弃、图版永久停在「NO PLATE」的问题。
+    `content-visibility: auto` 在本页实测是负收益（撑出 41% 假高度、布局更慢），已回退留档。
+  - **额度/计价**：`aq-btn` 补 `:focus-visible`（原本聚焦后 `outline=none 3px`）；行内小链接
+    字号 12px + 热区 44px；额度页 13 处 10–11.5px 可读标签提到 12px。
+- **验证**：`npm run build` **119 页**无报错；`npm run verify:home-cinematic` **84/84 通过**；
+  焦点环用**真实键盘 Tab**（而非程序化 `focus()`）逐页核验，`outline-style: solid` 且 `:focus-visible: true`。
+- **顺手修掉的测试债**：`verify:home-cinematic` 在改动前就是崩的——`.f-double-rule` / `.f-register`
+  在 2026-10-18 页头改版后已不存在，`getComputedStyle(null)` 抛异常，**85 项验证在第 28 项中断**，
+  后面 57 项从未运行过；`navigation` 加入「额度」后是 5 项而脚本写死 `=== 4` 一直 FAIL。
+  已改成空安全 + 元素缺失记 **SKIP**（单独计数、不进分母、打印原因），并把过期断言对齐现状；
+  另修一处偶发 flaky（ClientRouter 回首页偶尔晚于 6s 预算，改为「点导航 → goto 兜底」两次机会）。
+- **遗留**：`tap-small` 残余 60 处集中在 `/blog/` 卡片标题链接（高 26–43px，宽 126–250px），
+  属 WCAG 2.5.8 **AAA** 建议（AA 的 24×24 已全站达标）；`font-small` 残余 56 处是 pricing 柱状图
+  角标与 SVG 刻度（装饰性）。详细分域报告见 `reports/polish/`（`SUMMARY.md` + 各域 md）。
+
 **🩺 新增期末考试时间表页面 `/exam/`（2026-10-20）**
 
 - **需求**：把期末 8 场考试（2026-12-23 至 2027-01-13，滨海校区）做成独立、可分享的页面，推到个人站。

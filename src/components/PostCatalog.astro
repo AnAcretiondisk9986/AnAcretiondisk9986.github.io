@@ -37,9 +37,18 @@ const covers = new Map(posts.map((post) => {
   <div class="gallery-order-bar catalog-toolbar" aria-label="文章显示设置">
     <div class="catalog-toolbar__search">
       <label class="catalog-search" id="catalog-search">
-        <span class="sr-only">搜索文章</span>
+        <!-- 可访问名直接挂在 input 上：此前用一个 .sr-only 的 span 承载，
+             那是个 1×1、overflow:hidden 的视觉隐藏盒子，任何「文本被裁切」
+             的自动巡检都会把它当成真问题报出来。aria-label 同样朗读，且没有
+             这个假阳性。 -->
         <Icon name="search" />
-        <input type="search" data-catalog-search placeholder="搜索标题、摘要或标签" autocomplete="off" />
+        <input
+          type="search"
+          data-catalog-search
+          aria-label="搜索文章"
+          placeholder="搜索标题、摘要或标签"
+          autocomplete="off"
+        />
       </label>
       <span class="catalog-results" data-catalog-results>{posts.length} 篇文章</span>
     </div>

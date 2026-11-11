@@ -43,14 +43,18 @@ function readStoredLayout(): CatalogLayout {
 }
 
 /**
- * 标题自适应字号：在标题容器高度统一（line-clamp 行数 × 行高）的前提下，
- * 标题过长时逐级微调字号，使标题完整展示而不产生省略号。
- * 简介（description）不参与自适应，保持原有截断。
+ * 标题自适应字号：标题过长时逐级微调字号，让它在两行内排完。
+ *
+ * 注意：这里**不再**给 h2 写死 px 高度。旧实现用「行数 × 行高」固定容器高度
+ * （h2.style.height = lineHeight * clamp），行高一旦是小数（例如 29.82px × 2 =
+ * 59.64px），容器底边就落在行与行之间的亚像素位置上：中英混排时最后一行会被
+ * 切掉半行，而且 scrollHeight 永远大于 clientHeight（巡检一律记为 clipped）。
+ * 现在只收缩字号，容器高度交给内容自然撑开——宁可标题多占一行，也不裁字。
  */
 function fitTitles(list: HTMLElement) {
   const titles = list.querySelectorAll<HTMLHeadingElement>('.catalog-content h2');
   for (const h2 of titles) {
-    // 重置内联字号/高度，回到 CSS 基准
+    // 重置内联字号/高度，回到 CSS 基准（height 一并清掉，兼容旧版本留下的内联值）
     h2.style.fontSize = '';
     h2.style.height = '';
     const cs = getComputedStyle(h2);
@@ -59,18 +63,13 @@ function fitTitles(list: HTMLElement) {
 
     const lineHeight =
       cs.lineHeight === 'normal' ? base * 1.3 : parseFloat(cs.lineHeight);
-    const clampRaw = cs.getPropertyValue('-webkit-line-clamp');
-    const clampLines =
-      clampRaw && clampRaw !== 'none' ? Number(clampRaw) : 2;
-    const boxHeight = Math.round(lineHeight * clampLines * 100) / 100;
-    if (!isFinite(boxHeight) || boxHeight <= 0) continue;
-
-    // 固定容器高度，保证所有条目标题区尺寸统一
-    h2.style.height = boxHeight + 'px';
+    // 两行作为「目标高度」，只用来判断要不要缩字号，绝不写回 DOM
+    const targetHeight = lineHeight * 2;
+    if (!isFinite(targetHeight) || targetHeight <= 0) continue;
 
     let px = base;
     const minPx = Math.max(MIN_TITLE_PX, base * MIN_TITLE_RATIO);
-    while (h2.scrollHeight > boxHeight + 1 && px > minPx) {
+    while (h2.scrollHeight > targetHeight + 1 && px > minPx) {
       px = Math.max(minPx, px - TITLE_STEP_PX);
       h2.style.fontSize = px + 'px';
     }

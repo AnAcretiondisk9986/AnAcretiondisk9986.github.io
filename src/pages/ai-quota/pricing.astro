@@ -151,12 +151,15 @@ const avgInput = paid.reduce((sum, model) => sum + model.input, 0) / paid.length
               ) : (
                 <div class="pr-bars">
                   <span class="pr-bar pr-bar--cache" style={`--w:${widthOf(model.cacheRead).toFixed(2)}%`}>
+                    <i class="pr-bar__fill" aria-hidden="true"></i>
                     <b>{fmt(model.cacheRead)}</b>
                   </span>
                   <span class="pr-bar pr-bar--in" style={`--w:${widthOf(model.input).toFixed(2)}%`}>
+                    <i class="pr-bar__fill" aria-hidden="true"></i>
                     <b>{fmt(model.input)}</b>
                   </span>
                   <span class="pr-bar pr-bar--out" style={`--w:${widthOf(model.output).toFixed(2)}%`}>
+                    <i class="pr-bar__fill" aria-hidden="true"></i>
                     <b>{fmt(model.output)}</b>
                   </span>
                 </div>
@@ -240,24 +243,26 @@ const avgInput = paid.reduce((sum, model) => sum + model.input, 0) / paid.length
 
     <details class="pr-table">
       <summary>逐项单价表（{models.length} 个模型）</summary>
-      <table>
-        <thead>
-          <tr><th>模型</th><th>供应商</th><th>输入</th><th>缓存读</th><th>输出</th><th>上下文</th><th>备注</th></tr>
-        </thead>
-        <tbody>
-          {models.map((model) => (
-            <tr>
-              <th scope="row">{model.name}</th>
-              <td>{model.vendorLabel}</td>
-              <td>{fmt(model.input)}</td>
-              <td>{fmt(model.cacheRead)}</td>
-              <td>{fmt(model.output)}</td>
-              <td>{contextLabel(model.context)}</td>
-              <td class="pr-table__note">{model.note || '—'}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <div class="pr-table__scroll" role="region" aria-label="逐项单价表，可横向滚动">
+        <table>
+          <thead>
+            <tr><th>模型</th><th>供应商</th><th>输入</th><th>缓存读</th><th>输出</th><th>上下文</th><th>备注</th></tr>
+          </thead>
+          <tbody>
+            {models.map((model) => (
+              <tr>
+                <th scope="row">{model.name}</th>
+                <td>{model.vendorLabel}</td>
+                <td>{fmt(model.input)}</td>
+                <td>{fmt(model.cacheRead)}</td>
+                <td>{fmt(model.output)}</td>
+                <td>{contextLabel(model.context)}</td>
+                <td class="pr-table__note">{model.note || '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
       <p class="pr-foot">
         价格来自 OpenCode 模型目录的 <code>cost.text</code> 字段，未含峰时倍率与订阅额度折扣；
         刷新数据：<code>node scripts/fetch-opencode-go-pricing.mjs</code>。

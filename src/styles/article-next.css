@@ -776,7 +776,9 @@
     .article-page .article-deck { font-size: var(--type-body); }
   }
   @media screen and (max-width: 700px) {
-    .article-page .prose table { table-layout: fixed; }
+    /* 旧规则用 table-layout: fixed 把三列硬压成等宽，390 宽下每格只剩 3~4 个字，
+       长内容还会被挤出格子。改为 auto + 滚动容器（见文末 components 段）。 */
+    .article-page .prose table { table-layout: auto; }
     .article-page .prose th,
     .article-page .prose td { padding: 6px 7px; }
     .article-page .prose th { font-size: var(--type-micro); }
@@ -788,6 +790,264 @@
     .article-page .article-toc a,
     .article-page .prose a,
     .article-page .print-action { transition: none; }
+  }
+}
+
+/* ─────────────────── components：可读性与键盘焦点的收尾修补 ───────────────────
+   背景：巡检（scripts/qa-audit.mjs）在文章页量出 24 处对比度 3.58:1 的文本，
+   全部来自 --c-ink-3（浅色主题 #75809a 落在纸底 #f6f3ec 上）。这些地方都是
+   「二级信息」——登记条 dt、目录项、文章元信息、结束语、分享提示、占位符——
+   本就不该用三级墨色，于是这里把该 token 在**阅读面作用域内**提升到 --c-ink-2。
+   只改变量、不逐条改声明，因此对 cyanotype 等主题层里写死的
+   `color: var(--c-ink-3)` 同样生效（主题层比 components 层更晚，逐条改会被压掉）。 */
+@layer components {
+  .article-shell,
+  .article-rail {
+    --c-ink-3: var(--c-ink-2);
+  }
+
+  /* 代码块：Shiki 的注释色 #6A737D 落在 #24292e 底色上只有 3.05:1。
+     token 颜色是内联 style（改不了源码），只能就在这里按值覆盖，
+     亮度提到与正文 token 同一档（实测 5.2:1 以上）。
+     注意属性选择器默认区分大小写，而 Shiki 输出的是大写十六进制，
+     所以这里用 `i` 标志同时兼容 #6A737D / #6a737d。 */
+  .article-page pre span[style*='#6a737d' i],
+  .article-page pre span[style*='rgb(106, 115, 125)'] {
+    color: #9aa5b1 !important;
+  }
+
+  /* 代码块可横向滚动，因此带 tabindex="0" 进入 Tab 序列；有焦点必须有可见焦点环。 */
+  .article-page pre:focus-visible {
+    outline: 2px solid var(--c-accent);
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+
+  /* 正文开头常被作者写成 `# 标题`，与页面 <h1> 完全重复。
+     页面脚本已把它降级为 h2 并挂上本类：语义上每页只剩一个 h1，
+     视觉上也不再重复出现两遍大标题。 */
+  .article-page .prose > .prose-duplicate-title {
+    display: none;
+  }
+}
+
+/* ──────────────── components：正文富媒体的可读性、可操作性、可发现性 ────────────────
+   1) 表格：390 宽下三列表格会被压到每格 3~4 个字，横向对照关系彻底消失。
+      脚本（[...id].astro 内联）把每张表包进 .table-scroll（tabindex=0 / role=region），
+      这里只负责三件事：出血到正文列边缘、内容超宽时给左右渐隐、窄屏给一行滑动提示。
+   2) 代码块：脚本包出 .code-block 工具条（语言 + 复制）。工具条**不能**放进 pre——
+      pre 自己横向滚动，放进去会跟着一起滚走。pre 仍是唯一的滚动容器，版心不被撑破。
+   3) 播放条：进度 / 音量滑块的可点高度提到 24px，窄屏不再和标题抢宽。 */
+@layer components {
+  /* ── 表格：横向滚动容器（可发现性 = 渐隐 + 焦点环 + 窄屏提示） ── */
+  .article-page .prose > .table-scroll {
+    width: calc(100% + var(--bleed-x) * 2);
+    max-width: none;
+    margin-block: var(--p-sp-6);
+    margin-inline: calc(var(--bleed-x) * -1);
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+    scrollbar-color: var(--c-rule-strong) transparent;
+    /* 两侧渐隐：只有内容真的超宽时才看得出（local 层跟着内容走，scroll 层钉在视口） */
+    background:
+      linear-gradient(to right, var(--c-paper) 40%, transparent) left center / 28px 100% no-repeat local,
+      linear-gradient(to left, var(--c-paper) 40%, transparent) right center / 28px 100% no-repeat local,
+      radial-gradient(farthest-side at 0 50%, color-mix(in oklab, var(--c-ink) 14%, transparent), transparent) left center / 14px 100% no-repeat scroll,
+      radial-gradient(farthest-side at 100% 50%, color-mix(in oklab, var(--c-ink) 14%, transparent), transparent) right center / 14px 100% no-repeat scroll;
+  }
+  .article-page .prose > .table-scroll:focus-visible {
+    outline: 2px solid var(--c-ink);
+    outline-offset: 3px;
+  }
+  .article-page .prose > .table-scroll > table {
+    /* 30rem ≈ 480px：窄于此就不再压窄单元格，改为横向滚动 */
+    width: 100%;
+    min-width: 30rem;
+    margin-block: 0;
+    table-layout: auto;
+  }
+  /* 能横向滚动时，把下留白让给提示行，避免出现两倍间距 */
+  .article-page .prose > .table-scroll[data-scrollable] { margin-bottom: var(--p-sp-2); }
+
+  .article-page .table-hint { display: none; }
+  .article-page .prose > .table-scroll[data-scrollable] + .table-hint {
+    display: block;
+    margin: 0 0 var(--p-sp-5);
+    color: var(--c-ink-2);
+    font-family: var(--font-mono);
+    font-size: var(--type-micro);
+    letter-spacing: 0.06em;
+    text-align: right;
+  }
+
+  /* ── 代码块：工具条（语言 + 复制） ── */
+  .article-page .prose > .code-block {
+    width: calc(100% + var(--bleed-x) * 2);
+    max-width: none;
+    margin-block: var(--p-sp-6);
+    margin-inline: calc(var(--bleed-x) * -1);
+    border: 1px solid var(--c-rule);
+    border-radius: var(--r-frame);
+    background: var(--c-paper-sunken);
+  }
+  .article-page .code-block__bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--p-sp-3);
+    padding: 5px var(--p-sp-3) 5px var(--p-sp-4);
+    border-bottom: 1px solid var(--c-rule);
+    color: var(--c-ink-2);
+    font-family: var(--font-mono);
+    font-size: var(--type-micro);
+    letter-spacing: 0.1em;
+    line-height: 1.6;
+    text-transform: uppercase;
+  }
+  .article-page .code-block__lang { overflow-wrap: anywhere; }
+  .article-page .code-block__copy {
+    flex: none;
+    padding: 6px 10px;
+    border: 1px solid var(--c-rule);
+    border-radius: var(--r-frame);
+    background: transparent;
+    color: var(--c-ink-2);
+    font: inherit;
+    letter-spacing: 0.08em;
+    line-height: 1;
+    cursor: pointer;
+    transition: border-color var(--p-dur-fast) var(--p-ease), color var(--p-dur-fast) var(--p-ease);
+  }
+  .article-page .code-block__copy:hover { border-color: var(--c-ink); color: var(--c-ink); }
+  .article-page .code-block__copy[data-state="ok"] { border-color: var(--c-metal); color: var(--c-metal); }
+  .article-page .code-block__copy[data-state="err"] { border-color: var(--c-accent-2); color: var(--c-accent-2); }
+  /* pre 是唯一滚动容器：外框交给 .code-block，自己只留上下直角 */
+  .article-page .prose > .code-block > pre {
+    margin: 0;
+    border: 0;
+    border-radius: 0 0 var(--r-frame) var(--r-frame);
+  }
+
+  /* ── 触控热区：三个「要真的点」的操作按钮 ──
+     实测（qa-audit tap-small / tap-tiny，390 宽触屏）：
+       a.f-article__eyebrow  28×25、button.code-block__copy 48×26、
+       a.article-endmark__top 53×22。
+     三处都只有文字那么大，手指点不中。用 padding + 负外边距把盒子补到
+     44×44，字号、颜色、视觉位置一律不动——放大的是热区，不是字形。 */
+  .article-page .f-article__eyebrow,
+  .article-page .article-endmark__top,
+  .article-page .code-block__copy {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+  }
+  .article-page .f-article__eyebrow {
+    min-width: 44px;
+    padding-inline: 10px;
+    margin-inline: -10px; /* 抵消左右 padding，视觉上仍贴着版心左缘 */
+  }
+  .article-page .article-endmark__top {
+    min-width: 44px;
+    margin-top: 0;      /* 高度已由 min-height 提供，不再叠加上留白 */
+    padding-inline: 12px;
+  }
+  .article-page .code-block__copy {
+    min-width: 44px;
+    padding-block: 0;
+    padding-inline: 12px;
+  }
+  /* 按钮撑到 44 高后，工具条自己不再加纵向 padding，避免条高翻倍 */
+  .article-page .code-block__bar { padding-block: 0; }
+
+  /* ── 播放条：触控高度与窄屏布局 ── */
+  .article-page .prose > .song-player {
+    width: calc(100% + var(--bleed-x) * 2);
+    max-width: none;
+    margin-inline: calc(var(--bleed-x) * -1);
+  }
+  .article-page .song-player__progress,
+  .article-page .song-player__volume-slider { height: 24px; }
+  .article-page .song-player__volume-toggle { min-width: 28px; min-height: 28px; }
+  .article-page .song-player__toggle { width: 40px; height: 40px; }
+  @media (max-width: 480px) {
+    .article-page .song-player { gap: 10px 12px; padding: 12px; }
+    .article-page .song-player__cover { width: 44px; height: 44px; }
+    .article-page .song-player__controls { gap: 8px; min-width: 0; }
+    .article-page .song-player__volume-slider { width: 48px; }
+  }
+
+  /* ── 内嵌播放器：网易云是固定高度窄条，显式钉住，避免继承 16/9 出大片空白 ── */
+  .article-page .prose iframe[src*="music.163.com"] {
+    width: 100%;
+    max-width: 330px;
+    height: 90px;
+    aspect-ratio: auto;
+    margin-inline: auto;
+  }
+  .article-page .prose iframe[src*="music.163.com"][src*="height=66"],
+  .article-page .prose iframe[src*="music.163.com"][src*="height%3D66"] { height: 66px; }
+
+  /* ── 上下篇 ── */
+  .article-page .article-pager {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: var(--p-sp-4);
+    width: 100%;
+    max-width: var(--prose-w);
+    margin: var(--p-sp-6) auto 0;
+  }
+  .article-page .article-pager__link {
+    display: grid;
+    gap: 5px;
+    padding: 10px 12px;
+    border: 1px solid var(--c-rule);
+    border-radius: var(--r-frame);
+    color: var(--c-ink-2);
+    transition: border-color var(--p-dur-fast) var(--p-ease), color var(--p-dur-fast) var(--p-ease);
+  }
+  .article-page .article-pager__link:hover {
+    border-color: var(--c-rule-strong);
+    color: var(--c-ink);
+  }
+  .article-page .article-pager__link--next { text-align: right; }
+  .article-page .article-pager__kicker {
+    color: var(--c-ink-2);
+    font-family: var(--font-mono);
+    font-size: var(--type-micro);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .article-page .article-pager__title {
+    font-family: var(--font-display);
+    font-size: var(--type-meta);
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+  }
+  .article-page .article-pager__empty { border: 0; }
+  @media (max-width: 560px) {
+    .article-page .article-pager { grid-template-columns: minmax(0, 1fr); }
+    .article-page .article-pager__link--next { text-align: left; }
+    .article-page .article-pager__empty { display: none; }
+  }
+
+  /* ── 尾页：回到顶部（热区见文末「触控热区」段） ── */
+  .article-page .article-endmark__top {
+    color: var(--c-ink-2);
+    font-family: var(--font-mono);
+    font-size: var(--type-micro);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    text-decoration: none;
+  }
+  .article-page .article-endmark__top:hover { color: var(--c-ink); }
+
+  /* ── 减少动效 ── */
+  @media (prefers-reduced-motion: reduce) {
+    .article-page .code-block__copy,
+    .article-page .article-pager__link { transition: none; }
   }
 }
 
@@ -814,6 +1074,19 @@
     /* 登记条只保留 dl 的四个字段：铜线与目录不参与打印 */
     .article-page .article-margin::before { display: none; }
     .article-page .article-toc { display: none; }
+    /* 富媒体增强件在纸上没有意义：工具条、滑动提示、上下篇、回到顶部全部退出 */
+    .article-page .code-block__bar,
+    .article-page .table-hint,
+    .article-page .article-pager,
+    .article-page .article-endmark__top { display: none; }
+    .article-page .prose > .table-scroll,
+    .article-page .prose > .code-block {
+      width: auto;
+      max-width: none;
+      margin-inline: 0;
+      overflow: visible;
+      background: none;
+    }
     .article-page .article-header h1 { font-size: 25pt; }
   }
 }

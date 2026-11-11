@@ -20,6 +20,8 @@ import { captureFlip, playFlip } from './reorder-anim';
 // 独立收藏数据池(由上方 JSON 标签注入,避免 define:vars 内联导致 TS 语法残留)
 /** 查看器点击入口：委托监听只注册一次，始终指向「当前这一次页面实例」的实现 */
 let galleryViewerHandler: ((button: HTMLButtonElement) => void) | null = null;
+/** 查看器键盘入口：同样只注册一次，闭包永远指向当前实例的状态 */
+let galleryViewerKeyHandler: ((event: KeyboardEvent) => void) | null = null;
 
   document.addEventListener('astro:page-load', () => {
 
@@ -180,6 +182,9 @@ let galleryViewerHandler: ((button: HTMLButtonElement) => void) | null = null;
     img.referrerPolicy = 'no-referrer';
     // 先占位、后取图：src 由 IntersectionObserver 在接近视口时才写入
     img.dataset.galleryThumb = image.thumb || image.src;
+    // 缩略图缺失时（jsDelivr 报 404 / 被 ORB 拦截）由 cdn-fallback.ts 回退到主图，
+    // 否则整块图版会永远停在骨架上的 NO PLATE。
+    if (image.thumb && image.src && image.thumb !== image.src) img.dataset.galleryFallback = image.src;
     button.dataset.state = 'pending';
     img.addEventListener('load', () => { button.dataset.state = 'loaded'; });
     img.addEventListener('error', () => {
@@ -865,9 +870,32 @@ let galleryViewerHandler: ((button: HTMLButtonElement) => void) | null = null;
   // 轮播懒构建：buildBillboard 改由 selectGalleryTab 首次切换到 independent 时调用，
   // 避免首屏即创建 3×独立照片数 的图片节点（此处不再直接构建）
 
+  // ── 查看器的「当前集合」：← / → 在这批图里前后切换 ──
+  // 卡片与图集缩略图按所在面板收集；广告牌按「同一份副本」收集（轨道复制了 3 份，
+  // 只有中间那份与真实索引一一对应，直接用全部 3×N 张会让 ←/→ 来回跳同一组）。
+  let viewerSequence: HTMLButtonElement[] = [];
+  let viewerIndex = -1;
+
+  function sequenceFor(button: HTMLButtonElement): { list: HTMLButtonElement[]; index: number } {
+    const track = button.closest('.gallery-billboard-track');
+    if (track) {
+      const all = [...track.querySelectorAll<HTMLButtonElement>('.gallery-billboard-slide')];
+      const per = Math.max(1, Math.round(all.length / 3));
+      const middle = all.slice(per, per * 2);
+      const at = all.indexOf(button);
+      return { list: middle.length ? middle : all, index: at >= 0 ? ((at % per) + per) % per : 0 };
+    }
+    const panel = button.closest<HTMLElement>('[data-gallery-panel]');
+    const scope: ParentNode = panel ?? document;
+    const list = [...scope.querySelectorAll<HTMLButtonElement>('[data-gallery-open]:not(.gallery-billboard-slide)')]
+      .filter((el) => el.getClientRects().length > 0);
+    const index = list.indexOf(button);
+    return index >= 0 ? { list, index } : { list: [button], index: 0 };
+  }
+
   // 打开大图查看器(静态卡片与广告牌共用)
-  function openGalleryViewer(button: HTMLButtonElement) {
-    if (!viewer || !viewerImage || !viewerTitle || !viewerCaption || !viewerSource) return;
+  function fillViewer(button: HTMLButtonElement) {
+    if (!viewerImage || !viewerTitle || !viewerCaption || !viewerSource) return;
     currentSrc = button.dataset.gallerySrc || '';
     originalUrl = button.dataset.galleryOriginal || '';
     showingOriginal = false;
@@ -886,9 +914,117 @@ let galleryViewerHandler: ((button: HTMLButtonElement) => void) | null = null;
       viewerOriginalBtn.hidden = !originalUrl;
       viewerOriginalBtn.textContent = themeText('查看原图', '加载原图');
     }
-    viewer.showModal();
+    // 换图时先把缩放/平移归位，避免上一张的 200% 带到下一张
+    resetView();
     fitDialog();
   }
+
+  function openGalleryViewer(button: HTMLButtonElement) {
+    if (!viewer || !viewerImage || !viewerTitle || !viewerCaption || !viewerSource) return;
+    const sequence = sequenceFor(button);
+    viewerSequence = sequence.list;
+    viewerIndex = sequence.index;
+    fillViewer(button);
+    if (!viewer.open) viewer.showModal();
+    // 焦点落到关闭按钮：键盘用户一进来就在对话框内部，关闭时浏览器再还给触发元素
+    document.querySelector<HTMLButtonElement>('[data-gallery-close]')?.focus({ preventScroll: true });
+  }
+
+  function stepViewer(delta: number) {
+    if (!viewer?.open || viewerSequence.length < 2) return;
+    const next = (viewerIndex + delta + viewerSequence.length) % viewerSequence.length;
+    if (next === viewerIndex) return;
+    viewerIndex = next;
+    fillViewer(viewerSequence[viewerIndex]);
+  }
+
+  function jumpViewer(index: number) {
+    if (!viewer?.open || !viewerSequence.length) return;
+    const next = Math.min(Math.max(0, index), viewerSequence.length - 1);
+    if (next === viewerIndex) return;
+    viewerIndex = next;
+    fillViewer(viewerSequence[viewerIndex]);
+  }
+
+  /** 键盘：+ / - / 0 调缩放（与滑杆同一套状态） */
+  function bumpZoom(step: number) {
+    if (!viewer?.open) return;
+    const next = Math.min(4, Math.max(1, Math.round((zoom + step) * 100) / 100));
+    if (next === zoom) return;
+    zoom = next;
+    if (zoomSlider) zoomSlider.value = String(Math.round(zoom * 100));
+    if (zoomLabel) zoomLabel.textContent = `${Math.round(zoom * 100)}%`;
+    applyTransform();
+  }
+
+  galleryViewerKeyHandler = (event: KeyboardEvent) => {
+    if (!viewer?.open) return;
+    const target = event.target as HTMLElement | null;
+    // 滑杆自己要用 ← →（原生调值），别抢
+    const onRange = !!target?.closest?.('input[type="range"]');
+    switch (event.key) {
+      case 'Escape':
+        // 交给原生 <dialog> 关闭，保证焦点恢复
+        return;
+      case 'ArrowRight':
+        if (onRange) return;
+        event.preventDefault();
+        stepViewer(1);
+        return;
+      case 'ArrowLeft':
+        if (onRange) return;
+        event.preventDefault();
+        stepViewer(-1);
+        return;
+      case 'Home':
+        if (onRange) return;
+        event.preventDefault();
+        jumpViewer(0);
+        return;
+      case 'End':
+        if (onRange) return;
+        event.preventDefault();
+        jumpViewer(viewerSequence.length - 1);
+        return;
+      case '+':
+      case '=':
+        event.preventDefault();
+        bumpZoom(0.25);
+        return;
+      case '-':
+      case '_':
+        event.preventDefault();
+        bumpZoom(-0.25);
+        return;
+      case '0':
+        event.preventDefault();
+        resetView();
+        return;
+      case 'Tab': {
+        // 焦点锁定：把 Tab / Shift+Tab 约束在对话框内部
+        const focusables = [...viewer.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]):not([hidden]), input:not([type="hidden"])',
+        )].filter((el) => el.getClientRects().length > 0);
+        if (!focusables.length) return;
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        const active = document.activeElement as HTMLElement | null;
+        const inside = !!active && viewer.contains(active);
+        if (event.shiftKey) {
+          if (!inside || active === first) {
+            event.preventDefault();
+            last.focus();
+          }
+        } else if (!inside || active === last) {
+          event.preventDefault();
+          first.focus();
+        }
+        return;
+      }
+      default:
+        return;
+    }
+  };
 
   // 客户端按页构建的卡片无法预先绑定点击，改用事件委托（广告牌 slide 由自身逻辑处理，故排除）。
   // 处理器每次导航后重新指向当前实例，避免闭包引用上一页已失效的 DOM。
@@ -900,6 +1036,12 @@ let galleryViewerHandler: ((button: HTMLButtonElement) => void) | null = null;
       const button = target?.closest?.('[data-gallery-open]:not(.gallery-billboard-slide)');
       if (button instanceof HTMLButtonElement) galleryViewerHandler?.(button);
     });
+  }
+  // 键盘监听同样只注册一次（<dialog> 在 BaseLayout 之外，导航不会替换它），
+  // 通过 galleryViewerKeyHandler 指向当前实例，避免重复绑定导致一次按键切两张。
+  if (viewer && !viewer.dataset.galleryKeys) {
+    viewer.dataset.galleryKeys = '1';
+    viewer.addEventListener('keydown', (event) => galleryViewerKeyHandler?.(event));
   }
 
   document.querySelector<HTMLButtonElement>('[data-gallery-close]')?.addEventListener('click', () => viewer?.close());

@@ -15,7 +15,8 @@ const fmtDate = (d: Date) =>
 ---
 
 <BaseLayout title="私密文章" description="管理员级文章入口。">
-  <main class="private-index">
+  {/* BaseLayout 已经提供了一个 <main>；这里只能用普通容器，避免一页两个 main 地标 */}
+  <div class="private-index">
     <section class="f-section private-head">
       <div class="f-fleuron" aria-hidden="true"><i></i></div>
       <div class="f-cover__folio"><span>PRIVATE ARCHIVE</span><span>·</span><span>MMXXVI</span></div>
@@ -55,7 +56,7 @@ const fmtDate = (d: Date) =>
         <span class="f-num">ACR / PRIVATE / {new Date().getFullYear()}</span>
       </footer>
     </div>
-  </main>
+  </div>
 </BaseLayout>
 
 <!-- 私密页版式（页头 + 登记条 + 细线门禁 + f-entry 编目）统一定义在
@@ -91,3 +92,21 @@ const fmtDate = (d: Date) =>
     });
   })();
 </script>
+
+<style is:global>
+  /* 焦点环故意不放进 @layer：pages-next.css 的 components 层让 .access-gate input
+     和 .f-btn 只拿到几乎看不见的环（实测环色与纸色同亮度，对比度 1.00）。
+     这里统一换成墨色 2px，明暗两套主题都能拿到 ≥3:1。 */
+  .private-index :is(a, button, input, textarea, select, summary):focus-visible {
+    outline: 2px solid var(--c-ink);
+    outline-offset: 3px;
+  }
+  .private-index .access-gate input:focus-visible {
+    border-color: var(--c-ink);
+  }
+
+  /* 触控热区：门禁输入框补到 44px（实测 316×37 不达标签要求） */
+  .private-index .access-gate input {
+    min-height: 44px;
+  }
+</style>

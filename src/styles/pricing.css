@@ -13,6 +13,15 @@
     color: var(--c-ink);
     font-size: var(--type-sm);
     line-height: var(--lh-snug);
+
+    /* ── 本页局部令牌 ───────────────────────────────────────────────
+       只在本页覆盖，不动全局 --c-ink-3（那是 tokens 同学的领地）。
+       --c-ink-3 直接落在纸色上只有 3.58:1，12–13px 的元信息不合格；
+       往 --c-ink 方向混 55% 后，浅色主题约 6.3:1、暗色主题约 7.5:1，
+       五套主题都只会变深/变亮，不会反向掉对比度。 */
+    --pr-meta: color-mix(in oklab, var(--c-ink-3) 55%, var(--c-ink));
+    --pr-num: 12px; /* 可读数值的统一字号：柱外价格、刻度、KPI、表格数字 */
+    --pr-touch: 44px; /* 窄屏触控热区下限 */
   }
   .pr-page [hidden] {
     display: none !important;
@@ -33,7 +42,7 @@
     align-items: center;
     gap: 3px;
     font-size: var(--type-meta);
-    color: var(--c-ink-3);
+    color: var(--pr-meta);
     text-decoration: none;
   }
   .pr-back svg {
@@ -54,12 +63,13 @@
   .pr-top__deck {
     margin: 3px 0 0;
     font-size: var(--type-meta);
-    color: var(--c-ink-3);
+    color: var(--pr-meta);
+    font-variant-numeric: tabular-nums;
   }
   .pr-top__deck code,
   .pr-foot code {
     font-family: var(--font-mono);
-    font-size: 0.94em;
+    font-size: 1em;
     padding: 0 3px;
     background: color-mix(in oklab, var(--c-ink) 6%, transparent);
   }
@@ -74,10 +84,10 @@
     gap: 1px;
   }
   .pr-kpis dt {
-    font-size: 10.5px;
-    letter-spacing: 0.08em;
+    font-size: var(--pr-num);
+    letter-spacing: 0.04em;
     text-transform: uppercase;
-    color: var(--c-ink-3);
+    color: var(--pr-meta);
   }
   .pr-kpis dd {
     margin: 0;
@@ -111,7 +121,8 @@
   .pr-panel__deck {
     margin: 0;
     font-size: var(--type-meta);
-    color: var(--c-ink-3);
+    color: var(--pr-meta);
+    font-variant-numeric: tabular-nums;
   }
   .pr-legend {
     display: flex;
@@ -119,7 +130,7 @@
     margin: 0 0 0 auto;
     padding: 0;
     list-style: none;
-    font-size: 11.5px;
+    font-size: 12px;
     color: var(--c-ink-2);
   }
   .pr-legend li {
@@ -128,8 +139,8 @@
     gap: 5px;
   }
   .pr-legend__note {
-    color: var(--c-ink-3);
-    font-size: 10.5px;
+    color: var(--pr-meta);
+    font-size: 12px;
   }
   .pr-dot {
     width: 8px;
@@ -156,17 +167,18 @@
     margin-top: var(--p-sp-2);
   }
   .pr-sort__label {
-    font-size: 10.5px;
-    letter-spacing: 0.08em;
+    font-size: 12px;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
-    color: var(--c-ink-3);
+    color: var(--pr-meta);
   }
   .pr-sort button {
     appearance: none;
     font: inherit;
-    font-size: 11.5px;
+    font-size: 12px;
     line-height: 1;
-    padding: 4px 9px;
+    padding: 7px 10px;
+    min-height: 30px;
     border: 1px solid var(--c-rule);
     border-radius: 2px;
     background: transparent;
@@ -195,18 +207,19 @@
   }
   .pr-axis {
     position: relative;
-    height: 14px;
+    height: 17px;
     margin-left: 238px;
     margin-right: 132px;
     border-bottom: 1px solid var(--c-rule);
   }
   .pr-axis span {
     position: absolute;
-    bottom: 2px;
+    bottom: 3px;
     transform: translateX(-50%);
     font-family: var(--font-mono);
-    font-size: 9.5px;
-    color: var(--c-ink-3);
+    font-size: var(--pr-num);
+    font-variant-numeric: tabular-nums;
+    color: var(--pr-meta);
     white-space: nowrap;
   }
   .pr-rows {
@@ -236,7 +249,7 @@
   }
   .pr-hot {
     flex: 0 0 auto;
-    font-size: 9px;
+    font-size: 11.5px; /* 角标：11.5px 而非 9px，可读但不抢主数字 */
     line-height: 1;
     padding: 2px 4px;
     border: 1px solid var(--c-accent);
@@ -269,12 +282,12 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 14px;
-    height: 14px;
+    width: 16px;
+    height: 16px;
     border: 1px solid var(--c-rule-strong);
     border-radius: 2px;
     font-family: var(--font-mono);
-    font-size: 9px;
+    font-size: 11.5px;
     line-height: 1;
     color: var(--c-ink-2);
   }
@@ -287,8 +300,8 @@
   }
   .pr-vendor {
     flex: 0 0 auto;
-    font-size: 10px;
-    color: var(--c-ink-3);
+    font-size: 12px;
+    color: var(--pr-meta);
     white-space: nowrap;
   }
   .pr-bars {
@@ -298,12 +311,21 @@
     /* 给条形末端的数值标签留出空间，否则最贵的那一档会被卡片边缘裁掉 */
     padding-right: 42px;
   }
+  /* 条形本身只是「槽」：真正的品牌色底在 .pr-bar__fill 上。
+     这样绝对定位在槽外的数值标签 <b> 的背景就落到面板上，而不是压在品牌色上
+     （之前 b 的背景被父级 .pr-bar 的品牌色接管，浅色品牌上的数字只有 1.04–2.89:1）。 */
   .pr-bar {
     position: relative;
     display: block;
     width: var(--w, 0%);
     height: 5px;
     min-width: 2px;
+  }
+  .pr-bar__fill {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: var(--bar-fill, var(--brand, var(--c-accent)));
   }
   /* 供应商品牌色：同一行三档靠明度区分（浅=缓存、中=输入、深=输出）。
      黑/灰黑这类在暗色主题里会糊掉，所以统一往 --c-ink 靠，跟随明暗翻转。 */
@@ -325,21 +347,22 @@
   }
 
   .pr-bar--cache {
-    background: color-mix(in oklab, var(--brand, var(--c-ink)) 26%, transparent);
+    --bar-fill: color-mix(in oklab, var(--brand, var(--c-ink)) 26%, transparent);
   }
   .pr-bar--in {
-    background: color-mix(in oklab, var(--brand, var(--c-accent)) 55%, transparent);
+    --bar-fill: color-mix(in oklab, var(--brand, var(--c-accent)) 55%, transparent);
   }
   .pr-bar--out {
-    background: var(--brand, var(--c-accent));
+    --bar-fill: var(--brand, var(--c-accent));
   }
-  /* 当前排序档位对应的那条高亮，其余降一档，扫一眼就知道在按什么排 */
-  .pr-chart .pr-bar {
+  /* 当前排序档位对应的那条高亮，其余降一档，扫一眼就知道在按什么排。
+     明度只压有色底块，不压标签，否则数值跟着被稀释一半。 */
+  .pr-chart .pr-bar__fill {
     opacity: 0.5;
   }
-  .pr-chart[data-sort='cache'] .pr-bar--cache,
-  .pr-chart[data-sort='in'] .pr-bar--in,
-  .pr-chart[data-sort='out'] .pr-bar--out {
+  .pr-chart[data-sort='cache'] .pr-bar--cache .pr-bar__fill,
+  .pr-chart[data-sort='in'] .pr-bar--in .pr-bar__fill,
+  .pr-chart[data-sort='out'] .pr-bar--out .pr-bar__fill {
     opacity: 1;
   }
   .pr-bar b {
@@ -347,11 +370,13 @@
     left: 100%;
     top: 50%;
     transform: translateY(-50%);
-    margin-left: 5px;
+    margin-left: 6px;
     font-family: var(--font-mono);
-    font-size: 9.5px;
+    font-size: var(--pr-num); /* 12px：柱外数值是可读信息，不再压到 9.5px */
     font-weight: 500;
-    color: var(--c-ink-2);
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    color: var(--c-ink);
     white-space: nowrap;
   }
   .pr-bars--free {
@@ -360,17 +385,18 @@
   .pr-free {
     display: inline-block;
     width: max-content;
-    font-size: 10.5px;
-    color: var(--c-ink-3);
+    font-size: 12px;
+    color: var(--pr-meta);
     border: 1px solid var(--c-rule);
-    padding: 0 5px;
+    padding: 1px 6px;
     border-radius: 2px;
   }
   .pr-note {
-    font-size: 10px;
+    font-size: 12px;
     line-height: 1.35;
-    color: var(--c-ink-3);
+    color: var(--pr-meta);
     text-align: right;
+    font-variant-numeric: tabular-nums;
   }
 
   /* ── 散点 + 堆叠：桌面并排 ── */
@@ -390,16 +416,19 @@
     stroke: var(--c-rule);
     stroke-width: 0.6;
   }
+  /* 散点图的刻度与点名都是可读信息，不是装饰：viewBox 440 单位约等于 1px，
+     所以 8px 会真的渲染成 8px。统一提到 12（刻度/点名）与 12（轴名）。 */
   .pr-grid text {
     font-family: var(--font-mono);
-    font-size: 8px;
-    fill: var(--c-ink-3);
+    font-size: var(--pr-num);
+    font-variant-numeric: tabular-nums;
+    fill: var(--pr-meta);
   }
   .pr-axis-label {
     font-family: var(--font-mono);
-    font-size: 8.5px;
-    fill: var(--c-ink-3);
-    letter-spacing: 0.04em;
+    font-size: var(--pr-num);
+    fill: var(--pr-meta);
+    letter-spacing: 0.02em;
   }
   .pr-point {
     fill: var(--c-accent);
@@ -416,13 +445,13 @@
   }
   .pr-point-label {
     font-family: var(--font-mono);
-    font-size: 7.5px;
+    font-size: 11px;
     fill: var(--c-ink-2);
   }
   .pr-point-free {
     font-family: var(--font-mono);
-    font-size: 8px;
-    fill: var(--c-ink-3);
+    font-size: var(--pr-num);
+    fill: var(--pr-meta);
   }
 
   .pr-stack {
@@ -439,8 +468,9 @@
     gap: var(--p-sp-2);
   }
   .pr-stack__name {
-    font-size: 10.5px;
+    font-size: 12px;
     color: var(--c-ink-2);
+    font-variant-numeric: tabular-nums;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -501,13 +531,14 @@
   }
   .pr-table thead th {
     font-family: var(--font-mono);
-    font-size: 10px;
-    letter-spacing: 0.1em;
+    font-size: var(--pr-num);
+    letter-spacing: 0.06em;
     text-transform: uppercase;
     color: var(--c-metal);
   }
   .pr-table tbody th {
     font-weight: 600;
+    font-variant-numeric: tabular-nums;
   }
   .pr-table td {
     color: var(--c-ink-2);
@@ -515,13 +546,43 @@
   }
   .pr-table__note {
     white-space: normal;
-    font-size: 11px;
-    color: var(--c-ink-3);
+    font-size: 12px;
+    color: var(--pr-meta);
   }
   .pr-foot {
     margin: var(--p-sp-3) 0 0;
-    font-size: 11px;
-    color: var(--c-ink-3);
+    font-size: 12px;
+    color: var(--pr-meta);
+  }
+
+  /* ── 焦点可见：键盘用户在明暗两套主题下都要看得见环 ── */
+  .pr-page :is(a, button, summary, [tabindex]):focus-visible {
+    outline: 2px solid var(--c-accent);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+  .pr-sort button:focus-visible {
+    background: color-mix(in oklab, var(--c-accent) 16%, transparent);
+  }
+
+  /* 明细表在窄屏要横滚：用「背景阴影 + 吸附」让它可发现，而不是默默被裁掉 */
+  .pr-table__scroll {
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x proximity;
+    /* 左右两枚阴影只在内侧可滚时出现：local 背景跟着内容走，scroll 背景留在视口 */
+    background:
+      linear-gradient(to right, var(--c-paper-raised) 30%, transparent) left center / 22px 100% no-repeat local,
+      linear-gradient(to left, var(--c-paper-raised) 30%, transparent) right center / 22px 100% no-repeat local,
+      radial-gradient(farthest-side at 0 50%, color-mix(in oklab, var(--c-ink) 22%, transparent), transparent) left center / 12px 100% no-repeat scroll,
+      radial-gradient(farthest-side at 100% 50%, color-mix(in oklab, var(--c-ink) 22%, transparent), transparent) right center / 12px 100% no-repeat scroll;
+  }
+  .pr-table__scroll table {
+    min-width: 640px; /* 7 列 × nowrap，撑到出现横滚；滚动条本身就是提示 */
+  }
+  .pr-table__scroll th,
+  .pr-table__scroll td {
+    scroll-snap-align: start;
   }
 
   /* ── 窄屏 ── */
@@ -537,27 +598,15 @@
     .pr-row {
       grid-template-columns: minmax(0, 1fr);
       gap: 3px;
-      padding-block: 6px;
+      padding-block: 7px;
     }
     .pr-bars {
-      padding-right: 52px;
+      padding-right: 56px;
     }
     .pr-axis {
       display: none;
     }
-    .pr-bars--free {
-    align-content: center;
-  }
-  .pr-free {
-    display: inline-block;
-    width: max-content;
-    font-size: 10.5px;
-    color: var(--c-ink-3);
-    border: 1px solid var(--c-rule);
-    padding: 0 5px;
-    border-radius: 2px;
-  }
-  .pr-note {
+    .pr-note {
       text-align: left;
     }
     .pr-kpis {
@@ -565,6 +614,29 @@
     }
     .pr-stack__row {
       grid-template-columns: 110px minmax(0, 1fr);
+    }
+    /* 触控热区：排序按钮 / 返回链接 / 明细表 summary 全部 ≥44×44 */
+    .pr-sort {
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .pr-sort button,
+    .pr-sort__dir {
+      min-height: var(--pr-touch);
+      padding-inline: 14px;
+    }
+    .pr-sort__dir {
+      margin-left: 0;
+    }
+    .pr-back {
+      min-height: var(--pr-touch);
+      min-width: var(--pr-touch);
+      padding-inline: 4px;
+    }
+    .pr-table summary {
+      min-height: var(--pr-touch);
+      display: flex;
+      align-items: center;
     }
   }
 

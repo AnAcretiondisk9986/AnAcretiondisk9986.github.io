@@ -148,7 +148,7 @@
   margin-bottom: 13px;
   color: var(--fusion-cyan);
   font-family: var(--latin);
-  font-size: 0.65rem;
+  font-size: var(--type-micro);
   letter-spacing: 0.08em;
 }
 
@@ -255,7 +255,7 @@
   display: grid;
   gap: 3px;
   color: var(--ink-faint);
-  font-size: 0.68rem;
+  font-size: var(--type-micro);
 }
 
 :root[data-visual-theme] .gallery-order-label strong {
@@ -284,7 +284,7 @@
   border-radius: 7px;
   color: var(--ink-soft);
   font: inherit;
-  font-size: 0.72rem;
+  font-size: var(--type-micro);
   background: transparent;
   cursor: pointer;
 }
@@ -384,7 +384,7 @@
 :root[data-visual-theme] .catalog-entry time {
   color: var(--ink-faint);
   font-family: var(--latin);
-  font-size: 0.64rem;
+  font-size: var(--type-meta);
 }
 
 :root[data-visual-theme] .catalog-entry time b {
@@ -592,7 +592,7 @@
 
 :root[data-visual-theme] .article-register {
   margin-bottom: 22px;
-  font-size: 0.62rem;
+  font-size: var(--type-micro);
   letter-spacing: 0.04em;
 }
 
@@ -617,7 +617,7 @@
 :root[data-visual-theme] .article-meta {
   color: var(--ink-faint);
   font-family: var(--latin);
-  font-size: 0.62rem;
+  font-size: var(--type-meta);
   letter-spacing: 0;
 }
 
@@ -678,7 +678,7 @@
   margin: 0 0 10px;
   color: var(--ink-faint);
   font-family: var(--latin);
-  font-size: 0.62rem;
+  font-size: var(--type-micro);
   letter-spacing: 0.05em;
 }
 

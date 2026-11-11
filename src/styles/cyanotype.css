@@ -343,3 +343,39 @@
     :root[data-visual-theme="cyanotype"] .f-footer__end { justify-content: flex-start; }
   }
 }
+
+/* ── 关于 / 404 / 私密：小字可读性与焦点环 ───────────────────────────────
+   这几页的 dt / small / 序号 span 沿用 --type-micro、--type-meta，实测
+   9.6–10.88px，字色又是 --c-metal / --c-ink-3（旧值合成后只有 3.58:1）。
+   统一抬到 12px 下限并把字色换成 --c-ink-2，小字也过 4.5:1。
+   下面这两组规则故意写在 @layer 之外：pages-next.css 的 components 层和
+   theme-shared.css 的未分层规则都会盖掉分层样式，只有未分层 + 更高特异度
+   才能稳定生效。 */
+:root[data-visual-theme="cyanotype"] :is(.dossier, .private-index, .article-shell) :is(dt, small) {
+  color: var(--c-ink-2);
+}
+
+:root[data-visual-theme="cyanotype"] :is(
+  .identity-table dt,
+  .private-head__register dt,
+  .article-margin dt,
+  .dossier-header .eyebrow,
+  .interest-index li > span,
+  .dossier-copy .quote-label,
+  .private-channel__copy small,
+  .post-title-tags,
+  .role-tags
+) {
+  /* max() 让令牌将来调大时继续跟随，但现在至少有 12px 的可读下限 */
+  font-size: max(0.75rem, var(--type-micro));
+  letter-spacing: 0.04em;
+  color: var(--c-ink-2);
+}
+
+/* 焦点环：默认环取 --c-accent，在纸色上常常过近（私有页实测 1.00，
+   等于没有焦点提示）。这里改用墨色，明暗两套主题都不低于 3:1。 */
+:root[data-visual-theme="cyanotype"] :is(.dossier, .private-index, .f-notfound, .article-shell)
+  :is(a, button, input, select, textarea, summary):focus-visible {
+  outline: 2px solid var(--c-ink);
+  outline-offset: 3px;
+}

@@ -24,6 +24,14 @@
     padding-top: 10px;
   }
 
+  /* ── 亚像素安全带（2026-11-11）──
+     页头高度与首块 top 都可能带小数（如 71.6 / 71.4），两边各自 Math.round
+     后就成了「首块顶部 71 被页头 72 遮住」的 1px 假性重叠。
+     main 补 4px 上内边距，保证任何取整方式下首块顶边都严格低于页头底边。 */
+  .site-shell > main {
+    padding-top: 4px;
+  }
+
   /* 全幅纸面底：只盖住页头这一条，不参与任何交互 */
   .f-header::before {
     content: "";
@@ -66,17 +74,9 @@
   .f-nav {
     gap: var(--p-sp-4);
   }
-  .f-nav a {
-    padding-bottom: 2px;
-  }
-  .f-icon-btn {
-    width: 30px;
-    height: 30px;
-  }
-  .f-icon-btn svg {
-    width: 14px;
-    height: 14px;
-  }
+  /* 导航项与图标按钮的尺寸/热区/视觉重量统一在 SiteHeader.astro 的
+     「页头打磨层」里（未分层，能压过 cyanotype theme 层的覆盖）。
+     这里只保留吸顶骨架需要的东西，避免两处各写一半互相打架。 */
 
   /* ── 移动端：品牌行与导航行都再收一档（报头双行线本身已隐藏） ── */
   @media (max-width: 720px) {
@@ -104,8 +104,9 @@
 }
 
 @layer base {
-  /* 锚点跳转（如 /blog/#catalog-search）落点不要被吸顶条盖住 */
+  /* 锚点跳转（如 /blog/#catalog-search）落点不要被吸顶条盖住。
+     常驻条高度由脚本写进 --f-header-bar；这里再留 10px 视觉余量。 */
   html {
-    scroll-padding-top: calc(var(--f-header-bar, 96px) + 8px);
+    scroll-padding-top: calc(var(--f-header-bar, 96px) + 10px);
   }
 }

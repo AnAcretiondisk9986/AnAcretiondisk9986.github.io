@@ -19,7 +19,10 @@ export const thumbOf = (src: string) => {
   const m = src.match(/^(.*\/image\/)([^/?#]+)$/);
   if (!m) return src;
   const base = decodeURIComponent(m[2]).replace(/\.[^.]+$/, '');
-  return `${m[1]}thumb/${encodeURIComponent(base)}.webp`;
+  // 原图没有扩展名时 base 会带上 `?v=…` 之类的查询尾巴，拼成 `…_1793535594533?x.webp`
+  // 在 jsDelivr 上是 404，浏览器按 ORB 静默丢弃（图版永远停在 NO PLATE）。统一剥掉查询串。
+  const clean = base.split('?')[0];
+  return `${m[1]}thumb/${encodeURIComponent(clean)}.webp`;
 };
 
 const imageTime = (image: GalleryImageBrief) =>

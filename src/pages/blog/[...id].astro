@@ -12,22 +12,38 @@ export async function getStaticPaths() {
     const key = post.data.pubDate.toISOString().slice(0, 10);
     dayCounts.set(key, (dayCounts.get(key) ?? 0) + 1);
   }
-  return posts.map((post) => {
+  const folioFor = (post: CollectionEntry<'blog'>) => {
     const key = post.data.pubDate.toISOString().slice(0, 10);
     const folioBase = `${post.data.pubDate.getFullYear()}—${String(post.data.pubDate.getMonth() + 1).padStart(2, '0')}${String(post.data.pubDate.getDate()).padStart(2, '0')}`;
-    const folioCode = dayCounts.get(key)! > 1
+    return dayCounts.get(key)! > 1
       ? `${folioBase}—${String(post.data.dayIndex ?? 1).padStart(2, '0')}`
       : folioBase;
-    return { params: { id: post.id }, props: { post, folioCode } };
+  };
+  // 上下篇按发布时间排序（同一天再按 dayIndex），只用来给出「前一篇 / 后一篇」
+  const ordered = [...posts].sort((a, b) => {
+    const dt = a.data.pubDate.getTime() - b.data.pubDate.getTime();
+    return dt !== 0 ? dt : (a.data.dayIndex ?? 1) - (b.data.dayIndex ?? 1);
+  });
+  const indexOf = new Map(ordered.map((post, i) => [post.id, i]));
+  const brief = (post: CollectionEntry<'blog'> | undefined) =>
+    post ? { id: post.id, title: post.data.title, folioCode: folioFor(post) } : null;
+  return posts.map((post) => {
+    const i = indexOf.get(post.id)!;
+    return {
+      params: { id: post.id },
+      props: { post, folioCode: folioFor(post), prevPost: brief(ordered[i - 1]), nextPost: brief(ordered[i + 1]) },
+    };
   });
 }
 
 interface Props {
   post: CollectionEntry<'blog'>;
   folioCode: string;
+  prevPost: { id: string; title: string; folioCode: string } | null;
+  nextPost: { id: string; title: string; folioCode: string } | null;
 }
 
-const { post, folioCode } = Astro.props;
+const { post, folioCode, prevPost, nextPost } = Astro.props;
 const { Content } = await render(post);
 const isAuthorized = post.data.access === 'authorized';
 const firstImageFromBody = (body = '') => body.match(/!\[[^\]]*\]\(([^)\s]+)(?:\s+"[^"]*")?\)/)?.[1] ?? '';
@@ -62,7 +78,7 @@ const fmtMinute = (d: Date) => {
 
 <BaseLayout title={post.data.title} description={post.data.description}>
   <div class="article-reading-progress" aria-hidden="true"><span data-reading-progress-bar></span></div>
-  <div class="article-shell article-page">
+  <div class="article-shell article-page" id="top">
     <aside class="article-margin f-article__aside">
       <a class="back-link" href="/blog/"><Icon name="arrow-left" /> <ThemeCopy minimal="返回文章" trace="返回卷册目录" /></a>
       <a class="private-channel" href="/private/">
@@ -147,12 +163,30 @@ const fmtMinute = (d: Date) => {
       <footer class="article-endmark">
         <span><ThemeCopy minimal="读完了" trace="FINIS" /></span>
         <p><ThemeCopy minimal="文章到这里结束" trace="本条目至此结束" /></p>
+        <a class="article-endmark__top" href="#top"><ThemeCopy minimal="回到顶部" trace="回到卷首" /></a>
       </footer>
+
+      {(prevPost || nextPost) && (
+        <nav class="article-pager" aria-label="前一篇与后一篇">
+          {prevPost ? (
+            <a class="article-pager__link article-pager__link--prev" href={`/blog/${encodeURI(prevPost.id)}/`} rel="prev">
+              <span class="article-pager__kicker">上一篇 · {prevPost.folioCode}</span>
+              <span class="article-pager__title">{prevPost.title}</span>
+            </a>
+          ) : <span class="article-pager__empty" aria-hidden="true"></span>}
+          {nextPost ? (
+            <a class="article-pager__link article-pager__link--next" href={`/blog/${encodeURI(nextPost.id)}/`} rel="next">
+              <span class="article-pager__kicker">下一篇 · {nextPost.folioCode}</span>
+              <span class="article-pager__title">{nextPost.title}</span>
+            </a>
+          ) : <span class="article-pager__empty" aria-hidden="true"></span>}
+        </nav>
+      )}
     </article>
 
     <aside class="article-rail" aria-label="文章索引">
       <div class="article-rail__inner">
-        <nav class="article-toc article-toc--rail" data-article-toc aria-label="文章目录" hidden>
+        <nav class="article-toc article-toc--rail" data-article-toc aria-label="文章目录索引" hidden>
           <p>文章目录</p>
           <ol></ol>
         </nav>
@@ -185,7 +219,20 @@ const fmtMinute = (d: Date) => {
     const progress = document.querySelector('[data-reading-progress-bar]');
     if (!article) return;
 
-    const headings = [...article.querySelectorAll('h2, h3')].filter((heading) => heading.textContent?.trim());
+    /* 正文首行常被作者写成 `# 标题`，与页面 <h1> 是同一句，于是整页出现两个 h1。
+       这里把正文里的一级标题降为 h2 并挂标记类，由 article-next.css 隐藏那份重复文案：
+       语义上每页只剩一个 h1，视觉上也不再出现两遍大标题。目录只收 h2/h3，因此要放在
+       生成目录之前执行。 */
+    article.querySelectorAll('.prose > h1').forEach((h1) => {
+      const h2 = document.createElement('h2');
+      h2.className = 'prose-duplicate-title';
+      h2.innerHTML = h1.innerHTML;
+      h1.replaceWith(h2);
+    });
+
+    const headings = [...article.querySelectorAll('h2, h3')]
+      .filter((heading) => heading.textContent?.trim())
+      .filter((heading) => !heading.classList.contains('prose-duplicate-title'));
     if (tocList.length && headings.length) {
       headings.forEach((heading, index) => {
         if (!heading.id) {
@@ -229,6 +276,90 @@ const fmtMinute = (d: Date) => {
     window.addEventListener('scroll', requestUpdate, { passive: true });
     window.addEventListener('resize', requestUpdate);
     requestUpdate();
+  })();
+</script>
+
+<script is:inline data-astro-rerun>
+  // 正文富媒体的可操作性增强（纯渐进增强，关掉 JS 只是少两个便利，正文照常可读）：
+  //   1) 表格 → 包进可横向滚动的 focusable 容器：390 宽下三列表格不再被压成每格 3~4 个字，
+  //      滚动容器带 tabindex=0 才能用键盘左右滚；内容确实超宽时才提示「左右滑动」。
+  //   2) 代码块 → 上方加「语言 + 复制」工具条。工具条**不能**放进 pre 里：pre 自己横向滚动，
+  //      放进去会跟着代码一起滚走；复制拿到的是 pre.innerText（保留换行，不含行号）。
+  // data-astro-rerun：VT 导航后 DOM 被整体替换，需重新执行；IIFE + 幂等判断保证安全。
+  (() => {
+    const prose = document.querySelector('.article .prose');
+    if (!prose) return;
+
+    /* ── 表格：横向滚动容器 ── */
+    const syncTable = (wrap) => {
+      if (wrap.scrollWidth > wrap.clientWidth + 1) wrap.dataset.scrollable = 'true';
+      else delete wrap.dataset.scrollable;
+    };
+    prose.querySelectorAll('table').forEach((table) => {
+      if (table.closest('.table-scroll')) return;
+      const wrap = document.createElement('div');
+      wrap.className = 'table-scroll';
+      wrap.tabIndex = 0;
+      wrap.setAttribute('role', 'region');
+      wrap.setAttribute('aria-label', '数据表格（内容较宽，可横向滚动）');
+      table.replaceWith(wrap);
+      wrap.append(table);
+      const hint = document.createElement('p');
+      hint.className = 'table-hint';
+      hint.setAttribute('aria-hidden', 'true'); // 视觉提示，信息已由容器的 aria-label 承担
+      hint.textContent = '← 左右滑动查看完整表格 →';
+      wrap.after(hint);
+      syncTable(wrap);
+      if (typeof ResizeObserver === 'function') new ResizeObserver(() => syncTable(wrap)).observe(wrap);
+    });
+
+    /* ── 代码块：语言 + 复制 ── */
+    prose.querySelectorAll('pre').forEach((pre) => {
+      if (pre.closest('.code-block')) return;
+      const code = pre.querySelector('code') || pre;
+      const wrap = document.createElement('div');
+      wrap.className = 'code-block';
+      const bar = document.createElement('div');
+      bar.className = 'code-block__bar';
+      const lang = document.createElement('span');
+      lang.className = 'code-block__lang';
+      lang.textContent = pre.dataset.language || 'code';
+      const copy = document.createElement('button');
+      copy.type = 'button';
+      copy.className = 'code-block__copy';
+      copy.textContent = '复制';
+      bar.append(lang, copy);
+      pre.replaceWith(wrap);
+      wrap.append(bar, pre);
+
+      let timer = 0;
+      const flash = (text, state) => {
+        copy.textContent = text;
+        if (state) copy.dataset.state = state;
+        else delete copy.dataset.state;
+        window.clearTimeout(timer);
+        timer = window.setTimeout(() => { copy.textContent = '复制'; delete copy.dataset.state; }, 1800);
+      };
+      copy.addEventListener('click', async () => {
+        const text = (code.textContent || '').replace(/\r/g, '');
+        let ok = false;
+        try {
+          await navigator.clipboard.writeText(text);
+          ok = true;
+        } catch {
+          // 非安全上下文 / 权限受限时降级为「选中复制」
+          const ta = document.createElement('textarea');
+          ta.value = text;
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          document.body.append(ta);
+          ta.select();
+          try { ok = document.execCommand('copy'); } catch { ok = false; }
+          ta.remove();
+        }
+        flash(ok ? '已复制 ✓' : '复制失败', ok ? 'ok' : 'err');
+      });
+    });
   })();
 </script>
 

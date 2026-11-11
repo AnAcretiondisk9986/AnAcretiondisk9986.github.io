@@ -168,7 +168,7 @@ main {
   margin-bottom: 17px;
   color: var(--red);
   font-family: var(--latin);
-  font-size: 0.65rem;
+  font-size: var(--type-micro);
   font-weight: 700;
   letter-spacing: 0.22em;
   text-transform: uppercase;
@@ -242,7 +242,7 @@ main {
 .identity-table dt,
 .article-margin dt {
   color: var(--ink-faint);
-  font-size: 0.6rem;
+  font-size: var(--type-micro);
   letter-spacing: 0.14em;
 }
 
@@ -326,7 +326,7 @@ main {
 .plate-labels {
   fill: var(--ink-faint);
   font-family: var(--latin);
-  font-size: 8px;
+  font-size: 8px; /* 装饰性小字：仅编号/水印/装饰字符，不承载可读信息 */
   letter-spacing: 1.2px;
 }
 
@@ -338,7 +338,7 @@ main {
   border-top: 1px solid var(--rule);
   color: var(--ink-faint);
   font-family: var(--serif);
-  font-size: 0.66rem;
+  font-size: var(--type-micro);
   letter-spacing: 0.09em;
 }
 
@@ -369,7 +369,7 @@ main {
   justify-items: end;
   gap: 7px;
   color: var(--ink-faint);
-  font-size: 0.68rem;
+  font-size: var(--type-micro);
   letter-spacing: 0.1em;
 }
 
@@ -408,7 +408,7 @@ main {
   border-bottom: 1px solid var(--rule-strong);
   color: var(--ink-faint);
   font-family: var(--latin);
-  font-size: 0.55rem;
+  font-size: var(--type-micro);
   letter-spacing: 0.16em;
 }
 
@@ -580,7 +580,7 @@ main {
   padding: 2px 8px;
   border: 1px solid var(--rule);
   color: var(--ink-faint);
-  font-size: 0.58rem;
+  font-size: var(--type-micro);
   letter-spacing: 0.08em;
 }
 
@@ -592,7 +592,7 @@ main {
 }
 
 .catalog-entry time span {
-  font-size: 0.65rem;
+  font-size: var(--type-meta);
   letter-spacing: 0.1em;
 }
 
@@ -607,7 +607,7 @@ main {
   justify-self: end;
   color: var(--red);
   font-family: var(--serif);
-  font-size: 0.72rem;
+  font-size: var(--type-micro);
   letter-spacing: 0.1em;
   text-align: right;
 }
@@ -673,7 +673,7 @@ main {
   margin-bottom: 42px;
   color: var(--red);
   font-family: var(--serif);
-  font-size: 0.72rem;
+  font-size: var(--type-micro);
   letter-spacing: 0.08em;
 }
 
@@ -707,7 +707,7 @@ main {
 .private-channel__copy small {
   color: var(--ink-faint);
   font-family: var(--latin);
-  font-size: 0.58rem;
+  font-size: var(--type-micro);
   letter-spacing: 0.14em;
 }
 .private-channel__arrow {
@@ -741,13 +741,13 @@ main {
 .private-lock-note span {
   color: var(--red);
   font-family: var(--latin);
-  font-size: 0.62rem;
+  font-size: var(--type-micro);
   letter-spacing: 0.14em;
 }
 .private-lock-note small {
   color: var(--ink-faint);
   font-family: var(--serif);
-  font-size: 0.68rem;
+  font-size: var(--type-micro);
   line-height: 1.6;
 }
 
@@ -814,7 +814,7 @@ main {
   color: var(--red);
   background: transparent;
   font-family: var(--serif);
-  font-size: 0.72rem;
+  font-size: var(--type-micro);
   letter-spacing: 0.1em;
   line-height: 1;
   cursor: pointer;
@@ -854,7 +854,7 @@ main {
 .share-link__title {
   flex: 0 0 100%; /* 独占一行,标题过长自动换行 */
   font-family: var(--serif);
-  font-size: 0.72rem;
+  font-size: var(--type-micro);
   letter-spacing: 0.02em;
   line-height: 1.6;
   overflow-wrap: anywhere;
@@ -865,7 +865,7 @@ main {
   max-width: 100%;
   overflow-wrap: anywhere;
   font-family: var(--latin);
-  font-size: 0.66rem;
+  font-size: var(--type-micro);
   letter-spacing: 0.02em;
   line-height: 1.6;
   color: var(--ink);
@@ -880,7 +880,7 @@ main {
   color: var(--red);
   background: transparent;
   font-family: var(--serif);
-  font-size: 0.66rem;
+  font-size: var(--type-micro);
   letter-spacing: 0.08em;
   line-height: 1;
   cursor: pointer;
@@ -898,7 +898,7 @@ main {
 .share-link__hint {
   color: var(--ink-faint);
   font-family: var(--serif);
-  font-size: 0.66rem;
+  font-size: var(--type-micro);
 }
 
 .article-margin dl {
@@ -921,7 +921,7 @@ main {
   border-left: 2px solid var(--red);
   color: var(--ink-faint);
   font-family: var(--serif);
-  font-size: 0.7rem;
+  font-size: var(--type-micro);
   line-height: 1.8;
 }
 
@@ -941,7 +941,7 @@ main {
   margin-bottom: 38px;
   color: var(--ink-faint);
   font-family: var(--latin);
-  font-size: 0.58rem;
+  font-size: var(--type-micro);
   letter-spacing: 0.16em;
 }
 
@@ -969,7 +969,7 @@ main {
   flex-wrap: wrap;
   gap: 20px;
   color: var(--ink-faint);
-  font-size: 0.64rem;
+  font-size: var(--type-meta);
   letter-spacing: 0.1em;
 }
 
@@ -990,7 +990,7 @@ main {
 }
 
 .article-ornament span {
-  font-size: 0.72rem;
+  font-size: 0.72rem; /* 装饰性小字：仅编号/水印/装饰字符，不承载可读信息 */
 }
 
 .prose {
@@ -1208,7 +1208,7 @@ main {
 .song-player__time {
   color: var(--ink-faint);
   font-family: "Cascadia Code", Consolas, monospace;
-  font-size: 0.72rem;
+  font-size: var(--type-micro);
   font-variant-numeric: tabular-nums;
 }
 
@@ -1330,14 +1330,14 @@ main {
 .article-endmark span {
   color: var(--red);
   font-family: var(--latin);
-  font-size: 0.7rem;
+  font-size: 0.7rem; /* 装饰性小字：仅编号/水印/装饰字符，不承载可读信息 */
   letter-spacing: 0.3em;
 }
 
 .article-endmark p {
   margin: 8px 0 0;
   font-family: var(--serif);
-  font-size: 0.68rem;
+  font-size: var(--type-micro);
   letter-spacing: 0.12em;
 }
 
@@ -1484,7 +1484,7 @@ main {
   margin-bottom: 10px;
   color: var(--red);
   font-family: var(--sans);
-  font-size: 0.6rem;
+  font-size: var(--type-micro);
   letter-spacing: 0.18em;
 }
 
@@ -1597,7 +1597,7 @@ main {
 
 .gallery-tab-index {
   color: var(--red);
-  font-size: 0.72rem;
+  font-size: var(--type-micro);
 }
 
 .gallery-tab b {
@@ -1607,7 +1607,7 @@ main {
   place-items: center;
   border: 1px solid var(--rule);
   color: var(--ink-faint);
-  font-size: 0.66rem;
+  font-size: var(--type-micro);
 }
 
 .gallery-panel[hidden] {
@@ -1629,7 +1629,7 @@ main {
   padding: 0 22px 0 0;
   color: var(--ink-faint);
   font-family: var(--latin);
-  font-size: 0.56rem;
+  font-size: var(--type-micro);
   letter-spacing: 0.14em;
 }
 
@@ -1663,7 +1663,7 @@ main {
   border-right: 1px solid var(--rule-strong);
   color: var(--ink-faint);
   font-family: var(--serif);
-  font-size: 0.72rem;
+  font-size: var(--type-micro);
   letter-spacing: 0;
   background: transparent;
   cursor: pointer;
@@ -1706,7 +1706,7 @@ main {
   border-right: 1px solid var(--rule-strong);
   color: var(--ink-faint);
   font-family: var(--serif);
-  font-size: 0.72rem;
+  font-size: var(--type-micro);
   letter-spacing: 0;
   background: transparent;
   cursor: pointer;
@@ -1745,7 +1745,7 @@ main {
   border-bottom: 1px solid var(--rule);
   color: var(--ink-faint);
   font-family: var(--latin);
-  font-size: 0.56rem;
+  font-size: var(--type-micro);
   letter-spacing: 0.15em;
 }
 
@@ -1765,7 +1765,7 @@ main {
   padding: 0 22px 0 0;
   color: var(--ink-faint);
   font-family: var(--latin);
-  font-size: 0.56rem;
+  font-size: var(--type-micro);
   letter-spacing: 0.14em;
 }
 
@@ -1794,7 +1794,7 @@ main {
   border-right: 1px solid var(--rule-strong);
   color: var(--ink-faint);
   font-family: var(--serif);
-  font-size: 0.72rem;
+  font-size: var(--type-micro);
   letter-spacing: 0;
   background: transparent;
   cursor: pointer;
@@ -1873,7 +1873,7 @@ main {
 .gallery-pager-status {
   color: var(--ink-faint);
   font-family: var(--latin);
-  font-size: 0.62rem;
+  font-size: var(--type-micro);
   letter-spacing: 0.16em;
 }
 
@@ -1921,7 +1921,7 @@ main {
   flex: 0 0 auto;
   color: var(--red);
   font-family: var(--serif);
-  font-size: 0.72rem;
+  font-size: var(--type-micro);
   letter-spacing: 0;
   white-space: nowrap;
 }
@@ -1965,7 +1965,7 @@ main {
   bottom: 8px;
   width: 28px;
   height: 28px;
-  font-size: 0.72rem;
+  font-size: var(--type-micro);
 }
 
 .gallery-album-thumb-index {
@@ -1980,7 +1980,7 @@ main {
   border: 1px solid rgba(242, 234, 216, 0.72);
   color: #f4ead6;
   font-family: var(--latin);
-  font-size: 0.52rem;
+  font-size: 0.52rem; /* 装饰性小字：仅编号/水印/装饰字符，不承载可读信息 */
   background: rgba(28, 23, 18, 0.76);
   backdrop-filter: blur(5px);
 }
@@ -1999,7 +1999,7 @@ main {
   padding: 0 0 14px;
   color: var(--ink-faint);
   font-family: var(--latin);
-  font-size: 0.56rem;
+  font-size: var(--type-micro);
   letter-spacing: 0.15em;
 }
 
@@ -2195,7 +2195,7 @@ main {
   min-width: 34px;
   height: 27px;
   padding-inline: 7px;
-  font-size: 0.58rem;
+  font-size: 0.58rem; /* 装饰性小字：仅编号/水印/装饰字符，不承载可读信息 */
 }
 
 .gallery-image-expand {
@@ -2220,7 +2220,7 @@ main {
 .gallery-card-label {
   color: var(--ink-faint);
   font-family: var(--latin);
-  font-size: 0.54rem;
+  font-size: var(--type-micro);
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
@@ -2246,7 +2246,7 @@ main {
   display: inline;
   color: var(--red);
   font-family: var(--serif);
-  font-size: 0.7rem;
+  font-size: var(--type-micro);
   letter-spacing: 0;
 }
 
@@ -2304,7 +2304,7 @@ main {
   border-top: 1px solid var(--rule-strong);
   color: var(--ink-faint);
   font-family: var(--latin);
-  font-size: 0.55rem;
+  font-size: var(--type-micro);
   letter-spacing: 0.14em;
 }
 
@@ -2392,7 +2392,7 @@ main {
   border-top: 1px solid var(--rule-strong);
   background: var(--paper-light);
   font-family: var(--sans);
-  font-size: 0.72rem;
+  font-size: var(--type-micro);
 }
 
 .gallery-viewer-tools button {
@@ -2400,7 +2400,7 @@ main {
   color: var(--ink);
   background: transparent;
   font-family: var(--sans);
-  font-size: 0.72rem;
+  font-size: var(--type-micro);
   padding: 5px 14px;
   cursor: pointer;
   transition: color 0.15s ease, border-color 0.15s ease;
@@ -3235,7 +3235,7 @@ main {
     content: ' [' attr(href) ']';
     color: var(--ink-faint);
     font-family: Georgia, 'Times New Roman', serif;
-    font-size: 0.7em;
+    font-size: 0.7em; /* 装饰性小字：仅编号/水印/装饰字符，不承载可读信息 */
     word-break: break-all;
   }
 

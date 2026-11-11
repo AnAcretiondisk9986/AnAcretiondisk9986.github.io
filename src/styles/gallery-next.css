@@ -74,12 +74,14 @@
     display: inline-flex;
     align-items: baseline;
     gap: 8px;
-    min-height: 0;
-    padding: 0 0 var(--p-sp-3);
+    /* 触控热区 ≥44×44：排版权重不变，只在文字上方补足高度，
+       2px 铜线下划线仍贴住盒子底边。 */
+    min-height: 44px;
+    padding: 4px 0 var(--p-sp-3);
     border: 0;
     border-radius: 0;
     background: transparent;
-    color: var(--c-ink-3);
+    color: var(--c-ink-2);
     font-family: var(--font-body);
     font-size: var(--type-meta);
     letter-spacing: .02em;
@@ -96,7 +98,7 @@
     background: transparent;
     transition: background-color var(--p-dur-fast) var(--p-ease);
   }
-  .gallery-tab:hover { color: var(--c-ink-2); background: transparent; }
+  .gallery-tab:hover { color: var(--c-ink); background: transparent; }
   .gallery-tab[aria-selected='true'] { color: var(--c-ink); background: transparent; box-shadow: none; }
   .gallery-tab[aria-selected='true']::after { background: var(--c-metal); }
   .gallery-tab-index {
@@ -113,7 +115,7 @@
     padding: 0;
     border: 0;
     background: transparent;
-    color: var(--c-ink-3);
+    color: var(--c-ink-2);
     font-family: var(--font-mono);
     font-size: var(--type-micro);
     font-weight: 400;
@@ -143,7 +145,7 @@
     align-items: baseline;
     gap: 10px;
     padding: 0;
-    color: var(--c-ink-3);
+    color: var(--c-ink-2);
     font-family: var(--font-mono);
     font-size: var(--type-micro);
     letter-spacing: .14em;
@@ -172,14 +174,15 @@
     align-items: center;
     justify-content: center;
     gap: 6px;
-    min-width: 0;
-    min-height: 0;
-    padding: 2px 0 6px;
+    /* 触控热区 ≥44×44：下划线落在盒子底边，文字居中 */
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0;
     border: 0;
     border-bottom: 1px solid transparent;
     border-radius: 0;
     background: transparent;
-    color: var(--c-ink-3);
+    color: var(--c-ink-2);
     font-family: var(--font-body);
     font-size: var(--type-meta);
     letter-spacing: .02em;
@@ -214,7 +217,7 @@
     gap: var(--p-sp-4);
     padding: var(--p-sp-3) 0;
     border-bottom: 1px solid var(--c-rule);
-    color: var(--c-ink-3);
+    color: var(--c-ink-2);
     font-family: var(--font-body);
     font-size: var(--type-micro);
     letter-spacing: .06em;
@@ -229,6 +232,11 @@
     border-bottom: 1px solid var(--c-rule);
     border-radius: 0;
     background: transparent;
+    /* 试过 content-visibility:auto + contain-intrinsic-size:auto 460px，
+       实测反而更差，故不采用：44 个图集真实高度合计 15027px，而含
+       contain-intrinsic-size 的估算把容器撑到 21239px（+41%），
+       滚动条随滚动来回跳；布局耗时 125ms → 325ms；首屏图片请求 47 → 47 不变。
+       长列表的真正解药是现有的「9 张/页」客户端分页 + 缩略图懒加载。 */
   }
   .gallery-album-head {
     align-items: baseline;
@@ -248,7 +256,11 @@
     display: inline-flex;
     align-items: center;
     gap: 5px;
-    color: var(--c-ink-3);
+    /* 触控热区 ≥44×44：仍与标题基线对齐，盒子向下长高 */
+    align-self: center;
+    min-width: 44px;
+    min-height: 44px;
+    color: var(--c-ink-2);
     font-family: var(--font-body);
     font-size: var(--type-micro);
     letter-spacing: .04em;
@@ -271,9 +283,11 @@
     column-gap: var(--p-sp-5);
     padding: var(--p-sp-6) 0 var(--p-sp-7);
   }
+  /* 列数随可见列宽收敛：卡片宽度始终落在 ~300–350px，
+     避免旧断点下 1024（2 列 ≈467px）比 1440（3 列 ≈433px）更松散。 */
   @media (min-width: 700px) { .gallery-masonry { column-count: 2; } }
-  @media (min-width: 1100px) { .gallery-masonry { column-count: 3; } }
-  @media (min-width: 1500px) { .gallery-masonry { column-count: 4; } }
+  @media (min-width: 1000px) { .gallery-masonry { column-count: 3; } }
+  @media (min-width: 1360px) { .gallery-masonry { column-count: 4; } }
 
   .gallery-card {
     display: inline-block;
@@ -368,7 +382,7 @@
   .gallery-card-meta { padding: var(--p-sp-3) 0 0; }
   .gallery-card-meta > div { gap: var(--p-sp-3); margin-bottom: 6px; }
   .gallery-card-label {
-    color: var(--c-ink-3);
+    color: var(--c-ink-2);
     font-family: var(--font-mono);
     font-size: var(--type-micro);
     letter-spacing: .1em;
@@ -394,7 +408,13 @@
     text-wrap: pretty;
   }
   .gallery-card-meta a {
-    color: var(--c-ink-3);
+    /* 卡片里的「阅读《…》/来源」原本只有 16px 行高，
+       改成 44px 高的可点块，触控热区达标且不改变排版顺序。 */
+    display: inline-flex;
+    align-items: center;
+    min-width: 44px;
+    min-height: 44px;
+    color: var(--c-ink-2);
     font-family: var(--font-body);
     font-size: var(--type-micro);
     letter-spacing: .04em;
@@ -412,18 +432,18 @@
     border-top: 1px solid var(--c-rule);
   }
   .gallery-pager button {
-    min-width: 34px;
-    height: 34px;
+    min-width: 44px;
+    height: 44px;
     border: 1px solid var(--c-rule);
     border-radius: var(--r-frame);
     color: var(--c-ink-2);
     background: transparent;
     transition: color var(--p-dur-fast) var(--p-ease), border-color var(--p-dur-fast) var(--p-ease);
   }
-  .gallery-pager button svg { width: 12px; height: 12px; }
+  .gallery-pager button svg { width: 14px; height: 14px; }
   .gallery-pager button:hover { border-color: var(--c-metal); color: var(--c-metal); }
   .gallery-pager-status {
-    color: var(--c-ink-3);
+    color: var(--c-ink-2);
     font-family: var(--font-mono);
     font-size: var(--type-micro);
     letter-spacing: .12em;
@@ -447,7 +467,7 @@
     flex-wrap: wrap;
     gap: var(--p-sp-2) var(--p-sp-4);
     padding: 0 0 var(--p-sp-3);
-    color: var(--c-ink-3);
+    color: var(--c-ink-2);
     font-family: var(--font-body);
     font-size: var(--type-micro);
     letter-spacing: .06em;
@@ -592,15 +612,15 @@
   .gallery-billboard-slide.is-active img { filter: saturate(1) contrast(1); }
 
   .gallery-billboard-arrow {
-    width: 34px;
-    height: 34px;
+    width: 44px;
+    height: 44px;
     border: 1px solid var(--c-rule-strong);
     border-radius: var(--r-frame);
     color: var(--c-ink);
     background: var(--c-paper-raised);
     backdrop-filter: none;
   }
-  .gallery-billboard-arrow svg { width: 12px; height: 12px; }
+  .gallery-billboard-arrow svg { width: 14px; height: 14px; }
   .gallery-billboard-arrow:hover {
     color: var(--c-metal);
     border-color: var(--c-metal);
@@ -609,29 +629,50 @@
   .gallery-billboard-dots {
     display: flex;
     flex-wrap: nowrap;
+    /* safe center：内容比容器宽时退化为从起点排，而不是把两端都溢出到不可滚动区。
+       99×24=2376px 塞进 350px 时，普通 center 会让前 42 个点 offsetLeft 为负、
+       scrollLeft 被钳在 0，那些点永远点不到，连 aria-current 的当前点也在屏外。 */
     justify-content: center;
-    gap: 5px;
+    justify-content: safe center;
+    gap: 0;
     padding-top: var(--p-sp-3);
     overflow-x: auto;
     scrollbar-width: none;
     overscroll-behavior-x: contain;
   }
   .gallery-billboard-dots::-webkit-scrollbar { display: none; }
+  /* 99 个指示点：视觉仍是 5–6px 的小方块，但每个热区是 24×44 且彼此相接
+     （间距为 0，热区不重叠）。上一张/下一张箭头承担主要的翻页操作。 */
   .gallery-billboard-dots button {
+    position: relative;
     flex: 0 0 auto;
-    width: 5px;
-    height: 5px;
+    width: 24px;
+    height: 44px;
     padding: 0;
-    border: 1px solid var(--c-rule-strong);
+    border: 0;
     border-radius: 0;
     background: transparent;
     cursor: pointer;
-    transition: border-color var(--p-dur-fast) var(--p-ease), background-color var(--p-dur-fast) var(--p-ease);
   }
-  .gallery-billboard-dots button:hover { border-color: var(--c-metal); }
-  .gallery-billboard-dots button[aria-current='true'] {
+  .gallery-billboard-dots button::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    width: 6px;
+    height: 6px;
+    margin: auto;
+    border: 1px solid var(--c-rule-strong);
+    /* 非激活点给一点填充：原来是 5×5 透明描边，深色底上几乎看不见，
+       24×44 的透明热区就成了「盲点」。 */
+    background: var(--c-rule-strong);
+    opacity: .55;
+    transition: border-color var(--p-dur-fast) var(--p-ease), background-color var(--p-dur-fast) var(--p-ease), opacity var(--p-dur-fast) var(--p-ease);
+  }
+  .gallery-billboard-dots button:hover::before { border-color: var(--c-metal); opacity: .85; }
+  .gallery-billboard-dots button[aria-current='true']::before {
     border-color: var(--c-metal);
     background: var(--c-metal);
+    opacity: 1;
   }
 
   /* ===== 空态 / 页脚 ===== */
@@ -646,7 +687,7 @@
     letter-spacing: 0;
   }
   .gallery-empty span {
-    color: var(--c-ink-3);
+    color: var(--c-ink-2);
     font-family: var(--font-body);
     font-size: var(--type-meta);
     letter-spacing: 0;
@@ -654,7 +695,7 @@
   .gallery-footer {
     padding: var(--p-sp-4) 0;
     border-top: 1px solid var(--c-rule);
-    color: var(--c-ink-3);
+    color: var(--c-ink-2);
     font-family: var(--font-body);
     font-size: var(--type-micro);
     letter-spacing: .06em;
@@ -669,6 +710,8 @@
     color: var(--c-ink);
     background: var(--c-paper-raised);
     box-shadow: none;
+    /* 灯箱内的滚轮不再滚动到背后的文档 */
+    overscroll-behavior: contain;
   }
   .gallery-viewer::backdrop {
     background: rgb(0 0 0 / .82);
@@ -677,8 +720,8 @@
   .gallery-viewer-close {
     top: 12px;
     right: 12px;
-    width: 34px;
-    height: 34px;
+    width: 44px;
+    height: 44px;
     border: 1px solid var(--c-rule-strong);
     border-radius: var(--r-frame);
     color: var(--c-ink);
@@ -687,7 +730,7 @@
     transition: color var(--p-dur-fast) var(--p-ease), border-color var(--p-dur-fast) var(--p-ease);
   }
   .gallery-viewer-close:hover { color: var(--c-metal); border-color: var(--c-metal); }
-  .gallery-viewer-close svg { width: 14px; height: 14px; }
+  .gallery-viewer-close svg { width: 16px; height: 16px; }
   .gallery-viewer-media { background: var(--c-paper-sunken); }
   .gallery-viewer-tools {
     gap: var(--p-sp-4);
@@ -707,16 +750,27 @@
     font-family: var(--font-body);
     font-size: var(--type-micro);
     letter-spacing: .04em;
-    padding: 4px 10px;
+    /* 触控热区 ≥44×44 */
+    min-width: 44px;
+    min-height: 44px;
+    padding: 4px 12px;
   }
   .gallery-viewer-tools button:hover { border-color: var(--c-metal); color: var(--c-metal); }
   .gallery-viewer-zoom {
-    color: var(--c-ink-3);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--c-ink-2);
     font-family: var(--font-body);
     font-size: var(--type-micro);
     letter-spacing: .04em;
   }
-  .gallery-viewer-zoom input[type='range'] { accent-color: var(--c-metal); }
+  .gallery-viewer-zoom input[type='range'] {
+    /* 滑杆本体很细，但输入框给足 44px 高，整条都能点/拖 */
+    height: 44px;
+    min-width: 120px;
+    accent-color: var(--c-metal);
+  }
   .gallery-viewer-zoom b {
     color: var(--c-ink);
     font-family: var(--font-mono);
@@ -746,20 +800,28 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    color: var(--c-ink-3);
+    /* 触控热区 ≥44×44 */
+    min-width: 44px;
+    min-height: 44px;
+    color: var(--c-ink-2);
     font-family: var(--font-body);
     font-size: var(--type-micro);
     letter-spacing: .04em;
   }
   .gallery-viewer-meta a:hover { color: var(--c-metal); }
-  .gallery-viewer-meta a svg { width: 11px; height: 11px; }
+  .gallery-viewer-meta a svg { width: 12px; height: 12px; }
+  /* 上面的 display:inline-flex 会盖掉浏览器对 [hidden] 的 display:none，
+     导致没有来源的图片也显示一个指向 "#" 的「查看来源」。 */
+  .gallery-viewer-meta a[hidden] { display: none; }
 
   /* 脚本构建的卡片带三份主题文案；服务端 ThemeCopy 已收敛为一份，隐藏多余副本 */
   .gallery-shell [data-theme-copy-cyanotype] { display: none; }
 
   /* ===== 响应式 ===== */
+  /* 页头统计行：字号/间距沿用 folio，只把颜色提到二级墨色（12–14px 不该用三级墨） */
+  .gallery-shell .f-opener__meta { color: var(--c-ink-2); }
   @media (max-width: 1100px) {
-    .gallery-album-grid { grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); }
+    .gallery-album-grid { grid-template-columns: repeat(auto-fill, minmax(152px, 1fr)); }
   }
   @media (max-width: 720px) {
     .f-gallery-head { padding-block: var(--p-sp-7) var(--p-sp-5); }
@@ -772,9 +834,11 @@
     }
     .gallery-index-bar { flex-direction: column; gap: 2px; }
     .gallery-masonry { padding-block: var(--p-sp-5) var(--p-sp-6); }
-    .gallery-album-grid { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); }
+    .gallery-album-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
     .gallery-album-thumb img { height: 104px; }
-    .gallery-viewer {
+    /* 只在打开时铺满视口。缺 [open] 限定的话，关着的 <dialog> 也会被排版成
+       390×844 的绝对定位盒子留在文档末尾，把手机端文档高度多撑一整屏（实测 +844px）。 */
+    .gallery-viewer[open] {
       display: flex;
       align-items: center;
       justify-content: center;

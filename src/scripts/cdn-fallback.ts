@@ -51,11 +51,16 @@ const bindCdnFallback = () => {
       return;
     }
 
-    // 2) 镜像用尽：若是缩略图，回退到原始封面（由 PostCatalog 写入 data-original-cover）
-    const fallback = img.dataset.originalCover;
-    if (fallback && img.getAttribute('src') !== fallback) {
+    // 2) 镜像用尽：若是缩略图，回退到原始封面
+    //    · 文章卡片由 PostCatalog 写入 data-original-cover；
+    //    · 图志页的图版由 gallery-page.ts 写入 data-gallery-fallback（主图 URL）。
+    //    只认 480px 缩略图路径（image/thumb/…）：换成其它图（比如原图本身）时不该再降级。
+    const fallback = img.dataset.originalCover || img.dataset.galleryFallback;
+    const isThumb = /\/image\/thumb\//.test(url.pathname);
+    if (fallback && isThumb && img.getAttribute('src') !== fallback) {
       exhausted.add(img);
       img.removeAttribute('data-original-cover');
+      img.removeAttribute('data-gallery-fallback');
       img.src = fallback;
     }
   }, true);

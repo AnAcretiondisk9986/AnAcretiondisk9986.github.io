@@ -446,5 +446,17 @@ const fmtMinute = (d: Date) => {
       .article-header h1 { font-size: 25pt; }
     }
   }
+
+  /* 焦点环：故意写在 @layer 之外。
+     两个原因：上面 `.access-gate input:focus-visible{outline:none}` 把表单的
+     焦点提示完全去掉了；而 .f-btn 只拿到 folio-ui 里 `--c-accent` 的 1px 环，
+     实测在纸色上对比度 1.00（等于没有）。统一换成墨色 2px，明暗都 ≥3:1。 */
+  .article-shell :is(a, button, input, textarea, select, summary):focus-visible {
+    outline: 2px solid var(--c-ink);
+    outline-offset: 3px;
+  }
+  .article-shell .access-gate input:focus-visible {
+    border-bottom-color: var(--c-ink);
+  }
 </style>
 

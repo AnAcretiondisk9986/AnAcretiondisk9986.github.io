@@ -28,6 +28,10 @@
   .f-opener {
     padding-block: var(--p-sp-8) var(--p-sp-6);
     text-align: center;
+    /* 页头是 sticky 且在文档流内，本身已占位，无需再让出高度
+       （让出整段页头会让刊头上方多出 70+px 空白）。
+       这里只给锚点跳转留出安全距离，避免 #catalog-search 一类落点被吸顶条压住。 */
+    scroll-margin-top: calc(var(--f-header-bar, 0px) + 8px);
   }
   .f-opener__title {
     margin: var(--p-sp-5) 0 0;
@@ -477,8 +481,22 @@
   .catalog-list[data-catalog-layout='cards'] .catalog-content h2 {
     font-size: var(--type-item);
   }
+  /* 注意：-webkit-line-clamp 只有在 display:-webkit-box + -webkit-box-orient:vertical
+     同时成立时才生效；此前这里只写了 line-clamp，实际由父级 overflow:hidden 硬切，
+     中英混排时会把半行字直接切掉且没有省略号。这里补齐 box 显示。 */
   .catalog-list[data-catalog-layout='cards'] .catalog-content > p {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
     -webkit-line-clamp: 3;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+  }
+  .catalog-list[data-catalog-layout='cards'] .catalog-content h2 {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    overflow-wrap: anywhere;
   }
   .catalog-list[data-catalog-layout='cards'] .catalog-open {
     justify-self: start;
@@ -967,7 +985,11 @@
       align-self: end;
     }
     .catalog-list[data-catalog-layout='rows'] .catalog-content > p {
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
       -webkit-line-clamp: 2;
+      overflow: hidden;
+      overflow-wrap: anywhere;
     }
   }
 

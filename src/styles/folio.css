@@ -30,7 +30,13 @@
     --p-ink-0: #12100d;
     --p-ink-1: #2b2721;
     --p-ink-2: #4d463c;
-    --p-ink-3: #7c7366;
+    /* 2026-11 对比度校正：三级墨色原本 #7c7366 在纸底(#ede8de)只有 3.82:1，
+       低于 WCAG AA 的 4.5，而它被大量用在 12–14px 的正文/元信息上。
+       现加深到 #6c6459 → 纸底 4.77:1、纸面 5.26:1（正文/元信息一律用它）。 */
+    --p-ink-3: #6c6459;
+    /* 真正的"装饰墨"：只允许用于纯装饰（编号、分隔符、水印）或 ≥24px 的大字。
+       对纸底 3.22:1 —— 低于 4.5，所以绝不承载可读信息。 */
+    --p-ink-4: #897f71;
     --p-copper-700: #6e5a32;
     --p-copper-500: #9a7b40;
     --p-copper-300: #c4a566;
@@ -48,7 +54,9 @@
     --p-night-3: #0e1a1e;
     --p-night-ink: #e8e3d9;
     --p-night-ink-2: #b9b2a5;
-    --p-night-ink-3: #8b8477;
+    /* 深色主题同理：亮墨在"最亮的深色底"上比值最低，以 paper-raised 为准 */
+    --p-night-ink-3: #8d8678;
+    --p-night-ink-4: #6f6a5f;  /* 仅装饰 */
 
     --p-sp-1: 4px;  --p-sp-2: 8px;  --p-sp-3: 12px; --p-sp-4: 16px;
     --p-sp-5: 24px; --p-sp-6: 32px; --p-sp-7: 48px; --p-sp-8: 64px;
@@ -66,9 +74,13 @@
     --c-ink: var(--p-ink-0);
     --c-ink-2: var(--p-ink-2);
     --c-ink-3: var(--p-ink-3);
+    /* 装饰墨：只用于 ≥24px 大字或纯装饰（编号/分隔符/水印），不得承载可读信息 */
+    --c-ink-4: var(--p-ink-4);
     --c-rule: rgba(18, 16, 13, .15);
     --c-rule-strong: rgba(18, 16, 13, .34);
     --c-metal: var(--p-copper-500);
+    /* 金属色当文字用时的实心版本（--c-metal 可能是半透明边框色，不能直接当 color） */
+    --c-metal-ink: var(--p-copper-700);
     --c-accent: var(--p-blue-600);
     --c-accent-2: var(--p-red-600);
 
@@ -158,9 +170,10 @@
      全主题只有一种强调色（普鲁士蓝），--c-metal 也指向蓝，旧的铜色线饰因此统一变蓝。 */
   :root[data-visual-theme="cyanotype"][data-theme="light"] {
     --c-paper: #f3f4f1; --c-paper-raised: #fafbf9; --c-paper-sunken: #e7eae8;
-    --c-ink: #142037; --c-ink-2: #46526a; --c-ink-3: #75809a;
+    /* ink-3 #75809a 在纸底仅 3.26:1（最亮点 4.5 都到不了）→ 加深到 #5d657b（纸底 5.26 / 凹底 4.80） */
+    --c-ink: #142037; --c-ink-2: #3f495f; --c-ink-3: #5d657b; --c-ink-4: #76819c;
     --c-rule: rgba(20, 32, 55, .13); --c-rule-strong: rgba(20, 32, 55, .28);
-    --c-metal: #2a5aa8; --c-accent: #1f4f9e; --c-accent-2: #1f4f9e;
+    --c-metal: #2a5aa8; --c-metal-ink: #2a5aa8; --c-accent: #1f4f9e; --c-accent-2: #1f4f9e;
     --c-plate: #1f4f9e; --c-plate-deep: #12305f;
     --r-frame: 0; --frame-color: var(--c-rule-strong);
     --deco-crops: 0; --deco-fleuron: 0; --deco-double: 0;
@@ -168,9 +181,9 @@
   }
   :root[data-visual-theme="cyanotype"][data-theme="dark"] {
     --c-paper: #0f1d33; --c-paper-raised: #142540; --c-paper-sunken: #0b1628;
-    --c-ink: #e7ecf3; --c-ink-2: #b4c0d3; --c-ink-3: #8393ad;
+    --c-ink: #e7ecf3; --c-ink-2: #b4c0d3; --c-ink-3: #8190aa; --c-ink-4: #677388;
     --c-rule: rgba(231, 236, 243, .13); --c-rule-strong: rgba(231, 236, 243, .28);
-    --c-metal: #94b4e8; --c-accent: #a9c4ef; --c-accent-2: #a9c4ef;
+    --c-metal: #94b4e8; --c-metal-ink: #94b4e8; --c-accent: #a9c4ef; --c-accent-2: #a9c4ef;
     --c-plate: #1d4a94; --c-plate-deep: #0a1a33;
     --frame-color: var(--c-rule-strong);
     --deco-crops: 0; --deco-fleuron: 0; --deco-double: 0;
@@ -180,18 +193,19 @@
   /* ── 行迹 trace：纸本的去装饰变体（单线框、无线饰） ── */
   :root[data-visual-theme="trace"][data-theme="light"] {
     --c-paper: #f6f3ec; --c-paper-raised: #fcfaf6; --c-paper-sunken: #ede8de;
-    --c-ink: #12100d; --c-ink-2: #4d463c; --c-ink-3: #7c7366;
+    --c-ink: #12100d; --c-ink-2: #4d463c; --c-ink-3: #6c6459; --c-ink-4: #897f71;
     --c-rule: rgba(18, 16, 13, .15); --c-rule-strong: rgba(18, 16, 13, .34);
-    --c-metal: var(--c-rule-strong); --c-accent: var(--p-cyan-500); --c-accent-2: #6b7b7e;
+    /* --c-metal 是半透明线饰色，当文字用会掉到 2.2:1；文字一律走 --c-metal-ink */
+    --c-metal: var(--c-rule-strong); --c-metal-ink: #6b6459; --c-accent: var(--p-cyan-500); --c-accent-2: #6b7b7e;
     --r-frame: 0; --frame-color: var(--c-rule);
     --deco-crops: 0; --deco-fleuron: 0; --deco-double: 0;
     --texture-op: .028;
   }
   :root[data-visual-theme="trace"][data-theme="dark"] {
     --c-paper: #12151a; --c-paper-raised: #171b21; --c-paper-sunken: #0a0c10;
-    --c-ink: #e8e3d9; --c-ink-2: #b9b2a5; --c-ink-3: #8b8477;
+    --c-ink: #e8e3d9; --c-ink-2: #b9b2a5; --c-ink-3: #8d8678; --c-ink-4: #6f6a5f;
     --c-rule: rgba(232, 227, 217, .16); --c-rule-strong: rgba(232, 227, 217, .34);
-    --c-metal: var(--c-rule-strong); --c-accent: #5cc4da; --c-accent-2: #93a2a5;
+    --c-metal: var(--c-rule-strong); --c-metal-ink: #8d8678; --c-accent: #5cc4da; --c-accent-2: #93a2a5;
     --frame-color: var(--c-rule);
     --deco-crops: 0; --deco-fleuron: 0; --deco-double: 0;
     --texture-op: .04;
@@ -200,9 +214,9 @@
   /* ── 静澈 still：玻璃面板 / 哑光平涂 / 8px 圆角 ── */
   :root[data-visual-theme="still"][data-theme="light"] {
     --c-paper: #f5f3ef; --c-paper-raised: #fbfaf7; --c-paper-sunken: #eae6de;
-    --c-ink: #1b2422; --c-ink-2: #46524f; --c-ink-3: #7b8683;
+    --c-ink: #1b2422; --c-ink-2: #3f4947; --c-ink-3: #5d6664; --c-ink-4: #77817f;
     --c-rule: rgba(27, 36, 34, .16); --c-rule-strong: rgba(27, 36, 34, .38);
-    --c-metal: #8f9c94; --c-accent: var(--p-green-700); --c-accent-2: #b86a52;
+    --c-metal: #8f9c94; --c-metal-ink: #5d6664; --c-accent: var(--p-green-700); --c-accent-2: #b86a52;
     --r-frame: 8px; --frame-color: rgba(27, 36, 34, .10);
     --frame-bg: rgba(255, 255, 255, .58);
     --frame-shadow: 0 16px 44px -26px rgba(27, 36, 34, .18);
@@ -212,9 +226,9 @@
   }
   :root[data-visual-theme="still"][data-theme="dark"] {
     --c-paper: #0f1513; --c-paper-raised: #17201d; --c-paper-sunken: #0b100e;
-    --c-ink: #e4ede9; --c-ink-2: #b3c0bb; --c-ink-3: #86948f;
+    --c-ink: #e4ede9; --c-ink-2: #b3c0bb; --c-ink-3: #7f8c87; --c-ink-4: #656f6b;
     --c-rule: rgba(228, 237, 233, .15); --c-rule-strong: rgba(228, 237, 233, .32);
-    --c-metal: #a8b5ac; --c-accent: #7fb0a2; --c-accent-2: #cf8a70;
+    --c-metal: #a8b5ac; --c-metal-ink: #a8b5ac; --c-accent: #7fb0a2; --c-accent-2: #cf8a70;
     --frame-color: rgba(228, 237, 233, .12);
     --frame-bg: rgba(255, 255, 255, .055);
     --frame-shadow: 0 20px 56px -30px rgba(0, 0, 0, .65);
@@ -226,9 +240,9 @@
   /* ── 流形 fluid：展柜的流动材质（斜向渐变玻璃 / 16px 圆角） ── */
   :root[data-visual-theme="fluid"][data-theme="light"] {
     --c-paper: #f6f4ef; --c-paper-raised: #fdfbf7; --c-paper-sunken: #ebe7df;
-    --c-ink: #16241f; --c-ink-2: #445754; --c-ink-3: #7d8e8a;
+    --c-ink: #16241f; --c-ink-2: #3b4b49; --c-ink-3: #5b6764; --c-ink-4: #748380;
     --c-rule: rgba(22, 36, 31, .16); --c-rule-strong: rgba(22, 36, 31, .38);
-    --c-metal: #b08a52; --c-accent: var(--p-teal-600); --c-accent-2: var(--p-amber-600);
+    --c-metal: #b08a52; --c-metal-ink: #7a5b2d; --c-accent: var(--p-teal-600); --c-accent-2: var(--p-amber-600);
     --r-frame: 16px; --frame-color: rgba(22, 36, 31, .10);
     --frame-bg: linear-gradient(148deg, rgba(255, 255, 255, .80) 0%, rgba(246, 244, 239, .40) 58%, rgba(255, 255, 255, .58) 100%);
     --frame-shadow: 0 30px 84px -30px rgba(22, 36, 31, .30);
@@ -238,7 +252,7 @@
   }
   :root[data-visual-theme="fluid"][data-theme="dark"] {
     --c-paper: #0e1a1e; --c-paper-raised: #142228; --c-paper-sunken: #081113;
-    --c-ink: #e6f3f0; --c-ink-2: #adc8c6; --c-ink-3: #7e9c9c;
+    --c-ink: #e6f3f0; --c-ink-2: #adc8c6; --c-ink-3: #74908f; --c-ink-4: #5c7372;
     --c-rule: rgba(230, 243, 240, .16); --c-rule-strong: rgba(230, 243, 240, .36);
     --c-metal: #c8a878; --c-accent: #6fc4d8; --c-accent-2: #d9a862;
     --frame-color: rgba(230, 243, 240, .14);
@@ -252,9 +266,9 @@
   /* ── 留白 minimal：无框、零装饰、无衬线标题、更安静的展示字 ── */
   :root[data-visual-theme="minimal"][data-theme="light"] {
     --c-paper: #ffffff; --c-paper-raised: #ffffff; --c-paper-sunken: #f4f4f2;
-    --c-ink: #141414; --c-ink-2: #4a4a4a; --c-ink-3: #86868a;
+    --c-ink: #141414; --c-ink-2: #4a4a4a; --c-ink-3: #6c6c6f; --c-ink-4: #88888d;
     --c-rule: rgba(20, 20, 20, .12); --c-rule-strong: rgba(20, 20, 20, .40);
-    --c-metal: var(--c-rule-strong); --c-accent: var(--p-brick-600); --c-accent-2: #52705b;
+    --c-metal: var(--c-rule-strong); --c-metal-ink: #6c6c6f; --c-accent: var(--p-brick-600); --c-accent-2: #52705b;
     --r-frame: 4px; --frame-w: 0; --frame-color: transparent;
     --deco-crops: 0; --deco-fleuron: 0; --deco-double: 0;
     --texture-op: 0;
@@ -264,9 +278,9 @@
   }
   :root[data-visual-theme="minimal"][data-theme="dark"] {
     --c-paper: #0d0d0e; --c-paper-raised: #141415; --c-paper-sunken: #050506;
-    --c-ink: #f0eee9; --c-ink-2: #b8b6b0; --c-ink-3: #85837e;
+    --c-ink: #f0eee9; --c-ink-2: #b8b6b0; --c-ink-3: #83827d; --c-ink-4: #676662;
     --c-rule: rgba(240, 238, 233, .14); --c-rule-strong: rgba(240, 238, 233, .40);
-    --c-metal: var(--c-rule-strong); --c-accent: #d9705f; --c-accent-2: #7fa892;
+    --c-metal: var(--c-rule-strong); --c-metal-ink: #83827d; --c-accent: #d9705f; --c-accent-2: #7fa892;
     --r-frame: 4px; --frame-w: 0; --frame-color: transparent;
     --deco-crops: 0; --deco-fleuron: 0; --deco-double: 0;
     --texture-op: 0;

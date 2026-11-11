@@ -203,8 +203,8 @@ function linkify(text = '') {
       align-items: center;
       justify-content: center;
       gap: 8px;
-      min-height: 0;
-      padding: 8px 14px;
+      min-height: 44px;
+      padding: 8px 16px;
       border: 1px solid var(--c-rule);
       border-radius: var(--r-frame);
       background: transparent;
@@ -232,7 +232,7 @@ function linkify(text = '') {
       color: var(--c-paper);
     }
     .appearance-selector button:focus-visible {
-      outline: 1px solid var(--c-metal);
+      outline: 2px solid var(--c-ink);
       outline-offset: 2px;
     }
     .appearance-swatch {
@@ -262,6 +262,26 @@ function linkify(text = '') {
     @media (prefers-reduced-motion: reduce) {
       .appearance-selector button { transition: none; }
     }
+  }
+</style>
+
+<style is:global>
+  /* 焦点环跟在 @layer 之外：theme-shared.css 里未分层的
+     `.appearance-selector button:focus-visible`（outline: var(--red)）会压过
+     上面 components 层里的规则，实测环对比度只有 2.07(light)/1.50(dark)。
+     用墨色 + 2px，明暗两套主题都 ≥3:1。 */
+  .dossier .appearance-selector button:focus-visible {
+    outline: 2px solid var(--c-ink);
+    outline-offset: 2px;
+  }
+
+  /* 关于页小字下限：dt / 序号 / 说明 small 原本 9.6–10.88px 且偏淡，
+     这里兜一层（与 cyanotype.css 中的主题化版本并行生效）。 */
+  .dossier .identity-table dt,
+  .dossier .interest-index li > span,
+  .dossier .private-channel__copy small {
+    font-size: max(0.75rem, var(--type-micro));
+    color: var(--c-ink-2);
   }
 </style>
 
