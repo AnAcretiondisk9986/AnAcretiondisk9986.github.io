@@ -1,6 +1,7 @@
 ---
 import Icon from '../components/Icon.astro';
 import BaseLayout from '../layouts/BaseLayout.astro';
+import '../styles/about.css';
 import ThemeCopy from '../components/ThemeCopy.astro';
 import WordCloud from '../components/WordCloud.astro';
 import { safeLink } from '../lib/safe-link';
@@ -60,23 +61,39 @@ function linkify(text = '') {
       </div>
       <div class="appearance-selector" role="group" aria-label="界面主题">
         <button type="button" data-visual-theme-option="cyanotype" aria-pressed="false">
-          <span class="appearance-swatch appearance-swatch--cyanotype" aria-hidden="true"></span><span>蓝晒</span>
+          <span class="appearance-selector__row">
+            <span class="appearance-swatch appearance-swatch--cyanotype" aria-hidden="true"></span>
+            <span>蓝晒</span>
+          </span>
+          <span class="appearance-selector__note">Cyanotype · 铁盐</span>
         </button>
         <button type="button" data-visual-theme-option="still" aria-pressed="false">
-          <span class="appearance-swatch appearance-swatch--still" aria-hidden="true"></span>
-          <span>静澈</span>
+          <span class="appearance-selector__row">
+            <span class="appearance-swatch appearance-swatch--still" aria-hidden="true"></span>
+            <span>静澈</span>
+          </span>
+          <span class="appearance-selector__note">Still · 清寂</span>
         </button>
         <button type="button" data-visual-theme-option="fluid" aria-pressed="false">
-          <span class="appearance-swatch appearance-swatch--fluid" aria-hidden="true"></span>
-          <span>流形</span>
+          <span class="appearance-selector__row">
+            <span class="appearance-swatch appearance-swatch--fluid" aria-hidden="true"></span>
+            <span>流形</span>
+          </span>
+          <span class="appearance-selector__note">Fluid · 流形</span>
         </button>
         <button type="button" data-visual-theme-option="minimal" aria-pressed="false">
-          <span class="appearance-swatch appearance-swatch--minimal" aria-hidden="true"></span>
-          <span>留白</span>
+          <span class="appearance-selector__row">
+            <span class="appearance-swatch appearance-swatch--minimal" aria-hidden="true"></span>
+            <span>留白</span>
+          </span>
+          <span class="appearance-selector__note">Minimal · 铅印</span>
         </button>
         <button type="button" data-visual-theme-option="trace" aria-pressed="false">
-          <span class="appearance-swatch appearance-swatch--trace" aria-hidden="true"></span>
-          <span>行迹</span>
+          <span class="appearance-selector__row">
+            <span class="appearance-swatch appearance-swatch--trace" aria-hidden="true"></span>
+            <span>行迹</span>
+          </span>
+          <span class="appearance-selector__note">Trace · 荧光</span>
         </button>
       </div>
       <span class="sr-only" data-visual-theme-status aria-live="polite"></span>
@@ -148,142 +165,6 @@ function linkify(text = '') {
     </div>
   </article>
 </BaseLayout>
-
-<style>
-  /* 词云区块默认宽度取 --content-width(相对 main 再减 32px),直接嵌进个人档案会
-     比上方正文左右各内缩 16px;这里让它铺满档案内容宽度,与标题左对齐。
-     用 .dossier 前缀提高特异性,避免被各视觉主题对 .wordcloud-section 的规则盖掉。 */
-  .dossier .dossier-wordcloud :global(.wordcloud-section) {
-    width: auto;
-    margin-inline: 0;
-  }
-</style>
-
-<style is:global>
-  /* ── 关于页：外观选择器 ──
-     .dossier 的版式（页头 / 头像 + 正文 measure / 兴趣索引 / 词云）统一放在
-     src/styles/pages-next.css 的 components 层；这里只保留本页独有的外观设置块。 */
-  @layer components {
-    .appearance-settings {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      gap: var(--p-sp-4) var(--p-sp-6);
-      margin-block: var(--p-sp-6);
-      padding-block: var(--p-sp-5);
-      border-block: 1px solid var(--c-rule);
-    }
-    .appearance-heading .eyebrow {
-      font-family: var(--font-mono);
-      font-size: var(--type-micro);
-      letter-spacing: var(--track-caps);
-      text-transform: uppercase;
-      color: var(--c-metal);
-    }
-    .appearance-heading h2 {
-      margin: 6px 0 0;
-      font-family: var(--font-display);
-      font-size: var(--type-h2);
-      font-weight: 600;
-      line-height: var(--lh-title);
-    }
-    .appearance-selector {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--p-sp-2);
-      margin-top: 0;
-      padding: 0;
-      border: 0;
-      border-radius: 0;
-      background: transparent;
-    }
-    .appearance-selector button {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      min-height: 44px;
-      padding: 8px 16px;
-      border: 1px solid var(--c-rule);
-      border-radius: var(--r-frame);
-      background: transparent;
-      box-shadow: none;
-      color: var(--c-ink-2);
-      font-family: var(--font-body);
-      font-size: var(--type-micro);
-      font-weight: 400;
-      letter-spacing: .1em;
-      transition: border-color var(--p-dur-fast) var(--p-ease),
-                  background var(--p-dur-fast) var(--p-ease),
-                  color var(--p-dur-fast) var(--p-ease);
-    }
-    .appearance-selector button:hover {
-      border-color: var(--c-metal);
-      color: var(--c-ink);
-    }
-    .appearance-selector button:active {
-      transform: none;
-    }
-    .appearance-selector button[aria-pressed='true'] {
-      border-color: var(--c-ink);
-      background: var(--c-ink);
-      box-shadow: none;
-      color: var(--c-paper);
-    }
-    .appearance-selector button:focus-visible {
-      outline: 2px solid var(--c-ink);
-      outline-offset: 2px;
-    }
-    .appearance-swatch {
-      width: 11px;
-      height: 11px;
-      flex: none;
-      border: 1px solid var(--c-rule-strong);
-      border-radius: 50%;
-      box-shadow: none;
-    }
-    /* 色点表示各主题的原型强调色；L2 语义色只描述"当前"主题，
-       跨主题预览只能用 L1 原始色 + color-mix 压向纸面，保持与旧值几乎一致。 */
-    .appearance-swatch--cyanotype { background: color-mix(in oklab, var(--p-blue-600) 94%, var(--c-ink)); }
-    .appearance-swatch--still { background: color-mix(in oklab, var(--p-green-700) 94%, var(--c-ink)); }
-    .appearance-swatch--fluid { background: color-mix(in oklab, var(--p-teal-600) 94%, var(--c-ink)); }
-    .appearance-swatch--minimal { background: color-mix(in oklab, var(--p-brick-600) 94%, var(--c-ink)); }
-    .appearance-swatch--trace { background: color-mix(in oklab, var(--p-cyan-500) 94%, var(--c-ink)); }
-
-    @media (max-width: 860px) {
-      .appearance-settings {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: var(--p-sp-4);
-      }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      .appearance-selector button { transition: none; }
-    }
-  }
-</style>
-
-<style is:global>
-  /* 焦点环跟在 @layer 之外：theme-shared.css 里未分层的
-     `.appearance-selector button:focus-visible`（outline: var(--red)）会压过
-     上面 components 层里的规则，实测环对比度只有 2.07(light)/1.50(dark)。
-     用墨色 + 2px，明暗两套主题都 ≥3:1。 */
-  .dossier .appearance-selector button:focus-visible {
-    outline: 2px solid var(--c-ink);
-    outline-offset: 2px;
-  }
-
-  /* 关于页小字下限：dt / 序号 / 说明 small 原本 9.6–10.88px 且偏淡，
-     这里兜一层（与 cyanotype.css 中的主题化版本并行生效）。 */
-  .dossier .identity-table dt,
-  .dossier .interest-index li > span,
-  .dossier .private-channel__copy small {
-    font-size: max(0.75rem, var(--type-micro));
-    color: var(--c-ink-2);
-  }
-</style>
 
 <script>
   /**

@@ -282,6 +282,8 @@
     transition:
       opacity var(--motion-duration-medium) var(--motion-ease-out) var(--rv-delay, 0ms),
       translate var(--motion-duration-medium) var(--motion-ease-out) var(--rv-delay, 0ms),
+      transform var(--p-dur-base) var(--p-ease-spring),
+      box-shadow var(--p-dur-base) var(--p-ease),
       border-color .25s var(--p-ease);
   }
   html.fx [data-reveal="card"].is-in,
@@ -717,7 +719,7 @@
        （单列布局 ≤860px 不适用，那里的空白来自 padding，见 7.5）。           */
     @media (min-width: 861px) {
       .f-about .f-about__grid {
-        align-items: end;
+        align-items: center;
       }
     }
 

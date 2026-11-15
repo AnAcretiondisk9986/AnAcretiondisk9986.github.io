@@ -1,6 +1,7 @@
 ---
 import Icon from '../components/Icon.astro';
 import BaseLayout from '../layouts/BaseLayout.astro';
+import '../styles/about.css';
 ---
 
 <BaseLayout title="页面未找到">
@@ -21,35 +22,3 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     </div>
   </section>
 </BaseLayout>
-
-<style is:global>
-  @layer components {
-    .f-notfound { padding-block: var(--p-sp-8) var(--p-sp-8); display: grid; justify-items: center; }
-    /* 404 的框不要跟着 1637px 的壳层无限拉宽：单独限一个"一页纸"的宽度 */
-    .f-notfound .f-frame {
-      width: min(100%, 58rem);
-      margin-inline: auto;
-      padding-block: clamp(3.5rem, 9vw, 8rem);
-    }
-    .f-frame--plain { padding-block: clamp(56px, 12vw, 140px); }
-    /* 返回入口：主行动按钮略加粗，保证 390px 下也一眼看到 */
-    .f-notfound .f-actions { margin-top: var(--p-sp-5); gap: var(--p-sp-3); }
-    .f-notfound .f-btn { min-height: 44px; padding-inline: var(--p-sp-5); }
-    .f-notfound__title {
-      font-family: var(--hero-font);
-      font-size: var(--type-display);
-      font-weight: var(--hero-weight);
-      font-synthesis-weight: none;
-      letter-spacing: var(--track-cjk-display);
-      line-height: var(--lh-display);
-      margin-top: var(--p-sp-5);
-    }
-  }
-  /* 焦点环故意放在 @layer 之外：需要压过 folio/theme-shared 的默认环。
-     默认环用 --c-accent，部分主题下与纸色过近（实测 1.00，等于没有），
-     这里改用墨色，明暗两套主题都能拿到 ≥3:1。 */
-  .f-notfound :is(a, button, input):focus-visible {
-    outline: 2px solid var(--c-ink);
-    outline-offset: 3px;
-  }
-</style>

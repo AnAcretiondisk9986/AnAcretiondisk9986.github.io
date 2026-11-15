@@ -1,0 +1,479 @@
+/* ============================================================================
+   ACRETION ATELIER v5 — Design Token & Theme System
+   Layer cascade (declared once here, loaded first in BaseLayout):
+   reset → tokens → legacy → base → layout → components → theme → print
+   ============================================================================ */
+@layer reset, tokens, legacy, base, layout, components, theme, print;
+
+/* ── Self-hosted variable fonts (zero third-party font network latency) ── */
+@font-face { font-family: "Anthropic Serif"; src: url("/fonts/anthropic-serif.woff2") format("woff2"); font-weight: 300 800; font-style: normal; font-display: swap; }
+@font-face { font-family: "Anthropic Serif"; src: url("/fonts/anthropic-serif-italic.woff2") format("woff2"); font-weight: 300 800; font-style: italic; font-display: swap; }
+@font-face { font-family: "Anthropic Sans"; src: url("/fonts/anthropic-sans.woff2") format("woff2"); font-weight: 300 800; font-style: normal; font-display: swap; }
+@font-face { font-family: "Anthropic Sans"; src: url("/fonts/anthropic-sans-italic.woff2") format("woff2"); font-weight: 300 800; font-style: italic; font-display: swap; }
+@font-face { font-family: "Anthropic Mono"; src: url("/fonts/anthropic-mono.woff2") format("woff2"); font-weight: 300 800; font-style: normal; font-display: swap; }
+@font-face { font-family: "Anthropic Mono"; src: url("/fonts/anthropic-mono-italic.woff2") format("woff2"); font-weight: 300 800; font-style: italic; font-display: swap; }
+@font-face { font-family: "JetBrains Mono"; src: url("/fonts/jetbrains-mono.woff2") format("woff2"); font-weight: 300 800; font-style: normal; font-display: swap; }
+
+@layer tokens {
+  /* ── L1 Primitives ── */
+  :root {
+    --p-paper-0: #fcfaf6;
+    --p-paper-1: #f6f3ec;
+    --p-paper-2: #ede8de;
+    --p-paper-3: #e2dbce;
+    --p-ink-0: #12100d;
+    --p-ink-1: #2b2721;
+    --p-ink-2: #484137;
+    --p-ink-3: #645c51;
+    --p-ink-4: #897f71;
+
+    --p-copper-700: #6e5529;
+    --p-copper-500: #9a7b40;
+    --p-copper-300: #d0b272;
+    --p-blue-600: #1c4da8;
+    --p-red-600: #b83d2e;
+    --p-green-700: #25584a;
+    --p-teal-600: #0c7e99;
+    --p-amber-600: #bd8330;
+    --p-brick-600: #b63b30;
+    --p-cyan-500: #0e86a0;
+
+    --p-sp-1: 4px;  --p-sp-2: 8px;  --p-sp-3: 12px; --p-sp-4: 16px;
+    --p-sp-5: 24px; --p-sp-6: 32px; --p-sp-7: 48px; --p-sp-8: 64px;
+    --p-sp-9: 88px; --p-sp-10: 120px;
+
+    --p-r-0: 0;
+    --p-r-1: 3px;
+    --p-r-2: 8px;
+    --p-r-3: 14px;
+    --p-r-pill: 999px;
+
+    --p-dur-fast: 140ms;
+    --p-dur-base: 240ms;
+    --p-dur-slow: 460ms;
+    --p-ease: cubic-bezier(.22, .61, .24, 1);
+    --p-ease-spring: cubic-bezier(.16, 1, .3, 1);
+  }
+
+  /* ── L2 Semantic Defaults (Cyanotype Light) ── */
+  :root {
+    --c-paper: #f3f5f8;
+    --c-paper-raised: #fafbfd;
+    --c-paper-sunken: #e7ebf1;
+    --c-surface-glass: rgba(250, 251, 253, .78);
+
+    --c-ink: #111b2e;
+    --c-ink-2: #354156;
+    --c-ink-3: #515c73;
+    --c-ink-4: #76819c;
+
+    --c-rule: rgba(17, 27, 46, .11);
+    --c-rule-strong: rgba(17, 27, 46, .24);
+
+    --c-accent: #1848a0;
+    --c-accent-2: #0f7a96;
+    --c-accent-soft: #e3eaf6;
+    --c-metal: #2959a8;
+    --c-metal-ink: #204c96;
+    --c-plate: #164498;
+    --c-plate-deep: #0e2859;
+
+    --c-glow: rgba(24, 72, 160, .09);
+    --c-glow-2: rgba(15, 122, 150, .07);
+    --c-selection: rgba(24, 72, 160, .18);
+
+    --c-media-ink: #12100d;
+    --c-media-paper: #fafbfd;
+    --c-media-metal-on-light: var(--p-copper-700);
+    --c-media-metal-on-dark: var(--p-copper-300);
+
+    --r-frame: 4px;
+    --r-card: 10px;
+    --frame-w: 1px;
+    --frame-color: var(--c-rule);
+    --frame-bg: var(--c-paper-raised);
+    --frame-shadow: 0 1px 2px rgba(17, 27, 46, .04), 0 8px 24px -12px rgba(17, 27, 46, .10);
+    --frame-lift: 0 12px 34px -14px rgba(17, 27, 46, .18), 0 2px 6px rgba(17, 27, 46, .06);
+    --frame-backdrop: none;
+    --deco-crops: 0;
+    --deco-fleuron: 0;
+    --deco-double: 0;
+    --texture-op: .016;
+
+    /* Font slots */
+    --latin-display: "Anthropic Serif";
+    --latin-body: "Anthropic Sans";
+    --cjk-display: "Noto Serif SC";
+    --cjk-body: "Noto Sans SC";
+
+    --stack-display: var(--latin-display), var(--cjk-display), "Source Han Serif SC", "Songti SC", "STSong", Georgia, serif;
+    --stack-body: var(--latin-body), var(--cjk-body), "Source Han Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    --stack-mono: "Anthropic Mono", "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+
+    --font-display: var(--stack-display);
+    --font-body: var(--stack-body);
+    --font-mono: var(--stack-mono);
+
+    --hero-font: var(--latin-display), var(--cjk-display), "Source Han Serif SC", "Songti SC", serif;
+    --hero-weight: 700;
+
+    /* Type scale */
+    --type-display: clamp(2.35rem, 3.6vw + 1rem, 4.6rem);
+    --type-title: clamp(2rem, 1.7vw + 1.3rem, 3.1rem);
+    --type-h2: clamp(1.5rem, 1vw + 1.15rem, 2.15rem);
+    --type-h3: clamp(1.25rem, .45vw + 1.1rem, 1.55rem);
+    --type-item: 1.25rem;
+    --type-reading: clamp(1.0625rem, .18vw + 1.01rem, 1.1875rem);
+    --type-lead: 1.125rem;
+    --type-body: 1rem;
+    --type-sm: .9375rem;
+    --type-meta: .8125rem;
+    --type-micro: .75rem;
+
+    --lh-display: 1.08;
+    --lh-title: 1.22;
+    --lh-snug: 1.44;
+    --lh-body: 1.78;
+    --lh-reading: 1.84;
+
+    --track-caps: .16em;
+    --track-latin-display: -.028em;
+    --track-cjk-display: .01em;
+
+    --shell-max: 1680px;
+    --content-max: 1440px;
+    --page-gutter: clamp(18px, 3.2vw, 60px);
+    --content-w: var(--content-max);
+    --measure: 39em;
+  }
+
+  /* ==========================================================================
+     L3 VISUAL THEMES (5 curated aesthetics × Light & Dark)
+     Every theme explicitly sets both [data-theme="light"] & [data-theme="dark"]
+     with verified WCAG AA contrast for ink, ink-2, ink-3, and accents.
+     ========================================================================== */
+
+  /* ── 1. 蓝晒 cyanotype · 暗房印相 ── */
+  :root[data-visual-theme="cyanotype"][data-theme="light"] {
+    --c-paper: #f3f5f8;
+    --c-paper-raised: #fafbfd;
+    --c-paper-sunken: #e7ebf1;
+    --c-surface-glass: rgba(250, 251, 253, .82);
+    --c-ink: #111b2e;
+    --c-ink-2: #354156;
+    --c-ink-3: #505c73;
+    --c-ink-4: #75819b;
+    --c-rule: rgba(17, 27, 46, .11);
+    --c-rule-strong: rgba(17, 27, 46, .24);
+    --c-accent: #1848a0;
+    --c-accent-2: #0f7a96;
+    --c-accent-soft: #e3eaf6;
+    --c-metal: #2959a8;
+    --c-metal-ink: #204c96;
+    --c-plate: #164498;
+    --c-plate-deep: #0e2859;
+    --c-glow: rgba(24, 72, 160, .09);
+    --c-glow-2: rgba(15, 122, 150, .07);
+    --c-selection: rgba(24, 72, 160, .18);
+    --r-frame: 4px;
+    --r-card: 10px;
+    --frame-bg: var(--c-paper-raised);
+    --frame-color: var(--c-rule);
+    --frame-shadow: 0 1px 2px rgba(17, 27, 46, .04), 0 10px 26px -14px rgba(17, 27, 46, .11);
+    --frame-lift: 0 14px 36px -14px rgba(22, 68, 152, .20), 0 2px 8px rgba(17, 27, 46, .06);
+    --frame-backdrop: none;
+    --deco-crops: 0;
+    --deco-fleuron: 0;
+    --deco-double: 0;
+    --texture-op: .016;
+  }
+  :root[data-visual-theme="cyanotype"][data-theme="dark"] {
+    --c-paper: #0b1424;
+    --c-paper-raised: #111e35;
+    --c-paper-sunken: #070e1b;
+    --c-surface-glass: rgba(14, 25, 45, .82);
+    --c-ink: #eaf0f8;
+    --c-ink-2: #b9c7db;
+    --c-ink-3: #8a9bb5;
+    --c-ink-4: #62728b;
+    --c-rule: rgba(210, 226, 250, .12);
+    --c-rule-strong: rgba(210, 226, 250, .26);
+    --c-accent: #82b2ff;
+    --c-accent-2: #5ed4ea;
+    --c-accent-soft: #1f3251;
+    --c-metal: #8ab4f8;
+    --c-metal-ink: #9cc1ff;
+    --c-plate: #1b4a96;
+    --c-plate-deep: #091833;
+    --c-glow: rgba(77, 140, 255, .15);
+    --c-glow-2: rgba(56, 200, 232, .10);
+    --c-selection: rgba(130, 178, 255, .26);
+    --r-frame: 4px;
+    --r-card: 10px;
+    --frame-bg: linear-gradient(165deg, rgba(22, 37, 65, .92), rgba(14, 26, 48, .96));
+    --frame-color: rgba(160, 194, 248, .15);
+    --frame-shadow: 0 12px 32px -16px rgba(0, 0, 0, .65), inset 0 1px 0 rgba(255, 255, 255, .06);
+    --frame-lift: 0 18px 44px -16px rgba(0, 0, 0, .78), 0 0 0 1px rgba(130, 178, 255, .28);
+    --frame-backdrop: none;
+    --deco-crops: 0;
+    --deco-fleuron: 0;
+    --deco-double: 0;
+    --texture-op: .028;
+  }
+
+  /* ── 2. 静澈 still · 霜玉玻璃 ── */
+  :root[data-visual-theme="still"][data-theme="light"] {
+    --c-paper: #f1f4f2;
+    --c-paper-raised: #f9fbfa;
+    --c-paper-sunken: #e4eae6;
+    --c-surface-glass: rgba(249, 251, 250, .74);
+    --c-ink: #16221f;
+    --c-ink-2: #394844;
+    --c-ink-3: #546460;
+    --c-ink-4: #768580;
+    --c-rule: rgba(22, 34, 31, .11);
+    --c-rule-strong: rgba(22, 34, 31, .26);
+    --c-accent: #1f5c4e;
+    --c-accent-2: #c44136;
+    --c-accent-soft: #e3ebe8;
+    --c-metal: #607b72;
+    --c-metal-ink: #37574d;
+    --c-glow: rgba(31, 92, 78, .09);
+    --c-glow-2: rgba(196, 65, 54, .06);
+    --c-selection: rgba(31, 92, 78, .18);
+    --r-frame: 10px;
+    --r-card: 14px;
+    --frame-bg: rgba(255, 255, 255, .74);
+    --frame-color: rgba(22, 34, 31, .10);
+    --frame-shadow: 0 12px 32px -18px rgba(22, 34, 31, .16), inset 0 1px 0 rgba(255, 255, 255, .75);
+    --frame-lift: 0 18px 42px -16px rgba(22, 34, 31, .22), inset 0 1px 0 rgba(255, 255, 255, .9);
+    --frame-backdrop: blur(12px);
+    --deco-crops: 0;
+    --deco-fleuron: 1;
+    --deco-double: 0;
+    --texture-op: .014;
+  }
+  :root[data-visual-theme="still"][data-theme="dark"] {
+    --c-paper: #0d1513;
+    --c-paper-raised: #14201c;
+    --c-paper-sunken: #080e0d;
+    --c-surface-glass: rgba(16, 26, 23, .76);
+    --c-ink: #e6efeb;
+    --c-ink-2: #b4c6bf;
+    --c-ink-3: #83978f;
+    --c-ink-4: #60726b;
+    --c-rule: rgba(224, 238, 232, .12);
+    --c-rule-strong: rgba(224, 238, 232, .26);
+    --c-accent: #7ecbb4;
+    --c-accent-2: #e08670;
+    --c-accent-soft: #21362f;
+    --c-metal: #9bb8ad;
+    --c-metal-ink: #a8c7bb;
+    --c-glow: rgba(126, 203, 180, .13);
+    --c-glow-2: rgba(224, 134, 112, .08);
+    --c-selection: rgba(126, 203, 180, .25);
+    --r-frame: 10px;
+    --r-card: 14px;
+    --frame-bg: rgba(255, 255, 255, .048);
+    --frame-color: rgba(224, 238, 232, .12);
+    --frame-shadow: 0 16px 44px -22px rgba(0, 0, 0, .72), inset 0 1px 0 rgba(255, 255, 255, .07);
+    --frame-lift: 0 22px 54px -20px rgba(0, 0, 0, .82), 0 0 0 1px rgba(126, 203, 180, .26);
+    --frame-backdrop: blur(12px);
+    --deco-crops: 0;
+    --deco-fleuron: 1;
+    --deco-double: 0;
+    --texture-op: .025;
+  }
+
+  /* ── 3. 流形 fluid · 琥珀流光 ── */
+  :root[data-visual-theme="fluid"][data-theme="light"] {
+    --c-paper: #f5f4ef;
+    --c-paper-raised: #fdfcf9;
+    --c-paper-sunken: #e9e6dc;
+    --c-surface-glass: rgba(253, 252, 249, .76);
+    --c-ink: #13221f;
+    --c-ink-2: #364744;
+    --c-ink-3: #526360;
+    --c-ink-4: #728380;
+    --c-rule: rgba(19, 34, 31, .11);
+    --c-rule-strong: rgba(19, 34, 31, .25);
+    --c-accent: #007d9c;
+    --c-accent-2: #b8761c;
+    --c-accent-soft: #e2eef0;
+    --c-metal: #a57c3d;
+    --c-metal-ink: #735322;
+    --c-glow: rgba(0, 147, 184, .11);
+    --c-glow-2: rgba(219, 160, 77, .12);
+    --c-selection: rgba(0, 147, 184, .20);
+    --r-frame: 14px;
+    --r-card: 18px;
+    --frame-bg: linear-gradient(148deg, rgba(255, 255, 255, .86) 0%, rgba(246, 244, 239, .54) 58%, rgba(255, 255, 255, .72) 100%);
+    --frame-color: rgba(19, 34, 31, .10);
+    --frame-shadow: 0 20px 56px -26px rgba(19, 34, 31, .22), inset 0 1px 0 rgba(255, 255, 255, .85);
+    --frame-lift: 0 24px 64px -22px rgba(0, 125, 156, .24), inset 0 1px 0 rgba(255, 255, 255, .95);
+    --frame-backdrop: blur(18px) saturate(118%);
+    --deco-crops: 0;
+    --deco-fleuron: 1;
+    --deco-double: 0;
+    --texture-op: .012;
+  }
+  :root[data-visual-theme="fluid"][data-theme="dark"] {
+    --c-paper: #091519;
+    --c-paper-raised: #0f2127;
+    --c-paper-sunken: #050d10;
+    --c-surface-glass: rgba(13, 30, 36, .76);
+    --c-ink: #e6f2f0;
+    --c-ink-2: #b3c9c5;
+    --c-ink-3: #839e99;
+    --c-ink-4: #5d7671;
+    --c-rule: rgba(220, 242, 238, .12);
+    --c-rule-strong: rgba(220, 242, 238, .26);
+    --c-accent: #42d4eb;
+    --c-accent-2: #f0b35c;
+    --c-accent-soft: #173841;
+    --c-metal: #e3b060;
+    --c-metal-ink: #eec078;
+    --c-glow: rgba(66, 212, 235, .14);
+    --c-glow-2: rgba(240, 179, 92, .11);
+    --c-selection: rgba(66, 212, 235, .26);
+    --r-frame: 14px;
+    --r-card: 18px;
+    --frame-bg: linear-gradient(148deg, rgba(255, 255, 255, .075) 0%, rgba(16, 40, 48, .55) 60%, rgba(255, 255, 255, .04) 100%);
+    --frame-color: rgba(170, 232, 240, .14);
+    --frame-shadow: 0 24px 60px -28px rgba(0, 0, 0, .78), inset 0 1px 0 rgba(255, 255, 255, .10);
+    --frame-lift: 0 28px 70px -24px rgba(0, 0, 0, .86), 0 0 0 1px rgba(66, 212, 235, .30);
+    --frame-backdrop: blur(18px) saturate(122%);
+    --deco-crops: 0;
+    --deco-fleuron: 1;
+    --deco-double: 0;
+    --texture-op: .024;
+  }
+
+  /* ── 4. 留白 minimal · 瑞士刊本 ── */
+  :root[data-visual-theme="minimal"][data-theme="light"] {
+    --c-paper: #faf9f7;
+    --c-paper-raised: #ffffff;
+    --c-paper-sunken: #f0eeea;
+    --c-surface-glass: rgba(255, 255, 255, .86);
+    --c-ink: #111110;
+    --c-ink-2: #3b3a37;
+    --c-ink-3: #5b5954;
+    --c-ink-4: #7e7b74;
+    --c-rule: rgba(17, 17, 16, .10);
+    --c-rule-strong: rgba(17, 17, 16, .24);
+    --c-accent: #c2392e;
+    --c-accent-2: #111110;
+    --c-accent-soft: #f7e8e6;
+    --c-metal: #77746d;
+    --c-metal-ink: #4a4842;
+    --c-glow: rgba(194, 57, 46, .06);
+    --c-glow-2: rgba(17, 17, 16, .03);
+    --c-selection: rgba(194, 57, 46, .16);
+    --r-frame: 2px;
+    --r-card: 4px;
+    --frame-bg: var(--c-paper-raised);
+    --frame-color: var(--c-rule);
+    --frame-shadow: 0 1px 3px rgba(0, 0, 0, .04), 0 8px 24px -16px rgba(0, 0, 0, .10);
+    --frame-lift: 0 12px 32px -14px rgba(0, 0, 0, .15), 0 0 0 1px var(--c-rule-strong);
+    --frame-backdrop: none;
+    --deco-crops: 0;
+    --deco-fleuron: 0;
+    --deco-double: 0;
+    --texture-op: 0;
+  }
+  :root[data-visual-theme="minimal"][data-theme="dark"] {
+    --c-paper: #101012;
+    --c-paper-raised: #17171a;
+    --c-paper-sunken: #0a0a0c;
+    --c-surface-glass: rgba(20, 20, 24, .85);
+    --c-ink: #f0eee9;
+    --c-ink-2: #c2bfb8;
+    --c-ink-3: #928e86;
+    --c-ink-4: #6a6761;
+    --c-rule: rgba(240, 238, 233, .12);
+    --c-rule-strong: rgba(240, 238, 233, .26);
+    --c-accent: #f07163;
+    --c-accent-2: #f0eee9;
+    --c-accent-soft: #312223;
+    --c-metal: #a29e95;
+    --c-metal-ink: #b8b3aa;
+    --c-glow: rgba(240, 113, 99, .10);
+    --c-glow-2: rgba(255, 255, 255, .04);
+    --c-selection: rgba(240, 113, 99, .26);
+    --r-frame: 2px;
+    --r-card: 4px;
+    --frame-bg: var(--c-paper-raised);
+    --frame-color: var(--c-rule);
+    --frame-shadow: 0 10px 28px -16px rgba(0, 0, 0, .7);
+    --frame-lift: 0 16px 40px -14px rgba(0, 0, 0, .82), 0 0 0 1px rgba(240, 113, 99, .32);
+    --frame-backdrop: none;
+    --deco-crops: 0;
+    --deco-fleuron: 0;
+    --deco-double: 0;
+    --texture-op: 0;
+  }
+
+  /* ── 5. 行迹 trace · 手稿档案 ── */
+  :root[data-visual-theme="trace"][data-theme="light"] {
+    --c-paper: #f5f0e5;
+    --c-paper-raised: #fbf8f1;
+    --c-paper-sunken: #eae2d2;
+    --c-surface-glass: rgba(251, 248, 241, .82);
+    --c-ink: #171410;
+    --c-ink-2: #463f35;
+    --c-ink-3: #61584b;
+    --c-ink-4: #877c6c;
+    --c-rule: rgba(23, 20, 16, .13);
+    --c-rule-strong: rgba(23, 20, 16, .28);
+    --c-accent: #0d7a94;
+    --c-accent-2: #8d6b32;
+    --c-accent-soft: #e1ebec;
+    --c-metal: #947238;
+    --c-metal-ink: #6b5022;
+    --c-glow: rgba(148, 114, 56, .10);
+    --c-glow-2: rgba(13, 122, 148, .07);
+    --c-selection: rgba(13, 122, 148, .18);
+    --r-frame: 3px;
+    --r-card: 8px;
+    --frame-bg: var(--c-paper-raised);
+    --frame-color: var(--c-rule);
+    --frame-shadow: 0 2px 4px rgba(23, 20, 16, .04), 0 10px 24px -14px rgba(23, 20, 16, .12);
+    --frame-lift: 0 14px 34px -14px rgba(23, 20, 16, .20), 0 0 0 1px color-mix(in oklab, var(--c-metal) 40%, transparent);
+    --frame-backdrop: none;
+    --deco-crops: 1;
+    --deco-fleuron: 1;
+    --deco-double: 1;
+    --texture-op: .028;
+  }
+  :root[data-visual-theme="trace"][data-theme="dark"] {
+    --c-paper: #121417;
+    --c-paper-raised: #191c21;
+    --c-paper-sunken: #0b0c0f;
+    --c-surface-glass: rgba(22, 25, 30, .82);
+    --c-ink: #ebe5d8;
+    --c-ink-2: #bfb6a6;
+    --c-ink-3: #908879;
+    --c-ink-4: #6d665a;
+    --c-rule: rgba(235, 229, 216, .13);
+    --c-rule-strong: rgba(235, 229, 216, .28);
+    --c-accent: #5ec5dc;
+    --c-accent-2: #d6b267;
+    --c-accent-soft: #21333b;
+    --c-metal: #d0ad66;
+    --c-metal-ink: #dfc07f;
+    --c-glow: rgba(208, 173, 102, .12);
+    --c-glow-2: rgba(94, 197, 220, .09);
+    --c-selection: rgba(94, 197, 220, .25);
+    --r-frame: 3px;
+    --r-card: 8px;
+    --frame-bg: var(--c-paper-raised);
+    --frame-color: var(--c-rule);
+    --frame-shadow: 0 12px 32px -18px rgba(0, 0, 0, .72);
+    --frame-lift: 0 18px 44px -16px rgba(0, 0, 0, .84), 0 0 0 1px color-mix(in oklab, var(--c-metal) 36%, transparent);
+    --frame-backdrop: none;
+    --deco-crops: 1;
+    --deco-fleuron: 1;
+    --deco-double: 1;
+    --texture-op: .036;
+  }
+}

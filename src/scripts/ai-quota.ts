@@ -573,7 +573,8 @@ function setConn(root: HTMLElement, mode: 'pending' | 'live' | 'offline' | 'empt
 function setBusy(root: HTMLElement, busy: boolean): void {
   const button = qs<HTMLButtonElement>(root, '[data-aq-refresh]');
   if (button) {
-    button.disabled = busy;
+    if (busy) button.setAttribute('aria-disabled', 'true');
+    else button.removeAttribute('aria-disabled');
     button.setAttribute('aria-busy', String(busy));
   }
 }
@@ -1033,7 +1034,9 @@ async function manualRefresh(): Promise<void> {
 }
 
 function bind(root: HTMLElement): void {
-  qs<HTMLButtonElement>(root, '[data-aq-refresh]')?.addEventListener('click', () => {
+  const refreshBtn = qs<HTMLButtonElement>(root, '[data-aq-refresh]');
+  refreshBtn?.addEventListener('click', () => {
+    if (refreshBtn.getAttribute('aria-disabled') === 'true') return;
     void manualRefresh();
   });
   root.querySelectorAll<HTMLButtonElement>('[data-aq-retry]').forEach((button) => {

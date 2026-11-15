@@ -9,7 +9,8 @@ import { safeLink } from '../lib/safe-link';
 import frontend from '../data/frontend.json';
 import about from '../data/about.json';
 import standaloneGallery from '../data/gallery.json';
-// 首页专属的滚动动效样式：放在 BaseLayout 之后引入，保证在同一 @layer 里后胜出
+import '../styles/home.css';
+// 首页专属的滚动动效样式：放在 BaseLayout 和 home.css 之后引入，保证在同一 @layer 里后胜出
 import '../styles/home-cinematic.css';
 
 const posts = await getPublicPosts();

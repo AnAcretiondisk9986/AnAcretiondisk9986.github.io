@@ -95,20 +95,22 @@
     font: inherit;
     font-size: var(--type-meta);
     line-height: 1;
-    padding: 6px 10px;
+    padding: 6px 12px;
     color: var(--c-ink);
-    background: transparent;
+    background: var(--c-paper-raised);
     border: 1px solid var(--c-rule-strong);
-    border-radius: 2px;
+    border-radius: var(--r-pill);
     cursor: pointer;
-    transition: background-color 0.18s ease, color 0.18s ease;
+    transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease;
   }
   .aq-btn:hover {
-    background: color-mix(in oklab, var(--c-ink) 7%, transparent);
+    border-color: var(--c-metal);
+    background: color-mix(in oklab, var(--c-ink) 6%, var(--c-paper-raised));
   }
-  /* 焦点环：必须同时给出 style/width/color。此前这里没有规则，按钮沿用浏览器默认
-     outline，而全局曾把 outline-width 设成 3px 却没设 style —— 实测聚焦后
-     outline=none 3px，视觉上完全没有焦点提示。 */
+  /* 焦点环：同时兜底 :focus（微弱光晕，避免鼠标点击僵硬框线）与 :focus-visible（键盘清晰框线）。 */
+  .aq-btn:focus {
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--c-accent) 22%, transparent);
+  }
   .aq-btn:focus-visible {
     outline-style: solid;
     outline-width: 2px;
@@ -117,10 +119,15 @@
   }
   .aq-btn--ghost {
     border-color: var(--c-rule);
+    background: transparent;
     color: var(--c-ink-2);
   }
   .aq-btn[aria-pressed='false'] {
     color: var(--c-ink-3);
+  }
+  .aq-btn[aria-disabled='true'] {
+    opacity: 0.62;
+    cursor: progress;
   }
   /* 移动端把按钮热区抬到 ≥44px（视觉尺寸不变，只扩内边距与外框高度） */
   @media (pointer: coarse) {
@@ -143,7 +150,14 @@
     min-height: 0;
     padding: var(--p-sp-4) var(--p-sp-4);
     border: 1px solid var(--c-rule);
-    background: color-mix(in oklab, var(--c-paper-raised) 86%, var(--c-paper));
+    border-radius: var(--r-card);
+    background: color-mix(in oklab, var(--c-paper-raised) 92%, var(--c-paper));
+    box-shadow: var(--shadow-card);
+    transition: border-color var(--p-dur-fast) var(--p-ease), box-shadow var(--p-dur-fast) var(--p-ease);
+  }
+  .aq-card:hover {
+    border-color: var(--c-rule-strong);
+    box-shadow: var(--shadow-elevated);
   }
   .aq-card__head {
     display: flex;
@@ -166,11 +180,11 @@
     font-family: var(--font-mono);
     font-size: var(--type-micro);
     font-weight: 500;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.08em;
     color: var(--c-metal);
     border: 1px solid var(--c-rule);
-    padding: 0 4px;
-    border-radius: 2px;
+    padding: 1px 6px;
+    border-radius: var(--r-pill);
   }
   .aq-card__jump {
     /* 10.5px → 12px：这是可读的导航文案（「查看今日用量」一类），不是装饰；
@@ -324,18 +338,19 @@
   .aq-window__rail {
     grid-column: 1 / -1;
     position: relative;
-    height: 3px;
+    height: 4px;
     margin: 1px 0 0;
   }
   .aq-window__track {
-    height: 3px;
+    height: 4px;
+    border-radius: var(--r-pill);
     background: color-mix(in oklab, var(--c-ink) 13%, transparent);
     overflow: hidden;
   }
   /* 时间进度参考线：用法量条和它对齐，就知道自己是不是跑得比时间快 */
   .aq-window__mark {
     position: absolute;
-    top: -3px;
+    top: -2.5px;
     width: 1.5px;
     height: 9px;
     margin-left: -0.75px;
@@ -371,8 +386,9 @@
   .aq-window__fill {
     display: block;
     height: 100%;
+    border-radius: var(--r-pill);
     transform-origin: left center;
-    background: var(--c-accent);
+    background: linear-gradient(90deg, var(--c-accent), var(--c-metal));
     transition: transform 0.42s ease;
   }
   .aq-window__fill[data-level='high'] {
@@ -501,8 +517,9 @@
   }
   .aq-refs__summary {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     gap: var(--p-sp-3);
+    min-height: 44px;
     padding: 7px 0;
     cursor: pointer;
     color: var(--c-ink-2);
@@ -564,7 +581,7 @@
     margin-top: var(--p-sp-3);
     padding: var(--p-sp-4);
     border: 1px solid var(--c-accent-2);
-    background: color-mix(in oklab, var(--c-accent-2) 6%, transparent);
+    background: color-mix(in oklab, var(--c-accent-2) 7%, var(--c-paper-raised));
   }
   .aq-notice__kicker {
     margin: 0 0 4px;
@@ -592,9 +609,9 @@
   }
   .aq-notice code {
     font-family: var(--font-mono);
-    font-size: 0.94em;
+    font-size: max(12px, 0.96em);
     padding: 0 3px;
-    background: color-mix(in oklab, var(--c-ink) 7%, transparent);
+    background: color-mix(in oklab, var(--c-ink) 7%, var(--c-paper-raised));
   }
   .aq-noscript {
     margin-top: var(--p-sp-3);
@@ -620,6 +637,14 @@
     .aq-board {
       grid-template-columns: minmax(0, 1fr);
       gap: var(--p-sp-3);
+    }
+    .aq-card__head {
+      flex-wrap: wrap;
+    }
+    .aq-card__label {
+      flex-wrap: wrap;
+      white-space: normal;
+      min-width: 0;
     }
     .aq-top {
       align-items: flex-start;
