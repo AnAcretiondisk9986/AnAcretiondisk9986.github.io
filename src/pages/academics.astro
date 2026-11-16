@@ -137,16 +137,29 @@ const badgeText = (c: PackedCourse) => {
                 >
                   <span class="hz-tile__inner">
                     <span class="hz-tile__face hz-tile__face--front">
-                      <span class="hz-tile__body">
-                        <span class="hz-tile__title-line">
-                          <span class="hz-tile__name">{c.mainTitle}</span>
-                          {c.subTags.map((st) => (
-                            <span class="hz-tile__sub">{st}</span>
-                          ))}
-                        </span>
-                        {c.en && (
-                          <span class="hz-tile__en" lang="en">{c.en}</span>
+                      <span class:list={['hz-tile__body', { 'hz-tile__body--with-logo': Boolean(c.logo) }]}>
+                        {c.logo && (
+                          <img
+                            class="hz-tile__logo"
+                            src={c.logo}
+                            alt={c.logoAlt || ''}
+                            width={1001}
+                            height={235}
+                            loading="lazy"
+                            decoding="async"
+                          />
                         )}
+                        <span class="hz-tile__heading">
+                          <span class="hz-tile__title-line">
+                            <span class="hz-tile__name">{c.mainTitle}</span>
+                            {c.subTags.map((st) => (
+                              <span class="hz-tile__sub">{st}</span>
+                            ))}
+                          </span>
+                          {c.en && (
+                            <span class="hz-tile__en" lang="en">{c.en}</span>
+                          )}
+                        </span>
                       </span>
                       <span class="hz-tile__cr">
                         {c.early && <span class="hz-tile__early" aria-hidden="true">⚡</span>}

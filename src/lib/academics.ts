@@ -9,6 +9,8 @@ export interface AcademicCourse {
   kind?: 'course' | 'milestone';
   milestoneSpan?: number;
   milestoneLabel?: string;
+  logo?: string;
+  logoAlt?: string;
   dept: string;
   nature: string;
   semesterId: string;
