@@ -10,7 +10,7 @@ import sharp from 'sharp';
 sharp.cache(false);
 import decodeHeic from 'heic-decode';
 import { getHeicOrientation } from './admin/heic-exif.mjs';
-import { readdir, readFile, writeFile, unlink, mkdir, access as fileAccess, copyFile, stat as statFile, rename, statfs } from 'node:fs/promises';
+import { readdir, readFile, writeFile, unlink, mkdir, access as fileAccess, copyFile, stat as statFile, rename, statfs, rm } from 'node:fs/promises';
 import { exec } from 'node:child_process';
 import { lookup as dnsLookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
@@ -114,9 +114,11 @@ function respondStoreError(res, err, label) {
 
 // ── 发布中心：Git 服务实例与推送范围 ──
 // 博客仓库（内容推送、全量推送、拉取）
-const blogGit = createGitService({ cwd: __dirname });
-// 图片仓库（上传时提交并推送）
-const imageGit = createGitService({ cwd: IMG_REPO_DIR });
+// ADMIN_REPO_ROOT：桌面版打包后代码在 app.asar 内，git 操作仍需指向真实仓库
+const REPO_ROOT = process.env.ADMIN_REPO_ROOT ? resolve(process.env.ADMIN_REPO_ROOT) : __dirname;
+const blogGit = createGitService({ cwd: REPO_ROOT });
+// 图片仓库（上传时提交并推送；批量上传大文件夹时适当放宽超时）
+const imageGit = createGitService({ cwd: IMG_REPO_DIR, timeout: 600_000 });
 // 内容推送范围：仅文章 / 画廊 / 关于 / 前端定制数据
 const CONTENT_PUSH_PATHS = ['src/content/blog/', 'src/data/gallery.json', 'src/data/about.json', 'src/data/frontend.json'];
 // 全量推送范围：除 reasonix.toml（本机配置，不提交）外的全部改动
@@ -208,8 +210,8 @@ const MAX_REDIRECTS = 5;
 
 // ── 集中配置：上传 / 请求 / 远程 / 超时 / 并发限制（UI 中展示）──
 const LIMITS = {
-  // 上传输入上限：手机照片 / 大截图可达数十 MB，压缩为 WebP 后体积会大幅下降
-  uploadMaxBytes: 50 * 1024 * 1024,
+  // 上传输入上限：放宽至 512MB，支持大图与无限制批量上传
+  uploadMaxBytes: 512 * 1024 * 1024,
   remoteMaxBytes: MAX_REMOTE_BYTES,
   gitTimeoutMs: 60000,
   remoteFetchTimeoutMs: 30000,
@@ -401,6 +403,39 @@ async function savePostRevision(slug, raw) {
   }
 }
 
+/** 改名（更换 Slug）时将旧 slug 的修订历史目录迁移到新 slug */
+async function migratePostRevisions(oldSlug, newSlug) {
+  const safeOld = basename(oldSlug);
+  const safeNew = basename(newSlug);
+  if (!safeOld || safeOld !== oldSlug || !safeNew || safeNew !== newSlug || safeOld === safeNew) return;
+  const oldDir = join(REVISIONS_DIR, safeOld);
+  const newDir = join(REVISIONS_DIR, safeNew);
+  try {
+    await fileAccess(oldDir);
+  } catch {
+    return;
+  }
+  try {
+    if (oldDir.toLowerCase() === newDir.toLowerCase()) {
+      // 大小写不敏感文件系统上同目录改名（例如 Win/macOS 仅改大小写）：重命名目录即可
+      if (oldDir !== newDir) {
+        const tmpDir = `${newDir}.__tmp_${Date.now()}`;
+        await rename(oldDir, tmpDir);
+        await rename(tmpDir, newDir);
+      }
+      return;
+    }
+    await mkdir(newDir, { recursive: true });
+    const files = (await readdir(oldDir).catch(() => [])).filter((f) => f.endsWith('.md'));
+    for (const f of files) {
+      await rename(join(oldDir, f), join(newDir, f)).catch(() => {});
+    }
+    await rm(oldDir, { recursive: true, force: true }).catch(() => {});
+  } catch (err) {
+    logEvent('error', 'migrate_revisions_failed', { oldSlug, newSlug, detail: err.message });
+  }
+}
+
 /** 列出文章的修订快照（新→旧） */
 async function listPostRevisions(slug) {
   const safe = basename(slug);
@@ -544,6 +579,7 @@ function buildPostEntry(slug, raw, data, content, updatedAt) {
     description: data.description || '',
     cover: data.cover || '',
     pubDate: safeDate(data.pubDate),
+    updatedDate: safeDate(data.updatedDate) || undefined,
     tags: data.tags || [],
     draft: data.draft ?? false,
     access: ['public', 'authorized', 'admin'].includes(data.access) ? data.access : 'public',
@@ -651,9 +687,23 @@ function nextGalleryDayIndex(items, date) {
 }
 
 // ── Multer: image-only upload ──
-const ALLOWED_MIME = ['image/png', 'image/jpeg', 'image/jpg', 'image/pjpeg', 'image/gif', 'image/webp', 'image/avif', 'image/svg+xml', 'image/x-icon', 'image/heic', 'image/heif', 'audio/mpeg', 'audio/flac', 'audio/ogg', 'audio/wav', 'audio/x-wav', 'audio/mp4', 'audio/aac', 'audio/x-m4a'];
+const ALLOWED_MIME = ['image/png', 'image/jpeg', 'image/jpg', 'image/pjpeg', 'image/gif', 'image/webp', 'image/avif', 'image/svg+xml', 'image/x-icon', 'image/heic', 'image/heif', 'image/tiff', 'audio/mpeg', 'audio/flac', 'audio/ogg', 'audio/wav', 'audio/x-wav', 'audio/mp4', 'audio/aac', 'audio/x-m4a'];
 // URL 导入支持的图片扩展名（与 MIME 校验互补；CDN/图床对 HEIC 等常返回 application/octet-stream）
-const IMAGE_EXTS = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.heic', '.heif'];
+const IMAGE_EXTS = ['.png', '.jpg', '.jpeg', '.jfif', '.gif', '.webp', '.avif', '.svg', '.heic', '.heif', '.tiff', '.tif'];
+
+let lastUploadTs = 0;
+let uploadSeq = 0;
+function nextUploadStamp() {
+  const now = Date.now();
+  if (now === lastUploadTs) {
+    uploadSeq += 1;
+    return `${now}-${uploadSeq}`;
+  }
+  lastUploadTs = now;
+  uploadSeq = 0;
+  return String(now);
+}
+
 const upload = multer({
   storage: multer.diskStorage({
     destination: (_req, file, cb) => {
@@ -666,20 +716,21 @@ const upload = multer({
       const safeName = file.originalname
         .replace(/\.[^.]+$/, '')
         .replace(/[^a-zA-Z0-9\u4e00-\u9fff_-]/g, '-')
-        .substring(0, 60);
+        .substring(0, 60) || 'image';
       const ext = extname(file.originalname).toLowerCase();
-      cb(null, `${safeName}_${Date.now()}${ext}`);
+      cb(null, `${safeName}_${nextUploadStamp()}${ext}`);
     },
   }),
   fileFilter: (_req, file, cb) => {
-    // Chrome/Edge 等浏览器不识别 HEIC，会以 application/octet-stream（或空 MIME）上传：
-    // 仅对 heic/heif 按扩展名兜底放行（heic/heif 有 decodeHeic 内容校验；png/jpg 等仍要求标准 MIME）
+    // Chrome/Edge 等浏览器不识别 HEIC 等格式，会以 application/octet-stream（或空 MIME）上传：
+    // 对 heic/heif/avif/tiff 按扩展名兜底放行（均经 libheif / sharp 内容解码校验）
+    const ext = extname(file.originalname).toLowerCase();
     const genericOk = (file.mimetype === 'application/octet-stream' || file.mimetype === '')
-      && ['.heic', '.heif'].includes(extname(file.originalname).toLowerCase());
+      && ['.heic', '.heif', '.avif', '.tiff', '.tif'].includes(ext);
     if (ALLOWED_MIME.includes(file.mimetype) || genericOk) {
       cb(null, true);
     } else {
-      cb(new Error('仅支持 PNG / JPEG / GIF / WebP / SVG / HEIC 图片与 MP3 / FLAC / OGG / WAV / M4A 音频'), false);
+      cb(new Error('仅支持 PNG / JPEG / GIF / WebP / AVIF / TIFF / SVG / HEIC 图片与 MP3 / FLAC / OGG / WAV / M4A 音频'), false);
     }
   },
   limits: { fileSize: LIMITS.uploadMaxBytes },
@@ -695,7 +746,31 @@ function withPostWriteLock(operation) {
   return result;
 }
 
-function buildPostMarkdown(body, allPosts, { excludeSlug = '' } = {}) {
+const MANAGED_POST_KEYS = new Set([
+  'title', 'description', 'pubDate', 'dayIndex', 'cover',
+  'tags', 'draft', 'access', 'archived', 'scheduledAt', 'updatedDate',
+]);
+
+function serializeExtraFrontmatterField(key, value) {
+  if (value === undefined || value === null) return [];
+  if (value instanceof Date) {
+    const d = safeDate(value);
+    return d ? [`${key}: ${yamlStr(d)}`] : [];
+  }
+  if (Array.isArray(value)) {
+    if (!value.length) return [`${key}: []`];
+    return [`${key}:`, ...value.map((item) => `  - ${yamlStr(item)}`)];
+  }
+  if (typeof value === 'boolean' || typeof value === 'number') {
+    return [`${key}: ${value}`];
+  }
+  if (typeof value === 'object') {
+    return [`${key}: ${JSON.stringify(value)}`];
+  }
+  return [`${key}: ${yamlStr(value)}`];
+}
+
+function buildPostMarkdown(body, allPosts, { excludeSlug = '', existingData = null } = {}) {
   const title = body.title || '';
   const description = body.description || '';
   const cover = body.cover || '';
@@ -710,6 +785,10 @@ function buildPostMarkdown(body, allPosts, { excludeSlug = '' } = {}) {
     `pubDate: ${yamlStr(pubDate)}`,
     `dayIndex: ${dayIndex ?? nextDayIndex(relevantPosts, pubDate)}`,
   ];
+  const updatedDate = body.updatedDate !== undefined
+    ? safeDate(body.updatedDate)
+    : safeDate(existingData?.updatedDate);
+  if (updatedDate) fm.push(`updatedDate: ${yamlStr(updatedDate)}`);
   if (cover.trim()) fm.push(`cover: ${yamlStr(cover.trim())}`);
   if (tags.length) {
     fm.push('tags:');
@@ -720,6 +799,13 @@ function buildPostMarkdown(body, allPosts, { excludeSlug = '' } = {}) {
   if (body.archived === 'true') fm.push('archived: true');
   const scheduledAt = safeIso(body.scheduledAt);
   if (scheduledAt) fm.push(`scheduledAt: ${yamlStr(scheduledAt)}`);
+  if (existingData && typeof existingData === 'object') {
+    for (const [key, value] of Object.entries(existingData)) {
+      if (MANAGED_POST_KEYS.has(key)) continue;
+      if (!/^[A-Za-z0-9_-]+$/.test(key)) continue;
+      fm.push(...serializeExtraFrontmatterField(key, value));
+    }
+  }
   fm.push('---', '', body.content || '');
   return fm.join('\n');
 }
@@ -790,6 +876,65 @@ app.route('/api/posts')
     }
   }));
 
+// Batch post operations (publish / unpublish / archive / unarchive / delete)
+app.post('/api/posts/batch', express.json(), upload.none(), async (req, res) => withPostWriteLock(async () => {
+  try {
+    const action = String(req.body?.action || '').trim();
+    if (!['publish', 'unpublish', 'archive', 'unarchive', 'delete'].includes(action)) {
+      return res.status(400).json({ error: '无效的批量操作类型' });
+    }
+    const rawSlugs = Array.isArray(req.body?.slugs)
+      ? req.body.slugs
+      : String(req.body?.slugs || '').split(/[,，]/).map((s) => s.trim()).filter(Boolean);
+    const slugs = [...new Set(rawSlugs.map((s) => String(s || '').trim()).filter(Boolean))];
+    if (!slugs.length) return res.status(400).json({ error: '请选择至少一篇文章' });
+
+    const allPosts = await readPosts();
+    let okCount = 0;
+    let failCount = 0;
+    const errors = [];
+
+    for (const slug of slugs) {
+      const checked = validateSlug(slug);
+      if (!checked) { failCount += 1; errors.push({ slug, error: '无效的 Slug' }); continue; }
+      try {
+        const raw = await readFile(checked.filePath, 'utf-8');
+        await savePostRevision(checked.slug, raw);
+        if (action === 'delete') {
+          await unlink(checked.filePath);
+          okCount += 1;
+          continue;
+        }
+        const { data, content } = matter(raw);
+        const body = {
+          title: data.title || '',
+          description: data.description || '',
+          cover: data.cover || '',
+          pubDate: safeDate(data.pubDate),
+          dayIndex: data.dayIndex || '',
+          tags: Array.isArray(data.tags) ? data.tags.join(',') : '',
+          draft: String(action === 'unpublish' ? true : action === 'publish' ? false : Boolean(data.draft)),
+          archived: String(action === 'archive' ? true : action === 'unarchive' ? false : Boolean(data.archived)),
+          scheduledAt: action === 'publish' ? '' : safeIso(data.scheduledAt),
+          access: ['public', 'authorized', 'admin'].includes(data.access) ? data.access : 'public',
+          content: content.trim(),
+        };
+        const markdown = buildPostMarkdown(body, allPosts, { excludeSlug: checked.slug, existingData: data });
+        await atomicWriteFile(checked.filePath, markdown);
+        okCount += 1;
+      } catch (err) {
+        failCount += 1;
+        errors.push({ slug, error: err.message });
+      }
+    }
+    invalidatePostCache();
+    res.json({ ok: true, success: true, okCount, failCount, errors });
+  } catch (err) {
+    console.error('Batch API Error:', err.message);
+    res.status(500).json({ error: '批量操作失败' });
+  }
+}));
+
 // Get / update / delete single post
 app.route('/api/posts/:slug')
   .get(async (req, res) => {
@@ -810,6 +955,7 @@ app.route('/api/posts/:slug')
         description: data.description || '',
         cover: data.cover || '',
         pubDate: safeDate(data.pubDate),
+        updatedDate: safeDate(data.updatedDate) || undefined,
         dayIndex: data.dayIndex || undefined,
         tags: data.tags || [],
         draft: data.draft ?? false,
@@ -849,8 +995,9 @@ app.route('/api/posts/:slug')
       const newChecked = validateSlug(finalSlug);
       if (!newChecked) return res.status(400).json({ error: '新 Slug 包含无效字符或路径非法' });
 
+      const { data: existingData } = matter(currentRaw);
       const allPosts = await readPosts();
-      const markdown = buildPostMarkdown(req.body, allPosts, { excludeSlug: oldChecked.slug });
+      const markdown = buildPostMarkdown(req.body, allPosts, { excludeSlug: oldChecked.slug, existingData });
 
       // Windows/macOS 文件系统不区分大小写：仅大小写不同的 slug 指向同一文件。
       const caseInsensitiveFS = process.platform === 'win32' || process.platform === 'darwin';
@@ -867,11 +1014,15 @@ app.route('/api/posts/:slug')
           if (err.code !== 'ENOENT') throw err;
         }
         await savePostRevision(oldChecked.slug, currentRaw);
+        await migratePostRevisions(oldChecked.slug, newChecked.slug);
         invalidatePostCache(); // 改名 / 移动同样会改变文件集合，先失效再落盘
         await atomicWriteFile(newChecked.filePath, markdown);
         await unlink(oldChecked.filePath);
       } else {
         await savePostRevision(oldChecked.slug, currentRaw);
+        if (oldChecked.slug !== newChecked.slug) {
+          await migratePostRevisions(oldChecked.slug, newChecked.slug);
+        }
         invalidatePostCache(); // 保存后立即失效（同尺寸覆盖也能被 epoch 兜住，不依赖 mtime 精度）
         await atomicWriteFile(oldChecked.filePath, markdown);
       }
@@ -961,7 +1112,7 @@ async function saveImageFile(filePath) {
   const base = filePath.slice(0, -ext.length);
   const outPath = `${base}.webp`;
   let finalPath = filePath;
-  if (['.png', '.jpg', '.jpeg'].includes(ext)) {
+  if (['.png', '.jpg', '.jpeg', '.jfif', '.tiff', '.tif'].includes(ext)) {
     await sharp(filePath).webp({ quality: 78 }).toFile(outPath);
     await unlink(filePath).catch(() => {});
     finalPath = outPath;
@@ -1011,7 +1162,7 @@ async function saveImageFile(filePath) {
 // 返回归档后的文件名（不含目录），或 null 表示无需归档。
 async function archiveOriginal(filePath, name) {
   const ext = extname(filePath).toLowerCase();
-  if (!['.png', '.jpg', '.jpeg', '.heic', '.heif'].includes(ext)) return null;
+  if (!['.png', '.jpg', '.jpeg', '.jfif', '.heic', '.heif', '.tiff', '.tif'].includes(ext)) return null;
   await mkdir(ORIGINAL_DIR, { recursive: true });
   const dest = join(ORIGINAL_DIR, name);
   await copyFile(filePath, dest);
@@ -1066,34 +1217,44 @@ async function warmJsDelivr(url, waitMs = 0) {
   }
 }
 
+// 图片仓库 Git 写操作串行锁：避免并发上传时同时触发 git add / commit / push 导致 .git/index.lock 冲突
+let imageRepoWriteQueue = Promise.resolve();
+function withImageRepoLock(operation) {
+  const result = imageRepoWriteQueue.then(operation, operation);
+  imageRepoWriteQueue = result.catch(() => {});
+  return result;
+}
+
 // 推送图片仓库（有变更才推），失败时给出友好错误
 async function pushImageRepo({ requestId = '' } = {}) {
-  const startedAt = Date.now();
-  try {
-    const result = await imageGit.commitAndPush({
-      paths: ['.'],
-      message: '通过管理面板更新图片',
-    });
-    recordOperation({
-      requestId,
-      action: 'push-image-repo',
-      status: result.pushed ? 'success' : 'skipped',
-      message: result.pushed ? '图片仓库已推送' : '图片仓库没有需要推送的更改',
-      durationMs: Date.now() - startedAt,
-    });
-    return { pushed: Boolean(result.pushed), preview: result.preview };
-  } catch (err) {
-    recordOperation({
-      requestId,
-      action: 'push-image-repo',
-      status: 'error',
-      message: err.message,
-      detail: err.stderr || '',
-      durationMs: Date.now() - startedAt,
-    });
-    const httpErr = toHttpError(err);
-    throw httpErr;
-  }
+  return withImageRepoLock(async () => {
+    const startedAt = Date.now();
+    try {
+      const result = await imageGit.commitAndPush({
+        paths: ['.'],
+        message: '通过管理面板更新图片',
+      });
+      recordOperation({
+        requestId,
+        action: 'push-image-repo',
+        status: result.pushed ? 'success' : 'skipped',
+        message: result.pushed ? '图片仓库已推送' : '图片仓库没有需要推送的更改',
+        durationMs: Date.now() - startedAt,
+      });
+      return { pushed: Boolean(result.pushed), preview: result.preview };
+    } catch (err) {
+      recordOperation({
+        requestId,
+        action: 'push-image-repo',
+        status: 'error',
+        message: err.message,
+        detail: err.stderr || '',
+        durationMs: Date.now() - startedAt,
+      });
+      const httpErr = toHttpError(err);
+      throw httpErr;
+    }
+  });
 }
 
 // 最近一次上传失败（供「上传自检」展示，重启后清空）
@@ -1140,17 +1301,21 @@ app.post('/api/upload', (req, res, next) => {
         filename = await saveImageFile(req.file.path);
       }
       filesSaved = true;
-      const push = await pushImageRepo();
+      const deferPush = req.query.deferPush === '1' || req.query.deferPush === 'true' || req.body?.deferPush === '1';
+      const push = deferPush ? { pushed: false } : await pushImageRepo({ requestId: req.requestId });
       lastUploadError = null;
       const base = isAudio ? AUDIO_BASE_URL : IMG_BASE_URL;
       const publicUrl = `${base}${encodeURIComponent(filename)}`;
-      // 上传成功后预热 jsDelivr 缓存（只等 2.5s 就返回，剩余在后台继续预热，上传更快、竞态窗口更小）
-      await warmJsDelivr(publicUrl, 2500);
+      if (!deferPush) {
+        // 上传成功后预热 jsDelivr 缓存（只等 2.5s 就返回，剩余在后台继续预热，上传更快、竞态窗口更小）
+        await warmJsDelivr(publicUrl, 2500);
+      }
       res.status(201).json({
         success: true,
         url: publicUrl,
         originalUrl: origName ? `${IMG_BASE_URL}original/${encodeURIComponent(origName)}` : '',
-        pushed: push.pushed,
+        pushed: Boolean(push.pushed),
+        deferredPush: deferPush,
         type: isAudio ? 'audio' : 'image',
         title,
         artist,
@@ -1179,6 +1344,34 @@ app.post('/api/upload', (req, res, next) => {
       res.status(e.status || 500).json({ error: e.message, detail: e.detail });
     }
   });
+});
+
+function warmUploadedUrlsAsync(urls) {
+  if (!Array.isArray(urls) || !urls.length) return;
+  const targets = [...new Set(urls.map((u) => String(u || '').trim()))]
+    .filter((u) => u.startsWith(IMG_BASE_URL) || u.startsWith(AUDIO_BASE_URL))
+    .slice(0, 300);
+  if (!targets.length) return;
+  // 后台限流预热，不阻塞请求返回
+  mapWithConcurrency(targets, 4, (u) => warmJsDelivr(u, 0)).catch(() => {});
+}
+
+// 批量延迟推送图片仓库（配合 /api/upload?deferPush=1 使用）
+app.post('/api/upload/push', express.json({ limit: '1mb' }), async (req, res) => {
+  try {
+    const push = await pushImageRepo({ requestId: req.requestId });
+    warmUploadedUrlsAsync(req.body?.urls);
+    res.json({
+      ok: true,
+      success: true,
+      pushed: Boolean(push.pushed),
+      preview: push.preview,
+      requestId: req.requestId,
+    });
+  } catch (err) {
+    console.error('Upload Push Error:', err.message);
+    respondSyncError(res, req, err, 'UPLOAD_PUSH_FAILED');
+  }
 });
 
 // 探测音频外链是否可播放（HEAD 优先，不可用则 GET Range 前 2KB 校验 Content-Type / 音频魔数）
@@ -1568,6 +1761,46 @@ async function writeGallery(items, { expectedHash = null } = {}) {
   return galleryStore.write(items, { expectedHash });
 }
 
+function fallbackGalleryTitle(src, rawTitle) {
+  const t = String(rawTitle || '').trim();
+  if (t) return t;
+  const name = fileNameFromUrl(src)
+    .replace(/\.[^.]+$/, '')
+    .replace(/_\d{10,}(?:-\d+)?$/, '');
+  return name || '未命名图像';
+}
+
+function createGalleryId(items) {
+  const used = new Set((items || []).map((i) => i.id));
+  let id;
+  do {
+    id = `独立-${Date.now()}-${randomBytes(2).toString('hex')}`;
+  } while (used.has(id));
+  return id;
+}
+
+function buildGalleryItem(raw, existingItems) {
+  const src = String(raw?.src || '').trim();
+  if (!src) return { error: 'src 为必填字段' };
+  const sourceLink = raw?.sourceUrl == null ? '' : safeLink(raw.sourceUrl);
+  if (sourceLink === null) return { error: 'Invalid source URL' };
+  const finalDate = safeDate(raw?.date, (new Date()).toISOString().split('T')[0]);
+  const di = parseDayIndex(raw?.dayIndex);
+  const item = {
+    id: createGalleryId(existingItems),
+    src,
+    alt: String(raw?.alt || '').trim(),
+    title: fallbackGalleryTitle(src, raw?.title),
+    caption: String(raw?.caption || '').trim(),
+    date: finalDate,
+    dayIndex: di ?? nextGalleryDayIndex(existingItems, finalDate),
+  };
+  if (sourceLink) item.sourceUrl = sourceLink;
+  if (raw?.sourceTitle && String(raw.sourceTitle).trim()) item.sourceTitle = String(raw.sourceTitle).trim();
+  if (raw?.original && String(raw.original).trim()) item.original = String(raw.original).trim();
+  return { item };
+}
+
 // List / create gallery items
 app.route('/api/gallery')
   .get(async (_req, res) => {
@@ -1583,35 +1816,61 @@ app.route('/api/gallery')
     try {
       const hashCheck = readExpectedHash(res, req.body.expectedHash);
       if (!hashCheck.ok) return;
-      const { src, alt, title, caption, date, dayIndex, sourceUrl, sourceTitle, original } = req.body;
-      if (!src || !title) {
-        return res.status(400).json({ error: 'src 和 title 为必填字段' });
-      }
-      const id = `独立-${Date.now()}`;
       const items = await readGallery();
-      const finalDate = safeDate(date, (new Date()).toISOString().split('T')[0]);
-      const di = parseDayIndex(dayIndex);
-      const item = {
-        id,
-        src: src.trim(),
-        alt: (alt || '').trim(),
-        title: title.trim(),
-        caption: (caption || '').trim(),
-        date: finalDate,
-        dayIndex: di ?? nextGalleryDayIndex(items, finalDate),
-      };
-      const sourceLink = sourceUrl == null ? '' : safeLink(sourceUrl);
-      if (sourceLink === null) return res.status(400).json({ error: 'Invalid source URL' });
-      if (sourceLink) item.sourceUrl = sourceLink;
-      if (sourceTitle) item.sourceTitle = sourceTitle.trim();
-      if (original) item.original = original.trim();
-      items.unshift(item);
+      const built = buildGalleryItem(req.body, items);
+      if (built.error) return res.status(400).json({ error: built.error });
+      items.unshift(built.item);
       const written = await writeGallery(items, { expectedHash: hashCheck.hash });
-      res.status(201).json({ success: true, item, contentHash: written.contentHash });
+      res.status(201).json({ success: true, item: built.item, contentHash: written.contentHash });
     } catch (err) {
       respondStoreError(res, err, 'Gallery API');
     }
   });
+
+// Batch create gallery items (one atomic write)
+app.post('/api/gallery/batch', express.json({ limit: '2mb' }), async (req, res) => {
+  try {
+    const hashCheck = readExpectedHash(res, req.body?.expectedHash);
+    if (!hashCheck.ok) return;
+    const rawItems = Array.isArray(req.body?.items) ? req.body.items : [];
+    if (!rawItems.length) return res.status(400).json({ error: '请提供至少一项图像数据' });
+    const items = await readGallery();
+    const created = [];
+    for (const raw of rawItems) {
+      const built = buildGalleryItem(raw, items);
+      if (built.error) return res.status(400).json({ error: built.error });
+      items.unshift(built.item);
+      created.push(built.item);
+    }
+    const written = await writeGallery(items, { expectedHash: hashCheck.hash });
+    res.status(201).json({ success: true, items: created, count: created.length, contentHash: written.contentHash });
+  } catch (err) {
+    respondStoreError(res, err, 'Gallery Batch API');
+  }
+});
+
+// Push image repo + src/data/gallery.json directly after gallery uploads
+app.post('/api/gallery/push', express.json({ limit: '1mb' }), async (req, res) => {
+  try {
+    const imgPush = await pushImageRepo({ requestId: req.requestId });
+    warmUploadedUrlsAsync(req.body?.urls);
+    const blogPush = await pushGitChanges({
+      paths: ['src/data/gallery.json'],
+      commitMsg: '通过管理面板更新独立收藏',
+      requestId: req.requestId,
+    });
+    res.json({
+      ok: true,
+      success: true,
+      imageRepoPushed: Boolean(imgPush.pushed),
+      ...blogPush,
+      requestId: req.requestId,
+    });
+  } catch (err) {
+    console.error('Gallery Push Error:', err.message);
+    respondSyncError(res, req, err, 'GALLERY_PUSH_FAILED');
+  }
+});
 
 // Get / update / delete single gallery item
 app.route('/api/gallery/:id')
@@ -1634,8 +1893,8 @@ app.route('/api/gallery/:id')
       if (idx === -1) return res.status(404).json({ error: '图像不存在' });
 
       const { src, alt, title, caption, date, dayIndex, sourceUrl, sourceTitle, original } = req.body;
-      if (!src || !title) {
-        return res.status(400).json({ error: 'src 和 title 为必填字段' });
+      if (!src || !String(src).trim()) {
+        return res.status(400).json({ error: 'src 为必填字段' });
       }
 
       const sourceLink = sourceUrl == null ? '' : safeLink(sourceUrl);
@@ -1647,7 +1906,7 @@ app.route('/api/gallery/:id')
         ...items[idx],
         src: src.trim(),
         alt: (alt || '').trim(),
-        title: title.trim(),
+        title: fallbackGalleryTitle(src, title),
         caption: (caption || '').trim(),
         date: finalDate,
         dayIndex: di ?? nextGalleryDayIndex(others, finalDate),
@@ -1842,50 +2101,32 @@ app.post('/api/about/resolve-title', express.json(), async (req, res) => {
   }
 });
 
-// ── Frontend customization API ──
+// ── Frontend customization API（仅保留 HORIZON 主站实际消费的 8 个全站/首屏字段）──
 
 const FRONTEND_DEFAULTS = {
-  defaultVisualTheme: 'cyanotype',
   siteName: 'Acretiondisk',
   siteTagline: '记录想法与生活',
   heroEyebrow: 'PERSONAL ARCHIVE · 2026',
-  heroTitleLine1: '在生活之中，',
-  heroTitleLine2: '留存我的观察。',
-  heroDescription: '医学、技术、艺术，以及日常生活里值得记住的片刻。',
+  heroTitleLine1: '欢迎来到Blog.Acretiondisk.top',
+  heroTitleLine2: '这是我的个人网站',
+  heroDescription: '下滑以查看近期文章、我推荐的图片',
   primaryCtaLabel: '浏览文章',
   primaryCtaHref: '/blog/',
-  // 首页首屏背景图：站点首页 index.astro 只消费这一套。
-  // 原先并存的 fluidHeroImage / fluidHeroAlt / fluidImagePosition（零消费）与
-  // 从未接入 alt 的 stillHeroAlt 已移除——后台能编辑但站点毫无效果。
-  stillHeroImage: 'https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/_DSC0217_1785663966034.webp',
-  stillImagePosition: 'center',
-  displayFont: 'noto-serif',
-  stillAccent: '#c44136',
-  fluidPrimary: '#1f6955',
-  fluidSecondary: '#db5d4f',
-  stillGlassOpacity: 0.84,
-  fluidGlassOpacity: 0.8,
-  heroOverlayOpacity: 0.34,
-  glassBlur: 20,
-  cardRadius: 8,
-  // 首页域名「Acretiondisk.top」的彩虹字标：开关 / 7 个色相 / 含色量 / 扫光周期
-  heroRainbowEnabled: true,
-  heroRainbowColors: ['#ff6b5e', '#ffb84d', '#8fd14f', '#2ec5b6', '#4d8bff', '#b06bff', '#ff6bd6'],
-  heroRainbowMix: 82,
-  heroRainbowSheen: 4,
 };
 
-const RAINBOW_COLOR_COUNT = 7;
-
-const VISUAL_THEMES = new Set(['cyanotype', 'still', 'fluid', 'minimal', 'trace']);
-const IMAGE_POSITIONS = new Set(['center', 'center top', 'center bottom', 'left center', 'right center']);
-const DISPLAY_FONTS = new Set(['noto-serif', 'noto-sans', 'kaiti', 'songti', 'sans']);
-const HEX_COLOR_RE = /^#[0-9a-f]{6}$/i;
+function pickHorizonFrontend(raw) {
+  const src = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+  const out = {};
+  for (const key of Object.keys(FRONTEND_DEFAULTS)) {
+    out[key] = src[key] != null ? src[key] : FRONTEND_DEFAULTS[key];
+  }
+  return out;
+}
 
 async function readFrontendDoc() {
   const { data, contentHash } = await frontendStore.read();
   return {
-    data: { ...FRONTEND_DEFAULTS, ...(data && typeof data === 'object' && !Array.isArray(data) ? data : {}) },
+    data: pickHorizonFrontend(data),
     contentHash: contentHash || '',
   };
 }
@@ -1896,31 +2137,6 @@ async function readFrontend() {
   } catch {
     return { ...FRONTEND_DEFAULTS };
   }
-}
-
-function cleanFrontendNumber(value, fallback, min, max) {
-  if (value == null || value === '') return fallback;
-  const number = Number(value);
-  if (!Number.isFinite(number)) return fallback;
-  return Math.min(max, Math.max(min, number));
-}
-
-/** 表单布尔：on/true/1/yes → true，off/false/0/no → false，其它保持原值 */
-function cleanFrontendBoolean(value, fallback) {
-  if (value == null || value === '') return fallback;
-  const text = String(value).trim().toLowerCase();
-  if (['on', 'true', '1', 'yes'].includes(text)) return true;
-  if (['off', 'false', '0', 'no'].includes(text)) return false;
-  return fallback;
-}
-
-/** 7 个色相：接受逗号/空白分隔的字符串或数组；逐个校验 #rrggbb，不合格整组回退 */
-function cleanRainbowColors(value, fallback) {
-  if (value == null || value === '') return fallback;
-  const list = Array.isArray(value) ? value : String(value).split(/[\s,]+/).filter(Boolean);
-  if (list.length !== RAINBOW_COLOR_COUNT) return fallback;
-  if (!list.every((color) => HEX_COLOR_RE.test(String(color)))) return fallback;
-  return list.map((color) => String(color).toLowerCase());
 }
 
 app.route('/api/frontend')
@@ -1944,10 +2160,7 @@ app.route('/api/frontend')
       const strField = (key, max = 1000) => body[key] == null
         ? prev[key]
         : cleanAboutStr(body[key], max);
-      const enumField = (key, values) => values.has(body[key]) ? body[key] : prev[key];
-      const colorField = (key) => HEX_COLOR_RE.test(body[key] || '') ? body[key].toLowerCase() : prev[key];
       const next = {
-        defaultVisualTheme: enumField('defaultVisualTheme', VISUAL_THEMES),
         siteName: strField('siteName', 80),
         siteTagline: strField('siteTagline', 120),
         heroEyebrow: strField('heroEyebrow', 120),
@@ -1956,21 +2169,6 @@ app.route('/api/frontend')
         heroDescription: strField('heroDescription', 300),
         primaryCtaLabel: strField('primaryCtaLabel', 40),
         primaryCtaHref,
-        stillHeroImage: strField('stillHeroImage', 2000),
-        stillImagePosition: enumField('stillImagePosition', IMAGE_POSITIONS),
-        displayFont: enumField('displayFont', DISPLAY_FONTS),
-        stillAccent: colorField('stillAccent'),
-        fluidPrimary: colorField('fluidPrimary'),
-        fluidSecondary: colorField('fluidSecondary'),
-        stillGlassOpacity: cleanFrontendNumber(body.stillGlassOpacity, prev.stillGlassOpacity, 0.15, 1),
-        fluidGlassOpacity: cleanFrontendNumber(body.fluidGlassOpacity, prev.fluidGlassOpacity, 0.15, 1),
-        heroOverlayOpacity: cleanFrontendNumber(body.heroOverlayOpacity, prev.heroOverlayOpacity, 0.18, 0.62),
-        glassBlur: cleanFrontendNumber(body.glassBlur, prev.glassBlur, 10, 32),
-        cardRadius: cleanFrontendNumber(body.cardRadius, prev.cardRadius, 2, 8),
-        heroRainbowEnabled: cleanFrontendBoolean(body.heroRainbowEnabled, prev.heroRainbowEnabled !== false),
-        heroRainbowColors: cleanRainbowColors(body.heroRainbowColors, prev.heroRainbowColors || FRONTEND_DEFAULTS.heroRainbowColors),
-        heroRainbowMix: cleanFrontendNumber(body.heroRainbowMix, prev.heroRainbowMix, 40, 100),
-        heroRainbowSheen: cleanFrontendNumber(body.heroRainbowSheen, prev.heroRainbowSheen, 3, 20),
       };
       const written = await frontendStore.write(next, { expectedHash: hashCheck.hash });
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -2001,16 +2199,49 @@ async function listMediaFiles(dir, exts) {
   return out;
 }
 
+const MEDIA_DIM_CACHE_FILE = join(BACKUP_DIR, 'media-dimensions.json');
 const mediaDimensionCache = new Map();
+let mediaDimCacheLoaded = false;
+
+async function loadMediaDimCache() {
+  if (mediaDimCacheLoaded) return;
+  mediaDimCacheLoaded = true;
+  try {
+    const raw = await readFile(MEDIA_DIM_CACHE_FILE, 'utf8');
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      for (const [k, v] of Object.entries(parsed)) {
+        if (v && typeof v.width === 'number' && typeof v.height === 'number') {
+          mediaDimensionCache.set(k, { width: v.width, height: v.height });
+        }
+      }
+    }
+  } catch { /* 首次启动尚无缓存文件时忽略 */ }
+}
+
+async function saveMediaDimCache(validKeys) {
+  try {
+    if (validKeys) {
+      for (const k of mediaDimensionCache.keys()) {
+        if (!validKeys.has(k)) mediaDimensionCache.delete(k);
+      }
+    }
+    const obj = {};
+    for (const [k, v] of mediaDimensionCache.entries()) obj[k] = v;
+    await mkdir(BACKUP_DIR, { recursive: true });
+    await atomicWriteFile(MEDIA_DIM_CACHE_FILE, `${JSON.stringify(obj)}\n`);
+  } catch { /* 缓存落盘失败不影响媒体列表返回 */ }
+}
+
 async function mediaDimensions(fullPath, cacheKey) {
-  if (mediaDimensionCache.has(cacheKey)) return mediaDimensionCache.get(cacheKey);
+  if (mediaDimensionCache.has(cacheKey)) return { dim: mediaDimensionCache.get(cacheKey), hit: true };
   let dim = { width: 0, height: 0 };
   try {
     const meta = await sharp(fullPath).metadata();
     dim = { width: meta.width || 0, height: meta.height || 0 };
   } catch { /* 非图片或读取失败 */ }
   mediaDimensionCache.set(cacheKey, dim);
-  return dim;
+  return { dim, hit: false };
 }
 
 async function mapWithConcurrency(items, limit, fn) {
@@ -2043,8 +2274,13 @@ function fileNameFromUrl(value) {
 let mediaUsageCache = { key: '', usage: null };
 
 async function collectMediaUsage() {
-  const galleryStat = await statFile(GALLERY_JSON).catch(() => null);
-  const cacheKey = `${postListEpoch}:${galleryStat ? `${galleryStat.mtimeMs}:${galleryStat.size}` : 'none'}`;
+  const [galleryStat, aboutStat, frontendStat] = await Promise.all([
+    statFile(GALLERY_JSON).catch(() => null),
+    statFile(ABOUT_JSON).catch(() => null),
+    statFile(FRONTEND_JSON).catch(() => null),
+  ]);
+  const statSig = (st) => (st ? `${st.mtimeMs}:${st.size}` : 'none');
+  const cacheKey = `${postListEpoch}:${statSig(galleryStat)}:${statSig(aboutStat)}:${statSig(frontendStat)}`;
   if (mediaUsageCache.usage && mediaUsageCache.key === cacheKey) return mediaUsageCache.usage;
 
   const usage = new Map();
@@ -2071,6 +2307,18 @@ async function collectMediaUsage() {
       }
     }
   } catch { /* 画廊读取失败时忽略 */ }
+  try {
+    const { data } = await aboutStore.read();
+    if (data && typeof data === 'object' && data.avatar) {
+      mark(fileNameFromUrl(data.avatar), 'about:avatar');
+    }
+  } catch { /* 关于页读取失败时忽略 */ }
+  try {
+    const { data } = await frontendStore.read();
+    if (data && typeof data === 'object' && data.stillHeroImage) {
+      mark(fileNameFromUrl(data.stillHeroImage), 'frontend:hero');
+    }
+  } catch { /* 外观配置读取失败时忽略 */ }
   const plain = {};
   for (const [name, owners] of usage) plain[name] = [...owners];
   mediaUsageCache = { key: cacheKey, usage: plain };
@@ -2177,13 +2425,19 @@ app.get('/api/upload/selfcheck', auth, async (req, res) => {
 
 app.get('/api/media', async (req, res) => {
   try {
+    await loadMediaDimCache();
     const [imageFiles, audioFiles, usage] = await Promise.all([
       listMediaFiles(IMAGE_DIR, MEDIA_IMAGE_EXTS),
       listMediaFiles(AUDIO_DIR, MEDIA_AUDIO_EXTS),
       collectMediaUsage(),
     ]);
+    let dimCacheDirty = false;
+    const validDimKeys = new Set();
     const images = await mapWithConcurrency(imageFiles, 8, async (f) => {
-      const dim = await mediaDimensions(join(IMAGE_DIR, f.name), `${f.name}:${f.mtime}`);
+      const cacheKey = `${f.name}:${f.mtime}`;
+      validDimKeys.add(cacheKey);
+      const { dim, hit } = await mediaDimensions(join(IMAGE_DIR, f.name), cacheKey);
+      if (!hit) dimCacheDirty = true;
       return {
         type: 'image',
         name: f.name,
@@ -2196,6 +2450,9 @@ app.get('/api/media', async (req, res) => {
         usedBy: usage[f.name] || [],
       };
     });
+    if (dimCacheDirty) {
+      saveMediaDimCache(validDimKeys);
+    }
     const audios = audioFiles.map((f) => ({
       type: 'audio',
       name: f.name,

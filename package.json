@@ -3,6 +3,7 @@
   "type": "module",
   "version": "4.0.0",
   "private": true,
+  "main": "desktop/main.mjs",
   "scripts": {
     "dev": "astro dev",
     "prebuild": "node scripts/ai-quota-snapshot.mjs && node scripts/localize-images.mjs",
@@ -13,6 +14,14 @@
     "preview": "astro preview",
     "astro": "astro",
     "admin": "node admin-server.mjs",
+    "desktop": "electron desktop/main.mjs",
+    "build:desktop": "electron-builder --win zip --x64",
+    "blog": "node cli/blog.mjs",
+    "tui": "node cli/tui.mjs",
+    "test:desktop": "node --test desktop/config.test.mjs desktop/server-control.test.mjs",
+    "test:blog-cli": "node --test cli/blog.test.mjs",
+    "test:blog-tui": "node --test cli/tui.test.mjs",
+    "test:blog": "node --test cli/blog.test.mjs cli/tui.test.mjs",
     "quota:check": "node scripts/ai-quota-proxy.mjs",
     "perf:baseline": "node scripts/perf-baseline.mjs",
     "perf:images": "node scripts/optimize-images.mjs --dry-run",
@@ -29,7 +38,8 @@
     "test:admin-e2e": "node scripts/run-admin-e2e.mjs",
     "test:admin-all": "npm run test:admin && npm run test:admin-api && npm run test:admin-e2e",
     "test:editor": "node scripts/editor-e2e.mjs",
-    "test:preflight": "node scripts/preflight-e2e.mjs"
+    "test:preflight": "node scripts/preflight-e2e.mjs",
+    "build:desktop:installer": "electron-builder --win nsis --x64"
   },
   "dependencies": {
     "@astrojs/markdown-satteri": "^0.4.2",
@@ -44,6 +54,53 @@
     "vditor": "4.0.0"
   },
   "devDependencies": {
+    "electron": "^45.2.1",
+    "electron-builder": "^26.18.0",
     "puppeteer-core": "^25.12.0"
+  },
+  "build": {
+    "appId": "top.acretiondisk.blog.desktop",
+    "productName": "ACR-BLOG",
+    "copyright": "© Acretiondisk",
+    "directories": {
+      "output": "dist-desktop",
+      "buildResources": "desktop"
+    },
+    "files": [
+      "desktop/main.mjs",
+      "desktop/server-control.mjs",
+      "desktop/config.mjs",
+      "desktop/log.mjs",
+      "desktop/splash.html",
+      "desktop/icon.ico",
+      "package.json",
+      "!node_modules/**"
+    ],
+    "asar": true,
+    "win": {
+      "icon": "desktop/icon.ico",
+      "signAndEditExecutable": false,
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "ACR·BLOG",
+      "artifactName": "ACR-BLOG-Setup-${version}.${ext}"
+    }
+  },
+  "description": "ACR·BLOG 桌面版——博客内容管理桌面应用",
+  "author": {
+    "name": "Acretiondisk"
   }
 }

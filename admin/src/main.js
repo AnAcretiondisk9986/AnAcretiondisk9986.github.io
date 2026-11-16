@@ -8,10 +8,10 @@
     import { runPreflight } from './features/preflight.js';
     import { renderPrivateAccess, savePrivateAccess } from './features/access.js';
     import { initSyncCenter, closeSyncModal, isSyncModalOpen, refreshSyncStatus } from './features/sync-center.js';
-    import { initAbout, renderAboutList, loadAbout, saveAbout, refreshAvatarPreview } from './features/about.js';
-    import { initFrontend, renderFrontendList, loadFrontend, saveFrontend, syncFrontendPreview } from './features/frontend.js';
-    import { initPosts, updateBatchBar, setupBatchControls, showRevisionHistory, previewPostBySlug, copyPostLink, duplicatePost, quickToggleDraft, toggleArchive, closePostPreview, putPostFields, restoreRevision } from './features/posts.js';
-    import { initGallery, loadGallery, newGalleryItem, saveGalleryItem, deleteGalleryItem, getCurrentGalleryId, resetGallerySelection } from './features/gallery.js';
+    import { initAbout, renderAboutList, loadAbout, saveAbout, refreshAvatarPreview, isAboutDirty, clearAboutDirty, syncAboutDirty } from './features/about.js';
+    import { initFrontend, renderFrontendList, loadFrontend, saveFrontend, syncFrontendPreview, isFrontendDirty, clearFrontendDirty, syncFrontendDirty } from './features/frontend.js';
+    import { initPosts, updateBatchBar, setupBatchControls, showRevisionHistory, previewPostBySlug, copyPostLink, duplicatePost, quickToggleDraft, toggleArchive, closePostPreview, putPostFields, restoreRevision, renderLineDiff } from './features/posts.js';
+    import { initGallery, loadGallery, newGalleryItem, saveGalleryItem, deleteGalleryItem, getCurrentGalleryId, resetGallerySelection, isGalleryDirty, clearGalleryDirty, syncGalleryDirty, openGalleryBatchUploader, isGalleryBatchBusy } from './features/gallery.js';
     import { initMedia, loadMedia, renderMediaSidebar, triggerMediaUpload, openMediaPicker, closeMediaPicker, setupMediaPicker, setupCoverMediaButton, setupMediaInsertButton, setupGalleryMediaButton } from './features/media.js';
 
     const API = '/api/posts';
@@ -34,9 +34,8 @@
     let postDraftStorageWarned = false;
     let postSaving = false;
     const POST_DRAFT_PREFIX = 'admin-post-draft:';
-    let frontendUploadField = 'fStillHeroImage';
     let postUploadTarget = 'content';
-    let appUploadMaxBytes = 50 * 1024 * 1024;
+    let appUploadMaxBytes = 512 * 1024 * 1024;
 
     async function loadPosts() {
       try {
@@ -246,6 +245,12 @@
       } catch(e) { toast('加载失败: ' + e.message) }
     }
 
+    function localToday() {
+      const d = new Date();
+      const pad = (n) => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    }
+
     function postCoverEditor(cover = '') {
       return `
         <div class="post-cover-editor">
@@ -256,7 +261,7 @@
           </button>
           <div class="post-cover-fields">
             <div class="form-group">
-              <label>文章封面</label>
+              <label>文章封面（用于首页与目录悬浮引力透镜）</label>
               <input id="fCover" value="${escAttr(cover)}" placeholder="图片地址；留空使用正文首图" />
             </div>
             <div class="post-cover-actions">
@@ -662,7 +667,7 @@
 
     function renderPostEditor(post, { isNew = false } = {}) {
       const value = {
-        slug: '', title: '', description: '', cover: '', pubDate: new Date().toISOString().split('T')[0],
+        slug: '', title: '', description: '', cover: '', pubDate: localToday(),
         dayIndex: '', tags: [], draft: false, access: 'public', content: '', contentHash: '', ...post,
       };
       currentSlug = isNew ? null : (value.slug || null);
@@ -755,7 +760,6 @@
           </section>
         </div>`;
       setupUpload();
-      initVditorEditor(value.content || '');
       setupPostCover();
       setupVideoInsert();
       setupMusicInsert();
@@ -815,7 +819,8 @@
         if (!res.ok || data.error) {
           if (res.status === 409) {
             setPostEditorStatus('版本冲突', 'error');
-            toast(data.error || '文章版本冲突：当前内容已保留，请先重新加载并确认差异');
+            toast(data.error || '文章版本冲突：当前内容已保留，请先确认差异');
+            if (data.code === 'VERSION_CONFLICT') openConflictModal(currentSlug, data.currentHash);
             return;
           }
           throw new Error(data.error || `HTTP ${res.status}`);
@@ -994,19 +999,17 @@
           const res = await apiFetch('/api/import-url', { method: 'POST', body: fd, headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
           const data = await res.json();
           if (data.error) { toast(data.error); btnImport.textContent = '导入'; btnImport.disabled = false; return; }
-          if (currentMode === 'frontend') {
-            const imageInput = $('#' + frontendUploadField);
-            if (imageInput) { imageInput.value = data.url; imageInput.focus(); syncFrontendPreview(); }
-          } else if (currentMode === 'gallery') {
+          if (currentMode === 'gallery') {
             const srcInput = $('#fSrc');
             if (srcInput) { srcInput.value = data.url; srcInput.focus(); }
             const originalInput = $('#fOriginal');
             if (originalInput && !originalInput.value.trim() && data.originalUrl) {
               originalInput.value = data.originalUrl;
             }
+            syncGalleryDirty();
           } else if (currentMode === 'about') {
             const avatarInput = $('#fAvatar');
-            if (avatarInput) { avatarInput.value = data.url; avatarInput.focus(); refreshAvatarPreview(); }
+            if (avatarInput) { avatarInput.value = data.url; avatarInput.focus(); refreshAvatarPreview(); syncAboutDirty(); }
           } else {
             insertImageIntoEditor(data.url, '');
           }
@@ -1054,20 +1057,19 @@
         const modal=$('#videoModal'); if(!modal) return;
         const input=$('#fVideoInput');
         if(input) input.value='';
-        modal.style.display='flex';
-        input?.focus();
+        openModal(modal);
       };
     }
     // 对话框事件（静态 HTML，初始化时绑定一次）
     function bindVideoModal(){
       const modal=$('#videoModal'); if(!modal) return;
-      $('#btnVideoCancel').onclick=()=>{modal.style.display='none'};
-      modal.addEventListener('click',e=>{if(e.target===modal)modal.style.display='none'});
+      $('#btnVideoCancel').onclick=()=>{closeModal(modal)};
+      modal.addEventListener('click',e=>{if(e.target===modal)closeModal(modal)});
       $('#btnVideoInsert').onclick=()=>{
         const r=buildVideoEmbed($('#fVideoInput')?.value);
         if(r.error){toast(r.error);return}
         insertMarkdownBlock(r.html);
-        modal.style.display='none';
+        closeModal(modal);
         toast('已插入视频');
       };
       $('#fVideoInput').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('#btnVideoInsert').click()}});
@@ -1118,8 +1120,7 @@
         const modal=$('#musicModal'); if(!modal) return;
         ['fMusicSrc','fMusicTitle','fMusicArtist','fMusicCover'].forEach(id=>{const el=$('#'+id);if(el) el.value=''});
         const st=$('#musicProbe'); if(st) st.hidden=true;
-        modal.style.display='flex';
-        $('#fMusicSrc')?.focus();
+        openModal(modal);
       };
     }
     // 外链可播性探测：输入防抖后调 /api/audio-probe，结果展示在对话框内
@@ -1146,13 +1147,13 @@
     }
     // 对话框事件（静态 HTML，初始化时绑定一次）
     function bindMusicModal(){      const modal=$('#musicModal'); if(!modal) return;
-      $('#btnMusicCancel').onclick=()=>{modal.style.display='none'};
-      modal.addEventListener('click',e=>{if(e.target===modal)modal.style.display='none'});
+      $('#btnMusicCancel').onclick=()=>{closeModal(modal)};
+      modal.addEventListener('click',e=>{if(e.target===modal)closeModal(modal)});
       $('#btnMusicInsert').onclick=()=>{
         const r=buildMusicEmbed($('#fMusicSrc')?.value,$('#fMusicTitle')?.value,$('#fMusicArtist')?.value,$('#fMusicCover')?.value);
         if(r.error){toast(r.error);return}
         insertMarkdownBlock(r.html);
-        modal.style.display='none';
+        closeModal(modal);
         toast('已插入音乐播放条');
       };
       $('#fMusicSrc').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('#btnMusicInsert').click()}});
@@ -1265,11 +1266,10 @@
             'fullscreen', 'outline', 'edit-mode', 'both', 'preview', 'help',
           ],
           preview: {
+            hljs: { lineNumber: true, style: 'github-dark' },
+            theme: { current: 'dark', path: `${VDITOR_CDN}/dist/css/content-theme` },
             markdown: {
               toc: true,
-              markdown: {},
-              hljs: { lineNumber: true, style: 'github-dark' },
-              theme: { current: 'dark', path: `${VDITOR_CDN}/dist/css/content-theme` },
             },
           },
           upload: {
@@ -1596,24 +1596,55 @@
       openModal(mask);
     }
 
-    /* ── 图片尺寸：生成带宽度样式的 <img> 插入（TOAST UI 无法读取光标处图片，预填正文第一张图） ── */
+    /* ── 图片尺寸：提取选中图片或首图，生成带宽度样式的 <img> 并支持原地替换 ── */
+    let imgSizeTarget = null;
+
+    function parseImageSyntax(raw) {
+      const s = String(raw || '').trim();
+      if (!s) return null;
+      const mdMatch = s.match(/!\[([^\]]*)\]\(\s*(?:<([^>\r\n]+)>|([^\s)\r\n]+))(?:\s+(?:"[^"]*"|'[^']*'))?\s*\)/);
+      if (mdMatch) {
+        return { raw: mdMatch[0], alt: mdMatch[1] || '', src: mdMatch[2] || mdMatch[3] || '', width: '', unit: '%' };
+      }
+      const htmlMatch = s.match(/<img\b[^>]*>/i);
+      if (htmlMatch) {
+        const tag = htmlMatch[0];
+        const srcM = tag.match(/\bsrc\s*=\s*(?:"([^"]+)"|'([^']+)'|([^\s"'=<>`]+))/i);
+        const altM = tag.match(/\balt\s*=\s*(?:"([^"]*)"|'([^']*)')/i);
+        const widthM = tag.match(/\bwidth\s*:\s*([\d.]+)\s*(%|px)/i);
+        if (srcM) {
+          return {
+            raw: tag,
+            alt: (altM && (altM[1] ?? altM[2])) || '',
+            src: srcM[1] || srcM[2] || srcM[3] || '',
+            width: widthM ? widthM[1] : '',
+            unit: widthM ? widthM[2].toLowerCase() : '%',
+          };
+        }
+      }
+      return null;
+    }
+
     function setupImgSize(){
       const btn=$('#btnInsertImgSize'); if(!btn) return;
       btn.onclick=()=>{
         const modal=$('#imgSizeModal'); if(!modal) return;
-        const md=getEditorMarkdown()||'';
-        const m=md.match(/!\[[^\]]*\]\(\s*([^\s)\r\n]+)/);
-        const sEl=$('#fImgSizeSrc'); if(sEl) sEl.value=m?m[1]:'';
-        const vEl=$('#fImgSizeVal'); if(vEl) vEl.value=60;
-        const uEl=$('#fImgSizeUnit'); if(uEl) uEl.value='%';
-        modal.style.display='flex';
-        (m?$('#fImgSizeVal'):sEl)?.focus();
+        const selected = vditor?.getSelection?.() || '';
+        const fromSel = parseImageSyntax(selected);
+        const md = getEditorMarkdown() || '';
+        const parsed = fromSel || parseImageSyntax(md);
+        imgSizeTarget = parsed ? { ...parsed, fromSelection: Boolean(fromSel) } : null;
+        const sEl=$('#fImgSizeSrc'); if(sEl) sEl.value=parsed?parsed.src:'';
+        const vEl=$('#fImgSizeVal'); if(vEl) vEl.value=parsed&&parsed.width?parsed.width:60;
+        const uEl=$('#fImgSizeUnit'); if(uEl) uEl.value=parsed&&parsed.unit==='px'?'px':'%';
+        openModal(modal);
+        if (parsed) setTimeout(() => $('#fImgSizeVal')?.focus(), 0);
       };
     }
     function bindImgSizeModal(){
       const modal=$('#imgSizeModal'); if(!modal) return;
-      $('#btnImgSizeCancel').onclick=()=>{modal.style.display='none'};
-      modal.addEventListener('click',e=>{if(e.target===modal)modal.style.display='none'});
+      $('#btnImgSizeCancel').onclick=()=>{closeModal(modal);imgSizeTarget=null};
+      modal.addEventListener('click',e=>{if(e.target===modal){closeModal(modal);imgSizeTarget=null}});
       $('#btnImgSizeClear').onclick=()=>{const v=$('#fImgSizeVal');if(v)v.value=''};
       $('#btnImgSizeInsert').onclick=()=>{
         const src=($('#fImgSizeSrc')?.value||'').trim();
@@ -1621,14 +1652,28 @@
         const unit=$('#fImgSizeUnit')?.value==='px'?'px':'%';
         if(!src){toast('请输入图片 URL');return}
         if(!/^(https?:)?\/\//i.test(src)){toast('图片 URL 必须是 http(s) 链接');return}
-        let img='<img src="'+mdAttr(src)+'" alt="图片"';
+        const altText=(imgSizeTarget?.alt||'').trim()||'图片';
+        let img='<img src="'+mdAttr(src)+'" alt="'+mdAttr(altText)+'"';
         if(val){
           const n=parseFloat(val);
           if(Number.isFinite(n)&&n>0) img+=' style="width:'+n+unit+'"';
         }
         img+=' />';
-        insertMarkdownBlock(img);
-        modal.style.display='none';
+        if (imgSizeTarget?.fromSelection && vditor?.updateValue) {
+          vditor.updateValue(img);
+          vditor.focus();
+        } else if (imgSizeTarget?.raw && vditor && imgSizeTarget.src === src) {
+          const current = getEditorMarkdown() || '';
+          if (current.includes(imgSizeTarget.raw)) {
+            vditor.setValue(current.replace(imgSizeTarget.raw, img));
+          } else {
+            insertMarkdownBlock(img);
+          }
+        } else {
+          insertMarkdownBlock(img);
+        }
+        imgSizeTarget = null;
+        closeModal(modal);
         toast('已设置图片尺寸');
       };
       $('#fImgSizeSrc').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('#btnImgSizeInsert').click()}});
@@ -1636,29 +1681,30 @@
 
     // Chrome/Edge 等浏览器不识别 HEIC，file.type 为空字符串：用扩展名白名单兜底，交给后端自动转 WebP
     function isImageFile(f){
-      return !!f && (f.type.startsWith('image/') || /\.(png|jpe?g|gif|webp|svg|heic|heif)$/i.test(f.name||''));
+      return !!f && (f.type.startsWith('image/') || /\.(png|jpe?g|jfif|gif|webp|avif|svg|heic|heif|tiff?)$/i.test(f.name||''));
     }
 
-    /* ── 封面裁剪：上传后截选 16:10 区域 ── */
+    /* ── 封面裁剪：本地预览并截选 16:10 区域，确认后再单次上传（HEIC 自动回退服务端转码） ── */
     const COVER_RATIO = 16 / 10;
     const COVER_OUT_W = 1600;
     const clamp = (v, min, max) => Math.min(Math.max(v, min), max);
-    let crop = null; // { img, imgW, imgH, scale, ox, oy, minScale, sel, uploadedUrl, onDone, sourceIsLocal }
+    let crop = null; // { file, img, imgW, imgH, scale, ox, oy, minScale, sel, uploadedUrl, onDone, sourceIsLocal, fallbackUploading }
 
-    // 封面上传流程：先上传原图 → 打开裁剪对话框 → 用户确认后按所选区域生成封面图再上传
-    async function uploadCover(file) {
-      if(!isImageFile(file)){toast('仅支持图片');return}
-      toast('上传中…');
-      const fd = new FormData(); fd.set('file', file);
-      let data;
-      try {
-        const res = await apiFetch('/api/upload', { method:'POST', body:fd });
-        data = await res.json();
-      } catch(e) { toast('上传失败'); return; }
-      if(data.error){toast(uploadErrorText(data));return}
-      openCoverCrop(file, data.url, url => {
+    async function uploadCoverFileOnce(file) {
+      const fd = new FormData();
+      fd.set('file', file);
+      const res = await apiFetch('/api/upload', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(uploadErrorText(data));
+      return data.url;
+    }
+
+    // 封面上传流程：优先使用本地 Blob URL 直接打开裁剪框，仅当浏览器无法解码（如 HEIC）或用户点「使用原图」时才上传原图
+    function uploadCover(file) {
+      if (!isImageFile(file)) { toast('仅支持图片'); return; }
+      openCoverCrop(file, '', url => {
         const coverInput = $('#fCover');
-        if (coverInput) { coverInput.value = url; coverInput.focus(); syncPostCoverPreview(); }
+        if (coverInput) { coverInput.value = url; coverInput.focus(); syncPostCoverPreview(); markPostDirty(); }
         toast('封面已设置: ' + url);
       });
     }
@@ -1666,11 +1712,13 @@
     function openCoverCrop(file, uploadedUrl, onDone) {
       const modal = $('#coverCropModal');
       if (!modal) return;
-      crop = { img: null, imgW: 0, imgH: 0, scale: 1, ox: 0, oy: 0, minScale: 1,
-               sel: { x:0, y:0, w:0, h:0 }, uploadedUrl, onDone, sourceIsLocal: true };
+      crop = { file, img: null, imgW: 0, imgH: 0, scale: 1, ox: 0, oy: 0, minScale: 1,
+               sel: { x: 0, y: 0, w: 0, h: 0 }, uploadedUrl: uploadedUrl || '', onDone, sourceIsLocal: true, fallbackUploading: false };
       const img = $('#cropImg');
       const btn = $('#btnCropConfirm');
+      const origBtn = $('#btnCropOriginal');
       if (btn) { btn.disabled = false; btn.textContent = '确认裁剪'; }
+      if (origBtn) { origBtn.disabled = false; origBtn.textContent = '使用原图'; }
       $('#cropLoading').hidden = false;
       img.removeAttribute('src');
       img.onload = () => {
@@ -1680,35 +1728,53 @@
         crop.imgH = img.naturalHeight;
         initCropLayout();
       };
-      img.onerror = () => {
+      img.onerror = async () => {
         if (!crop) return;
-        if (crop.sourceIsLocal) {
-          // 本地无法解码（如 HEIC）：改用服务器已转码的图片（jsDelivr WebP，CORS 允许）
+        if (crop.sourceIsLocal && !crop.fallbackUploading) {
+          // 浏览器本地无法解码（如 HEIC）：按需上传一次给服务端转码为 WebP 后再预览裁剪
           crop.sourceIsLocal = false;
-          img.src = crop.uploadedUrl;
+          crop.fallbackUploading = true;
+          if (crop.uploadedUrl) {
+            img.src = crop.uploadedUrl;
+            return;
+          }
+          try {
+            toast('正在转码图片用于预览…');
+            const url = await uploadCoverFileOnce(crop.file);
+            if (!crop) return;
+            crop.uploadedUrl = url;
+            img.src = url;
+          } catch (err) {
+            toast(err.message || '上传失败');
+            closeCoverCrop();
+          }
         } else {
-          // 服务器图片也加载失败：放弃裁剪，直接落地上传结果
-          toast('无法显示该图片，已直接使用上传结果');
-          const done = crop.onDone, url = crop.uploadedUrl;
-          closeCoverCrop();
-          done && done(url);
+          // 服务器图片也加载失败：放弃裁剪，直接使用已上传结果
+          if (crop.uploadedUrl) {
+            toast('无法显示该图片，已直接使用上传结果');
+            const done = crop.onDone, url = crop.uploadedUrl;
+            closeCoverCrop();
+            done && done(url);
+          } else {
+            toast('无法加载该图片');
+            closeCoverCrop();
+          }
         }
       };
-      modal.style.display = 'flex';
+      openModal(modal);
       img.crossOrigin = 'anonymous'; // 回退到服务器图（jsDelivr 等带 CORS）时 canvas 才可读
       try {
         crop.sourceIsLocal = true;
         crop.blobUrl = URL.createObjectURL(file);
         img.src = crop.blobUrl;
-      } catch(e) {
-        crop.sourceIsLocal = false;
-        img.src = uploadedUrl;
+      } catch (e) {
+        img.onerror();
       }
     }
 
     function closeCoverCrop() {
       const modal = $('#coverCropModal');
-      if (modal) modal.style.display = 'none';
+      if (modal) closeModal(modal);
       if (crop) {
         if (crop.blobUrl) { URL.revokeObjectURL(crop.blobUrl); crop.blobUrl = null; }
         const img = $('#cropImg');
@@ -1716,7 +1782,9 @@
       }
       crop = null;
       const btn = $('#btnCropConfirm');
+      const origBtn = $('#btnCropOriginal');
       if (btn) { btn.disabled = false; btn.textContent = '确认裁剪'; }
+      if (origBtn) { origBtn.disabled = false; origBtn.textContent = '使用原图'; }
     }
 
     // 初始布局：整图完整显示，选区为图中最大的 16:10 矩形（居中）
@@ -1784,10 +1852,15 @@
       try {
         ctx.drawImage(img, sel.x, sel.y, sel.w, sel.h, 0, 0, outW, outH);
       } catch(e) {
-        toast('无法处理该图片（可能跨域受限），已使用原图');
-        const done = crop.onDone, url = crop.uploadedUrl;
-        closeCoverCrop();
-        done && done(url);
+        if (crop.uploadedUrl) {
+          toast('无法处理该图片（可能跨域受限），已使用原图');
+          const url = crop.uploadedUrl;
+          closeCoverCrop();
+          done && done(url);
+        } else {
+          toast('无法处理该图片，请重试');
+          closeCoverCrop();
+        }
         return;
       }
       const btn = $('#btnCropConfirm');
@@ -1812,11 +1885,16 @@
         }, 'image/webp', 0.92);
       } catch(e) {
         // canvas 被跨域图片污染时 toBlob 抛 SecurityError → 回退使用原图
-        toast('无法处理该图片（跨域受限），已使用原图');
         finish();
-        const url = crop.uploadedUrl;
-        closeCoverCrop();
-        done && done(url);
+        if (crop.uploadedUrl) {
+          toast('无法处理该图片（跨域受限），已使用原图');
+          const url = crop.uploadedUrl;
+          closeCoverCrop();
+          done && done(url);
+        } else {
+          toast('无法处理该图片');
+          closeCoverCrop();
+        }
       }
     }
 
@@ -1824,11 +1902,26 @@
       const modal = $('#coverCropModal'); if (!modal) return;
       $('#btnCropCancel').onclick = closeCoverCrop;
       modal.addEventListener('click', e => { if (e.target === modal) closeCoverCrop(); });
-      $('#btnCropOriginal').onclick = () => {
+      $('#btnCropOriginal').onclick = async () => {
         if (!crop) return;
-        const done = crop.onDone, url = crop.uploadedUrl;
-        closeCoverCrop();
-        done && done(url);
+        const done = crop.onDone;
+        if (crop.uploadedUrl) {
+          const url = crop.uploadedUrl;
+          closeCoverCrop();
+          done && done(url);
+          return;
+        }
+        const origBtn = $('#btnCropOriginal');
+        if (origBtn) { origBtn.disabled = true; origBtn.textContent = '上传中…'; }
+        try {
+          const url = await uploadCoverFileOnce(crop.file);
+          if (!crop) return;
+          closeCoverCrop();
+          done && done(url);
+        } catch (err) {
+          toast(err.message || '原图上传失败');
+          if (origBtn) { origBtn.disabled = false; origBtn.textContent = '使用原图'; }
+        }
       };
       $('#btnCropConfirm').onclick = confirmCoverCrop;
 
@@ -1886,17 +1979,78 @@
         crop.oy = py - oy * newScale;
         renderCrop();
       }, { passive: false });
+    }
 
-      window.addEventListener('beforeunload', e => {
-      if (!postDirty) return;
-      savePostDraftNow();
+    function hasAnyDirtyState() {
+      if (currentMode === 'posts') return postDirty;
+      if (currentMode === 'gallery') return isGalleryDirty();
+      if (currentMode === 'about') return isAboutDirty();
+      if (currentMode === 'frontend') return isFrontendDirty();
+      return false;
+    }
+
+    function updateSubModuleDirtyStatus(dirty) {
+      if (currentMode === 'posts') return;
+      setPostEditorStatus(dirty ? '有未保存修改' : '', dirty ? 'dirty' : '');
+    }
+
+    window.addEventListener('beforeunload', e => {
+      if (!hasAnyDirtyState() && !isGalleryBatchBusy()) return;
+      if (currentMode === 'posts') savePostDraftNow();
       e.preventDefault();
       e.returnValue = '';
     });
 
-    document.addEventListener('keydown', e => {
-        if (e.key === 'Escape' && modal.style.display !== 'none') closeCoverCrop();
-      });
+    /* ── 409 版本冲突可视化对比与处理 ── */
+    let conflictState = null;
+
+    async function openConflictModal(slug, latestHash) {
+      const mask = $('#conflictModal');
+      if (!mask || !slug) return;
+      conflictState = { slug, latestHash: latestHash || '' };
+      $('#conflictDiff').textContent = '正在读取磁盘最新版本…';
+      $('#conflictOverwrite').disabled = true;
+      openModal(mask);
+      try {
+        const res = await apiFetch(`${API}/${encodeURIComponent(slug)}`);
+        const latest = await res.json();
+        if (!res.ok || latest.error) {
+          $('#conflictDiff').textContent = latest.error || '读取磁盘版本失败';
+          return;
+        }
+        conflictState.latestHash = latest.contentHash || conflictState.latestHash;
+        const localBody = getEditorMarkdown();
+        const diskBody = latest.content || '';
+        const diffHtml = localBody === diskBody
+          ? '<div class="dl same">正文一致（差异可能来自标题、标签、日期等元数据字段）</div>'
+          : renderLineDiff(localBody, diskBody);
+        $('#conflictDiff').innerHTML = diffHtml;
+        $('#conflictOverwrite').disabled = !/^[a-f0-9]{64}$/.test(conflictState.latestHash);
+      } catch (err) {
+        $('#conflictDiff').textContent = '读取磁盘版本失败：' + err.message;
+      }
+    }
+
+    function bindConflictModal() {
+      const mask = $('#conflictModal');
+      if (!mask) return;
+      $('#conflictCancel').onclick = () => closeModal(mask);
+      mask.addEventListener('click', (e) => { if (e.target === mask) closeModal(mask); });
+      $('#conflictReload').onclick = async () => {
+        if (!conflictState?.slug) return;
+        const slug = conflictState.slug;
+        closeModal(mask);
+        clearPostDraft();
+        postDirty = false;
+        await selectPost(slug, { skipLeaveGuard: true });
+        toast('已重新加载磁盘最新版本');
+      };
+      $('#conflictOverwrite').onclick = async () => {
+        if (!conflictState?.latestHash) return;
+        currentPostHash = conflictState.latestHash;
+        closeModal(mask);
+        await savePost();
+      };
     }
 
     /** 统一拼接上传错误文案：优先展示服务端 detail */
@@ -1931,11 +2085,7 @@
         const res = await apiFetch('/api/upload', { method:'POST', body:fd });
         const data = await res.json();
         if(data.error){toast(uploadErrorText(data));return}
-        if (currentMode === 'frontend') {
-          const imageInput = $('#' + frontendUploadField);
-          if (imageInput) { imageInput.value = data.url; imageInput.focus(); syncFrontendPreview(); }
-          toast('背景图已上传: ' + data.url);
-        } else if (currentMode === 'gallery') {
+        if (currentMode === 'gallery') {
           const srcInput = $('#fSrc');
           if (srcInput) { srcInput.value = data.url; srcInput.focus(); }
           const titleInput = $('#fGalleryTitle');
@@ -1946,10 +2096,11 @@
           if (originalInput && !originalInput.value.trim() && data.originalUrl) {
             originalInput.value = data.originalUrl;
           }
+          syncGalleryDirty();
           toast('已上传: ' + data.url);
         } else if (currentMode === 'about') {
           const avatarInput = $('#fAvatar');
-          if (avatarInput) { avatarInput.value = data.url; avatarInput.focus(); refreshAvatarPreview(); }
+          if (avatarInput) { avatarInput.value = data.url; avatarInput.focus(); refreshAvatarPreview(); syncAboutDirty(); }
           toast('已上传头像: ' + data.url);
         } else {
           insertImageIntoEditor(data.url, file.name.replace(/\.[^.]+$/, ''));
@@ -1985,6 +2136,7 @@
     bindMusicModal();
     bindImgSizeModal();
     bindCoverCropModal();
+    bindConflictModal();
     setupMediaPicker();
     setupGlobalFileInput();
     installFocusTrap();
@@ -2001,7 +2153,15 @@
       reloadGallery: () => loadGallery(),
       fetchHealth,
     });
-    initGallery({ setupUpload, setupGalleryMediaButton });
+    initGallery({
+      setupUpload,
+      setupGalleryMediaButton,
+      openMediaPicker,
+      onDirtyChange: updateSubModuleDirtyStatus,
+      refreshSyncStatus,
+      getUploadMaxBytes: () => appUploadMaxBytes,
+      isGalleryMode: () => currentMode === 'gallery',
+    });
     initMedia({
       getPosts: () => posts,
       putPostFields,
@@ -2010,12 +2170,10 @@
       insertMarkdownBlock,
       insertImageIntoEditor,
     });
-    initAbout({ setupUpload });
+    initAbout({ setupUpload, openMediaPicker, closeMediaPicker, onDirtyChange: updateSubModuleDirtyStatus });
     fetchHealth();
     initFrontend({
-      setupUpload,
-      setUploadField: (v) => { frontendUploadField = v; },
-      uploadImage,
+      onDirtyChange: updateSubModuleDirtyStatus,
     });
     initPosts({
       getPosts: () => posts,
@@ -2038,9 +2196,21 @@
       switchMode(tab.dataset.mode);
     });
 
+    function canLeaveCurrentEditor() {
+      if (currentMode === 'posts') return canLeavePostEditor();
+      if (currentMode === 'gallery' && isGalleryDirty()) return confirm('当前画廊项目有未保存修改，确定离开？');
+      if (currentMode === 'about' && isAboutDirty()) return confirm('当前关于页面有未保存修改，确定离开？');
+      if (currentMode === 'frontend' && isFrontendDirty()) return confirm('当前外观配置有未保存修改，确定离开？');
+      return true;
+    }
+
     function switchMode(mode) {
-      if (mode !== currentMode && !canLeavePostEditor()) return;
+      if (mode !== currentMode && !canLeaveCurrentEditor()) return;
       if (mode !== 'posts') resetPostEditorTracking();
+      if (mode !== 'gallery') clearGalleryDirty();
+      if (mode !== 'about') clearAboutDirty();
+      if (mode !== 'frontend') clearFrontendDirty();
+      setPostEditorStatus('');
       currentMode = mode;
       store.set({ mode });
       const listControls = $('#listControls');
@@ -2056,12 +2226,11 @@
       if (mode === 'gallery') {
         $('#btnNew').textContent = '＋ 新建';
         currentSlug = null;
-        $('#editorTitle').textContent = '选择或创建一幅图像';
         $('#btnNew').style.display = '';
         $('#btnSave').style.display = '';
         $('#btnDelete').style.display = 'none';
         $('#btnSave').disabled = true;
-        $('#editorContainer').innerHTML = '<div class="empty-state">← 从左侧列表选择图像，或点击「新建」</div>';
+        openGalleryBatchUploader({ skipLeaveGuard: true });
         loadGallery();
       } else if (mode === 'media') {
         currentSlug = null;
@@ -2130,12 +2299,18 @@
     $('#previewModal').addEventListener('click', (e) => { if (e.target === $('#previewModal')) closePostPreview(); });
     document.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape') return;
-      if (isModalOpen($('#mediaPickerModal'))) closeMediaPicker();
+      if (isModalOpen($('#conflictModal'))) closeModal($('#conflictModal'));
+      else if (isModalOpen($('#coverCropModal'))) closeCoverCrop();
+      else if (isModalOpen($('#mediaPickerModal'))) closeMediaPicker();
       else if (isModalOpen($('#mediaUsageModal'))) closeModal($('#mediaUsageModal'));
+      else if (isModalOpen($('#uploadSelfCheckModal'))) closeModal($('#uploadSelfCheckModal'));
       else if (isSyncModalOpen()) closeSyncModal();
       else if (isModalOpen($('#preflightModal'))) closeModal($('#preflightModal'));
       else if (isModalOpen($('#historyModal'))) closeModal($('#historyModal'));
       else if (isModalOpen($('#previewModal'))) closePostPreview();
+      else if (isModalOpen($('#videoModal'))) closeModal($('#videoModal'));
+      else if (isModalOpen($('#musicModal'))) closeModal($('#musicModal'));
+      else if (isModalOpen($('#imgSizeModal'))) { closeModal($('#imgSizeModal')); imgSizeTarget = null; }
     });
     $('#btnSite').onclick = () => window.open('https://blog.acretiondisk.top/', '_blank');
 

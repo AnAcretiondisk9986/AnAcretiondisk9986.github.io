@@ -18,6 +18,8 @@ perf-reports/
 blog-template/
 design/
 reports/
+desktop-launcher.log
+dist-desktop/
 public/quota/snapshot.json
 
 # 构建期本地化的图片（npm run images:localize / prebuild 生成）

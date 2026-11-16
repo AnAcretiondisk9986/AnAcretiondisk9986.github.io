@@ -286,6 +286,8 @@ const POSTS_API = '/api/posts';
     }
 
     function mediaUsageLabel(owner) {
+      if (owner === 'about:avatar' || owner.startsWith('about:')) return '关于页：头像';
+      if (owner === 'frontend:hero' || owner.startsWith('frontend:')) return '外观定制：首页首屏背景图';
       if (owner.startsWith('gallery:')) return `画廊：${owner.slice('gallery:'.length)}`;
       if (owner.startsWith('post:')) {
         const slug = owner.slice('post:'.length);
@@ -427,12 +429,45 @@ const POSTS_API = '/api/posts';
       else if (action === 'delete') deleteMedia(type, name);
     }
 
-    // ── 媒体选择器（画廊 / 封面 / 正文插入复用）──
-    async function openMediaPicker({ type = 'image', title = '选择媒体', onPick } = {}) {
-      pickerState = { type, onPick };
+    // ── 媒体选择器（画廊 / 封面 / 正文插入复用，支持单选与多选）──
+    function syncPickerConfirmButton() {
+      const btn = $('#mediaPickerConfirm');
+      if (!btn) return;
+      if (!pickerState?.multiple) {
+        btn.style.display = 'none';
+        return;
+      }
+      const n = pickerState.selectedNames.size;
+      btn.style.display = '';
+      btn.disabled = n === 0;
+      btn.textContent = n ? `确认选择（${n} 项）` : '确认选择';
+    }
+
+    async function openMediaPicker({ type = 'image', title = '选择媒体', multiple = false, onPick, onPickBatch } = {}) {
+      pickerState = { type, multiple: Boolean(multiple), selectedNames: new Set(), onPick, onPickBatch };
       const mask = $('#mediaPickerModal');
       if (!mask) return;
       $('#mediaPickerTitle').textContent = title;
+      const tip = mask.querySelector('.media-toolbar .field-hint');
+      if (tip) tip.textContent = multiple ? '点击缩略图可多选，选好后点击下方确认；上传后自动刷新。' : '点击缩略图即选择；上传后自动刷新。';
+      const actions = mask.querySelector('.modal-actions');
+      if (actions && !$('#mediaPickerConfirm')) {
+        const confirmBtn = document.createElement('button');
+        confirmBtn.type = 'button';
+        confirmBtn.className = 'btn primary';
+        confirmBtn.id = 'mediaPickerConfirm';
+        confirmBtn.style.display = 'none';
+        confirmBtn.onclick = () => {
+          if (!pickerState?.multiple) return;
+          const selected = allMediaItems().filter((m) => pickerState.selectedNames.has(`${m.type}:${m.name}`));
+          if (!selected.length) return;
+          const handler = pickerState.onPickBatch || pickerState.onPick;
+          closeMediaPicker();
+          handler && handler(selected);
+        };
+        actions.appendChild(confirmBtn);
+      }
+      syncPickerConfirmButton();
       openModal(mask);
       if (!mediaData) await loadMedia();
       refreshMediaPicker();
@@ -440,6 +475,8 @@ const POSTS_API = '/api/posts';
 
     function closeMediaPicker() {
       closeModal($('#mediaPickerModal'));
+      const confirmBtn = $('#mediaPickerConfirm');
+      if (confirmBtn) confirmBtn.style.display = 'none';
       pickerState = null;
     }
 
@@ -449,11 +486,26 @@ const POSTS_API = '/api/posts';
       const list = allMediaItems().filter((m) => pickerState.type === 'all' || m.type === pickerState.type);
       grid.innerHTML = list.length ? list.map((m) => mediaCardHtml(m, { picker: true })).join('') : '<div class="media-empty">媒体库为空，先上传一个文件</div>';
       grid.querySelectorAll('.media-card').forEach((card) => {
+        const key = `${card.dataset.type}:${card.dataset.name}`;
+        if (pickerState.multiple && pickerState.selectedNames.has(key)) card.classList.add('picked');
         card.onclick = () => {
           const m = allMediaItems().find((x) => x.name === card.dataset.name && x.type === card.dataset.type);
-          if (m && pickerState?.onPick) pickerState.onPick(m);
+          if (!m || !pickerState) return;
+          if (pickerState.multiple) {
+            if (pickerState.selectedNames.has(key)) {
+              pickerState.selectedNames.delete(key);
+              card.classList.remove('picked');
+            } else {
+              pickerState.selectedNames.add(key);
+              card.classList.add('picked');
+            }
+            syncPickerConfirmButton();
+          } else if (pickerState.onPick) {
+            pickerState.onPick(m);
+          }
         };
       });
+      syncPickerConfirmButton();
     }
 
     function setupMediaPicker() {
@@ -528,11 +580,11 @@ const POSTS_API = '/api/posts';
       }
       btn.onclick = () => openMediaPicker({ type: 'image', title: '选择画廊图片', onPick: (m) => {
         const src = $('#fSrc');
-        if (src) { src.value = m.url; src.focus(); }
+        if (src) { src.value = m.url; src.dispatchEvent(new Event('input', { bubbles: true })); src.focus(); }
         const original = $('#fOriginal');
-        if (original && !original.value.trim() && m.originalUrl) original.value = m.originalUrl;
+        if (original && !original.value.trim() && m.originalUrl) { original.value = m.originalUrl; original.dispatchEvent(new Event('input', { bubbles: true })); }
         const title = $('#fGalleryTitle');
-        if (title && !title.value.trim()) title.value = m.name.replace(/\.[^.]+$/, '');
+        if (title && !title.value.trim()) { title.value = m.name.replace(/\.[^.]+$/, ''); title.dispatchEvent(new Event('input', { bubbles: true })); }
         closeMediaPicker();
       }});
     }

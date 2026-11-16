@@ -196,8 +196,8 @@
 }
 .hz-fplate__frame {
   display: block;
-  min-width: 96px;
-  min-height: 72px;
+  min-width: 160px;
+  min-height: 120px;
   background: var(--hz-bg-3);
   overflow: hidden;
 }
@@ -205,8 +205,8 @@
   display: block;
   width: auto;
   height: auto;
-  max-width: min(72vw, 880px);
-  max-height: min(68svh, 580px);
+  max-width: min(72vw, 620px);
+  max-height: min(64svh, 480px);
   object-fit: contain;
   opacity: 0;
   transition: opacity var(--d-2);

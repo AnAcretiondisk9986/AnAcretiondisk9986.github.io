@@ -118,58 +118,60 @@ if (hasInsertBtn) {
   check('选择器已关闭', pickerClosed);
 }
 
-// ── 4. 前端定制上传回填字段（独立重新加载，避免前序编辑器状态干扰） ──
+// ── 4. 「关于」模块头像上传回填字段（独立重新加载，避免前序编辑器状态干扰） ──
+await page.goto(base, { waitUntil: 'networkidle2' });
+await sleep(1500);
+await page.evaluate(() => document.querySelector('.mode-tab[data-mode="about"]')?.click());
+await sleep(2000);
+const aboutUploadArea = await page.$('#uploadArea');
+check('关于页上传区存在', Boolean(aboutUploadArea));
+if (aboutUploadArea) {
+  const before = await page.$eval('#fAvatar', (el) => el.value);
+  const hitsBefore = uploadHits.length;
+  const [chooser] = await Promise.all([
+    page.waitForFileChooser({ timeout: 15000 }),
+    page.evaluate(() => document.querySelector('#uploadArea').click()),
+  ]);
+  await chooser.accept([tmpPng]);
+  await sleep(2500);
+  const filled = await page.$eval('#fAvatar', (el) => el.value);
+  console.log(`--- 上传诊断 ---\n字段：fAvatar\n点击前值：${before}\n点击后值：${filled}\n/api/upload 命中：${uploadHits.length - hitsBefore} 次（累计 ${uploadHits.length}）\n---`);
+  check(`上传请求已发出（命中 ${uploadHits.length - hitsBefore} 次）`, uploadHits.length > hitsBefore);
+  check(`上传后头像字段回填为上传结果（${filled.slice(0, 60)}）`, filled.includes('mock.webp'));
+}
+
+// ── 5. 「外观」模块：对齐 HORIZON 主站，移除旧版失效字段，预览实时拆分域名 ──
 await page.goto(base, { waitUntil: 'networkidle2' });
 await sleep(1500);
 await page.evaluate(() => document.querySelector('.mode-tab[data-mode="frontend"]')?.click());
-await sleep(2500);
-const target = await page.$eval('[data-frontend-upload]', (el) => el.dataset.frontendUpload);
-check(`前端定制上传区存在（目标字段 ${target}）`, Boolean(target));
-if (target) {
-  const before = await page.$eval('#' + target, (el) => el.value);
-  const hitsBefore = uploadHits.length;
-  // 走真实动线：点击上传区 → 系统文件选择器 → 选中文件 → change → 上传 → 回填字段
-  const [chooser] = await Promise.all([
-    page.waitForFileChooser({ timeout: 15000 }),
-    page.evaluate(() => document.querySelector('[data-frontend-upload]').click()),
-  ]);
-  await chooser.accept([tmpPng]);
-  await sleep(3000);
-  const filled = await page.$eval('#' + target, (el) => el.value);
-  console.log(`--- 上传诊断 ---\n字段：${target}\n点击前值：${before}\n点击后值：${filled}\n/api/upload 命中：${uploadHits.length - hitsBefore} 次（累计 ${uploadHits.length}）\n---`);
-  check(`上传请求已发出（命中 ${uploadHits.length - hitsBefore} 次）`, uploadHits.length > hitsBefore);
-  check(`上传后字段回填为上传结果（${filled.slice(0, 60)}）`, filled.includes('mock.webp'));
-}
-
-// ── 5. 「外观」模块：失效字段已移除，预览与线上渲染一致 ──
+await sleep(2000);
 const frontendInfo = await page.evaluate(() => ({
   preview: Boolean(document.querySelector('#frontendHeroPreview')),
-  previewSrc: document.querySelector('#frontendPreviewImg')?.getAttribute('src') || '',
-  removed: ['#fFluidHeroImage', '#fFluidHeroAlt', '#fFluidImagePosition', '#fStillHeroAlt'].filter((s) => document.querySelector(s)),
-  kept: ['#fStillHeroImage', '#fStillImagePosition', '#fSiteName', '#fDisplayFont'].filter((s) => document.querySelector(s)),
-  uploadAreas: document.querySelectorAll('[data-frontend-upload]').length,
+  removed: ['#fFluidHeroImage', '#fStillHeroImage', '#fDisplayFont', '#fHeroRainbowEnabled', '#fStillAccent', '#fFluidPrimary', '#fGlassBlur'].filter((s) => document.querySelector(s)),
+  kept: ['#fSiteName', '#fSiteTagline', '#fHeroEyebrow', '#fHeroTitleLine1', '#fHeroTitleLine2', '#fHeroDescription', '#fPrimaryCtaLabel', '#fPrimaryCtaHref'].filter((s) => document.querySelector(s)),
 }));
-check('外观：首屏预览卡片存在', frontendInfo.preview);
-check(`外观：预览用真实 <img> 渲染（${frontendInfo.previewSrc.slice(0, 46)}…）`, frontendInfo.previewSrc.startsWith('http'));
-check(`外观：失效字段已移除${frontendInfo.removed.length ? '（残留 ' + frontendInfo.removed.join(',') + '）' : ''}`, frontendInfo.removed.length === 0);
-check(`外观：生效字段完整保留（${frontendInfo.kept.length}/4）`, frontendInfo.kept.length === 4);
-check(`外观：上传入口收敛为 1 个（实际 ${frontendInfo.uploadAreas}）`, frontendInfo.uploadAreas === 1);
+check('外观：HORIZON 首屏预览卡片存在', frontendInfo.preview);
+check(`外观：旧版失效主题字段已清理${frontendInfo.removed.length ? '（残留 ' + frontendInfo.removed.join(',') + '）' : ''}`, frontendInfo.removed.length === 0);
+check(`外观：HORIZON 生效字段完整保留（${frontendInfo.kept.length}/8）`, frontendInfo.kept.length === 8);
 
 const previewSync = await page.evaluate(() => {
   const input = document.querySelector('#fHeroTitleLine1');
   if (!input) return null;
-  input.value = '自动化预览校验';
+  input.value = '观测站Horizon.test';
   input.dispatchEvent(new Event('input', { bubbles: true }));
-  return document.querySelector('#frontendPreviewTitle')?.textContent || '';
+  return {
+    l1: document.querySelector('#frontendPreviewL1')?.textContent || '',
+    domain: document.querySelector('#frontendPreviewDomain')?.textContent || '',
+  };
 });
-check(`外观：预览随输入同步（${previewSync}）`, (previewSync || '').includes('自动化预览校验'));
+check(`外观：预览随输入同步并拆分域名（${JSON.stringify(previewSync)}）`, previewSync?.l1 === '观测站' && previewSync?.domain === 'Horizon.test');
 
 const apiFields = await page.evaluate(async () => {
   const res = await fetch('/api/frontend', { headers: { 'x-admin-token': window.__ADMIN_TOKEN__ } });
   const data = await res.json();
   return Object.keys(data.frontend || data || {});
 });
-check(`外观：服务端契约已同步（${apiFields.length} 个字段）`, !apiFields.some((k) => /fluidHero|stillHeroAlt|fluidImagePosition/i.test(k)));
+check(`外观：服务端契约已同步 HORIZON（${apiFields.length} 个字段）`, !apiFields.some((k) => /stillHero|fluid|Rainbow|glassBlur|cardRadius|displayFont|defaultVisualTheme/i.test(k)));
 
 // ── 6. 无运行时报错 ──
 check(`无浏览器运行时报错${errors.length ? '：' + errors.join(' | ') : ''}`, errors.length === 0);

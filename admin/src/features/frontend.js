@@ -1,5 +1,6 @@
 /**
- * 前端定制：主题、首屏文案/图片、颜色与玻璃材质（src/data/frontend.json）。
+ * 外观与首页配置（src/data/frontend.json）：
+ * 对齐 HORIZON 主站实际消费的 8 个全站标识与视界首屏字段。
  */
 import { $, esc, escAttr } from '../ui/dom.js';
 import { toast } from '../ui/app-toast.js';
@@ -7,264 +8,199 @@ import { apiFetch } from '../api/app-client.js';
 
 const FRONTEND_API = '/api/frontend';
 let frontendHash = '';
+let frontendBaseline = '';
+let frontendDirty = false;
+let frontendEditorActive = false;
 let ctx = {
-  setupUpload: () => {},
-  setUploadField: () => {},
-  /** 主模块的上传实现：内部按 currentMode 路由到 frontendUploadField 指定的字段 */
-  uploadImage: async () => {},
+  onDirtyChange: () => {},
 };
 
 export function initFrontend(options = {}) { ctx = { ...ctx, ...options }; }
+export function isFrontendDirty() { return frontendDirty; }
+export function clearFrontendDirty() { frontendDirty = false; frontendBaseline = ''; frontendEditorActive = false; ctx.onDirtyChange(false); }
 
-    function renderFrontendList() {
-      $('#postList').innerHTML = `
-        <div style="padding:12px 14px;font-size:11px;color:var(--text-faint);line-height:1.9">
-          <div style="color:var(--accent);margin-bottom:4px">◐ 前端定制</div>
-          <div>主题、首屏文案与背景图片</div>
-          <div>玻璃材质、圆角与主题色</div>
-        </div>`;
-    }
+const FRONTEND_FIELD_SELECTORS = {
+  siteName: '#fSiteName',
+  siteTagline: '#fSiteTagline',
+  heroEyebrow: '#fHeroEyebrow',
+  heroTitleLine1: '#fHeroTitleLine1',
+  heroTitleLine2: '#fHeroTitleLine2',
+  heroDescription: '#fHeroDescription',
+  primaryCtaLabel: '#fPrimaryCtaLabel',
+  primaryCtaHref: '#fPrimaryCtaHref',
+};
 
-    async function loadFrontend() {
-      try {
-        const res = await apiFetch(FRONTEND_API);
-        const data = await res.json();
-        if (data.error) { toast(data.error); return; }
-        frontendHash = data.contentHash || '';
-        renderFrontendEditor(data);
-      } catch (e) { toast('加载前端配置失败: ' + e.message); }
-    }
+const QUICK_ROUTES = [
+  ['/blog/', '文章光谱'],
+  ['/gallery/', '图像档案'],
+  ['/about/', '关于档案'],
+  ['/academics/', '学业轨迹'],
+  ['/ai-quota/', '算力额度'],
+];
 
-    function frontendPositionOptions(value) {
-      return [
-        ['center', '居中'],
-        ['center top', '居中靠上'],
-        ['center bottom', '居中靠下'],
-        ['left center', '左侧居中'],
-        ['right center', '右侧居中'],
-      ].map(([key, label]) => `<option value="${key}"${value === key ? ' selected' : ''}>${label}</option>`).join('');
-    }
+function readFrontendFormSnapshot() {
+  const obj = {};
+  Object.entries(FRONTEND_FIELD_SELECTORS).forEach(([k, sel]) => { obj[k] = $(sel)?.value ?? ''; });
+  return JSON.stringify(obj);
+}
 
-    function renderFrontendEditor(data) {
-      data = data || {};
-      // 域名彩虹：7 个色相 + 含色量 + 流光周期（服务端已校验，这里再兜一层默认值）
-      const RAINBOW_DEFAULT_COLORS = ['#ff6b5e', '#ffb84d', '#8fd14f', '#2ec5b6', '#4d8bff', '#b06bff', '#ff6bd6'];
-      const rainbowColors = RAINBOW_DEFAULT_COLORS.map((fallback, index) => {
-        const saved = Array.isArray(data.heroRainbowColors) ? data.heroRainbowColors[index] : null;
-        return /^#[0-9a-f]{6}$/i.test(String(saved || '')) ? String(saved).toLowerCase() : fallback;
-      });
-      const clampRainbow = (value, fallback, min, max) => {
-        const n = Number(value);
-        return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback;
-      };
-      const rainbowMix = clampRainbow(data.heroRainbowMix, 82, 40, 100);
-      const rainbowSheen = clampRainbow(data.heroRainbowSheen, 4, 3, 20);
-      const rainbowEnabled = data.heroRainbowEnabled !== false;
-      $('#editorTitle').textContent = '前端定制';
-      $('#btnDelete').style.display = 'none';
-      $('#btnSave').disabled = false;
-      $('#editorContainer').innerHTML = `
-        <div class="editor frontend-editor">
-          <div class="frontend-preview" id="frontendHeroPreview" aria-label="首页首屏预览">
-            <img id="frontendPreviewImg" alt="" />
-            <span class="frontend-preview__scrim" id="frontendPreviewScrim"></span>
-            <div class="frontend-preview-copy">
-              <small id="frontendPreviewEyebrow"></small>
-              <b id="frontendPreviewTitle"></b>
-              <p id="frontendPreviewDesc"></p>
-            </div>
-            <span class="frontend-preview-badge">首页首屏预览</span>
+function syncFrontendDirty() {
+  if (!frontendEditorActive || !$('#fSiteName')) return;
+  const next = readFrontendFormSnapshot() !== frontendBaseline;
+  if (next !== frontendDirty) {
+    frontendDirty = next;
+    ctx.onDirtyChange(frontendDirty);
+  }
+}
+
+function markFrontendBaseline() {
+  frontendEditorActive = true;
+  frontendBaseline = readFrontendFormSnapshot();
+  frontendDirty = false;
+  ctx.onDirtyChange(false);
+}
+
+function renderFrontendList() {
+  $('#postList').innerHTML = `
+    <div style="padding:12px 14px;font-size:11px;color:var(--text-faint);line-height:1.9">
+      <div style="color:var(--accent);margin-bottom:4px">05 · 外观与首屏</div>
+      <div>编辑全站 HUD 标识与首页视界首屏文案。</div>
+      <div>全站视觉已统一为 HORIZON（VOID 暗色 / PLATE 底片），旧版背景图与玻璃参数已自动下线。</div>
+    </div>`;
+}
+
+async function loadFrontend() {
+  try {
+    const res = await apiFetch(FRONTEND_API);
+    const data = await res.json();
+    if (data.error) { toast(data.error); return; }
+    frontendHash = data.contentHash || '';
+    renderFrontendEditor(data);
+  } catch (e) { toast('加载前端配置失败: ' + e.message); }
+}
+
+function splitHorizonTitle(raw) {
+  const text = String(raw || '').trim();
+  const idx = text.search(/[A-Za-z0-9]/);
+  if (idx > 0) return { cjk: text.slice(0, idx).trim(), latin: text.slice(idx).trim() };
+  return { cjk: text, latin: '' };
+}
+
+function renderFrontendEditor(data) {
+  data = data || {};
+  $('#editorTitle').textContent = '外观与首页首屏';
+  $('#btnDelete').style.display = 'none';
+  $('#btnSave').disabled = false;
+  $('#editorContainer').innerHTML = `
+    <div class="editor frontend-editor">
+      <div class="frontend-preview" id="frontendHeroPreview" aria-label="HORIZON 首屏实时预览">
+        <div class="frontend-preview__hud">
+          <div class="frontend-preview__brand">
+            <b id="frontendPreviewSiteName"></b>
+            <span id="frontendPreviewTagline"></span>
           </div>
+          <span class="frontend-preview-badge">HORIZON · 首屏实时预览</span>
+        </div>
+        <div class="frontend-preview-copy">
+          <small id="frontendPreviewEyebrow"></small>
+          <div class="frontend-preview-title" id="frontendPreviewTitle">
+            <span class="hz-p-l1" id="frontendPreviewL1"></span>
+            <span class="hz-p-domain" id="frontendPreviewDomain"></span>
+            <span class="hz-p-l2" id="frontendPreviewL2"></span>
+          </div>
+          <p id="frontendPreviewDesc"></p>
+          <div class="frontend-preview-actions">
+            <span class="frontend-preview-cta" id="frontendPreviewCta"></span>
+            <span class="frontend-preview-cta frontend-preview-cta--ghost">进入透镜图志 ↗</span>
+          </div>
+        </div>
+      </div>
 
-          <section class="frontend-section">
-            <h3>站点与默认主题</h3>
-            <div class="form-row">
-              <div class="form-group"><label>默认视觉主题</label><select id="fDefaultVisualTheme">
-                <option value="cyanotype"${data.defaultVisualTheme === 'cyanotype' ? ' selected' : ''}>蓝晒 · 观察工作纸</option>
-                <option value="still"${data.defaultVisualTheme === 'still' ? ' selected' : ''}>静澈 · Liquid Glass</option>
-                <option value="fluid"${data.defaultVisualTheme === 'fluid' ? ' selected' : ''}>流形 · Liquid Glass</option>
-                <option value="minimal"${data.defaultVisualTheme === 'minimal' ? ' selected' : ''}>留白</option>
-                <option value="trace"${data.defaultVisualTheme === 'trace' ? ' selected' : ''}>行迹</option>
-              </select></div>
-              <div class="form-group"><label>标题字体</label><select id="fDisplayFont">
-                <option value="noto-serif"${data.displayFont === 'noto-serif' ? ' selected' : ''}>Noto Serif 风格</option>
-                <option value="noto-sans"${data.displayFont === 'noto-sans' ? ' selected' : ''}>Noto Sans 风格</option>
-              </select></div>
-            </div>
-            <div class="form-row">
-              <div class="form-group"><label>站点名称</label><input id="fSiteName" value="${escAttr(data.siteName || '')}" /></div>
-              <div class="form-group"><label>站点短句</label><input id="fSiteTagline" value="${escAttr(data.siteTagline || '')}" /></div>
-            </div>
-          </section>
+      <section class="frontend-section">
+        <h3>全站 HUD 标识</h3>
+        <div class="form-row">
+          <div class="form-group"><label>站点名称 (siteName)</label><input id="fSiteName" value="${escAttr(data.siteName || '')}" placeholder="Acretiondisk" /></div>
+          <div class="form-group"><label>站点副标 (siteTagline)</label><input id="fSiteTagline" value="${escAttr(data.siteTagline || '')}" placeholder="记录想法与生活" /></div>
+        </div>
+        <div class="field-hint">显示在全站顶部 HUD 导航左侧、浏览器标签页与页脚；主站支持访客随时切换 VOID 暗色 / PLATE 底片主题。</div>
+      </section>
 
-          <section class="frontend-section">
-            <h3>首页首屏内容</h3>
-            <div class="form-group"><label>眉题</label><input id="fHeroEyebrow" value="${escAttr(data.heroEyebrow || '')}" /></div>
-            <div class="form-row">
-              <div class="form-group"><label>标题第一行</label><input id="fHeroTitleLine1" value="${escAttr(data.heroTitleLine1 || '')}" /></div>
-              <div class="form-group"><label>标题第二行</label><input id="fHeroTitleLine2" value="${escAttr(data.heroTitleLine2 || '')}" /></div>
+      <section class="frontend-section">
+        <h3>首页黑洞视界首屏</h3>
+        <div class="form-group"><label>眉题 (heroEyebrow)</label><input id="fHeroEyebrow" value="${escAttr(data.heroEyebrow || '')}" placeholder="PERSONAL ARCHIVE · 2026" /></div>
+        <div class="form-row">
+          <div class="form-group"><label>主标题第一行 (heroTitleLine1)</label><input id="fHeroTitleLine1" value="${escAttr(data.heroTitleLine1 || '')}" placeholder="欢迎来到Blog.Acretiondisk.top" /></div>
+          <div class="form-group"><label>主标题第二行 (heroTitleLine2)</label><input id="fHeroTitleLine2" value="${escAttr(data.heroTitleLine2 || '')}" placeholder="这是我的个人网站" /></div>
+        </div>
+        <div class="field-hint">主站会在第一行的首个英文/数字字符处自动拆行，并将英文域名段以橙色高亮展示（如上方预览）。</div>
+        <div class="form-group"><label>首屏导语 (heroDescription)</label><textarea id="fHeroDescription" style="min-height:64px">${esc(data.heroDescription || '')}</textarea></div>
+        <div class="form-row">
+          <div class="form-group"><label>主按钮文案 (primaryCtaLabel)</label><input id="fPrimaryCtaLabel" value="${escAttr(data.primaryCtaLabel || '')}" placeholder="浏览文章" /></div>
+          <div class="form-group">
+            <label>主按钮链接 (primaryCtaHref)</label>
+            <input id="fPrimaryCtaHref" value="${escAttr(data.primaryCtaHref || '')}" placeholder="/blog/" />
+            <div class="frontend-quick-links">
+              ${QUICK_ROUTES.map(([href, label]) => `<button class="btn small" type="button" data-cta-route="${escAttr(href)}">${esc(label)} (${esc(href)})</button>`).join('')}
             </div>
-            <div class="form-group"><label>首屏描述</label><textarea id="fHeroDescription" style="min-height:64px">${esc(data.heroDescription || '')}</textarea></div>
-            <div class="form-row">
-              <div class="form-group"><label>主按钮文字</label><input id="fPrimaryCtaLabel" value="${escAttr(data.primaryCtaLabel || '')}" /></div>
-              <div class="form-group"><label>主按钮链接</label><input id="fPrimaryCtaHref" value="${escAttr(data.primaryCtaHref || '')}" /></div>
-            </div>
-          </section>
+          </div>
+        </div>
+      </section>
+    </div>`;
 
-          <section class="frontend-section">
-            <h3>首页首屏背景图</h3>
-            <div class="upload-area" data-frontend-upload="fStillHeroImage">上传首屏背景图片（拖放或点击选择）</div>
-            <div class="form-row" style="margin-top:10px">
-              <div class="form-group"><label>图片地址</label><input id="fStillHeroImage" value="${escAttr(data.stillHeroImage || '')}" /></div>
-              <div class="form-group"><label>图片焦点</label><select id="fStillImagePosition">${frontendPositionOptions(data.stillImagePosition)}</select></div>
-            </div>
-            <div class="field-hint">首页首屏共用这一张图，站内其它页面不使用。</div>
-          </section>
-
-          <section class="frontend-section">
-            <h3>域名彩虹</h3>
-            <div class="field-hint" style="margin-bottom:8px">首页首屏「Acretiondisk.top」这 15 个字符的彩虹渐变；blog. 前缀与域名下方铜线不变。关闭后回到原来的铜金渐变。</div>
-            <div class="form-row">
-              <div class="form-group"><label>彩虹字标</label><select id="fHeroRainbowEnabled">
-                <option value="on"${rainbowEnabled ? ' selected' : ''}>启用</option>
-                <option value="off"${rainbowEnabled ? '' : ' selected'}>关闭（铜金）</option>
-              </select></div>
-              <div class="form-group"><label>含色量（饱和度）</label><div class="frontend-range"><input id="fHeroRainbowMix" type="range" min="40" max="100" step="1" value="${rainbowMix}" /><output id="vHeroRainbowMix"></output></div></div>
-              <div class="form-group"><label>流光周期（每 N 秒一轮）</label><div class="frontend-range"><input id="fHeroRainbowSheen" type="range" min="3" max="20" step="1" value="${rainbowSheen}" /><output id="vHeroRainbowSheen"></output></div></div>
-            </div>
-            <div class="frontend-rainbow-colors">
-              ${rainbowColors.map((color, index) => `<label class="frontend-rainbow-color"><input id="fHeroRainbowColor${index + 1}" type="color" value="${escAttr(color)}" /><span>${index + 1}</span></label>`).join('')}
-            </div>
-            <div class="frontend-rainbow-preview" id="frontendRainbowPreview" aria-hidden="true"></div>
-            <div class="field-hint">1→7 依次为朱 / 琥珀 / 青柠 / 青碧 / 群青 / 紫罗兰 / 洋红。亮底图（照片偏亮）会自动加深，保证可读。</div>
-          </section>
-
-          <section class="frontend-section">
-            <h3>色彩与玻璃材质</h3>
-            <div class="field-hint" style="margin-bottom:8px">仅对「静澈 / 流形」两套视觉主题生效；蓝晒、留白、行迹不受影响。</div>
-            <div class="form-row">
-              <div class="form-group"><label>静澈强调色</label><input id="fStillAccent" type="color" value="${escAttr(data.stillAccent || 'var(--danger)')}" /></div>
-              <div class="form-group"><label>流形主色</label><input id="fFluidPrimary" type="color" value="${escAttr(data.fluidPrimary || 'var(--ok)')}" /></div>
-              <div class="form-group"><label>流形辅助色</label><input id="fFluidSecondary" type="color" value="${escAttr(data.fluidSecondary || 'var(--danger)')}" /></div>
-            </div>
-            <div class="form-row">
-              <div class="form-group"><label>静澈玻璃不透明度</label><div class="frontend-range"><input id="fStillGlassOpacity" type="range" min="0.15" max="1" step="0.01" value="${Number(data.stillGlassOpacity ?? .84)}" /><output id="vStillGlassOpacity"></output></div></div>
-              <div class="form-group"><label>流形玻璃不透明度</label><div class="frontend-range"><input id="fFluidGlassOpacity" type="range" min="0.15" max="1" step="0.01" value="${Number(data.fluidGlassOpacity ?? .8)}" /><output id="vFluidGlassOpacity"></output></div></div>
-            </div>
-            <div class="form-row">
-              <div class="form-group"><label>背景遮罩</label><div class="frontend-range"><input id="fHeroOverlayOpacity" type="range" min="0.18" max="0.62" step="0.01" value="${Number(data.heroOverlayOpacity ?? .34)}" /><output id="vHeroOverlayOpacity"></output></div></div>
-              <div class="form-group"><label>玻璃模糊</label><div class="frontend-range"><input id="fGlassBlur" type="range" min="10" max="32" step="1" value="${Number(data.glassBlur ?? 20)}" /><output id="vGlassBlur"></output></div></div>
-              <div class="form-group"><label>卡片圆角</label><div class="frontend-range"><input id="fCardRadius" type="range" min="2" max="8" step="1" value="${Number(data.cardRadius ?? 8)}" /><output id="vCardRadius"></output></div></div>
-            </div>
-          </section>
-        </div>`;
-
-      setupFrontendUpload();
-      document.querySelectorAll('.frontend-editor input, .frontend-editor textarea, .frontend-editor select').forEach(el => {
-        el.addEventListener('input', syncFrontendPreview);
-        el.addEventListener('change', syncFrontendPreview);
-      });
+  document.querySelectorAll('.frontend-editor input, .frontend-editor textarea').forEach((el) => {
+    el.addEventListener('input', () => { syncFrontendPreview(); syncFrontendDirty(); });
+    el.addEventListener('change', () => { syncFrontendPreview(); syncFrontendDirty(); });
+  });
+  document.querySelectorAll('[data-cta-route]').forEach((btn) => {
+    btn.onclick = () => {
+      const input = $('#fPrimaryCtaHref');
+      if (!input) return;
+      input.value = btn.dataset.ctaRoute;
       syncFrontendPreview();
-    }
+      syncFrontendDirty();
+    };
+  });
+  syncFrontendPreview();
+  markFrontendBaseline();
+}
 
-    function setupFrontendUpload() {
-      document.querySelectorAll('[data-frontend-upload]').forEach(area => {
-        const choose = () => {
-          ctx.setUploadField(area.dataset.frontendUpload);
-          $('#fileInput').click();
-        };
-        area.onclick = choose;
-        area.ondragover = e => { e.preventDefault(); area.classList.add('dragover'); };
-        area.ondragleave = () => area.classList.remove('dragover');
-        area.ondrop = async e => {
-          e.preventDefault();
-          area.classList.remove('dragover');
-          ctx.setUploadField(area.dataset.frontendUpload);
-          const file = e.dataTransfer.files[0];
-          if (file) await ctx.uploadImage(file);
-        };
-      });
-      // #fileInput.onchange 与 document.onpaste 由主模块 setupUpload 统一接管：
-      // 它按 currentMode === 'frontend' + frontendUploadField 路由目标字段。
-      // 此处曾二次覆盖这两个全局处理器，导致离开「前端定制」后的上传被静默吞掉。
-    }
+function syncFrontendPreview() {
+  const setText = (id, text) => { const el = $('#' + id); if (el) el.textContent = text; };
+  setText('frontendPreviewSiteName', $('#fSiteName')?.value || 'Acretiondisk');
+  setText('frontendPreviewTagline', $('#fSiteTagline')?.value || '');
+  setText('frontendPreviewEyebrow', $('#fHeroEyebrow')?.value || '');
 
-    /**
-     * 预览：用与首页一致的渲染方式（<img> + object-position + 遮罩层 + 文案层级），
-     * 而不是此前那种 background-image 假预览——那时后台看到的和线上并不一样。
-     */
-    function syncFrontendPreview() {
-      const img = $('#frontendPreviewImg');
-      if (img) {
-        const url = $('#fStillHeroImage')?.value?.trim() || '';
-        if (url) img.src = url; else img.removeAttribute('src');
-        img.style.objectPosition = $('#fStillImagePosition')?.value || 'center';
-      }
-      const scrim = $('#frontendPreviewScrim');
-      if (scrim) scrim.style.opacity = String(Number($('#fHeroOverlayOpacity')?.value || .34));
+  const { cjk, latin } = splitHorizonTitle($('#fHeroTitleLine1')?.value || '');
+  setText('frontendPreviewL1', cjk);
+  const domainEl = $('#frontendPreviewDomain');
+  if (domainEl) {
+    domainEl.textContent = latin;
+    domainEl.hidden = !latin;
+  }
+  const l2 = $('#fHeroTitleLine2')?.value || '';
+  const l2El = $('#frontendPreviewL2');
+  if (l2El) {
+    l2El.textContent = l2;
+    l2El.hidden = !l2;
+  }
+  setText('frontendPreviewDesc', $('#fHeroDescription')?.value || '');
+  const ctaLabel = $('#fPrimaryCtaLabel')?.value?.trim() || '浏览文章';
+  setText('frontendPreviewCta', `${ctaLabel} →`);
+}
 
-      const eyebrow = $('#fHeroEyebrow')?.value || '';
-      const title = [$('#fHeroTitleLine1')?.value || '', $('#fHeroTitleLine2')?.value || ''].filter(Boolean).join(' ');
-      const desc = $('#fHeroDescription')?.value || '';
-      const setText = (id, text) => { const el = $('#' + id); if (el) el.textContent = text; };
-      setText('frontendPreviewEyebrow', eyebrow);
-      setText('frontendPreviewTitle', title);
-      setText('frontendPreviewDesc', desc);
+async function saveFrontend() {
+  const body = new URLSearchParams();
+  Object.entries(FRONTEND_FIELD_SELECTORS).forEach(([key, selector]) => body.set(key, $(selector)?.value ?? ''));
+  body.set('expectedHash', frontendHash);
+  try {
+    const res = await apiFetch(FRONTEND_API, { method: 'PUT', body, headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
+    const data = await res.json();
+    if (data.error) { toast(data.error); return; }
+    frontendHash = data.contentHash || frontendHash;
+    clearFrontendDirty();
+    toast('外观配置已保存');
+    renderFrontendEditor(data.frontend);
+  } catch (e) { toast('保存失败: ' + e.message); }
+}
 
-      const previewFont = $('#fDisplayFont')?.value === 'noto-sans'
-        ? '"Noto Sans SC", "Source Han Sans SC", "Microsoft YaHei", system-ui, sans-serif'
-        : '"Noto Serif SC", "Source Han Serif SC", "Songti SC", serif';
-      const titleEl = $('#frontendPreviewTitle');
-      if (titleEl) titleEl.style.fontFamily = previewFont;
-
-      const outputs = [
-        ['vStillGlassOpacity', 'fStillGlassOpacity', ''],
-        ['vFluidGlassOpacity', 'fFluidGlassOpacity', ''],
-        ['vHeroOverlayOpacity', 'fHeroOverlayOpacity', ''],
-        ['vGlassBlur', 'fGlassBlur', ' px'],
-        ['vCardRadius', 'fCardRadius', ' px'],
-      ];
-      outputs.forEach(([outId, inputId, suffix]) => { const out = $('#' + outId); if (out) out.textContent = (outId.includes('Opacity') ? Math.round(Number($('#' + inputId)?.value || 0) * 100) + '%' : ($('#' + inputId)?.value || '') + suffix); });
-
-      // 域名彩虹：色带预览与两个数值输出
-      const mixOut = $('#vHeroRainbowMix');
-      if (mixOut) mixOut.textContent = Number($('#fHeroRainbowMix')?.value || 82) + '%';
-      const sheenOut = $('#vHeroRainbowSheen');
-      if (sheenOut) sheenOut.textContent = Number($('#fHeroRainbowSheen')?.value || 4) + 's';
-      const rainbowPreview = $('#frontendRainbowPreview');
-      if (rainbowPreview) {
-        const colors = [1, 2, 3, 4, 5, 6, 7].map((i) => $('#fHeroRainbowColor' + i)?.value || '#000000');
-        rainbowPreview.style.backgroundImage = `linear-gradient(90deg, ${colors.join(', ')})`;
-        const enabled = $('#fHeroRainbowEnabled')?.value !== 'off';
-        rainbowPreview.dataset.enabled = enabled ? 'true' : 'false';
-      }
-    }
-
-    async function saveFrontend() {
-      const fields = {
-        defaultVisualTheme: '#fDefaultVisualTheme', siteName: '#fSiteName', siteTagline: '#fSiteTagline',
-        heroEyebrow: '#fHeroEyebrow', heroTitleLine1: '#fHeroTitleLine1', heroTitleLine2: '#fHeroTitleLine2',
-        heroDescription: '#fHeroDescription', primaryCtaLabel: '#fPrimaryCtaLabel', primaryCtaHref: '#fPrimaryCtaHref',
-        stillHeroImage: '#fStillHeroImage', stillImagePosition: '#fStillImagePosition',
-        displayFont: '#fDisplayFont', stillAccent: '#fStillAccent', fluidPrimary: '#fFluidPrimary', fluidSecondary: '#fFluidSecondary',
-        stillGlassOpacity: '#fStillGlassOpacity', fluidGlassOpacity: '#fFluidGlassOpacity', heroOverlayOpacity: '#fHeroOverlayOpacity',
-        glassBlur: '#fGlassBlur', cardRadius: '#fCardRadius',
-        heroRainbowEnabled: '#fHeroRainbowEnabled', heroRainbowMix: '#fHeroRainbowMix', heroRainbowSheen: '#fHeroRainbowSheen',
-      };
-      const body = new URLSearchParams();
-      Object.entries(fields).forEach(([key, selector]) => body.set(key, $(selector)?.value ?? ''));
-      // 7 个色相合并为一个逗号分隔字段（服务端再逐个校验 #rrggbb）
-      body.set('heroRainbowColors', [1, 2, 3, 4, 5, 6, 7].map((i) => $(`#fHeroRainbowColor${i}`)?.value || '').join(','));
-      body.set('expectedHash', frontendHash);
-      try {
-        const res = await apiFetch(FRONTEND_API, { method: 'PUT', body, headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
-        const data = await res.json();
-        if (data.error) { toast(data.error); return; }
-        frontendHash = data.contentHash || frontendHash;
-        toast('前端定制已保存');
-        renderFrontendEditor(data.frontend);
-      } catch (e) { toast('保存失败: ' + e.message); }
-    }
-
-
-export { renderFrontendList, loadFrontend, saveFrontend, syncFrontendPreview };
+export { renderFrontendList, loadFrontend, saveFrontend, syncFrontendPreview, syncFrontendDirty };

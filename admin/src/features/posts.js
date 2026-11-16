@@ -47,7 +47,7 @@ export function initPosts(options = {}) { ctx = { ...ctx, ...options }; }
           const overrides = kind === 'publish' ? { draft: false, archived: false, scheduledAt: '' }
             : kind === 'unpublish' ? { draft: true }
               : { archived: true };
-          const done = await putPostFields(post, overrides, { silent: true });
+          const done = await putPostFields(post, overrides, { silent: true, skipReload: true });
           if (done) ok += 1; else fail += 1;
         } catch { fail += 1; }
       }
@@ -223,7 +223,9 @@ export function initPosts(options = {}) { ctx = { ...ctx, ...options }; }
         fd.set('title', `${post.title || slug}（副本）`);
         fd.set('description', post.description || '');
         fd.set('cover', post.cover || '');
-        fd.set('pubDate', new Date().toISOString().split('T')[0]);
+        const d = new Date();
+        const pad = (n) => String(n).padStart(2, '0');
+        fd.set('pubDate', `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`);
         fd.set('dayIndex', '');
         fd.set('tags', (post.tags || []).join(','));
         fd.set('draft', 'true');
@@ -320,7 +322,7 @@ export function initPosts(options = {}) { ctx = { ...ctx, ...options }; }
     }
 
 
-    async function putPostFields(post, overrides, { silent = false } = {}) {
+    async function putPostFields(post, overrides, { silent = false, skipReload = false } = {}) {
       const merged = { ...post, ...overrides };
       const fd = new URLSearchParams();
       fd.set('title', merged.title || '');
@@ -340,12 +342,12 @@ export function initPosts(options = {}) { ctx = { ...ctx, ...options }; }
         const data = await res.json();
         if (!res.ok || data.error) { toast(data.error || '更新文章失败'); return false; }
         if (!silent) toast(`已更新「${post.title || post.slug}」`);
-        await ctx.loadPosts();
+        if (!skipReload) await ctx.loadPosts();
         return true;
       } catch (e) { toast('更新文章失败: ' + e.message); return false; }
     }
 export {
   updateBatchBar, setupBatchControls, showRevisionHistory, previewPostBySlug,
   copyPostLink, duplicatePost, quickToggleDraft, toggleArchive, closePostPreview, putPostFields,
-  restoreRevision,
+  restoreRevision, renderLineDiff,
 };

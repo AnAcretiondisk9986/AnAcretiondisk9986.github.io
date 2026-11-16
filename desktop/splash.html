@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<title>ACR·BLOG</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    display: flex; align-items: center; justify-content: center;
+    background: #f6f5f2; color: #2c2a26;
+    font-family: "Microsoft YaHei UI", "PingFang SC", system-ui, sans-serif;
+  }
+  .box { text-align: center; padding: 32px; max-width: 520px; }
+  .logo {
+    width: 56px; height: 56px; margin: 0 auto 20px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #2c2a26, #5b564c);
+    display: flex; align-items: center; justify-content: center;
+    color: #f6f5f2; font-size: 22px; font-weight: 700; letter-spacing: .5px;
+  }
+  h1 { font-size: 17px; font-weight: 600; margin: 0 0 8px; }
+  p { font-size: 13px; line-height: 1.7; color: #6d675c; margin: 0; }
+  .bar {
+    margin: 22px auto 0; width: 180px; height: 3px; border-radius: 2px;
+    background: #e2ded4; overflow: hidden; position: relative;
+  }
+  .bar::after {
+    content: ""; position: absolute; inset: 0; width: 40%;
+    background: #2c2a26; border-radius: 2px;
+    animation: slide 1.2s ease-in-out infinite;
+  }
+  @keyframes slide {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(280%); }
+  }
+  .hint { margin-top: 26px; font-size: 12px; color: #9a9384; }
+  code { font-family: Consolas, monospace; background: #ece8df; padding: 1px 5px; border-radius: 4px; }
+</style>
+</head>
+<body>
+  <div class="box">
+    <div class="logo">ACR</div>
+    <h1>正在启动博客服务…</h1>
+    <p>首次启动需要加载依赖并挑选端口，通常 2～5 秒。</p>
+    <div class="bar"></div>
+    <div class="hint">
+      如果长时间停在这里，请把日志发给开发者：<br />
+      <code>%APPDATA%\ACR-BLOG\logs\main.log</code>
+    </div>
+  </div>
+</body>
+</html>

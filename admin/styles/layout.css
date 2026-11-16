@@ -35,11 +35,25 @@
   border-right: 1px solid var(--border);
 }
 
+.topbar__brand-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.topbar__mark {
+  width: 18px;
+  height: 18px;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
 .topbar__brand b {
   font-size: var(--fs-sm);
   font-weight: 600;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
   color: var(--accent);
+  white-space: nowrap;
 }
 
 .topbar__brand small {

@@ -13,25 +13,32 @@
   <link rel="stylesheet" href="/admin/styles/preview-site.css" />
 </head>
 <body>
-  <!-- ── 顶栏：品牌 / 模块导航（按使用频次分组） / 发布区 / 会话 ── -->
+  <!-- ── 顶栏：HORIZON 品牌 / 编号通道导航 / 发布区 / 会话 ── -->
   <header class="topbar">
     <div class="topbar__brand">
-      <b>ACR—ADMIN</b>
-      <small>内容工作台</small>
+      <div class="topbar__brand-row">
+        <svg class="topbar__mark" viewBox="0 0 40 40" aria-hidden="true">
+          <ellipse cx="20" cy="20" rx="18" ry="5.4" fill="none" stroke="currentColor" stroke-width="1.6" opacity="0.65" />
+          <path d="M8.6 18.2a11.6 11.6 0 0 1 22.8 0" fill="none" stroke="currentColor" stroke-width="1.8" />
+          <circle cx="20" cy="20" r="6.2" fill="#08080b" stroke="currentColor" stroke-width="1.4" />
+        </svg>
+        <b>HORIZON // ADMIN</b>
+      </div>
+      <small>观测台工作区</small>
     </div>
 
     <nav class="topbar__nav" id="modeTabs" aria-label="模块导航">
       <div class="nav-group">
         <span class="nav-group__label">内容</span>
-        <button class="mode-tab active" data-mode="posts">文章</button>
-        <button class="mode-tab" data-mode="gallery">画廊</button>
-        <button class="mode-tab" data-mode="media">媒体</button>
+        <button class="mode-tab active" data-mode="posts">01 文章</button>
+        <button class="mode-tab" data-mode="gallery">02 画廊</button>
+        <button class="mode-tab" data-mode="media">03 媒体</button>
       </div>
       <div class="nav-group">
         <span class="nav-group__label">站点</span>
-        <button class="mode-tab" data-mode="about">关于页</button>
-        <button class="mode-tab" data-mode="frontend">外观</button>
-        <button class="mode-tab" data-mode="access">访问控制</button>
+        <button class="mode-tab" data-mode="about">04 关于</button>
+        <button class="mode-tab" data-mode="frontend">05 外观</button>
+        <button class="mode-tab" data-mode="access">06 权限</button>
       </div>
     </nav>
 
@@ -298,6 +305,27 @@
       <div class="modal-actions">
         <button class="btn" id="historyClose">关闭</button>
         <button class="btn primary" id="historyRestore" disabled>恢复此版本</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 版本冲突对比与处理 -->
+  <div class="modal-mask" id="conflictModal" style="display:none">
+    <div class="modal modal--wide">
+      <h3>⚠ 文章版本冲突</h3>
+      <div class="modal-body">
+        <div class="panel">
+          <div id="conflictSummary" class="sync-warn">文章在磁盘上已被其他来源修改。下方展示「磁盘最新版本（-）」与「当前编辑版本（+）」的差异：</div>
+        </div>
+        <div class="panel">
+          <h4>正文差异对比</h4>
+          <div class="history-diff" id="conflictDiff">正在读取磁盘版本…</div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn" id="conflictCancel">保留当前编辑</button>
+        <button class="btn danger" id="conflictReload">加载磁盘最新版本</button>
+        <button class="btn primary" id="conflictOverwrite">覆盖保存当前内容</button>
       </div>
     </div>
   </div>

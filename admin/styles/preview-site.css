@@ -27,13 +27,13 @@
 }
 
 #editorBody .vditor-reset h2::before,
-.acr-site-preview h2::before { content: '§'; margin-right: 8px; color: var(--danger); font-family: Georgia, 'Times New Roman', serif; }
+.acr-site-preview h2::before { content: '//'; margin-right: 8px; color: var(--accent); font-family: var(--font-mono); font-size: 0.78em; }
 
 #editorBody .vditor-reset h3,
 .acr-site-preview h3 { font-size: 1.22em; }
 
 #editorBody .vditor-reset a,
-.acr-site-preview a { color: var(--danger-text); }
+.acr-site-preview a { color: var(--accent-text); text-decoration: underline; text-underline-offset: 3px; }
 
 #editorBody .vditor-reset img,
 .acr-site-preview img { max-width: 100%; height: auto; padding: 6px; border: 1px solid var(--border-strong); }

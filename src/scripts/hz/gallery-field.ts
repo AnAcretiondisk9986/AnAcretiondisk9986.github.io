@@ -119,10 +119,28 @@ export function initGallery() {
     bx: number;
     by: number;
     item: GalleryItem;
-    hydrated: boolean;
+    lod: 'idle' | 'loading-thumb' | 'thumb' | 'loading-full' | 'full' | 'error';
+    baseW: number;
+    baseH: number;
+    sx: number;
+    sy: number;
+    scale: number;
+    focusDist: number;
+    inViewport: boolean;
+    inLoadWindow: boolean;
   }
   let fieldNodes: NodePos[] = [];
   let currentNearest: NodePos | null = null;
+  let fieldGen = 0;
+  let thumbInflight = 0;
+  let fullInflight = 0;
+  let pointerOffX = 0;
+  let pointerOffY = 0;
+  let pointerActive = false;
+  let loadPumpRaf = 0;
+
+  const MAX_THUMB_INFLIGHT = 4;
+  const MAX_FULL_INFLIGHT = 2;
 
   const getRawPool = (): GalleryItem[] => {
     if (activeTab === 'plates') return platesPool;
@@ -146,15 +164,141 @@ export function initGallery() {
     });
   };
 
-  const hydrateNode = (node: NodePos) => {
-    if (node.hydrated) return;
-    node.hydrated = true;
-    node.img.src = node.item.src;
+  const lockPlateBox = (node: NodePos) => {
+    const nw = node.img.naturalWidth;
+    const nh = node.img.naturalHeight;
+    if (!nw || !nh || node.baseW > 0) return;
+    const maxW = Math.min(window.innerWidth * 0.72, 620);
+    const maxH = Math.min(window.innerHeight * 0.64, 480);
+    const ratio = nw / nh;
+    const w = Math.round(Math.min(maxW, maxH * ratio));
+    const h = Math.round(w / ratio);
+    node.baseW = w;
+    node.baseH = h;
+    node.img.style.width = `${w}px`;
+    node.img.style.height = `${h}px`;
+  };
+
+  const startThumbLoad = (node: NodePos, gen: number) => {
+    if (node.lod !== 'idle') return;
+    const thumbUrl = node.item.thumb || node.item.src;
+    const fullUrl = node.item.src;
+    if (!thumbUrl) {
+      node.lod = 'error';
+      return;
+    }
+    const isDirectFull = thumbUrl === fullUrl;
+    node.lod = 'loading-thumb';
+    thumbInflight += 1;
+
+    const finish = () => {
+      thumbInflight = Math.max(0, thumbInflight - 1);
+      scheduleLoadPump();
+    };
+
+    const onReady = () => {
+      if (gen !== fieldGen) { finish(); return; }
+      lockPlateBox(node);
+      node.lod = isDirectFull ? 'full' : 'thumb';
+      node.el.classList.add('is-ready');
+      finish();
+    };
+
+    const onFail = () => {
+      if (gen !== fieldGen) { finish(); return; }
+      if (!isDirectFull && fullUrl && node.img.dataset.triedFallback !== '1') {
+        node.img.dataset.triedFallback = '1';
+        node.img.addEventListener('load', onReady, { once: true });
+        node.img.addEventListener('error', () => {
+          if (gen === fieldGen) {
+            node.lod = 'error';
+            node.el.classList.add('is-error');
+          }
+          finish();
+        }, { once: true });
+        node.img.src = fullUrl;
+        return;
+      }
+      node.lod = 'error';
+      node.el.classList.add('is-error');
+      finish();
+    };
+
+    node.img.addEventListener('load', onReady, { once: true });
+    node.img.addEventListener('error', onFail, { once: true });
+    node.img.src = thumbUrl;
+  };
+
+  const startFullUpgrade = (node: NodePos, gen: number) => {
+    if (node.lod !== 'thumb' || !node.item.src || node.item.src === node.item.thumb) return;
+    node.lod = 'loading-full';
+    fullInflight += 1;
+    const preloader = new Image();
+    preloader.decoding = 'async';
+    preloader.referrerPolicy = 'no-referrer';
+    preloader.onload = () => {
+      fullInflight = Math.max(0, fullInflight - 1);
+      if (gen !== fieldGen) return;
+      node.img.src = node.item.src;
+      node.lod = 'full';
+      scheduleLoadPump();
+    };
+    preloader.onerror = () => {
+      fullInflight = Math.max(0, fullInflight - 1);
+      if (gen === fieldGen) {
+        node.lod = 'full';
+        scheduleLoadPump();
+      }
+    };
+    preloader.src = node.item.src;
+  };
+
+  const shouldUpgradeToFull = (node: NodePos): boolean => {
+    if (node.lod !== 'thumb' || !node.inViewport) return false;
+    if (!node.item.src || node.item.src === node.item.thumb) return false;
+    const apparentW = (node.baseW || 480) * node.scale;
+    // 缩放比例较小时仅使用 480px 缩略图；放大或聚焦在中心镜场且实际渲染尺寸较大时按需升级原图
+    if (node === currentNearest && fieldZoom >= 0.85 && apparentW >= 380) return true;
+    return fieldZoom >= 1.08 && apparentW >= 480;
+  };
+
+  const pumpFieldLoads = () => {
+    loadPumpRaf = 0;
+    if (activeMode !== 'field' || fieldNodes.length === 0) return;
+    const gen = fieldGen;
+
+    if (thumbInflight < MAX_THUMB_INFLIGHT) {
+      const thumbCandidates = fieldNodes
+        .filter((n) => n.lod === 'idle' && n.inLoadWindow)
+        .sort((a, b) => a.focusDist - b.focusDist);
+      for (const node of thumbCandidates) {
+        if (thumbInflight >= MAX_THUMB_INFLIGHT) break;
+        startThumbLoad(node, gen);
+      }
+    }
+
+    if (fullInflight < MAX_FULL_INFLIGHT) {
+      const fullCandidates = fieldNodes
+        .filter((n) => shouldUpgradeToFull(n))
+        .sort((a, b) => a.focusDist - b.focusDist);
+      for (const node of fullCandidates) {
+        if (fullInflight >= MAX_FULL_INFLIGHT) break;
+        startFullUpgrade(node, gen);
+      }
+    }
+  };
+
+  const scheduleLoadPump = () => {
+    if (loadPumpRaf || activeMode !== 'field') return;
+    loadPumpRaf = requestAnimationFrame(pumpFieldLoads);
   };
 
   const renderField = () => {
     if (!canvasEl || !stage) return;
 
+    fieldGen += 1;
+    thumbInflight = 0;
+    fullInflight = 0;
     if (randomBtn) randomBtn.disabled = currentList.length <= 1;
 
     canvasEl.innerHTML = '';
@@ -187,14 +331,9 @@ export function initGallery() {
       frame.className = 'hz-fplate__frame';
       const img = document.createElement('img');
       img.alt = item.alt || '';
-      img.loading = i < 16 ? 'eager' : 'lazy';
       img.decoding = 'async';
+      img.referrerPolicy = 'no-referrer';
       img.draggable = false;
-      if (item.thumb && item.src && item.thumb !== item.src) {
-        img.dataset.galleryFallback = item.thumb;
-      }
-      img.addEventListener('load', () => card.classList.add('is-ready'), { once: true });
-      img.addEventListener('error', () => card.classList.add('is-error'), { once: true });
       frame.append(img);
 
       card.append(frame);
@@ -204,7 +343,22 @@ export function initGallery() {
       });
 
       frag.append(card);
-      fieldNodes.push({ el: card, img, bx, by, item, hydrated: false });
+      fieldNodes.push({
+        el: card,
+        img,
+        bx,
+        by,
+        item,
+        lod: 'idle',
+        baseW: 0,
+        baseH: 0,
+        sx: 0,
+        sy: 0,
+        scale: fieldZoom,
+        focusDist: Infinity,
+        inViewport: false,
+        inLoadWindow: false,
+      });
     });
 
     canvasEl.append(frag);
@@ -218,11 +372,14 @@ export function initGallery() {
     const cx = sw * 0.5;
     const cy = sh * 0.5;
     const lensRadius = Math.min(sw, sh) * 0.65;
-    const margin = 520 * Math.max(fieldZoom, 0.45);
-    const cullX = sw * 0.65 + margin;
-    const cullY = sw * 0.65 + margin;
-    const loadX = sw * 1.15 + margin * 1.6;
-    const loadY = sw * 1.15 + margin * 1.6;
+    const margin = 460 * Math.max(fieldZoom, 0.45);
+    const cullX = sw * 0.62 + margin;
+    const cullY = sw * 0.62 + margin;
+    // 严格收紧懒加载窗口：仅加载当前视口及边缘小缓冲，按中心/指针优先队列分批加载
+    const loadX = sw * 0.72 + 180;
+    const loadY = sh * 0.72 + 180;
+    const viewX = sw * 0.56 + 120;
+    const viewY = sh * 0.56 + 120;
 
     const gSize = clamp(80 * fieldZoom, 24, 180);
     stage.style.backgroundSize = `${gSize.toFixed(1)}px ${gSize.toFixed(1)}px`;
@@ -235,10 +392,13 @@ export function initGallery() {
       const sx = (node.bx - camX) * fieldZoom;
       const sy = (node.by - camY) * fieldZoom;
       const d = Math.hypot(sx, sy);
+      const pointerDist = pointerActive ? Math.hypot(sx - pointerOffX, sy - pointerOffY) : d;
 
-      if (!node.hydrated && Math.abs(sx) < loadX && Math.abs(sy) < loadY) {
-        hydrateNode(node);
-      }
+      node.sx = sx;
+      node.sy = sy;
+      node.focusDist = Math.min(d, pointerDist * 0.92);
+      node.inLoadWindow = Math.abs(sx) < loadX && Math.abs(sy) < loadY;
+      node.inViewport = Math.abs(sx) < viewX && Math.abs(sy) < viewY;
 
       const visible = Math.abs(sx) < cullX && Math.abs(sy) < cullY;
       node.el.style.display = visible ? 'block' : 'none';
@@ -248,10 +408,13 @@ export function initGallery() {
         const boost = 0.28 * Math.min(1, fieldZoom);
         const scale = (0.76 + boost * prox * prox) * fieldZoom;
         const op = fieldZoom < 0.65 ? 0.58 + 0.42 * prox : 0.36 + 0.64 * prox;
+        node.scale = scale;
 
         node.el.style.transform = `translate3d(${(cx + sx).toFixed(1)}px, ${(cy + sy).toFixed(1)}px, 0) translate(-50%, -50%) scale(${scale.toFixed(3)})`;
         node.el.style.opacity = op.toFixed(3);
         node.el.style.zIndex = String(Math.round(prox * 100) + 1);
+      } else {
+        node.scale = fieldZoom;
       }
 
       if (d < nearestDist) {
@@ -263,6 +426,7 @@ export function initGallery() {
     currentNearest = nearest;
     const lockRadius = 260 * Math.max(fieldZoom, 0.55);
     fieldNodes.forEach((n) => n.el.classList.toggle('is-locked', n === nearest && nearestDist < lockRadius));
+    scheduleLoadPump();
 
     if (coordEl) {
       coordEl.textContent = `OFFSET [${Math.round(camX)}, ${Math.round(camY)}]`;
@@ -556,7 +720,14 @@ export function initGallery() {
   });
 
   stage?.addEventListener('pointermove', (e) => {
-    if (!activePointers.has(e.pointerId)) return;
+    const rect = stage.getBoundingClientRect();
+    pointerOffX = e.clientX - rect.left - rect.width * 0.5;
+    pointerOffY = e.clientY - rect.top - rect.height * 0.5;
+    pointerActive = true;
+    if (!activePointers.has(e.pointerId)) {
+      scheduleLoadPump();
+      return;
+    }
     activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
     if (activePointers.size === 2) {
@@ -613,6 +784,7 @@ export function initGallery() {
   };
   stage?.addEventListener('pointerup', endPointer);
   stage?.addEventListener('pointercancel', endPointer);
+  stage?.addEventListener('pointerleave', () => { pointerActive = false; });
 
   stage?.addEventListener(
     'wheel',
@@ -678,7 +850,7 @@ export function initGallery() {
       idx = (idx + 1 + Math.floor(Math.random() * (fieldNodes.length - 1))) % fieldNodes.length;
     }
     const chosen = fieldNodes[idx];
-    hydrateNode(chosen);
+    startThumbLoad(chosen, fieldGen);
     targetX = chosen.bx;
     targetY = chosen.by;
     vx = 0;

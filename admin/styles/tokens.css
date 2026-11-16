@@ -11,30 +11,30 @@
 :root {
   color-scheme: dark;
 
-  /* —— 表面层级（数字越大越靠前、越亮） —— */
-  --bg: #0d0f12;
-  --surface-1: #14171b;
-  --surface-2: #1a1e23;
-  --surface-3: #22272e;
-  --surface-4: #2b3138;
-  --overlay: rgba(6, 8, 10, 0.68);
+  /* —— 表面层级（对齐 HORIZON VOID：深空黑曜石层阶） —— */
+  --bg: #08080b;
+  --surface-1: #0e0e13;
+  --surface-2: #14141b;
+  --surface-3: #1c1c25;
+  --surface-4: #262632;
+  --overlay: rgba(4, 4, 6, 0.78);
 
   /* —— 边框 —— */
-  --border: #262c34;
-  --border-strong: #343b45;
+  --border: rgba(236, 231, 220, 0.11);
+  --border-strong: rgba(236, 231, 220, 0.22);
 
-  /* —— 文本 —— */
-  --text: #e3e7ec;
-  --text-dim: #98a2ad;
-  --text-faint: #6b7480;
-  --text-on-accent: #07101f;
+  /* —— 文本（暖象牙纸白 + 岩石灰） —— */
+  --text: #ece7dc;
+  --text-dim: #aca69c;
+  --text-faint: #7d786e;
+  --text-on-accent: #140804;
 
-  /* —— 强调色 —— */
-  --accent: #4c8dff;
-  --accent-hover: #6ba1ff;
-  --accent-text: #9dc2ff;
-  --accent-soft: rgba(76, 141, 255, 0.14);
-  --accent-line: rgba(76, 141, 255, 0.42);
+  /* —— 强调色（吸积盘炽橙 / 琥珀金） —— */
+  --accent: #ff8c52;
+  --accent-hover: #ffa778;
+  --accent-text: #ffb36b;
+  --accent-soft: rgba(255, 90, 26, 0.15);
+  --accent-line: rgba(255, 122, 67, 0.48);
 
   /* —— 状态色 —— */
   --ok: #3fb950;

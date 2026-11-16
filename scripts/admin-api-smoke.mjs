@@ -31,6 +31,7 @@ const dataDir = join(root, 'data');
 const blogDir = join(root, 'blog');
 const backupDir = join(root, 'backups');
 const revisionsDir = join(root, 'revisions');
+const imgRepoDir = join(root, 'blog-images');
 await mkdir(dataDir, { recursive: true });
 await mkdir(blogDir, { recursive: true });
 await writeFile(join(dataDir, 'gallery.json'), '[]\n', 'utf8');
@@ -119,6 +120,42 @@ try {
   const dup = await apiForm('/api/posts', 'POST', { title: '重复 slug', slug });
   check('重复 slug 返回 409', dup.status === 409, dup.status);
 
+  // ── 扩展 frontmatter 保留 + 改名迁移修订历史 + 批量操作 ──
+  const extraSlug = 'extra-fm-smoke';
+  await writeFile(
+    join(blogDir, `${extraSlug}.md`),
+    '---\ntitle: 扩展字段测试\ndescription: 描述\npubDate: 2026-09-30\nupdatedDate: 2026-10-01\ncustomSeries: "系列A"\ndraft: false\naccess: public\n---\n\n正文内容\n',
+    'utf8',
+  );
+  const extraRead0 = await (await api(`/api/posts/${extraSlug}`)).json();
+  check('读取包含 updatedDate 字段', extraRead0.updatedDate === '2026-10-01', extraRead0.updatedDate);
+
+  const renamedSlug = 'extra-fm-renamed';
+  const renameRes = await apiForm(`/api/posts/${extraSlug}`, 'PUT', {
+    slug: renamedSlug,
+    title: '扩展字段改名后',
+    description: '描述',
+    pubDate: '2026-09-30',
+    content: '新正文内容',
+    expectedHash: extraRead0.contentHash,
+  });
+  check('文章改名成功', renameRes.status === 200, renameRes.status);
+  const renamedRaw = await readFile(join(blogDir, `${renamedSlug}.md`), 'utf8');
+  check('保存保留 updatedDate 与自定义 frontmatter 字段', /updatedDate:\s*["']?2026-10-01["']?/.test(renamedRaw) && renamedRaw.includes('customSeries: 系列A'), renamedRaw);
+  const migratedRevs = await (await api(`/api/posts/${renamedSlug}/revisions`)).json();
+  check('改名后旧 slug 的修订历史迁移到新 slug', Array.isArray(migratedRevs.revisions) && migratedRevs.revisions.length >= 1, JSON.stringify(migratedRevs));
+
+  const batchRes = await api('/api/posts/batch', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'archive', slugs: [renamedSlug] }),
+  });
+  const batchData = await batchRes.json();
+  check('批量操作接口 POST /api/posts/batch 成功', batchRes.status === 200 && batchData.okCount === 1, JSON.stringify(batchData));
+  const afterBatch = await (await api(`/api/posts/${renamedSlug}`)).json();
+  check('批量归档生效', afterBatch.archived === true, String(afterBatch.archived));
+  await api(`/api/posts/${renamedSlug}`, { method: 'DELETE' });
+
   const delRes = await api(`/api/posts/${encodeURIComponent(slug)}`, { method: 'DELETE' });
   check('删除文章成功', delRes.status === 200);
   check('删除后列表为空', (await (await api('/api/posts')).json()).length === 0);
@@ -142,7 +179,33 @@ try {
   check('画廊列表包含新建项', (await gList2.json()).length === 1);
 
   const gDelete = await api(`/api/gallery/${encodeURIComponent(gCreated.item.id)}?expectedHash=${gCreated.contentHash}`, { method: 'DELETE' });
-  check('画廊使用最新 hash 删除成功', gDelete.status === 200 && Boolean((await gDelete.json()).contentHash));
+  const gDelData = await gDelete.json();
+  check('画廊使用最新 hash 删除成功', gDelete.status === 200 && Boolean(gDelData.contentHash));
+
+  const gAutoTitle = await apiForm('/api/gallery', 'POST', { src: 'https://cdn.example.com/image/sample-plate_1700000000.webp', expectedHash: gDelData.contentHash });
+  const gAutoData = await gAutoTitle.json();
+  check('画廊新建留空标题时自动推导标题', gAutoTitle.status === 201 && gAutoData.item?.title === 'sample-plate', JSON.stringify(gAutoData.item));
+
+  const gBatch = await api('/api/gallery/batch', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      items: [
+        { src: 'https://cdn.example.com/image/batch-1_1700000001.webp' },
+        { src: 'https://cdn.example.com/image/batch-2_1700000002.webp', date: '2026-11-16' },
+      ],
+      expectedHash: gAutoData.contentHash,
+    }),
+  });
+  const gBatchData = await gBatch.json();
+  check('画廊批量新建接口 POST /api/gallery/batch 成功', gBatch.status === 201 && gBatchData.count === 2 && gBatchData.items?.[0]?.id !== gBatchData.items?.[1]?.id, JSON.stringify(gBatchData));
+
+  let cleanupHash = gBatchData.contentHash;
+  for (const item of [gAutoData.item, ...(gBatchData.items || [])]) {
+    if (!item?.id) continue;
+    const d = await (await api(`/api/gallery/${encodeURIComponent(item.id)}?expectedHash=${cleanupHash}`, { method: 'DELETE' })).json();
+    cleanupHash = d.contentHash || cleanupHash;
+  }
 
   const galleryRaw = await readFile(join(dataDir, 'gallery.json'), 'utf8');
   check('画廊文件始终是合法 JSON', Array.isArray(JSON.parse(galleryRaw)));
@@ -164,6 +227,26 @@ try {
   const fePut = await apiForm('/api/frontend', 'PUT', { siteName: '冒烟站点', expectedHash: fe0.contentHash });
   const feSaved = await fePut.json();
   check('前端定制保存成功', fePut.status === 200 && feSaved.frontend?.siteName === '冒烟站点');
+
+  // ── 媒体引用扫描覆盖 about:avatar 与 gallery ──
+  const existingMedia = await (await api('/api/media')).json();
+  const sampleImg = (existingMedia.images || [])[0];
+  if (sampleImg) {
+    const about1 = await (await api('/api/about')).json();
+    await apiForm('/api/about', 'PUT', { avatar: sampleImg.url, expectedHash: about1.contentHash });
+    const gListCur = await api('/api/gallery');
+    const gHashCur = gListCur.headers.get('x-content-hash') || '';
+    const gRef = await (await apiForm('/api/gallery', 'POST', { src: sampleImg.url, expectedHash: gHashCur })).json();
+    const mediaRes = await (await api('/api/media')).json();
+    const matched = (mediaRes.images || []).find((i) => i.name === sampleImg.name);
+    const hasGalleryRef = Boolean(matched && matched.usedBy.some((u) => u.startsWith('gallery:')));
+    check('媒体引用扫描识别关于页头像与画廊引用', Boolean(matched && matched.usedBy.includes('about:avatar') && hasGalleryRef), JSON.stringify(matched?.usedBy));
+    if (gRef?.item?.id) {
+      await api(`/api/gallery/${encodeURIComponent(gRef.item.id)}?expectedHash=${gRef.contentHash}`, { method: 'DELETE' });
+    }
+  } else {
+    check('媒体引用扫描识别关于页头像与画廊引用', true, 'skip-no-sample');
+  }
 
   // ── 访问控制（含版本冲突校验）──
   const pa0 = await (await api('/api/private-access')).json();

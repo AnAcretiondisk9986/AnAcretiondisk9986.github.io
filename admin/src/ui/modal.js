@@ -5,7 +5,8 @@ export function openModal(el) {
   el.setAttribute('role', 'dialog');
   el.setAttribute('aria-modal', 'true');
   el.dataset.open = '1';
-  const focusable = el.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+  const focusable = el.querySelector('[autofocus], input:not([type="hidden"]):not([disabled]), textarea:not([disabled]), select:not([disabled])')
+    || el.querySelector('button:not([disabled]), [href], [tabindex]:not([tabindex="-1"])');
   if (focusable) setTimeout(() => focusable.focus(), 0);
 }
 
