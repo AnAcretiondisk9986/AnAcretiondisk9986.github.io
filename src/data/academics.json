@@ -2,7 +2,7 @@
   "meta": {
     "title": "学业轨线",
     "subtitle": "从信息管理与信息系统到临床医学五年制：用五年半的课程拼贴，记录一次跨专业变轨与医学学习的全部轨迹。",
-    "updatedAt": "2026-11-16",
+    "updatedAt": "2026-11-17",
     "activeTermLabel": "2026–2027 · 第一学期（新·大一上 + 4 门本学期提前修读）"
   },
   "tracks": {
@@ -171,7 +171,7 @@
       "track": "orig",
       "status": "completed",
       "grade": "",
-      "gpa": null,
+      "gpa": 3.5,
       "note": "",
       "posts": [],
       "linkedIds": [
@@ -189,7 +189,7 @@
       "track": "orig",
       "status": "completed",
       "grade": "",
-      "gpa": null,
+      "gpa": 4.5,
       "note": "",
       "posts": [
         "social-paper",
@@ -210,7 +210,7 @@
       "track": "orig",
       "status": "completed",
       "grade": "",
-      "gpa": null,
+      "gpa": 4.7,
       "note": "",
       "posts": [],
       "linkedIds": [
@@ -244,7 +244,7 @@
       "track": "orig",
       "status": "completed",
       "grade": "",
-      "gpa": null,
+      "gpa": 4.2,
       "note": "",
       "posts": [],
       "linkedIds": [
@@ -263,7 +263,7 @@
       "track": "orig",
       "status": "completed",
       "grade": "",
-      "gpa": null,
+      "gpa": 5,
       "note": "",
       "posts": [],
       "linkedIds": [
@@ -282,7 +282,7 @@
       "track": "orig",
       "status": "completed",
       "grade": "",
-      "gpa": null,
+      "gpa": 4.5,
       "note": "",
       "posts": [],
       "linkedIds": []
@@ -298,7 +298,7 @@
       "track": "orig",
       "status": "completed",
       "grade": "",
-      "gpa": null,
+      "gpa": 2.7,
       "note": "",
       "posts": [],
       "linkedIds": []
@@ -314,7 +314,7 @@
       "track": "orig",
       "status": "completed",
       "grade": "",
-      "gpa": null,
+      "gpa": 4.5,
       "note": "",
       "posts": [],
       "linkedIds": [
@@ -332,7 +332,7 @@
       "track": "orig",
       "status": "completed",
       "grade": "",
-      "gpa": null,
+      "gpa": 3.3,
       "note": "",
       "posts": [],
       "linkedIds": [
@@ -350,7 +350,7 @@
       "track": "orig",
       "status": "completed",
       "grade": "",
-      "gpa": null,
+      "gpa": 3.5,
       "note": "",
       "posts": [],
       "linkedIds": [
@@ -368,7 +368,7 @@
       "track": "orig",
       "status": "completed",
       "grade": "",
-      "gpa": null,
+      "gpa": 3,
       "note": "",
       "posts": [],
       "linkedIds": [
@@ -386,7 +386,7 @@
       "track": "orig",
       "status": "completed",
       "grade": "",
-      "gpa": null,
+      "gpa": 4.5,
       "note": "",
       "posts": [],
       "linkedIds": []
@@ -418,7 +418,7 @@
       "track": "orig",
       "status": "completed",
       "grade": "",
-      "gpa": null,
+      "gpa": 4.5,
       "note": "",
       "posts": [],
       "linkedIds": [
@@ -436,7 +436,7 @@
       "track": "orig",
       "status": "completed",
       "grade": "",
-      "gpa": null,
+      "gpa": 3,
       "note": "",
       "posts": [],
       "linkedIds": [
@@ -455,7 +455,7 @@
       "track": "orig",
       "status": "completed",
       "grade": "",
-      "gpa": null,
+      "gpa": 4.5,
       "note": "",
       "posts": [
         "social-paper",
@@ -476,7 +476,7 @@
       "track": "orig",
       "status": "completed",
       "grade": "",
-      "gpa": null,
+      "gpa": 5,
       "note": "",
       "posts": [],
       "linkedIds": [
@@ -495,7 +495,7 @@
       "track": "orig",
       "status": "completed",
       "grade": "",
-      "gpa": null,
+      "gpa": 4.5,
       "note": "",
       "posts": [],
       "linkedIds": [
@@ -514,7 +514,7 @@
       "track": "orig",
       "status": "completed",
       "grade": "",
-      "gpa": null,
+      "gpa": 4.4,
       "note": "",
       "posts": [],
       "linkedIds": [
@@ -532,7 +532,7 @@
       "track": "orig",
       "status": "completed",
       "grade": "",
-      "gpa": null,
+      "gpa": 4.7,
       "note": "",
       "posts": [],
       "linkedIds": [
@@ -551,7 +551,7 @@
       "track": "orig",
       "status": "completed",
       "grade": "",
-      "gpa": null,
+      "gpa": 3,
       "note": "",
       "posts": [],
       "linkedIds": [
@@ -570,7 +570,7 @@
       "track": "orig",
       "status": "completed",
       "grade": "",
-      "gpa": null,
+      "gpa": 4.5,
       "note": "",
       "posts": [
         "AcLedger记账软件开发复盘",
@@ -590,7 +590,7 @@
       "track": "orig",
       "status": "completed",
       "grade": "",
-      "gpa": null,
+      "gpa": 4.1,
       "note": "",
       "posts": [],
       "linkedIds": []
@@ -607,7 +607,7 @@
       "status": "completed",
       "recognizedNote": "原专业学分互认",
       "grade": "",
-      "gpa": null,
+      "gpa": 3,
       "note": "",
       "posts": [],
       "linkedIds": [
@@ -717,7 +717,7 @@
       "status": "completed",
       "recognizedNote": "原专业学分互认",
       "grade": "",
-      "gpa": null,
+      "gpa": 3.3,
       "note": "",
       "posts": [],
       "linkedIds": [
@@ -737,7 +737,7 @@
       "status": "completed",
       "recognizedNote": "原专业学分互认",
       "grade": "",
-      "gpa": null,
+      "gpa": 4.7,
       "note": "",
       "posts": [],
       "linkedIds": [
@@ -774,7 +774,7 @@
       "status": "completed",
       "recognizedNote": "原专业学分互认",
       "grade": "",
-      "gpa": null,
+      "gpa": 3.5,
       "note": "",
       "posts": [],
       "linkedIds": [
@@ -794,7 +794,7 @@
       "status": "completed",
       "recognizedNote": "原专业学分互认",
       "grade": "",
-      "gpa": null,
+      "gpa": 3.95,
       "note": "原·大一《高等数学（1）（2）》直接互认。",
       "posts": [],
       "linkedIds": [
@@ -815,7 +815,7 @@
       "status": "completed",
       "recognizedNote": "原专业学分互认",
       "grade": "",
-      "gpa": null,
+      "gpa": 5,
       "note": "",
       "posts": [],
       "linkedIds": [
@@ -835,7 +835,7 @@
       "status": "completed",
       "recognizedNote": "原专业学分互认",
       "grade": "",
-      "gpa": null,
+      "gpa": 4.5,
       "note": "",
       "posts": [],
       "linkedIds": [
@@ -957,7 +957,7 @@
       "status": "completed",
       "recognizedNote": "原专业学分互认",
       "grade": "",
-      "gpa": null,
+      "gpa": 3.7,
       "note": "",
       "posts": [],
       "linkedIds": [],
@@ -975,7 +975,7 @@
       "status": "completed",
       "recognizedNote": "原专业学分互认",
       "grade": "",
-      "gpa": null,
+      "gpa": 5,
       "note": "",
       "posts": [],
       "linkedIds": [],
@@ -993,7 +993,7 @@
       "status": "completed",
       "recognizedNote": "原专业学分互认",
       "grade": "",
-      "gpa": null,
+      "gpa": 4.5,
       "note": "",
       "posts": [],
       "linkedIds": [
@@ -1014,7 +1014,7 @@
       "status": "completed",
       "recognizedNote": "原·大一下已修读 / 互认",
       "grade": "",
-      "gpa": null,
+      "gpa": 4.5,
       "note": "",
       "posts": [],
       "linkedIds": [
@@ -1034,7 +1034,7 @@
       "status": "completed",
       "recognizedNote": "原专业学分互认",
       "grade": "",
-      "gpa": null,
+      "gpa": 3,
       "note": "",
       "posts": [],
       "linkedIds": [
@@ -1054,7 +1054,7 @@
       "status": "completed",
       "recognizedNote": "原专业学分互认",
       "grade": "",
-      "gpa": null,
+      "gpa": 3,
       "note": "",
       "posts": [],
       "linkedIds": [
@@ -1074,7 +1074,7 @@
       "status": "completed",
       "recognizedNote": "原专业学分互认",
       "grade": "",
-      "gpa": null,
+      "gpa": 4.5,
       "note": "",
       "posts": [],
       "linkedIds": [

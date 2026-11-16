@@ -3,6 +3,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import {
   computeAcademicStats,
   fmtCredit,
+  formatCourseGrade,
   packAcademics,
   packTrackWall,
   type AcademicData,
@@ -115,7 +116,7 @@ const badgeText = (c: PackedCourse) => {
             {wall.courses.map((c) => {
               const isMilestone = c.kind === 'milestone';
               const milestoneTier = isMilestone ? (c.milestoneSpan && c.milestoneSpan >= 4 ? 'internship' : 'clerkship') : undefined;
-              const gradeText = c.grade?.trim() || 'NULL';
+              const gradeInfo = formatCourseGrade(c);
               const fullTitle = c.subTags.length > 0 ? `${c.mainTitle}（${c.subTags.join('·')}）` : c.mainTitle;
               return (
                 <button
@@ -132,7 +133,7 @@ const badgeText = (c: PackedCourse) => {
                   data-search={`${c.name} ${c.mainTitle} ${c.subTags.join(' ')} ${c.en || ''} ${c.dept}`.toLowerCase()}
                   style={tileStyle(c)}
                   aria-pressed="false"
-                  aria-label={`${fullTitle}${c.en ? ` (${c.en})` : ''}，${badgeText(c)}，开课部门：${c.dept}，成绩：${gradeText}`}
+                  aria-label={`${fullTitle}${c.en ? ` (${c.en})` : ''}，${badgeText(c)}，开课部门：${c.dept}，${gradeInfo.label}：${gradeInfo.ariaText}`}
                 >
                   <span class="hz-tile__inner">
                     <span class="hz-tile__face hz-tile__face--front">
@@ -159,8 +160,14 @@ const badgeText = (c: PackedCourse) => {
                         <span class="hz-tile__v">{c.dept}</span>
                       </span>
                       <span class="hz-tile__meta-row">
-                        <span class="hz-tile__k">成绩</span>
-                        <span class="hz-tile__v hz-tile__v--grade">{gradeText}</span>
+                        <span class="hz-tile__k">{gradeInfo.label}</span>
+                        <span
+                          class="hz-tile__v hz-tile__v--grade"
+                          data-empty={gradeInfo.hasScore ? undefined : 'true'}
+                        >
+                          {gradeInfo.value}
+                          {gradeInfo.scale && <span class="hz-tile__scale"> {gradeInfo.scale}</span>}
+                        </span>
                       </span>
                     </span>
                   </span>

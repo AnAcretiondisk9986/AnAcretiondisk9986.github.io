@@ -459,6 +459,17 @@
   font-size: 0.84rem;
   font-weight: 700;
   color: var(--tile-accent);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.hz-tile__v--grade[data-empty='true'] {
+  color: var(--tile-ink-2);
+  font-weight: 600;
+}
+.hz-tile__scale {
+  font-size: 0.78em;
+  font-weight: 500;
+  color: var(--tile-ink-2);
 }
 .hz-tile[data-hero='true'] .hz-tile__v {
   font-size: 0.92rem;

@@ -621,3 +621,45 @@ export function computeAcademicStats(data: AcademicData) {
 }
 
 export const fmtCredit = (n: number) => (Number.isInteger(n) ? `${n}.0` : String(n));
+
+export const GPA_MAX = 5.0;
+
+export interface FormattedCourseGrade {
+  label: string;
+  value: string;
+  scale: string;
+  ariaText: string;
+  hasScore: boolean;
+}
+
+/** 统一格式化卡片背面成绩展示（5.0 满绩体系，未录入返回 NULL）。 */
+export function formatCourseGrade(course: Pick<AcademicCourse, 'grade' | 'gpa'>): FormattedCourseGrade {
+  const rawGrade = course.grade?.trim();
+  if (rawGrade) {
+    return {
+      label: '成绩',
+      value: rawGrade,
+      scale: '',
+      ariaText: rawGrade,
+      hasScore: true,
+    };
+  }
+  if (typeof course.gpa === 'number' && Number.isFinite(course.gpa)) {
+    const gpaStr = course.gpa.toFixed(2);
+    const scaleStr = GPA_MAX.toFixed(1);
+    return {
+      label: '成绩 · GPA',
+      value: gpaStr,
+      scale: `/ ${scaleStr}`,
+      ariaText: `GPA ${gpaStr} / ${scaleStr}`,
+      hasScore: true,
+    };
+  }
+  return {
+    label: '成绩',
+    value: 'NULL',
+    scale: '',
+    ariaText: 'NULL',
+    hasScore: false,
+  };
+}
