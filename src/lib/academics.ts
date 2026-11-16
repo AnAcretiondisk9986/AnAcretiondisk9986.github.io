@@ -4,6 +4,7 @@ export interface AcademicCourse {
   id: string;
   code: string;
   name: string;
+  en?: string;
   credits: number;
   kind?: 'course' | 'milestone';
   milestoneSpan?: number;
@@ -81,6 +82,8 @@ export interface PackedCourse extends AcademicCourse {
   hue: number;
   semesterLabel: string;
   semesterYear: string;
+  mainTitle: string;
+  subTags: string[];
   titleRemD: number;
   titleRemM: number;
   desktop: GridPlacement;
@@ -398,29 +401,70 @@ function packWithMilestones(
   return { map, rows: yOffset + inner.rows, nextBandIdx: inner.nextBandIdx };
 }
 
+const ROMAN_NUMERALS = ['', '\u2160', '\u2161', '\u2162', '\u2163', '\u2164', '\u2165', '\u2166', '\u2167', '\u2168', '\u2169'];
+
+function toUnicodeRoman(n: number): string {
+  return ROMAN_NUMERALS[n] || String(n);
+}
+
+function replaceTrailingNumber(text: string): string {
+  return text.replace(/([^\dA-Za-z])\s*([1-9]|10)$/, (_, prev: string, num: string) => `${prev} ${toUnicodeRoman(Number(num))}`);
+}
+
+export function formatCourseTitle(rawName: string): { mainTitle: string; subTags: string[] } {
+  const subTags: string[] = [];
+  let main = '';
+  let lastIndex = 0;
+  const parenRe = /（([^）]+)）|\(([^)]+)\)/g;
+
+  for (const m of rawName.matchAll(parenRe)) {
+    const start = m.index ?? 0;
+    const before = rawName.slice(lastIndex, start).trim();
+    if (before) main += before;
+    lastIndex = start + m[0].length;
+
+    const inner = (m[1] ?? m[2] ?? '').trim();
+    if (/^(?:[1-9]|10)$/.test(inner)) {
+      main = `${main.trimEnd()} ${toUnicodeRoman(Number(inner))}`;
+    } else if (inner) {
+      subTags.push(replaceTrailingNumber(inner));
+    }
+  }
+
+  const tail = rawName.slice(lastIndex).trim();
+  if (tail) main += tail;
+  const mainTitle = replaceTrailingNumber(main.trim()).replace(/\s+/g, ' ');
+  return { mainTitle, subTags };
+}
+
 function computeTitleRem(
-  name: string,
+  course: AcademicCourse,
   placement: GridPlacement,
   cols: number,
   isDesktop: boolean,
-  isMilestone?: boolean,
-  milestoneSpan?: number,
+  formatted: { mainTitle: string; subTags: string[] },
 ): number {
-  if (isMilestone) {
-    return milestoneSpan && milestoneSpan >= 4 ? (isDesktop ? 3.4 : 2.3) : isDesktop ? 2.35 : 1.65;
+  if (course.kind === 'milestone') {
+    return course.milestoneSpan && course.milestoneSpan >= 4 ? (isDesktop ? 3.1 : 2.1) : isDesktop ? 2.2 : 1.55;
   }
   const canvasW = isDesktop ? 1140 : 280;
-  const rowPx = isDesktop ? 92 : 84;
-  const availW = Math.max(72, (placement.w / cols) * canvasW - (isDesktop ? 28 : 16));
-  const availH = Math.max(46, placement.h * rowPx - (isDesktop ? 42 : 34));
-  const visualLen = [...name].reduce((s, ch) => s + (/[\x00-\xff]/.test(ch) ? 0.56 : 1), 0);
-  const singleLine = visualLen <= (isDesktop ? 5 : 4);
-  const targetLines = placement.h >= 2 ? (visualLen > 8 ? 2.1 : 1.35) : singleLine ? 1 : 1.75;
+  const isClin = course.track === 'clin';
+  const rowPx = isClin ? (isDesktop ? 134 : 118) : (isDesktop ? 104 : 90);
+  const availW = Math.max(72, (placement.w / cols) * canvasW - (isDesktop ? 30 : 18));
+  const reserveV = (isDesktop ? 44 : 36) + (course.en ? (isDesktop ? 28 : 22) : 0) + (formatted.subTags.length > 0 ? 12 : 0);
+  const availH = Math.max(38, placement.h * rowPx - reserveV);
+  const strokeW = isClin ? 1.07 : 1.02;
+  const visualLen = [...formatted.mainTitle].reduce(
+    (s, ch) => s + (/[\x00-\xff]/.test(ch) ? 0.56 : /[\u2160-\u217f]/.test(ch) ? 0.85 : 1) * strokeW,
+    0,
+  );
+  const singleLine = visualLen <= (isDesktop ? 5.2 : 4);
+  const targetLines = placement.h >= 2 ? (visualLen > 8 ? 2.1 : 1.35) : singleLine ? 1 : 1.8;
   const charsPerLine = Math.max(1.6, visualLen / targetLines);
-  const byW = (availW * 0.92) / charsPerLine;
-  const byH = (availH * 0.84) / (targetLines * 1.15);
-  const maxPx = placement.h >= 2 ? (isDesktop ? 38 : 24) : isDesktop ? 28 : 19;
-  const minPx = isDesktop ? 13.5 : 11.5;
+  const byW = (availW * 0.9) / charsPerLine;
+  const byH = (availH * 0.86) / (targetLines * 1.15);
+  const maxPx = placement.h >= 2 ? (isDesktop ? 36 : 23) : isDesktop ? (isClin ? 25 : 27) : 18;
+  const minPx = isDesktop ? 12.5 : 11;
   const px = Math.max(minPx, Math.min(maxPx, byW, byH));
   return Number((px / 16).toFixed(2));
 }
@@ -458,14 +502,16 @@ export function packAcademics(data: AcademicData): PackedSemester[] {
       const desktop = d.map.get(course.id) ?? { x: 1, y: 1, w: 24, h: 1 };
       const tablet = t.map.get(course.id) ?? { x: 1, y: 1, w: 12, h: 1 };
       const mobile = m.map.get(course.id) ?? { x: 1, y: 1, w: 6, h: 1 };
-      const isMs = course.kind === 'milestone';
+      const formatted = formatCourseTitle(course.name);
       return {
         ...course,
         hue: sem.hue,
         semesterLabel: sem.label,
         semesterYear: sem.year,
-        titleRemD: computeTitleRem(course.name, desktop, 24, true, isMs, course.milestoneSpan),
-        titleRemM: computeTitleRem(course.name, mobile, 6, false, isMs, course.milestoneSpan),
+        mainTitle: formatted.mainTitle,
+        subTags: formatted.subTags,
+        titleRemD: computeTitleRem(course, desktop, 24, true, formatted),
+        titleRemM: computeTitleRem(course, mobile, 6, false, formatted),
         desktop,
         tablet,
         mobile,

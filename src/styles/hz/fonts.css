@@ -7,6 +7,8 @@
 @font-face { font-family: 'Anthropic Mono'; src: url('/fonts/anthropic-mono-italic.woff2') format('woff2'); font-weight: 300 800; font-style: italic; font-display: swap; }
 @font-face { font-family: 'JetBrains Mono'; src: url('/fonts/jetbrains-mono.woff2') format('woff2'); font-weight: 100 800; font-style: normal; font-display: swap; }
 @font-face { font-family: 'Unbounded'; src: url('/fonts/unbounded-latin.woff2') format('woff2'); font-weight: 200 900; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Google Sans Italic'; src: url('/fonts/google-sans-italic.ttf') format('truetype'); font-weight: 400 700; font-style: italic; font-display: swap; }
+@font-face { font-family: 'Noto Serif SC Black'; src: url('/fonts/noto-serif-sc-black-acad.ttf') format('truetype'); font-weight: 900; font-style: normal; font-display: swap; }
 /* noto-sans-sc-[4]-400-normal */
 @font-face {
   font-family: 'Noto Sans SC';

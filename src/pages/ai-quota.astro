@@ -111,7 +111,9 @@ const amountLabel = (group: string) =>
     {/* 页头压成一行：标题 + 一句说明 + 状态 + 两个按钮 */}
     <header class="aq-top">
       <div class="aq-top__lead">
-        <h1 class="aq-top__title">{quota.title}</h1>
+        <h1 class="aq-top__title">
+          {quota.title} <span class="hz-ja-pill" lang="ja">算力流量</span>
+        </h1>
         <p class="aq-top__deck">
           {quota.subtitle}
           <span class="aq-top__sep" aria-hidden="true">/</span>

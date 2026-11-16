@@ -96,7 +96,10 @@ vec3 boostSaturation(vec3 col, float sat) {
 vec3 sampleSky(vec3 dir, float lensing) {
   vec2 sph = vec2(atan(dir.z, dir.x) * 0.15915 + 0.5, asin(clamp(dir.y, -1.0, 1.0)) * 0.31831 + 0.5);
 
-  // 两层锐利星场 + 引力透镜增亮
+  // 纯净深空虚无底色 + 两层锐利星场引力的透镜增亮（不映射前景插画）
+  float band = exp(-abs(dir.y) * 3.6);
+  vec3 cosmos = mix(vec3(0.008, 0.009, 0.016), vec3(0.022, 0.028, 0.056), band);
+
   vec2 g1 = sph * vec2(170.0, 85.0);
   vec2 id1 = floor(g1);
   vec2 fv1 = fract(g1) - 0.5;
@@ -110,18 +113,7 @@ vec3 sampleSky(vec3 dir, float lensing) {
   float s2 = smoothstep(0.991, 0.9995, hash21(id2)) * smoothstep(0.36, 0.04, length(fv2));
   stars += vec3(0.75, 0.84, 1.0) * s2 * 0.95;
 
-  stars *= lensing;
-
-  if (u_hasTex > 0.5 && u_texFade > 0.01) {
-    vec2 uv = dir.xy * vec2(0.46, -0.46) + 0.5;
-    uv = clamp(uv, 0.0, 1.0);
-    vec3 img = texture2D(u_sky, uv).rgb;
-    img = boostSaturation(img, 1.32);
-    float edgeMask = smoothstep(0.0, 0.15, uv.x) * smoothstep(1.0, 0.85, uv.x)
-                   * smoothstep(0.0, 0.15, uv.y) * smoothstep(1.0, 0.85, uv.y);
-    stars += img * (0.48 * edgeMask * u_texFade * min(lensing, 1.75));
-  }
-  return stars;
+  return cosmos + stars * lensing;
 }
 
 void main() {

@@ -138,9 +138,18 @@
   gap: var(--s-3);
 }
 .hz-ledger-box h2 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.55em;
   font-family: var(--f-sans);
   font-size: var(--t-h3);
   font-weight: 700;
+}
+.hz-about-ja {
+  font-size: 0.84rem;
+  color: var(--hz-hot-ink);
+  letter-spacing: 0.07em;
 }
 .hz-ledger-list {
   list-style: none;

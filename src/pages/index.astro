@@ -17,11 +17,25 @@ const recentPosts = posts.slice(0, 8);
 const totalChars = posts.reduce((sum, p) => sum + massOf(p.body ?? ''), 0);
 const latestMjd = posts[0] ? mjd(posts[0].data.pubDate).toFixed(1) : '—';
 
+const allGalleryPool = (standaloneGallery as GalleryImageBrief[]).map((img) => {
+  const thumb = img.thumb ?? thumbOf(img.src);
+  return {
+    id: img.id,
+    thumb,
+    fallback: thumb !== img.src ? img.src : '',
+    alt: img.alt || '',
+  };
+});
 const galleryPlates = sortNewestFirst(standaloneGallery as GalleryImageBrief[])
   .slice(0, 4)
   .map((img) => {
     const thumb = img.thumb ?? thumbOf(img.src);
-    return { ...img, thumb, fallback: thumb !== img.src ? img.src : '' };
+    return {
+      id: img.id,
+      thumb,
+      fallback: thumb !== img.src ? img.src : '',
+      alt: img.alt || '',
+    };
   });
 
 const rawTitle1 = String(frontend.heroTitleLine1 ?? '').trim();
@@ -37,7 +51,6 @@ const primaryCtaHref = safeLink(frontend.primaryCtaHref, '/blog/');
     <canvas
       class="hz-hero__canvas"
       data-disk
-      data-sky-src={frontend.stillHeroImage || ''}
       aria-hidden="true"
     ></canvas>
     <div class="hz-hero__fallback" aria-hidden="true"></div>
@@ -81,7 +94,7 @@ const primaryCtaHref = safeLink(frontend.primaryCtaHref, '/blog/');
 
     <div class="hz-hero__cue hz-wrap hz-mono" aria-hidden="true">
       <span>R_s = 2GM / c² · SCHWARZSCHILD METRIC</span>
-      <span>↓ SCROLL TO CROSS HORIZON</span>
+      <span>↓ SCROLL TO CROSS HORIZON · <span lang="ja">事象境界へ降下</span></span>
     </div>
   </section>
 
@@ -115,29 +128,60 @@ const primaryCtaHref = safeLink(frontend.primaryCtaHref, '/blog/');
         <a class="hz-sect__more" href="/gallery/">进入透镜场 →</a>
       </div>
 
-      <div class="hz-plates-strip">
+      <div class="hz-plates-strip" data-home-plates>
         {galleryPlates.map((img, i) => (
           <a
             class:list={['hz-hplate', { 'hz-hplate--lead': i === 0 }]}
             href={`/gallery/?plate=${encodeURIComponent(img.id)}`}
+            aria-label="查看图像"
           >
             <span class="hz-hplate__frame">
               <img
                 src={img.thumb}
-                alt={img.alt || img.title || ''}
+                alt={img.alt}
                 loading="lazy"
                 decoding="async"
                 data-gallery-fallback={img.fallback || undefined}
               />
               <span class="hz-hplate__cross" aria-hidden="true"></span>
             </span>
-            <span class="hz-hplate__meta">
-              <span class="hz-hplate__title">{img.title || '未命名图版'}</span>
-              <span class="hz-hplate__no hz-mono">PL.{String(i + 1).padStart(2, '0')}</span>
-            </span>
           </a>
         ))}
       </div>
+      <script
+        type="application/json"
+        id="hz-home-plates-pool"
+        set:html={JSON.stringify(allGalleryPool).replace(/</g, '\\u003c')}
+      ></script>
+      <script is:inline>
+        (() => {
+          const strip = document.querySelector('[data-home-plates]');
+          const poolEl = document.getElementById('hz-home-plates-pool');
+          if (!strip || !poolEl?.textContent) return;
+          try {
+            const pool = JSON.parse(poolEl.textContent);
+            if (!Array.isArray(pool) || pool.length <= 1) return;
+            for (let i = pool.length - 1; i > 0; i -= 1) {
+              const j = Math.floor(Math.random() * (i + 1));
+              [pool[i], pool[j]] = [pool[j], pool[i]];
+            }
+            const cards = strip.querySelectorAll('.hz-hplate');
+            cards.forEach((card, idx) => {
+              const item = pool[idx];
+              if (!item) return;
+              card.setAttribute('href', `/gallery/?plate=${encodeURIComponent(item.id)}`);
+              const img = card.querySelector('img');
+              if (!img) return;
+              img.src = item.thumb;
+              img.alt = item.alt || '';
+              if (item.fallback) img.setAttribute('data-gallery-fallback', item.fallback);
+              else img.removeAttribute('data-gallery-fallback');
+            });
+          } catch {
+            /* preserve SSR fallback */
+          }
+        })();
+      </script>
     </section>
   )}
 

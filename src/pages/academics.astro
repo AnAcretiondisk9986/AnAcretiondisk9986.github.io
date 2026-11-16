@@ -89,7 +89,7 @@ const badgeText = (c: PackedCourse) => {
     <div class="hz-acad-wall">
       {walls.map((wall, idx) => (
         <>
-          <section class="hz-mosaic" aria-label={wall.label}>
+          <section class:list={['hz-mosaic', { 'hz-mosaic--clin': wall.id === 'clin' }]} aria-label={wall.label}>
             {wall.axis.map((seg) => (
               <div
                 class:list={['hz-axis-seg', { 'is-year-start': seg.showYear }]}
@@ -116,6 +116,7 @@ const badgeText = (c: PackedCourse) => {
               const isMilestone = c.kind === 'milestone';
               const milestoneTier = isMilestone ? (c.milestoneSpan && c.milestoneSpan >= 4 ? 'internship' : 'clerkship') : undefined;
               const gradeText = c.grade?.trim() || 'NULL';
+              const fullTitle = c.subTags.length > 0 ? `${c.mainTitle}（${c.subTags.join('·')}）` : c.mainTitle;
               return (
                 <button
                   type="button"
@@ -128,14 +129,24 @@ const badgeText = (c: PackedCourse) => {
                   data-hero={c.desktop.h > 1 ? 'true' : undefined}
                   data-milestone={isMilestone ? 'true' : undefined}
                   data-milestone-tier={milestoneTier}
-                  data-search={`${c.name} ${c.dept}`.toLowerCase()}
+                  data-search={`${c.name} ${c.mainTitle} ${c.subTags.join(' ')} ${c.en || ''} ${c.dept}`.toLowerCase()}
                   style={tileStyle(c)}
                   aria-pressed="false"
-                  aria-label={`${c.name}，${badgeText(c)}，开课部门：${c.dept}，成绩：${gradeText}`}
+                  aria-label={`${fullTitle}${c.en ? ` (${c.en})` : ''}，${badgeText(c)}，开课部门：${c.dept}，成绩：${gradeText}`}
                 >
                   <span class="hz-tile__inner">
                     <span class="hz-tile__face hz-tile__face--front">
-                      <span class="hz-tile__name">{c.name}</span>
+                      <span class="hz-tile__body">
+                        <span class="hz-tile__title-line">
+                          <span class="hz-tile__name">{c.mainTitle}</span>
+                          {c.subTags.map((st) => (
+                            <span class="hz-tile__sub">{st}</span>
+                          ))}
+                        </span>
+                        {c.en && (
+                          <span class="hz-tile__en" lang="en">{c.en}</span>
+                        )}
+                      </span>
                       <span class="hz-tile__cr">
                         {c.early && <span class="hz-tile__early" aria-hidden="true">⚡</span>}
                         <span>{badgeText(c)}</span>
@@ -160,7 +171,7 @@ const badgeText = (c: PackedCourse) => {
 
           {idx === 0 && (
             <div class="hz-transfer-line" role="separator" aria-label="转专业">
-              <span>转专业</span>
+              <span>转专业 · <span lang="ja">転科軌道修正</span></span>
             </div>
           )}
         </>

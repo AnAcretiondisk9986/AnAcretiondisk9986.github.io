@@ -79,7 +79,12 @@ src/
 
 ## 3. 当前状态
 
-- **Phase 1.4（全站液态玻璃 HUD + 黑洞/白洞着色器升级 + 学业坐标轴圆角排版 + 图像/文章/关于精细打磨）已完成构建、无头浏览器复检与推送**：
+- **Phase 1.5（纯净黑洞天球 + 学业中英文/罗马数字/字重重塑 + 图像场滚轮双指缩放与去编号 + 首页随机图版 + 全站 Dela Gothic One 日语体系）已完成**：
+  - **首页黑洞 & 透镜图版**（[index.astro](src/pages/index.astro)、[disk.ts](src/scripts/hz/disk.ts)、[home.css](src/styles/hz/home.css)）：移除首页前景图引力透镜折射映射，改为纯净深空暗底 + 双层锐利星场；Section 02 图版条取消标题与 `PL.XX` 编号，嵌入 99 图静态池并在前端挂载时随机抽取 4 张展示。
+  - **学业板块**（[academics.json](src/data/academics.json)、[academics.ts](src/lib/academics.ts)、[academics.astro](src/pages/academics.astro)、[academics.css](src/styles/hz/academics.css)、[fonts.css](src/styles/hz/fonts.css)）：新增 `formatCourseTitle()`，统一将课程括号数字及尾随编号替换为真 Unicode 罗马数字（`Ⅰ`/`Ⅱ`/`Ⅲ`/`Ⅳ`），将 `（实践）`/`（理论）`/`（D）`/`（体能素质）`/`（毕业考）` 等括号说明脱壳为小字号浅色轻字重附属标签；转专业后（`clin`）77 门课程全部补充英文译名并用自托管 `Google Sans Italic` 变体渲染，中文标题使用从本地提取的 `Noto Serif SC Black`（900），转专业前（`orig`）采用粗斜体，`clin` 网格适当拔高行高避免裁切。
+  - **图像页透镜场**（[gallery.astro](src/pages/gallery.astro)、[gallery-field.ts](src/scripts/hz/gallery-field.ts)、[gallery.css](src/styles/hz/gallery.css)）：移除 `.hz-field-lock` 左下角浮框及所有图版标题/`PL.` 编号系统；新增以光标/捏合中点为锚的鼠标滚轮与双指捏合 `ZOOM 20%–240%` 视场缩放以调节画框内可见图片数量。
+  - **全站日语标识与字体**（[tokens.css](src/styles/hz/tokens.css)、[base.css](src/styles/hz/base.css)、[Hud.astro](src/components/hz/Hud.astro)、[Foot.astro](src/components/hz/Foot.astro) 等）：将 `[lang="ja"]` 统一切换为 `Dela Gothic One`，并在首页降下提示、全屏菜单、页脚、光谱图、图像场、关于页、学业分隔线、文章遥测、门禁与额度页补充少量日语观测角标。
+- **Phase 1.4（全站液态玻璃 HUD + 黑洞/白洞着色器升级 + 学业坐标轴圆角排版 + 图像/文章/关于精细打磨）已提交推送（`c3c84e0`）**：
   - **学业页**（[academics.json](src/data/academics.json)、[academics.ts](src/lib/academics.ts)、[academics.astro](src/pages/academics.astro)、[academics.css](src/styles/hz/academics.css)）：互认课程归入 `completed`（已修 38 门）；左侧新增与网格行严格对齐的纵向年份/学段坐标轴；方块改为圆角矩形并按卡片宽高与字数自动放大课程标题以撑满版面；
   - **全站外壳与首页**：[shell.css](src/styles/hz/shell.css) 将顶栏从 `mix-blend-mode: difference` 升级为 VOID/PLATE 双模式液态玻璃导航栏；[Foot.astro](src/components/hz/Foot.astro) 与 [shell.css](src/styles/hz/shell.css) 将「回到视界之外」改为 `50×50px` 圆形按钮；[disk.ts](src/scripts/hz/disk.ts) 与 [home.css](src/styles/hz/home.css) 提升光线步进精度（112 步）、多尺度涡旋与多普勒对比及 ACES + 饱和度，优化 VOID 黑洞与 PLATE 白洞呈现，并补充左侧局域径向文字护底渐变以兼顾视界绚丽度与文案对比度；
   - **图像页**（[gallery.astro](src/pages/gallery.astro)、[gallery-field.ts](src/scripts/hz/gallery-field.ts)、[gallery.css](src/styles/hz/gallery.css)）：移除透镜场 32 张分扇区限制，改为容纳全集图片（近视口懒加载）并按原始宽高比例展示，新增「随机跳转 ↗」按钮；
@@ -106,7 +111,20 @@ src/
 
 <!-- 新条目追加在这里 -->
 
-### 2026-11-16 · Phase 1.4：全站体验增强与 5 个板块定向精修
+### 2026-11-16 · Phase 1.5：纯净黑洞天球、学业字体/罗马数字/译名重塑、图像场缩放与全站 Dela Gothic One 日语体系
+
+- **黑洞折射底图清理**：
+  - [index.astro](src/pages/index.astro) 移除画布 `data-sky-src` 绑定，[disk.ts](src/scripts/hz/disk.ts) `sampleSky()` 改为纯净深空暗底 + 引力增亮双层星场（保留 `frontend.json` 数据契约不改动）。
+- **学业课程命名规则与双轨字体重塑**：
+  - [academics.ts](src/lib/academics.ts) 新增 `formatCourseTitle()`：括号数字与尾随编号（含 `体育3`/`体能测试4` 等）全部转写为真 Unicode 罗马数字 `Ⅰ`–`Ⅳ`（禁用拉丁 `I`）；`（实践）`/`（理论）`/`（D）`/`（体能素质）`/`（毕业考）` 等括号说明脱壳为小字号、常规字重、浅色的 `.hz-tile__sub` 附属标签。
+  - [academics.json](src/data/academics.json) 为转专业后 `clin` 阶段全部 77 门课程及见习/实习节点补充英文译名；生成自托管变体字体 [google-sans-italic.ttf](public/fonts/google-sans-italic.ttf) 与 [noto-serif-sc-black-acad.ttf](public/fonts/noto-serif-sc-black-acad.ttf)（`Noto Serif SC` `wght=900` 实裁），并在 [fonts.css](src/styles/hz/fonts.css)、[academics.astro](src/pages/academics.astro) 与 [academics.css](src/styles/hz/academics.css) 实现：转专业前 `orig` 使用粗斜体，转专业后 `clin` 使用中文粗 Serif Black（`900`）+ 较小字号 `Google Sans Italic` 英文译名，并适当扩大 `clin` 行高（桌面 `134px`、平板 `126px`、手机 `118px`）防止溢出。
+- **图像页与首页透镜图版交互重塑**：
+  - [gallery.astro](src/pages/gallery.astro)、[gallery-field.ts](src/scripts/hz/gallery-field.ts) 与 [gallery.css](src/styles/hz/gallery.css)：移除透镜场左下角 `.hz-field-lock` 信息框与所有图版的标题/`PL.` 编号系统；新增以指针/双指中点为锚的鼠标滚轮与双指捏合缩放（`ZOOM 20%–240%`）以动态调节画框内可见图版数量，网格背景跟随缩放与偏移联动。
+  - [index.astro](src/pages/index.astro) 与 [home.css](src/styles/hz/home.css)：首页 Section 02 引力透镜图版去除 `.hz-hplate__meta` 标题与 `PL.XX` 编号，并在客户端加载时对 99 图全集池做 Fisher-Yates 随机洗牌抽样 4 张展示。
+- **全站日语标识升级**：
+  - [tokens.css](src/styles/hz/tokens.css) 与 [base.css](src/styles/hz/base.css) 将 `--f-jp` 与 `html [lang='ja']` 统一切换为 `Dela Gothic One`；并在 [Hud.astro](src/components/hz/Hud.astro)、[Foot.astro](src/components/hz/Foot.astro)、[index.astro](src/pages/index.astro)、[blog/index.astro](src/pages/blog/index.astro)、[gallery.astro](src/pages/gallery.astro)、[about.astro](src/pages/about.astro)、[academics.astro](src/pages/academics.astro)、[EntryView.astro](src/components/hz/EntryView.astro)、[Gate.astro](src/components/hz/Gate.astro)、[private/index.astro](src/pages/private/index.astro)、[404.astro](src/pages/404.astro) 与 [ai-quota.astro](src/pages/ai-quota.astro) 增设风格统一的日语观测小标识。
+
+### 2026-11-16 · Phase 1.4：全站液态玻璃 HUD 与 5 个板块定向精修
 
 - **学业板块**：
   - 将原专业互认的 14 门课程统一并入 `completed`（已修共 38 门），简化筛选条为 `全部 / 已点亮 / 已修 / 在修 / 提前 / 待修`。

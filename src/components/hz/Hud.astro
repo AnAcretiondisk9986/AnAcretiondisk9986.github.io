@@ -77,7 +77,7 @@ const isActive = (href: string) => (href === '/' ? pathname === '/' : pathname.s
 
 <div class="hz-menu" id="hz-menu" data-menu hidden>
   <div class="hz-menu__head">
-    <span class="hz-mono">CHANNELS · 通道</span>
+    <span class="hz-mono">CHANNELS · 通道 · <span lang="ja">観測チャネル</span></span>
     <button class="hz-menu__close" type="button" data-menu-close>关闭 ✕</button>
   </div>
   <nav class="hz-menu__nav" aria-label="主导航（菜单）">
@@ -89,5 +89,5 @@ const isActive = (href: string) => (href === '/' ? pathname === '/' : pathname.s
       </a>
     ))}
   </nav>
-  <a class="hz-menu__private" href="/private/">私密文章 · PRIVATE →</a>
+  <a class="hz-menu__private" href="/private/">私密文章 · PRIVATE · <span lang="ja">暗室書庫</span> →</a>
 </div>

@@ -175,8 +175,26 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
-[lang='ja'] {
-  font-family: var(--f-jp-pixel);
+html [lang='ja'] {
+  font-family: var(--f-jp);
+  font-weight: 400;
+  font-style: normal;
+  letter-spacing: 0.06em;
+  text-transform: none;
+}
+.hz-mono [lang='ja'],
+.hz-foot__coda [lang='ja'],
+.hz-hero__cue [lang='ja'] {
+  font-size: 0.82rem;
+}
+.hz-ja-pill {
+  display: inline-block;
+  margin-left: 0.45em;
+  padding: 1px 7px;
+  border: 1px solid rgb(255 90 26 / 0.45);
+  color: var(--hz-hot-ink);
+  font-size: 0.78rem;
+  vertical-align: middle;
 }
 .hz-wrap {
   width: min(100% - 2 * var(--gutter), var(--wide));
@@ -347,9 +365,10 @@
   color: var(--hz-ink-2);
 }
 .hz-sect__sub span {
-  font-family: var(--f-jp-pixel);
-  font-size: var(--t-micro);
-  letter-spacing: 0.08em;
+  font-family: var(--f-jp);
+  font-weight: 400;
+  font-size: 0.85rem;
+  letter-spacing: 0.07em;
   color: var(--hz-hot-ink);
 }
 .hz-sect__rule {

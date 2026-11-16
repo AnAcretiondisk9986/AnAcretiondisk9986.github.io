@@ -612,7 +612,8 @@
       "posts": [],
       "linkedIds": [
         "orig-2526-1-NN070001"
-      ]
+      ],
+      "en": "Military Skills Training"
     },
     {
       "id": "clin-2627-1-NN101725",
@@ -633,7 +634,8 @@
         "目前所做的最有用的一个产物-clinmedagent-rag",
         "资源分享-human-anatomy-atlas-2026-内含安装教程视频"
       ],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Systematic Anatomy"
     },
     {
       "id": "clin-2627-1-NN101798",
@@ -649,7 +651,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Situation & Policy"
     },
     {
       "id": "clin-2627-1-NN101850",
@@ -665,7 +668,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Medical Physics"
     },
     {
       "id": "clin-2627-1-NN101988",
@@ -681,7 +685,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Histology & Embryology"
     },
     {
       "id": "clin-2627-1-NN102428",
@@ -697,7 +702,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Basic Medical Chemistry"
     },
     {
       "id": "clin-2627-1-NN120101",
@@ -716,7 +722,8 @@
       "posts": [],
       "linkedIds": [
         "orig-2526-1-NN120101"
-      ]
+      ],
+      "en": "Physical Education · Fitness"
     },
     {
       "id": "clin-2627-1-NN150117",
@@ -735,7 +742,8 @@
       "posts": [],
       "linkedIds": [
         "orig-2526-1-NN150117"
-      ]
+      ],
+      "en": "Morality & Rule of Law"
     },
     {
       "id": "clin-2627-1-NN172005",
@@ -751,7 +759,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Labor Education · Practice"
     },
     {
       "id": "clin-2627-1-NN220317",
@@ -770,7 +779,8 @@
       "posts": [],
       "linkedIds": [
         "orig-2526-1-NN220317"
-      ]
+      ],
+      "en": "College English"
     },
     {
       "id": "clin-2627-1-NN230626",
@@ -790,7 +800,8 @@
       "linkedIds": [
         "orig-2526-1-NN101146",
         "orig-2526-2-NN101148"
-      ]
+      ],
+      "en": "Medical Calculus"
     },
     {
       "id": "clin-2627-1-NN290153",
@@ -809,7 +820,8 @@
       "posts": [],
       "linkedIds": [
         "orig-2526-1-NN290153"
-      ]
+      ],
+      "en": "Mental Health Education"
     },
     {
       "id": "clin-2627-1-NN330102",
@@ -828,7 +840,8 @@
       "posts": [],
       "linkedIds": [
         "orig-2526-1-NN330102"
-      ]
+      ],
+      "en": "Career Planning & Employment"
     },
     {
       "id": "clin-2627-1-NN590001",
@@ -844,7 +857,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Innovation & Entrepreneurship · Theory"
     },
     {
       "id": "clin-2627-1-NN590002",
@@ -860,7 +874,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Innovation & Entrepreneurship · Practice"
     },
     {
       "id": "clin-2627-2-N109999",
@@ -876,7 +891,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Medical Chemistry Lab"
     },
     {
       "id": "clin-2627-2-NN040915",
@@ -892,7 +908,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Medical Organic Chemistry"
     },
     {
       "id": "clin-2627-2-NN101554",
@@ -908,7 +925,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Physiology"
     },
     {
       "id": "clin-2627-2-NN101582",
@@ -924,7 +942,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Biochemistry"
     },
     {
       "id": "clin-2627-2-NN120102",
@@ -941,7 +960,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Physical Education · Fitness"
     },
     {
       "id": "clin-2627-2-NN130103",
@@ -958,7 +978,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Labor Education · Theory"
     },
     {
       "id": "clin-2627-2-NN150113",
@@ -978,7 +999,8 @@
       "linkedIds": [
         "orig-2526-1-NN150113",
         "orig-2526-2-NN150113"
-      ]
+      ],
+      "en": "Ideological Social Practice"
     },
     {
       "id": "clin-2627-2-NN150116",
@@ -997,7 +1019,8 @@
       "posts": [],
       "linkedIds": [
         "orig-2526-2-NN150116"
-      ]
+      ],
+      "en": "Modern Chinese History"
     },
     {
       "id": "clin-2627-2-NN150120",
@@ -1016,7 +1039,8 @@
       "posts": [],
       "linkedIds": [
         "orig-2526-2-NN150120"
-      ]
+      ],
+      "en": "National Security Education"
     },
     {
       "id": "clin-2627-2-NN150121",
@@ -1035,7 +1059,8 @@
       "posts": [],
       "linkedIds": [
         "orig-2526-2-NN150121"
-      ]
+      ],
+      "en": "Military Theory"
     },
     {
       "id": "clin-2627-2-NN220318",
@@ -1054,7 +1079,8 @@
       "posts": [],
       "linkedIds": [
         "orig-2526-2-NN220318"
-      ]
+      ],
+      "en": "College English"
     },
     {
       "id": "clin-2627-2-NN230618",
@@ -1077,7 +1103,8 @@
         "orig-2526-1-NN230459",
         "orig-2526-2-NN230566",
         "orig-2526-2-NN101596"
-      ]
+      ],
+      "en": "AI & Smart Medicine"
     },
     {
       "id": "clin-2627-2-NN590101",
@@ -1093,7 +1120,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Extracurricular Innovation"
     },
     {
       "id": "clin-2728-1-NN101029",
@@ -1109,7 +1137,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Pathology"
     },
     {
       "id": "clin-2728-1-NN101296",
@@ -1125,7 +1154,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Medical Parasitology"
     },
     {
       "id": "clin-2728-1-NN101500",
@@ -1143,7 +1173,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Physical Education"
     },
     {
       "id": "clin-2728-1-NN101829",
@@ -1159,7 +1190,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Medical Immunology"
     },
     {
       "id": "clin-2728-1-NN101833",
@@ -1175,7 +1207,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Medical Microbiology"
     },
     {
       "id": "clin-2728-1-NN101838",
@@ -1191,7 +1224,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Medical Cell Biology"
     },
     {
       "id": "clin-2728-1-NN150115",
@@ -1209,7 +1243,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Mao Zedong Thought & Socialism"
     },
     {
       "id": "clin-2728-1-NN150118",
@@ -1227,7 +1262,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Xi Jinping Thought"
     },
     {
       "id": "clin-2728-1-NN220320",
@@ -1245,7 +1281,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "College English"
     },
     {
       "id": "clin-2728-2-NN101027",
@@ -1261,7 +1298,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Pathophysiology"
     },
     {
       "id": "clin-2728-2-NN101425",
@@ -1279,7 +1317,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Principles of Marxism"
     },
     {
       "id": "clin-2728-2-NN101531",
@@ -1297,7 +1336,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Physical Education"
     },
     {
       "id": "clin-2728-2-NN101791",
@@ -1313,7 +1353,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Pharmacology"
     },
     {
       "id": "clin-2728-2-NN101826",
@@ -1329,7 +1370,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Medical Ethics"
     },
     {
       "id": "clin-2728-2-NN101841",
@@ -1345,7 +1387,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Medical Genetics"
     },
     {
       "id": "clin-2728-2-NN102310",
@@ -1361,7 +1404,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Functional Experimentation"
     },
     {
       "id": "clin-2829-1-NN070915",
@@ -1379,7 +1423,8 @@
       "posts": [
         "HealthCN2030"
       ],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Hygiene & Preventive Medicine"
     },
     {
       "id": "clin-2829-1-NN070923",
@@ -1395,7 +1440,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Medical Statistics"
     },
     {
       "id": "clin-2829-1-NN101582",
@@ -1411,7 +1457,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Laboratory Diagnostics"
     },
     {
       "id": "clin-2829-1-NN101684",
@@ -1427,7 +1474,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Health Laws & Regulations"
     },
     {
       "id": "clin-2829-1-NN101701",
@@ -1443,7 +1491,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Medical Literature Retrieval"
     },
     {
       "id": "clin-2829-1-NN101839",
@@ -1459,7 +1508,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Medical Psychology"
     },
     {
       "id": "clin-2829-1-NN102312",
@@ -1475,7 +1525,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Physical Diagnostics"
     },
     {
       "id": "clin-2829-1-NN120105",
@@ -1491,7 +1542,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Physical Fitness Test"
     },
     {
       "id": "clin-2829-2-NN101225",
@@ -1507,7 +1559,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Nuclear Medicine"
     },
     {
       "id": "clin-2829-2-NN101322",
@@ -1525,7 +1578,8 @@
       "posts": [
         "资源分享-human-anatomy-atlas-2026-内含安装教程视频"
       ],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Regional Anatomy"
     },
     {
       "id": "clin-2829-2-NN101412",
@@ -1541,7 +1595,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Epidemiology"
     },
     {
       "id": "clin-2829-2-NN101987",
@@ -1557,7 +1612,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Traditional Chinese Medicine"
     },
     {
       "id": "clin-2829-2-NN102041",
@@ -1573,7 +1629,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Medical Imaging"
     },
     {
       "id": "clin-2829-2-NN171902",
@@ -1589,7 +1646,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Preclinical Comprehensive Exam"
     },
     {
       "id": "clin-2829-2-NN173566",
@@ -1605,7 +1663,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "General Practice & Communication"
     },
     {
       "id": "clin-2930-1-NN101045",
@@ -1621,7 +1680,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Infectious Diseases"
     },
     {
       "id": "clin-2930-1-NN101091",
@@ -1637,7 +1697,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Pediatrics"
     },
     {
       "id": "clin-2930-1-NN101318",
@@ -1653,7 +1714,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Psychiatry"
     },
     {
       "id": "clin-2930-1-NN101444",
@@ -1669,7 +1731,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Internal Medicine"
     },
     {
       "id": "clin-2930-1-NN101546",
@@ -1685,7 +1748,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Neurology"
     },
     {
       "id": "clin-2930-1-NN101658",
@@ -1701,7 +1765,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Surgery"
     },
     {
       "id": "clin-2930-2-NN101097",
@@ -1717,7 +1782,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Otorhinolaryngology"
     },
     {
       "id": "clin-2930-2-NN101135",
@@ -1733,7 +1799,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Obstetrics & Gynecology"
     },
     {
       "id": "clin-2930-2-NN101445",
@@ -1749,7 +1816,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Internal Medicine"
     },
     {
       "id": "clin-2930-2-NN101447",
@@ -1765,7 +1833,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Dermatology & Venereology"
     },
     {
       "id": "clin-2930-2-NN101661",
@@ -1781,7 +1850,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Surgery"
     },
     {
       "id": "clin-2930-2-NN101780",
@@ -1797,7 +1867,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Ophthalmology"
     },
     {
       "id": "clin-2930-2-NN102157",
@@ -1813,7 +1884,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Stomatology"
     },
     {
       "id": "clin-2930-2-NN170101",
@@ -1831,7 +1903,8 @@
       "posts": [
         "去龙湾附二院把这个该死的盖章给补掉了"
       ],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Clinical Skills"
     },
     {
       "id": "clin-2930-clerkship",
@@ -1850,7 +1923,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Clinical Clerkship"
     },
     {
       "id": "clin-3031-internship",
@@ -1869,7 +1943,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Clinical Internship"
     },
     {
       "id": "clin-3031-2-NN102092",
@@ -1885,7 +1960,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Comprehensive Clinical Graduation Exam"
     },
     {
       "id": "clin-3031-2-NN170249",
@@ -1901,7 +1977,8 @@
       "gpa": null,
       "note": "",
       "posts": [],
-      "linkedIds": []
+      "linkedIds": [],
+      "en": "Clinical Skills Graduation Exam"
     }
   ]
 }

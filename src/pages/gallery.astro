@@ -79,13 +79,13 @@ const totalCount = standaloneImages.length + journalImages.length;
       </div>
 
       <div class="hz-gal-tools">
-        <label class="sr-only" for="hz-gal-filter">按标题或日期筛选图像</label>
+        <label class="sr-only" for="hz-gal-filter">检索图像关键词、日期或来源</label>
         <input
           id="hz-gal-filter"
           class="hz-gal-filter"
           type="search"
           data-gal-filter
-          placeholder="筛选标题、日期或来源…"
+          placeholder="检索日期、来源或标签…"
           autocomplete="off"
         />
 
@@ -105,12 +105,15 @@ const totalCount = standaloneImages.length + journalImages.length;
 
     <section class="hz-field-wrap" data-gal-field-wrap aria-label="引力透镜交互视场">
       <div class="hz-field-hud hz-mono">
-        <span data-field-coord>OFFSET [0, 0]</span>
+        <span class="hz-field-hud__tele">
+          <span lang="ja">重力場</span>
+          <span data-field-coord>OFFSET [0, 0]</span>
+          <span data-field-zoom>ZOOM 100%</span>
+        </span>
         <div class="hz-field-hud__btns">
-          <span data-field-sector>ALL 00 PLATES</span>
           <button type="button" class="hz-mini-btn" data-field-random>随机跳转 ↗</button>
           <button type="button" class="hz-mini-btn" data-field-orbit>RE-ORBIT</button>
-          <button type="button" class="hz-mini-btn" data-field-reset>RESET [0,0]</button>
+          <button type="button" class="hz-mini-btn" data-field-reset>RESET</button>
         </div>
       </div>
 
@@ -118,14 +121,10 @@ const totalCount = standaloneImages.length + journalImages.length;
         class="hz-field-stage"
         data-field-stage
         tabindex="0"
-        aria-label="可拖拽或使用方向键平移的图像透镜场"
+        aria-label="可拖拽平移与滚轮双指缩放的图像透镜场"
       >
         <div class="hz-field-canvas" data-field-canvas></div>
         <div class="hz-field-reticle" aria-hidden="true"></div>
-        <div class="hz-field-lock" aria-live="polite">
-          <span class="hz-field-lock__title" data-lock-title>DRAG TO SURVEY FIELD</span>
-          <span class="hz-field-lock__meta hz-mono" data-lock-meta>SELECT ANY PLATE TO INSPECT</span>
-        </div>
       </div>
     </section>
 
@@ -140,7 +139,7 @@ const totalCount = standaloneImages.length + journalImages.length;
   </div>
 </BaseLayout>
 
-<dialog class="hz-viewer" id="hz-viewer" aria-labelledby="hz-viewer-title">
+<dialog class="hz-viewer" id="hz-viewer" aria-label="图像查看器">
   <div class="hz-viewer__shell">
     <div class="hz-viewer__top">
       <div class="hz-viewer__nav">
@@ -161,16 +160,11 @@ const totalCount = standaloneImages.length + journalImages.length;
         <b class="hz-mono" data-viewer-zoom-val>100%</b>
         <button type="button" class="hz-mini-btn" data-viewer-reset>复位</button>
       </div>
-      <button type="button" class="hz-mini-btn" data-viewer-original hidden>加载无损原图</button>
-    </div>
-
-    <footer class="hz-viewer__foot">
-      <div>
-        <span class="hz-mono hz-viewer__cap" data-viewer-cap></span>
-        <h2 id="hz-viewer-title" data-viewer-title></h2>
+      <div class="hz-viewer__zoom">
+        <button type="button" class="hz-mini-btn" data-viewer-original hidden>加载无损原图</button>
+        <a class="hz-mini-btn" data-viewer-source href="#" hidden>查看来源文章 ↗</a>
       </div>
-      <a class="hz-mini-btn" data-viewer-source href="#" hidden>查看来源文章 ↗</a>
-    </footer>
+    </div>
   </div>
 </dialog>
 

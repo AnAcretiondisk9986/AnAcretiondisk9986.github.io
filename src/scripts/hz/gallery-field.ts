@@ -2,7 +2,7 @@
  * HORIZON · gallery-field.ts
  * /gallery/ 交互核心：
  *   - 两个数据源：独立收藏（plates） / 随文影像（journal） / 全部（all）
- *   - 两种视图：引力透镜场（FIELD：拖拽平移 + 近中心鱼眼放大 + 准星锁定）与 编目索引（INDEX：分页网格 + 排序 + 筛选）
+ *   - 两种视图：引力透镜场（FIELD：拖拽平移 + 滚轮/双指缩放 + 近中心鱼眼放大 + 随机跳转）与 编目索引（INDEX）
  *   - 高清灯箱查看器：缩放 100%~400%、拖拽平移、加载无损原图、上一张/下一张快捷键
  */
 
@@ -21,6 +21,10 @@ interface GalleryItem {
 }
 
 const INDEX_PAGE_SIZE = 24;
+const MIN_FIELD_ZOOM = 0.2;
+const MAX_FIELD_ZOOM = 2.4;
+
+const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
 function readPool(id: string): GalleryItem[] {
   const el = document.getElementById(id);
@@ -48,10 +52,8 @@ export function initGallery() {
   const fieldWrap = root.querySelector<HTMLElement>('[data-gal-field-wrap]');
   const stage = root.querySelector<HTMLElement>('[data-field-stage]');
   const canvasEl = root.querySelector<HTMLElement>('[data-field-canvas]');
-  const lockTitle = root.querySelector<HTMLElement>('[data-lock-title]');
-  const lockMeta = root.querySelector<HTMLElement>('[data-lock-meta]');
   const coordEl = root.querySelector<HTMLElement>('[data-field-coord]');
-  const sectorLabel = root.querySelector<HTMLElement>('[data-field-sector]');
+  const zoomLabel = root.querySelector<HTMLElement>('[data-field-zoom]');
   const resetBtn = root.querySelector<HTMLButtonElement>('[data-field-reset]');
   const orbitBtn = root.querySelector<HTMLButtonElement>('[data-field-orbit]');
   const randomBtn = root.querySelector<HTMLButtonElement>('[data-field-random]');
@@ -66,8 +68,6 @@ export function initGallery() {
   const viewer = document.getElementById('hz-viewer') as HTMLDialogElement | null;
   const vMedia = viewer?.querySelector<HTMLElement>('[data-viewer-media]');
   const vImg = viewer?.querySelector<HTMLImageElement>('[data-viewer-img]');
-  const vTitle = viewer?.querySelector<HTMLElement>('[data-viewer-title]');
-  const vCap = viewer?.querySelector<HTMLElement>('[data-viewer-cap]');
   const vSource = viewer?.querySelector<HTMLAnchorElement>('[data-viewer-source]');
   const vOrigBtn = viewer?.querySelector<HTMLButtonElement>('[data-viewer-original]');
   const vZoom = viewer?.querySelector<HTMLInputElement>('[data-viewer-zoom]');
@@ -92,19 +92,25 @@ export function initGallery() {
   let currentList: GalleryItem[] = [];
   let viewerIndex = -1;
 
-  // 透镜场平移状态
+  // 透镜场平移与缩放状态
   let camX = 0;
   let camY = 0;
   let targetX = 0;
   let targetY = 0;
   let vx = 0;
   let vy = 0;
+  let fieldZoom = 1;
+  let targetZoom = 1;
   let dragging = false;
   let movedPx = 0;
   let downX = 0;
   let downY = 0;
   let lastX = 0;
   let lastY = 0;
+  let prevPinchDist = 0;
+  let prevPinchMidX = 0;
+  let prevPinchMidY = 0;
+  const activePointers = new Map<number, { x: number; y: number }>();
   let fieldRaf = 0;
 
   interface NodePos {
@@ -149,9 +155,6 @@ export function initGallery() {
   const renderField = () => {
     if (!canvasEl || !stage) return;
 
-    if (sectorLabel) {
-      sectorLabel.textContent = `ALL ${String(currentList.length).padStart(2, '0')} PLATES`;
-    }
     if (randomBtn) randomBtn.disabled = currentList.length <= 1;
 
     canvasEl.innerHTML = '';
@@ -173,7 +176,7 @@ export function initGallery() {
       card.type = 'button';
       card.className = 'hz-fplate';
       card.dataset.id = item.id;
-      card.setAttribute('aria-label', `打开图像：${item.title || item.caption || item.id}`);
+      card.setAttribute('aria-label', item.alt || '打开图像');
 
       const angle = i * golden + orbitSeed * 1.1;
       const radius = i === 0 ? 0 : 410 + Math.sqrt(i) * 320;
@@ -183,7 +186,7 @@ export function initGallery() {
       const frame = document.createElement('span');
       frame.className = 'hz-fplate__frame';
       const img = document.createElement('img');
-      img.alt = item.alt || item.title || '';
+      img.alt = item.alt || '';
       img.loading = i < 16 ? 'eager' : 'lazy';
       img.decoding = 'async';
       img.draggable = false;
@@ -194,12 +197,7 @@ export function initGallery() {
       img.addEventListener('error', () => card.classList.add('is-error'), { once: true });
       frame.append(img);
 
-      const cap = document.createElement('span');
-      cap.className = 'hz-fplate__cap hz-mono';
-      const no = String(i + 1).padStart(3, '0');
-      cap.innerHTML = `<span>PL.${no}</span><span>${escapeHtml(item.title || item.date || 'PLATE')}</span>`;
-
-      card.append(frame, cap);
+      card.append(frame);
       card.addEventListener('click', () => {
         if (movedPx > 7) return;
         openViewer(i);
@@ -220,17 +218,22 @@ export function initGallery() {
     const cx = sw * 0.5;
     const cy = sh * 0.5;
     const lensRadius = Math.min(sw, sh) * 0.65;
-    const cullX = sw * 0.95 + 700;
-    const cullY = sh * 0.95 + 700;
-    const loadX = sw * 1.45 + 900;
-    const loadY = sh * 1.45 + 900;
+    const margin = 520 * Math.max(fieldZoom, 0.45);
+    const cullX = sw * 0.65 + margin;
+    const cullY = sw * 0.65 + margin;
+    const loadX = sw * 1.15 + margin * 1.6;
+    const loadY = sw * 1.15 + margin * 1.6;
+
+    const gSize = clamp(80 * fieldZoom, 24, 180);
+    stage.style.backgroundSize = `${gSize.toFixed(1)}px ${gSize.toFixed(1)}px`;
+    stage.style.backgroundPosition = `calc(50% - ${(camX * fieldZoom).toFixed(1)}px) calc(50% - ${(camY * fieldZoom).toFixed(1)}px)`;
 
     let nearest: NodePos | null = null;
     let nearestDist = Infinity;
 
     for (const node of fieldNodes) {
-      const sx = node.bx - camX;
-      const sy = node.by - camY;
+      const sx = (node.bx - camX) * fieldZoom;
+      const sy = (node.by - camY) * fieldZoom;
       const d = Math.hypot(sx, sy);
 
       if (!node.hydrated && Math.abs(sx) < loadX && Math.abs(sy) < loadY) {
@@ -238,12 +241,13 @@ export function initGallery() {
       }
 
       const visible = Math.abs(sx) < cullX && Math.abs(sy) < cullY;
-      node.el.style.display = visible ? 'grid' : 'none';
+      node.el.style.display = visible ? 'block' : 'none';
 
       if (visible) {
-        const prox = Math.max(0, 1 - d / Math.max(260, lensRadius));
-        const scale = 0.72 + 0.34 * prox * prox;
-        const op = 0.34 + 0.66 * prox;
+        const prox = Math.max(0, 1 - d / Math.max(220, lensRadius));
+        const boost = 0.28 * Math.min(1, fieldZoom);
+        const scale = (0.76 + boost * prox * prox) * fieldZoom;
+        const op = fieldZoom < 0.65 ? 0.58 + 0.42 * prox : 0.36 + 0.64 * prox;
 
         node.el.style.transform = `translate3d(${(cx + sx).toFixed(1)}px, ${(cy + sy).toFixed(1)}px, 0) translate(-50%, -50%) scale(${scale.toFixed(3)})`;
         node.el.style.opacity = op.toFixed(3);
@@ -257,18 +261,14 @@ export function initGallery() {
     }
 
     currentNearest = nearest;
-    fieldNodes.forEach((n) => n.el.classList.toggle('is-locked', n === nearest && nearestDist < 260));
-    if (lockTitle && lockMeta) {
-      if (nearest && nearestDist < 320) {
-        lockTitle.textContent = nearest.item.title || 'UNTITLED PLATE';
-        lockMeta.textContent = `${nearest.item.date || 'NO DATE'}${nearest.item.sourceTitle ? ` · ${nearest.item.sourceTitle}` : ''}`;
-      } else {
-        lockTitle.textContent = 'DRAG TO SURVEY FIELD';
-        lockMeta.textContent = 'SELECT ANY PLATE TO INSPECT';
-      }
-    }
+    const lockRadius = 260 * Math.max(fieldZoom, 0.55);
+    fieldNodes.forEach((n) => n.el.classList.toggle('is-locked', n === nearest && nearestDist < lockRadius));
+
     if (coordEl) {
       coordEl.textContent = `OFFSET [${Math.round(camX)}, ${Math.round(camY)}]`;
+    }
+    if (zoomLabel) {
+      zoomLabel.textContent = `ZOOM ${Math.round(fieldZoom * 100)}%`;
     }
   };
 
@@ -276,7 +276,7 @@ export function initGallery() {
     fieldRaf = 0;
     if (activeMode !== 'field') return;
 
-    if (!dragging) {
+    if (!dragging && activePointers.size === 0) {
       targetX += vx;
       targetY += vy;
       vx *= 0.9;
@@ -287,9 +287,18 @@ export function initGallery() {
 
     camX += (targetX - camX) * 0.22;
     camY += (targetY - camY) * 0.22;
+    fieldZoom += (targetZoom - fieldZoom) * 0.2;
     layoutField();
 
-    if (dragging || Math.abs(targetX - camX) > 0.4 || Math.abs(targetY - camY) > 0.4 || Math.abs(vx) > 0.15 || Math.abs(vy) > 0.15) {
+    if (
+      dragging
+      || activePointers.size > 0
+      || Math.abs(targetX - camX) > 0.4
+      || Math.abs(targetY - camY) > 0.4
+      || Math.abs(targetZoom - fieldZoom) > 0.001
+      || Math.abs(vx) > 0.15
+      || Math.abs(vy) > 0.15
+    ) {
       fieldRaf = requestAnimationFrame(stepField);
     }
   };
@@ -297,6 +306,32 @@ export function initGallery() {
   const kickField = () => {
     if (!fieldRaf && activeMode === 'field') {
       fieldRaf = requestAnimationFrame(stepField);
+    }
+  };
+
+  const zoomAt = (nextZoomRaw: number, clientX?: number, clientY?: number) => {
+    if (!stage) return;
+    const prevTarget = targetZoom;
+    const nextZoom = clamp(nextZoomRaw, MIN_FIELD_ZOOM, MAX_FIELD_ZOOM);
+    if (Math.abs(nextZoom - prevTarget) < 1e-4) return;
+
+    if (clientX !== undefined && clientY !== undefined) {
+      const rect = stage.getBoundingClientRect();
+      const mx = clientX - rect.left - rect.width * 0.5;
+      const my = clientY - rect.top - rect.height * 0.5;
+      const factor = 1 / prevTarget - 1 / nextZoom;
+      targetX += mx * factor;
+      targetY += my * factor;
+    }
+
+    targetZoom = nextZoom;
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      camX = targetX;
+      camY = targetY;
+      fieldZoom = targetZoom;
+      layoutField();
+    } else {
+      kickField();
     }
   };
 
@@ -327,13 +362,13 @@ export function initGallery() {
       const card = document.createElement('button');
       card.type = 'button';
       card.className = 'hz-iplate';
-      card.setAttribute('aria-label', `预览：${item.title || item.caption || item.id}`);
+      card.setAttribute('aria-label', item.alt || '预览图像');
 
       const frame = document.createElement('span');
       frame.className = 'hz-iplate__frame';
       const img = document.createElement('img');
       img.src = item.thumb || item.src;
-      img.alt = item.alt || item.title || '';
+      img.alt = item.alt || '';
       img.loading = idx < 8 ? 'eager' : 'lazy';
       img.decoding = 'async';
       if (item.thumb && item.src && item.thumb !== item.src) {
@@ -343,15 +378,7 @@ export function initGallery() {
       img.addEventListener('error', () => card.classList.add('is-error'), { once: true });
       frame.append(img);
 
-      const meta = document.createElement('span');
-      meta.className = 'hz-iplate__meta';
-      const serial = String(globalIdx + 1).padStart(3, '0');
-      meta.innerHTML =
-        `<span class="hz-mono hz-iplate__no">PL.${serial}${item.date ? ` · ${escapeHtml(item.date)}` : ''}</span>` +
-        `<strong class="hz-iplate__title">${escapeHtml(item.title || '未命名')}</strong>` +
-        (item.caption && item.caption !== item.title ? `<span class="hz-iplate__cap">${escapeHtml(item.caption)}</span>` : '');
-
-      card.append(frame, meta);
+      card.append(frame);
       card.addEventListener('click', () => openViewer(globalIdx));
       frag.append(card);
     });
@@ -361,7 +388,7 @@ export function initGallery() {
   const syncAll = () => {
     currentList = computeList();
     if (countEl) {
-      countEl.textContent = `${currentList.length} PLATES`;
+      countEl.textContent = `${currentList.length} IMAGES`;
     }
     tabBtns.forEach((b) => b.setAttribute('aria-selected', String(b.dataset.galTab === activeTab)));
     modeBtns.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.galMode === activeMode)));
@@ -408,12 +435,7 @@ export function initGallery() {
     resetZoom();
 
     vImg.src = item.src;
-    vImg.alt = item.alt || item.title || '';
-    if (vTitle) vTitle.textContent = item.title || '未命名图版';
-    if (vCap) {
-      const parts = [item.date, item.caption && item.caption !== item.title ? item.caption : ''].filter(Boolean);
-      vCap.textContent = parts.join(' · ') || 'ARCHIVE PLATE';
-    }
+    vImg.alt = item.alt || '';
     if (vSource) {
       if (item.sourceUrl) {
         vSource.href = item.sourceUrl;
@@ -498,47 +520,113 @@ export function initGallery() {
     }
   });
 
-  // 透镜场拖拽 & 键盘导航
+  // 透镜场拖拽、滚轮缩放、双指捏合与键盘导航
   stage?.addEventListener('pointerdown', (e) => {
-    if (e.button !== 0) return;
-    dragging = true;
-    movedPx = 0;
-    downX = e.clientX;
-    downY = e.clientY;
-    lastX = e.clientX;
-    lastY = e.clientY;
-    vx = 0;
-    vy = 0;
-    stage.classList.add('is-dragging');
-    stage.setPointerCapture(e.pointerId);
-    kickField();
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    try {
+      stage.setPointerCapture(e.pointerId);
+    } catch {
+      /* ignore if synthetic event */
+    }
+
+    if (activePointers.size === 1) {
+      dragging = true;
+      movedPx = 0;
+      downX = e.clientX;
+      downY = e.clientY;
+      lastX = e.clientX;
+      lastY = e.clientY;
+      vx = 0;
+      vy = 0;
+      prevPinchDist = 0;
+      stage.classList.add('is-dragging');
+      kickField();
+    } else if (activePointers.size === 2) {
+      dragging = false;
+      movedPx = 999;
+      vx = 0;
+      vy = 0;
+      stage.classList.remove('is-dragging');
+      const [p1, p2] = [...activePointers.values()];
+      prevPinchDist = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+      prevPinchMidX = (p1.x + p2.x) * 0.5;
+      prevPinchMidY = (p1.y + p2.y) * 0.5;
+    }
   });
 
   stage?.addEventListener('pointermove', (e) => {
-    if (!dragging) return;
+    if (!activePointers.has(e.pointerId)) return;
+    activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    if (activePointers.size === 2) {
+      const [p1, p2] = [...activePointers.values()];
+      const dist = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+      const midX = (p1.x + p2.x) * 0.5;
+      const midY = (p1.y + p2.y) * 0.5;
+
+      if (prevPinchDist > 8 && dist > 8) {
+        const dxMid = midX - prevPinchMidX;
+        const dyMid = midY - prevPinchMidY;
+        const invZ = 1 / Math.max(fieldZoom, MIN_FIELD_ZOOM);
+        targetX -= dxMid * invZ;
+        targetY -= dyMid * invZ;
+        zoomAt(targetZoom * (dist / prevPinchDist), midX, midY);
+      }
+
+      prevPinchDist = dist;
+      prevPinchMidX = midX;
+      prevPinchMidY = midY;
+      return;
+    }
+
+    if (!dragging || activePointers.size !== 1) return;
     const dx = e.clientX - lastX;
     const dy = e.clientY - lastY;
     lastX = e.clientX;
     lastY = e.clientY;
     movedPx = Math.max(movedPx, Math.hypot(e.clientX - downX, e.clientY - downY));
-    targetX -= dx;
-    targetY -= dy;
-    vx = -dx * 0.55;
-    vy = -dy * 0.55;
+    const invZ = 1 / Math.max(fieldZoom, MIN_FIELD_ZOOM);
+    targetX -= dx * invZ;
+    targetY -= dy * invZ;
+    vx = -dx * 0.55 * invZ;
+    vy = -dy * 0.55 * invZ;
     kickField();
   });
 
-  const endDrag = () => {
-    if (!dragging) return;
-    dragging = false;
-    stage?.classList.remove('is-dragging');
-    kickField();
+  const endPointer = (e: PointerEvent) => {
+    activePointers.delete(e.pointerId);
+    if (activePointers.size < 2) {
+      prevPinchDist = 0;
+    }
+    if (activePointers.size === 1) {
+      const [rem] = [...activePointers.values()];
+      lastX = rem.x;
+      lastY = rem.y;
+      dragging = true;
+      stage?.classList.add('is-dragging');
+    } else if (activePointers.size === 0 && dragging) {
+      dragging = false;
+      stage?.classList.remove('is-dragging');
+      kickField();
+    }
   };
-  stage?.addEventListener('pointerup', endDrag);
-  stage?.addEventListener('pointercancel', endDrag);
+  stage?.addEventListener('pointerup', endPointer);
+  stage?.addEventListener('pointercancel', endPointer);
+
+  stage?.addEventListener(
+    'wheel',
+    (e) => {
+      if (activeMode !== 'field') return;
+      e.preventDefault();
+      const factor = Math.exp(-e.deltaY * (e.ctrlKey ? 0.0085 : 0.0018));
+      zoomAt(targetZoom * factor, e.clientX, e.clientY);
+    },
+    { passive: false },
+  );
 
   stage?.addEventListener('keydown', (e) => {
-    const step = 140;
+    const step = 140 / Math.max(fieldZoom, MIN_FIELD_ZOOM);
     if (e.key === 'ArrowLeft') {
       e.preventDefault();
       targetX -= step;
@@ -555,12 +643,22 @@ export function initGallery() {
       e.preventDefault();
       targetY += step;
       kickField();
+    } else if (e.key === '+' || e.key === '=') {
+      e.preventDefault();
+      zoomAt(targetZoom * 1.18);
+    } else if (e.key === '-' || e.key === '_') {
+      e.preventDefault();
+      zoomAt(targetZoom / 1.18);
+    } else if (e.key === '0') {
+      e.preventDefault();
+      zoomAt(1);
     }
   });
 
   resetBtn?.addEventListener('click', () => {
     targetX = 0;
     targetY = 0;
+    targetZoom = 1;
     vx = 0;
     vy = 0;
     kickField();
@@ -663,14 +761,6 @@ export function initGallery() {
     const idx = currentList.findIndex((i) => i.id === plateId);
     if (idx >= 0) openViewer(idx);
   }
-}
-
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
 }
 
 initGallery();

@@ -36,9 +36,10 @@
   --f-code: 'JetBrains Mono', 'Anthropic Mono', ui-monospace, Consolas, monospace;
   /* 纪念碑宽体仅限品牌字标、页脚大字与纯数字序号，不用于长句与混排正文标题 */
   --f-display: 'Unbounded', 'Anthropic Sans', 'Noto Sans SC', sans-serif;
-  /* 仅限显式标记 lang="ja" 的日文仪器角标 */
-  --f-jp-pixel: 'Anthropic Mono', 'DotGothic16', 'Noto Sans SC', monospace;
-  --f-jp-impact: 'Anthropic Sans', 'Dela Gothic One', 'Noto Sans SC', sans-serif;
+  /* 仅限显式标记 lang="ja" 的日文仪表面板与角标（Dela Gothic One） */
+  --f-jp: 'Dela Gothic One', 'Noto Sans SC', sans-serif;
+  --f-jp-pixel: var(--f-jp);
+  --f-jp-impact: var(--f-jp);
 
   --f-body: var(--f-sans);
 

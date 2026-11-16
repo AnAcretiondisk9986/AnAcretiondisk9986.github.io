@@ -69,7 +69,7 @@ const normW = (w: number) =>
 
         {(about.interests || []).length > 0 && (
           <section class="hz-ledger-box" aria-labelledby="about-links">
-            <h2 id="about-links">{about.interestsTitle || '关联网站'}</h2>
+            <h2 id="about-links">{about.interestsTitle || '关联网站'} <span class="hz-about-ja" lang="ja">外部通信網</span></h2>
             <ol class="hz-ledger-list">
               {(about.interests || []).map((item) => (
                 <li>
@@ -84,7 +84,7 @@ const normW = (w: number) =>
 
         {(about.projects || []).length > 0 && (
           <section class="hz-ledger-box" aria-labelledby="about-projects">
-            <h2 id="about-projects">{about.projectsTitle || '我的项目'}</h2>
+            <h2 id="about-projects">{about.projectsTitle || '我的项目'} <span class="hz-about-ja" lang="ja">開発計画</span></h2>
             <ol class="hz-ledger-list">
               {(about.projects || []).map((item) => {
                 const href = safeLink(item.url);
@@ -114,7 +114,7 @@ const normW = (w: number) =>
       <section class="hz-freq" aria-labelledby="about-freq">
         <div class="hz-freq__head">
           <div>
-            <p class="hz-mono" style="color:var(--hz-hot-ink);margin-bottom:4px;">LEXICON SPECTRUM</p>
+            <p class="hz-mono" style="color:var(--hz-hot-ink);margin-bottom:4px;">LEXICON SPECTRUM · <span lang="ja">語彙スペクトル</span></p>
             <h2 id="about-freq">全站词频光谱</h2>
           </div>
           <p class="hz-mono">CLICK ANY TERM TO FILTER /BLOG/</p>

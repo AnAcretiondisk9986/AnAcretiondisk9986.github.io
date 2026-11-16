@@ -37,7 +37,9 @@ const {
         <path d="M32 2v8M32 54v8M2 32h8M54 32h8" />
       </svg>
     </div>
-    <p class="hz-mono hz-gate__kicker">{kicker}</p>
+    <p class="hz-mono hz-gate__kicker">
+      {kicker} · <span lang="ja">{mode === 'admin' ? '暗室制限' : '気密室'}</span>
+    </p>
     <h2 class="hz-gate__title">{title}</h2>
     <p class="hz-gate__hint">{hint}</p>
 
