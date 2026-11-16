@@ -1,0 +1,463 @@
+/* ==========================================================================
+   HORIZON · entry.css —— 文章阅读页 + 仪器边栏 + 气闸门禁 + 打印
+   ========================================================================== */
+
+.hz-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  z-index: 60;
+  pointer-events: none;
+  background: transparent;
+}
+.hz-progress span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--hz-hot);
+  transform-origin: left;
+  transform: scaleX(0);
+}
+
+.hz-entry {
+  display: grid;
+  gap: var(--s-8);
+}
+
+/* —— 页头 —— */
+.hz-entry__head {
+  display: grid;
+  gap: var(--s-4);
+  padding-bottom: var(--s-6);
+  border-bottom: 1px solid var(--hz-line-2);
+}
+
+.hz-entry__bar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--s-3) var(--s-5);
+}
+.hz-entry__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--hz-ink-2);
+  transition: color var(--d-1);
+}
+.hz-entry__back:hover {
+  color: var(--hz-hot-ink);
+}
+.hz-entry__tele {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2) var(--s-4);
+  color: var(--hz-ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.hz-entry__title {
+  font-family: var(--f-cjk);
+  font-size: clamp(1.9rem, 1.1rem + 2.8vw, 3.6rem);
+  font-weight: 800;
+  line-height: 1.12;
+  letter-spacing: -0.02em;
+  max-width: 24em;
+  overflow-wrap: anywhere;
+}
+.hz-entry__deck {
+  font-size: var(--t-lead);
+  color: var(--hz-ink-2);
+  max-width: 44em;
+  line-height: 1.55;
+}
+
+.hz-entry__sub {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--s-3) var(--s-5);
+}
+.hz-entry__dates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-4);
+  color: var(--hz-ink-2);
+}
+.hz-entry__pv {
+  color: var(--hz-hot-ink);
+}
+.hz-entry__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+
+.hz-entry__cover {
+  margin-top: var(--s-3);
+  border: 1px solid var(--hz-line-2);
+  background: var(--hz-void);
+}
+.hz-entry__cover img {
+  width: 100%;
+  max-height: 62svh;
+  object-fit: cover;
+}
+.hz-entry__cover figcaption {
+  display: flex;
+  justify-content: space-between;
+  padding: var(--s-2) var(--s-4);
+  border-top: 1px solid var(--hz-line);
+  background: var(--hz-bg-2);
+  color: var(--hz-ink-3);
+}
+
+/* —— 双栏正文布局 —— */
+.hz-entry__grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 268px) minmax(0, var(--measure));
+  justify-content: space-between;
+  gap: var(--s-8);
+  align-items: start;
+}
+
+.hz-entry__rail {
+  position: sticky;
+  top: calc(var(--hud-h) + var(--s-5));
+  max-height: calc(100svh - var(--hud-h) - var(--s-7));
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.hz-entry__rail-inner {
+  display: grid;
+  gap: var(--s-5);
+  padding-right: var(--s-2);
+}
+
+.hz-entry__actions {
+  display: grid;
+  gap: var(--s-2);
+}
+.hz-rail-btn {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  min-height: 40px;
+  padding: 0 var(--s-3);
+  border: 1px solid var(--hz-line-2);
+  background: var(--hz-bg-2);
+  font-size: var(--t-small);
+  color: var(--hz-ink);
+  transition: border-color var(--d-1), color var(--d-1);
+}
+.hz-rail-btn:hover {
+  border-color: var(--hz-hot);
+  color: var(--hz-hot-ink);
+}
+.hz-rail-btn .hz-mono {
+  color: var(--hz-ink-3);
+}
+
+.hz-shortlink {
+  display: grid;
+  gap: var(--s-2);
+}
+.hz-shortlink__panel {
+  display: grid;
+  gap: 8px;
+  padding: var(--s-3);
+  border: 1px solid var(--hz-hot);
+  background: var(--hz-bg-2);
+}
+.hz-shortlink__title {
+  font-size: 0.78rem;
+  color: var(--hz-ink-2);
+}
+.hz-shortlink__url {
+  display: block;
+  padding: 6px 8px;
+  border: 1px solid var(--hz-line);
+  background: var(--hz-void);
+  color: var(--hz-hot-ink);
+  font-size: 0.72rem;
+  word-break: break-all;
+  cursor: pointer;
+}
+.hz-shortlink__foot {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+}
+.hz-shortlink__copy {
+  min-height: 30px;
+  padding: 0 10px;
+  background: var(--hz-hot);
+  color: #08080b;
+}
+.hz-shortlink__hint {
+  color: var(--hz-ink-2);
+}
+
+.hz-entry__dl {
+  display: grid;
+  border-top: 1px solid var(--hz-line-2);
+}
+.hz-entry__dl div {
+  display: grid;
+  grid-template-columns: 4.5em 1fr;
+  gap: var(--s-2);
+  padding-block: 8px;
+  border-bottom: 1px solid var(--hz-line);
+  font-size: 0.8rem;
+}
+.hz-entry__dl dt {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  color: var(--hz-ink-3);
+  padding-top: 1px;
+}
+.hz-entry__dl dd {
+  color: var(--hz-ink-2);
+  overflow-wrap: anywhere;
+}
+
+.hz-toc {
+  display: grid;
+  gap: var(--s-2);
+}
+.hz-toc__head {
+  color: var(--hz-ink-3);
+}
+.hz-toc ol {
+  list-style: none;
+  display: grid;
+  border-left: 1px solid var(--hz-line);
+}
+.hz-toc li a {
+  display: block;
+  padding: 5px 0 5px var(--s-3);
+  font-size: 0.8rem;
+  line-height: 1.35;
+  color: var(--hz-ink-2);
+  border-left: 2px solid transparent;
+  margin-left: -1px;
+  transition: color var(--d-1), border-color var(--d-1);
+}
+.hz-toc li.hz-toc__sub a {
+  padding-left: var(--s-5);
+  font-size: 0.75rem;
+  color: var(--hz-ink-3);
+}
+.hz-toc li a:hover,
+.hz-toc li a.is-active {
+  color: var(--hz-hot-ink);
+  border-left-color: var(--hz-hot);
+}
+
+.hz-entry__note {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  color: var(--hz-ink-3);
+  line-height: 1.5;
+}
+
+.hz-entry__well {
+  min-width: 0;
+}
+
+/* —— 气闸门禁 —— */
+.hz-gate {
+  margin-block: var(--s-4);
+}
+.hz-gate__box {
+  display: grid;
+  gap: var(--s-4);
+  padding: var(--s-7);
+  border: 1px solid var(--hz-line-2);
+  background: var(--hz-bg-2);
+}
+.hz-gate__ring {
+  width: 48px;
+  height: 48px;
+  color: var(--hz-hot);
+}
+.hz-gate__ring svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.3;
+}
+.hz-gate__kicker {
+  color: var(--hz-hot-ink);
+}
+.hz-gate__title {
+  font-family: var(--f-cjk);
+  font-size: var(--t-h2);
+  font-weight: 700;
+}
+.hz-gate__hint {
+  color: var(--hz-ink-2);
+  font-size: var(--t-small);
+}
+.hz-gate__form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-3);
+  margin-top: var(--s-2);
+}
+.hz-gate__form input {
+  flex: 1 1 220px;
+  min-height: 48px;
+  padding: 0 var(--s-4);
+  border: 1px solid var(--hz-line-2);
+  background: var(--hz-void);
+  color: var(--hz-ink);
+  font-family: var(--f-mono);
+  font-size: var(--t-small);
+}
+.hz-gate__form input:focus-visible {
+  outline: none;
+  border-color: var(--hz-hot);
+}
+.hz-gate__err {
+  min-height: 1.4em;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  color: var(--hz-hot-ink);
+}
+
+/* —— 尾注与上下篇 —— */
+.hz-endmark {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--s-3);
+  margin-top: var(--s-9);
+  padding-top: var(--s-5);
+  border-top: 1px solid var(--hz-line-2);
+  color: var(--hz-ink-3);
+}
+.hz-endmark__top {
+  color: var(--hz-ink-2);
+  padding: 6px 0;
+}
+.hz-endmark__top:hover {
+  color: var(--hz-hot-ink);
+}
+
+.hz-pager {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s-4);
+  margin-top: var(--s-6);
+}
+.hz-pager__link {
+  display: grid;
+  gap: 8px;
+  padding: var(--s-4);
+  border: 1px solid var(--hz-line);
+  background: var(--hz-bg-2);
+  transition: border-color var(--d-1);
+}
+.hz-pager__link:hover {
+  border-color: var(--hz-hot);
+}
+.hz-pager__link span {
+  color: var(--hz-ink-3);
+}
+.hz-pager__link strong {
+  font-size: var(--t-body);
+  line-height: 1.35;
+}
+.hz-pager__link--next {
+  text-align: right;
+}
+
+@media (max-width: 1020px) {
+  .hz-entry__grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--s-6);
+  }
+  .hz-entry__rail {
+    position: static;
+    max-height: none;
+    overflow: visible;
+    order: 2;
+    padding-top: var(--s-5);
+    border-top: 1px solid var(--hz-line-2);
+  }
+  .hz-entry__well {
+    order: 1;
+  }
+}
+@media (max-width: 640px) {
+  .hz-pager {
+    grid-template-columns: 1fr;
+  }
+  .hz-pager__link--next {
+    text-align: left;
+  }
+  .hz-gate__box {
+    padding: var(--s-5);
+  }
+}
+
+/* —— 打印模式 —— */
+@media print {
+  .hz-hud,
+  .hz-frame,
+  .hz-readout,
+  .hz-foot,
+  .hz-progress,
+  .hz-entry__back,
+  .hz-entry__actions,
+  .hz-toc,
+  .hz-entry__note,
+  .hz-endmark__top,
+  .hz-pager {
+    display: none !important;
+  }
+  html,
+  body {
+    background: #fff !important;
+    color: #111 !important;
+  }
+  .hz-main {
+    padding-top: 0 !important;
+  }
+  .hz-entry__grid {
+    display: block !important;
+  }
+  .hz-entry__rail {
+    position: static !important;
+    margin-bottom: 16pt;
+    border: 0 !important;
+  }
+  .hz-entry__dl {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6pt 12pt;
+  }
+  .hz-entry__title {
+    font-size: 22pt !important;
+  }
+  .hz-prose {
+    color: #111 !important;
+  }
+  .hz-prose a {
+    color: #111 !important;
+    border-bottom: 1px solid #888;
+  }
+}

@@ -1,134 +1,80 @@
 ---
-import '../styles/tokens.css';
-import '../styles/core.css';
-import { ClientRouter } from 'astro:transitions';
-import SiteHeader from '../components/layout/SiteHeader.astro';
-import SiteFooter from '../components/layout/SiteFooter.astro';
+/**
+ * HORIZON 全站外壳。
+ * Props 与旧版兼容（title / description / bodyClass），额度页与定价页无需改动即可套用。
+ * 不再使用 Astro ClientRouter：跨页过渡交给原生跨文档 View Transitions（见 styles/hz/base.css）。
+ */
+import '../styles/hz/tokens.css';
+import '../styles/hz/base.css';
+import '../styles/hz/shell.css';
+import Hud from '../components/hz/Hud.astro';
+import Foot from '../components/hz/Foot.astro';
 import frontend from '../data/frontend.json';
 
 interface Props {
   title?: string;
   description?: string;
-  /** 可选：给 <body> 加类名，便于单页做版式（如额度页要一屏放下、隐藏页脚） */
   bodyClass?: string;
+  /** 页面标识，写到 <body data-page> */
+  page?: string;
+  /** 首页首屏全出血：去掉 main 顶部留白 */
+  bleed?: boolean;
+  /** 不渲染页脚 */
+  noFoot?: boolean;
 }
 
 const {
   title = 'Acretiondisk',
   description = '记录技术、医学、艺术与生活。',
   bodyClass = '',
+  page = '',
+  bleed = false,
+  noFoot = false,
 } = Astro.props;
 
 const siteName = frontend.siteName || 'Acretiondisk';
 const siteTagline = frontend.siteTagline || '记录想法与生活';
-const visualThemes = ['cyanotype', 'still', 'fluid', 'minimal', 'trace'];
-const defaultVisualTheme = visualThemes.includes(frontend.defaultVisualTheme)
-  ? frontend.defaultVisualTheme
-  : 'cyanotype';
-
-const displayFonts: Record<string, string> = {
-  'noto-serif': '"Noto Serif SC", "Source Han Serif SC", "Songti SC", STSong, SimSun, serif',
-  'noto-sans': '"Noto Sans SC", "Source Han Sans SC", "Microsoft YaHei", system-ui, sans-serif',
-  kaiti: 'STKaiti, KaiTi, "Kaiti SC", serif',
-  songti: '"Songti SC", STSong, SimSun, serif',
-  sans: 'Inter, "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif',
-};
-const displayFont = displayFonts[frontend.displayFont] || displayFonts['noto-serif'];
-
-/* ── 首页域名彩虹（后台「前端定制」可配）──────────────────────────────────────
-   只负责把后台的四项配置安全地落成 CSS 变量 + 一个开关属性，
-   具体渐变、混色与扫光在 src/styles/home-cinematic.css 里实现。
-   颜色在白名单里逐个校验（后台已校验，这里再兜一层，避免手改 JSON 造成注入）。 */
-const RAINBOW_DEFAULT_COLORS = ['#ff6b5e', '#ffb84d', '#8fd14f', '#2ec5b6', '#4d8bff', '#b06bff', '#ff6bd6'];
-const isHexColor = (value: unknown) => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value);
-const savedRainbowColors = Array.isArray(frontend.heroRainbowColors) ? frontend.heroRainbowColors : [];
-const rainbowColors = RAINBOW_DEFAULT_COLORS.map((fallback, index) =>
-  isHexColor(savedRainbowColors[index]) ? String(savedRainbowColors[index]).toLowerCase() : fallback,
-);
-const clampNumber = (value: unknown, fallback: number, min: number, max: number) => {
-  const n = Number(value);
-  return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback;
-};
-const rainbowEnabled = frontend.heroRainbowEnabled !== false;
-const rainbowMix = clampNumber(frontend.heroRainbowMix, 82, 40, 100);
-const rainbowSheen = clampNumber(frontend.heroRainbowSheen, 4, 3, 20);
-// 亮底图（墨色文字）下的含色量：默认按 0.73 系数自动变深，保证浅色照片上可读
-const rainbowLightMix = Math.round(rainbowMix * 0.73);
-
-const runtimeStyle = [
-  ':root{',
-  `--liquid-overlay:${frontend.heroOverlayOpacity};`,
-  `--liquid-blur:${frontend.glassBlur}px;`,
-  `--liquid-radius:${frontend.cardRadius}px;`,
-  `--liquid-art-font:${displayFont};`,
-  `--liquid-still-surface:rgba(247,250,249,${frontend.stillGlassOpacity});`,
-  `--liquid-fluid-surface:rgba(240,247,242,${frontend.fluidGlassOpacity});`,
-  rainbowColors.map((color, index) => `--rainbow-${index + 1}:${color};`).join(''),
-  `--rainbow-mix-strong:${rainbowMix}%;`,
-  `--rainbow-mix-light:${rainbowLightMix}%;`,
-  `--rainbow-sheen-duration:${rainbowSheen}s;`,
-  '}',
-  `:root[data-visual-theme="still"]{--c-accent-2:${frontend.stillAccent}}`,
-  `:root[data-visual-theme="fluid"]{--c-accent:${frontend.fluidPrimary};--c-accent-2:${frontend.fluidSecondary}}`,
-].join('');
+const fullTitle = title === 'Acretiondisk' || title === siteName ? siteName : `${title} · ${siteName}`;
+const canonical = new URL(Astro.url.pathname, Astro.site ?? 'https://blog.acretiondisk.top').href;
 ---
 
 <!doctype html>
-<html
-  lang="zh-CN"
-  data-default-visual-theme={defaultVisualTheme}
-  data-visual-theme={defaultVisualTheme}
-  data-theme="light"
-  data-hero-rainbow={rainbowEnabled ? 'on' : 'off'}
->
+<html lang="zh-CN" data-theme="dark">
   <head>
+    <style is:inline>@layer hz-reset, hz-base;</style>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="description" content={description} />
-    <meta name="theme-color" content="#f6f3ec" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#12151a" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#08080b" />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
-    <link rel="preload" href="/fonts/anthropic-serif.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="preload" href="/fonts/anthropic-sans.woff2" as="font" type="font/woff2" crossorigin />
-    <title>{title === 'Acretiondisk' ? siteName : `${title} · ${siteName}`}</title>
-    <style is:inline set:html={runtimeStyle} />
+    <link rel="preload" href="/fonts/unbounded-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <title>{fullTitle}</title>
     <script is:inline>
-      /* 首屏同步外观：避免先渲染一屏再切换（主题 CSS 已不再按需加载，只切属性） */
       (function () {
         var r = document.documentElement;
-        var THEMES = ['cyanotype', 'still', 'fluid', 'minimal', 'trace'];
-        var t = null, v = null;
-        try { t = localStorage.getItem('theme'); v = localStorage.getItem('visual-theme'); } catch (e) {}
-        var dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        r.dataset.theme = (t === 'light' || t === 'dark') ? t : (dark ? 'dark' : 'light');
-        var def = r.dataset.defaultVisualTheme || 'cyanotype';
-        r.dataset.visualTheme = (v && THEMES.indexOf(v) >= 0) ? v : def;
+        var t = null;
+        try { t = localStorage.getItem('theme'); } catch (e) {}
+        r.dataset.theme = t === 'light' || t === 'dark' ? t : (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
         r.classList.add('js');
-        if (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
-          r.classList.add('vt');
-        }
       })();
     </script>
-    <script>
-      import '../scripts/appearance.ts';
-      import '../scripts/header-bar.ts';
-    </script>
-    <script>
-      import '../scripts/cdn-fallback.ts';
-    </script>
   </head>
-  <body class={bodyClass}>
-    <ClientRouter />
-    <div class="site-shell">
-      <SiteHeader siteName={siteName} siteTagline={siteTagline} pathname={Astro.url.pathname} />
-      <main>
-        <slot />
-      </main>
-      <SiteFooter siteName={siteName} siteTagline={siteTagline} />
-    </div>
+  <body class={bodyClass} data-page={page}>
+    <a class="hz-skip" href="#main">跳到正文</a>
+    <Hud siteName={siteName} siteTagline={siteTagline} pathname={Astro.url.pathname} />
+    <main id="main" class:list={['hz-main', { 'hz-main--bleed': bleed }]}>
+      <slot />
+    </main>
+    {!noFoot && <Foot siteName={siteName} siteTagline={siteTagline} />}
     <script>
-      import '../scripts/invert-surface.ts';
+      import '../scripts/hz/shell';
+      import '../scripts/cdn-fallback';
     </script>
   </body>
 </html>

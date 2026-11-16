@@ -1,0 +1,79 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import { coverOf, fmtMass, mjd, readingMinutes, redshift, massOf } from '../../lib/horizon';
+
+interface Props {
+  post: CollectionEntry<'blog'>;
+  folioCode: string;
+  index?: number;
+  basePath?: string;
+  isPrivate?: boolean;
+  /** 可选：列表标题层级（首页板块内 h3，独立目录页可用 h2） */
+  headingLevel?: 2 | 3;
+}
+
+const {
+  post,
+  folioCode,
+  index = 0,
+  basePath = '/blog/',
+  isPrivate = false,
+  headingLevel = 3,
+} = Astro.props;
+
+const normBase = basePath.endsWith('/') ? basePath : `${basePath}/`;
+const href = `${normBase}${post.id}/`;
+const mass = massOf(post.body ?? '');
+const minutes = readingMinutes(post.body ?? '');
+const mjdVal = mjd(post.data.pubDate);
+const rs = redshift(post.data.pubDate);
+const cover = coverOf(post);
+const isAuth = post.data.access === 'authorized';
+const Heading = headingLevel === 2 ? 'h2' : 'h3';
+---
+
+<article
+  class="hz-row"
+  data-post-row
+  data-id={post.id}
+  data-folio={folioCode}
+  data-date={post.data.pubDate.toISOString()}
+  data-day-index={post.data.dayIndex ?? 0}
+  data-pos={index}
+  data-mass={mass}
+  data-z={rs.z.toFixed(4)}
+  data-tags={JSON.stringify(post.data.tags)}
+  data-search={`${post.data.title} ${post.data.description} ${post.data.tags.join(' ')}`.toLowerCase()}
+  data-lens-thumb={cover.thumb || undefined}
+  data-lens-orig={cover.original || undefined}
+  data-lens-label={folioCode}
+  style={`--hz-age:${rs.age.toFixed(3)}`}
+>
+  <div class="hz-row__tick" aria-hidden="true"></div>
+
+  <div class="hz-row__tele">
+    <span class="hz-row__folio">{folioCode}</span>
+    <span class="hz-row__mjd">MJD {mjdVal.toFixed(1)}</span>
+    <span class="hz-row__z">z={rs.z.toFixed(3)}</span>
+  </div>
+
+  <div class="hz-row__main">
+    <Heading class="hz-row__title">
+      <a class="hz-row__link" href={href}>{post.data.title}</a>
+    </Heading>
+    {post.data.description && <p class="hz-row__desc">{post.data.description}</p>}
+    {(post.data.tags.length > 0 || isAuth || isPrivate) && (
+      <div class="hz-row__tags">
+        {isPrivate && <span class="hz-tag hz-tag--hot">DARKROOM</span>}
+        {!isPrivate && isAuth && <span class="hz-tag hz-tag--hot">AUTH</span>}
+        {post.data.tags.map((tag) => <span class="hz-tag">{tag}</span>)}
+      </div>
+    )}
+  </div>
+
+  <div class="hz-row__stat">
+    <span class="hz-row__mass">{fmtMass(mass)} 字</span>
+    <span class="hz-row__dur">~{minutes} min</span>
+    <span class="hz-row__arrow" aria-hidden="true">↗</span>
+  </div>
+</article>

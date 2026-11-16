@@ -1,223 +1,149 @@
 ---
-import Icon from '../components/Icon.astro';
 import BaseLayout from '../layouts/BaseLayout.astro';
-import '../styles/about.css';
-import ThemeCopy from '../components/ThemeCopy.astro';
-import WordCloud from '../components/WordCloud.astro';
 import { safeLink } from '../lib/safe-link';
 import { getPublicPosts } from '../lib/posts';
 import { buildWordCloud } from '../lib/wordcloud';
+import { fmtMass, linkify, massOf } from '../lib/horizon';
 import about from '../data/about.json';
+import standaloneGallery from '../data/gallery.json';
+import '../styles/hz/about.css';
 
-// 头像已是图片仓库的 jsDelivr 外链，直接引用
-const avatarSrc = about.avatar ?? '';
-
-// 个人页词云：构建时统计全部公开文章（标题 + 正文）的词频，
-// 与卷册目录共用同一份数据链路，文章更新后重新构建即自动刷新。
+const posts = await getPublicPosts();
+const totalChars = posts.reduce((sum, p) => sum + massOf(p.body ?? ''), 0);
 const cloudWords = buildWordCloud(
-  (await getPublicPosts()).map((post) => ({ title: post.data.title, body: post.body ?? '' })),
+  posts.map((post) => ({ title: post.data.title, body: post.body ?? '' })),
 );
-
-// 把文本中的 http(s) 链接转换为可点击 <a>。
-// 先转义再替换，防 HTML/属性注入；仅识别 http/https，其余原样输出。
-// 所有经管理面板可编辑的文本字段统一走此函数，后续新增字段粘贴链接即可跳转。
-function linkify(text = '') {
-  const escaped = String(text)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-  return escaped.replace(
-    // URL 字符集采用 RFC 3986 合法字符，匹配在非 URL 字符（如中文标点）处自然停止
-    /https?:\/\/[A-Za-z0-9\-._~:\/?#\[\]@!$&'()*+,;=%]+/g,
-    (raw) => {
-      // 剥离 URL 尾部成对标点（英文/全角），避免把句号收进链接
-      const url = raw.replace(/[),.;:!?]+$/, '').replace(/[）】」』，。；：！？、]+$/, '');
-      if (!url) return raw;
-      return `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`;
-    },
-  );
-}
+const maxWeight = Math.max(1, ...cloudWords.map((w) => w.weight));
+const minWeight = Math.min(...cloudWords.map((w) => w.weight), 0);
+const normW = (w: number) =>
+  maxWeight > minWeight ? (w - minWeight) / (maxWeight - minWeight) : 0.5;
 ---
 
-<BaseLayout title={about.title || '关于'} description={about.subtitle || '关于 Acretiondisk。'}>
-  <article class="dossier">
-    <header class="dossier-header">
+<BaseLayout title={about.title || '关于'} description={about.subtitle || '关于 Acretiondisk。'} page="observer">
+  <article class="hz-wrap hz-about">
+    <header class="hz-about-head">
       <div>
-        <h1><ThemeCopy minimal={about.title} trace={about.title} cyanotype="底片背面" /></h1>
-        <p><ThemeCopy minimal={about.subtitle} trace={about.subtitle} cyanotype="作品之外，还有一个不断观察、尝试、偶尔推翻自己的我。" /></p>
+        <p class="hz-mono hz-about-head__kicker">OBSERVER DOSSIER // 04</p>
+        <h1 class="hz-about-head__title">{about.title || '编目者档案'}</h1>
+        {about.subtitle && <p class="hz-about-head__sub">{about.subtitle}</p>}
       </div>
-      <img class="archive-seal dossier-seal" src="/logo.webp" alt="" width="260" height="260" loading="lazy" />
+      <a class="hz-btn" href="/private/">
+        <span>进入暗房 · 私密文章</span>
+        <span aria-hidden="true">↗</span>
+      </a>
     </header>
 
-    <a class="private-channel private-channel--dossier" href="/private/">
-      <span class="private-channel__copy"><ThemeCopy minimal="私密文章" trace="私密卷册" /><small>需要密码</small></span>
-      <span class="private-channel__arrow" aria-hidden="true"><Icon name="arrow-up-right" /></span>
-    </a>
-
-    <section class="appearance-settings" aria-labelledby="appearance-heading">
-      <div class="appearance-heading">
-        <h2 id="appearance-heading"><ThemeCopy minimal="外观" trace="界面主题" /></h2>
-      </div>
-      <div class="appearance-selector" role="group" aria-label="界面主题">
-        <button type="button" data-visual-theme-option="cyanotype" aria-pressed="false">
-          <span class="appearance-selector__row">
-            <span class="appearance-swatch appearance-swatch--cyanotype" aria-hidden="true"></span>
-            <span>蓝晒</span>
-          </span>
-          <span class="appearance-selector__note">Cyanotype · 铁盐</span>
-        </button>
-        <button type="button" data-visual-theme-option="still" aria-pressed="false">
-          <span class="appearance-selector__row">
-            <span class="appearance-swatch appearance-swatch--still" aria-hidden="true"></span>
-            <span>静澈</span>
-          </span>
-          <span class="appearance-selector__note">Still · 清寂</span>
-        </button>
-        <button type="button" data-visual-theme-option="fluid" aria-pressed="false">
-          <span class="appearance-selector__row">
-            <span class="appearance-swatch appearance-swatch--fluid" aria-hidden="true"></span>
-            <span>流形</span>
-          </span>
-          <span class="appearance-selector__note">Fluid · 流形</span>
-        </button>
-        <button type="button" data-visual-theme-option="minimal" aria-pressed="false">
-          <span class="appearance-selector__row">
-            <span class="appearance-swatch appearance-swatch--minimal" aria-hidden="true"></span>
-            <span>留白</span>
-          </span>
-          <span class="appearance-selector__note">Minimal · 铅印</span>
-        </button>
-        <button type="button" data-visual-theme-option="trace" aria-pressed="false">
-          <span class="appearance-selector__row">
-            <span class="appearance-swatch appearance-swatch--trace" aria-hidden="true"></span>
-            <span>行迹</span>
-          </span>
-          <span class="appearance-selector__note">Trace · 荧光</span>
-        </button>
-      </div>
-      <span class="sr-only" data-visual-theme-status aria-live="polite"></span>
-    </section>
-
-    <div class="dossier-grid">
-      <section class="portrait-record">
-        <div class:list={['portrait-placeholder', avatarSrc ? 'has-avatar' : '']} aria-label="Acretiondisk 个人标记">
-          {avatarSrc
-            ? <img src={avatarSrc} alt="Acretiondisk 头像" loading="lazy" />
-            : (<><img class="archive-seal" src="/logo.webp" alt="Acretiondisk 标记" width="260" height="260" loading="lazy" /><span>ACR</span></>)}
-        </div>
-        <dl class="identity-table">
-          {
-            (about.identity || []).map(item => (
-              <div><dt>{item.label}</dt><dd set:html={linkify(item.value)} /></div>
-            ))
-          }
-        </dl>
-      </section>
-
-      <section class="dossier-copy">
-        {about.lead && <p class="lead-paragraph" set:html={linkify(about.lead)} />}
-        {
-          (about.paragraphs || []).map(text => (
-            <p set:html={linkify(text)} />
-          ))
-        }
-
-        <blockquote>
-          <span class="quote-label">{about.quoteLabel}</span>
-          <div class="quote-text" set:html={linkify(about.quoteText)} />
-        </blockquote>
-
-        <div class="interest-index">
-          <h2>{about.interestsTitle}</h2>
-          <ol>
-            {
-              (about.interests || []).map(item => (
-                <li><span>{item.index}</span><b>{item.name}</b><small set:html={linkify(item.note)} /></li>
-              ))
-            }
-          </ol>
+    <div class="hz-about-grid">
+      <aside class="hz-about-side">
+        <div class="hz-avatar-ring">
+          <img
+            src={about.avatar || '/logo.webp'}
+            alt="Acretiondisk 头像"
+            loading="eager"
+            decoding="async"
+          />
         </div>
 
-        {
-          about.projectsTitle && (
-            <div class="interest-index project-index">
-              <h2>{about.projectsTitle}</h2>
-              <ol>
-                {
-                  (about.projects || []).map(item => {
-                    // 仅放行 http(s) 链接（safeLink 其余返回空串），标题已由管理面板解析或手动填写，空时兜底显示裸网址
-                    const href = safeLink(item.url);
-                    return (
-                      <li><span>{item.index}</span><b>{item.name}</b><small>{href ? <a href={href} target="_blank" rel="noopener noreferrer">{item.title || item.url}</a> : (item.title || '')}</small></li>
-                    );
-                  })
-                }
-              </ol>
+        <dl class="hz-dl">
+          {(about.identity || []).map((item) => (
+            <div>
+              <dt>{item.label}</dt>
+              <dd set:html={linkify(item.value)} />
             </div>
-          )
-        }
-      </section>
+          ))}
+          <div><dt>公开手记</dt><dd>{posts.length} 篇</dd></div>
+          <div><dt>累计字符</dt><dd>{fmtMass(totalChars)}</dd></div>
+          <div><dt>独立图版</dt><dd>{(standaloneGallery as unknown[]).length} 幅</dd></div>
+        </dl>
+
+        <a class="hz-mini-btn" href="/ai-quota/">查看 AI 算力额度监控 ↗</a>
+      </aside>
+
+      <div class="hz-about-body">
+        <section class="hz-about-copy">
+          {about.lead && <p class="hz-about-copy__lead" set:html={linkify(about.lead)} />}
+          {(about.paragraphs || []).map((text) => (
+            <p set:html={linkify(text)} />
+          ))}
+
+          {about.quoteText && (
+            <blockquote class="hz-about-quote">
+              <span class="hz-mono">{about.quoteLabel || 'PRINCIPLE'}</span>
+              <div set:html={linkify(about.quoteText)} />
+            </blockquote>
+          )}
+        </section>
+
+        {(about.interests || []).length > 0 && (
+          <section class="hz-ledger-box" aria-labelledby="about-links">
+            <h2 id="about-links">{about.interestsTitle || '关联网站'}</h2>
+            <ol class="hz-ledger-list">
+              {(about.interests || []).map((item) => (
+                <li>
+                  <span>{item.index}</span>
+                  <b>{item.name}</b>
+                  <small set:html={linkify(item.note)} />
+                </li>
+              ))}
+            </ol>
+          </section>
+        )}
+
+        {(about.projects || []).length > 0 && (
+          <section class="hz-ledger-box" aria-labelledby="about-projects">
+            <h2 id="about-projects">{about.projectsTitle || '我的项目'}</h2>
+            <ol class="hz-ledger-list">
+              {(about.projects || []).map((item) => {
+                const href = safeLink(item.url);
+                return (
+                  <li>
+                    <span>{String(item.index).padStart(2, '0')}</span>
+                    <b>{item.name}</b>
+                    <small>
+                      {href ? (
+                        <a href={href} target="_blank" rel="noopener noreferrer">
+                          {item.title || item.url} ↗
+                        </a>
+                      ) : (
+                        item.title || ''
+                      )}
+                    </small>
+                  </li>
+                );
+              })}
+            </ol>
+          </section>
+        )}
+      </div>
     </div>
 
-    <div class="dossier-wordcloud">
-      <WordCloud words={cloudWords} />
-    </div>
+    {cloudWords.length > 0 && (
+      <section class="hz-freq" aria-labelledby="about-freq">
+        <div class="hz-freq__head">
+          <div>
+            <p class="hz-mono" style="color:var(--hz-hot-ink);margin-bottom:4px;">LEXICON SPECTRUM</p>
+            <h2 id="about-freq">全站词频光谱</h2>
+          </div>
+          <p class="hz-mono">CLICK ANY TERM TO FILTER /BLOG/</p>
+        </div>
+
+        <div class="hz-freq__wall">
+          {cloudWords.map((w) => {
+            const ratio = normW(w.weight);
+            return (
+              <a
+                class="hz-freq__word"
+                href={`/blog/?q=${encodeURIComponent(w.text)}`}
+                style={`--w:${ratio.toFixed(3)};--w-int:${Math.round(ratio * 5)}`}
+                title={`出现 ${w.count} 次 · 点击在文章目录中搜索「${w.text}」`}
+              >
+                <span>{w.text}</span>
+                <small>{w.count}</small>
+              </a>
+            );
+          })}
+        </div>
+      </section>
+    )}
   </article>
 </BaseLayout>
-
-<script>
-  /**
-   * 外观切换（FOLIO）。
-   * 主题 CSS 已不再按需加载：5 套主题现在只是 folio.css 里的 token 块，
-   * 切主题 = 改 <html data-visual-theme>，没有任何样式表下载或替换。
-   */
-  type VisualTheme = 'cyanotype' | 'still' | 'fluid' | 'minimal' | 'trace';
-
-  const THEMES: VisualTheme[] = ['cyanotype', 'still', 'fluid', 'minimal', 'trace'];
-  const THEME_NAMES: Record<VisualTheme, string> = {
-    cyanotype: '蓝晒', still: '静澈', fluid: '流形', minimal: '留白', trace: '行迹',
-  };
-
-  const initializedThemeButtons = new WeakSet<HTMLButtonElement>();
-
-  function initVisualThemePicker() {
-    const buttons = [...document.querySelectorAll<HTMLButtonElement>('[data-visual-theme-option]')];
-    const status = document.querySelector<HTMLElement>('[data-visual-theme-status]');
-    if (buttons.length === 0) return;
-
-    const sync = (theme: VisualTheme) => {
-      buttons.forEach((button) => {
-        button.setAttribute('aria-pressed', String(button.dataset.visualThemeOption === theme));
-      });
-      if (status) status.textContent = `已切换为${THEME_NAMES[theme]}主题`;
-    };
-
-    const currentValue = document.documentElement.dataset.visualTheme as VisualTheme;
-    sync(THEMES.includes(currentValue) ? currentValue : 'cyanotype');
-
-    buttons.forEach((button) => {
-      if (initializedThemeButtons.has(button)) return;
-      initializedThemeButtons.add(button);
-      button.addEventListener('click', () => {
-        const option = button.dataset.visualThemeOption as VisualTheme;
-        const theme: VisualTheme = THEMES.includes(option) ? option : 'cyanotype';
-        if (document.documentElement.dataset.visualTheme === theme) return;
-
-        const apply = () => {
-          document.documentElement.dataset.visualTheme = theme;
-          try { localStorage.setItem('visual-theme', theme); } catch {}
-          sync(theme);
-        };
-
-        if (document.startViewTransition && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
-          document.startViewTransition(apply);
-        } else {
-          apply();
-        }
-      });
-    });
-  }
-
-  document.addEventListener('astro:page-load', initVisualThemePicker);
-</script>

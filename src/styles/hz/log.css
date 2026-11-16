@@ -1,0 +1,399 @@
+/* ==========================================================================
+   HORIZON · log.css —— 文章光谱账簿（PostRow + 悬浮透镜 + /blog/ 光谱仪）
+   ========================================================================== */
+
+.hz-ledger {
+  border-top: 1px solid var(--hz-line-2);
+}
+
+.hz-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 4px minmax(110px, 148px) minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--s-5);
+  padding: var(--s-5) var(--s-3) var(--s-5) 0;
+  border-bottom: 1px solid var(--hz-line);
+  transition: background-color var(--d-1) var(--e-out), border-color var(--d-1) var(--e-out);
+}
+.hz-row:hover,
+.hz-row.is-linked {
+  background: var(--hz-bg-2);
+  border-bottom-color: var(--hz-line-2);
+}
+
+/* 左侧红移光谱刻度条：最新偏蓝白，渐旧红移 */
+.hz-row__tick {
+  width: 3px;
+  height: 28px;
+  margin-top: 4px;
+  background: color-mix(
+    in oklab,
+    var(--hz-hot) calc((1 - var(--hz-age, 0)) * 75% + 25%),
+    var(--hz-red) calc(var(--hz-age, 0) * 100%)
+  );
+  transition: transform var(--d-2) var(--e-out), background-color var(--d-2);
+}
+.hz-row:hover .hz-row__tick,
+.hz-row.is-linked .hz-row__tick {
+  transform: scaleY(1.45);
+  background: var(--hz-hot);
+}
+
+.hz-row__tele {
+  display: grid;
+  gap: 3px;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
+  padding-top: 2px;
+}
+.hz-row__folio {
+  color: var(--hz-ink);
+  font-weight: 600;
+}
+.hz-row__mjd {
+  color: var(--hz-ink-3);
+}
+.hz-row__z {
+  color: color-mix(in oklab, var(--hz-ink-2) 60%, var(--hz-hot-ink));
+}
+
+.hz-row__main {
+  display: grid;
+  gap: var(--s-2);
+  min-width: 0;
+}
+.hz-row__title {
+  font-family: var(--f-cjk);
+  font-size: clamp(1.1rem, 0.95rem + 0.55vw, 1.42rem);
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  color: color-mix(in oklab, var(--hz-ink) 80%, var(--hz-red) calc(var(--hz-age, 0) * 20%));
+  overflow-wrap: anywhere;
+}
+.hz-row__link {
+  outline: none;
+}
+.hz-row__link::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+.hz-row:has(.hz-row__link:focus-visible) {
+  outline: 2px solid var(--hz-hot);
+  outline-offset: -2px;
+}
+.hz-row:hover .hz-row__title,
+.hz-row.is-linked .hz-row__title {
+  color: var(--hz-ink);
+}
+.hz-row__desc {
+  font-size: var(--t-small);
+  color: var(--hz-ink-2);
+  line-height: 1.55;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.hz-row__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  margin-top: 2px;
+}
+.hz-tag--hot {
+  color: var(--hz-hot-ink);
+}
+
+.hz-row__stat {
+  display: grid;
+  justify-items: end;
+  gap: 4px;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: 0.06em;
+  color: var(--hz-ink-3);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  padding-top: 3px;
+}
+.hz-row__mass {
+  color: var(--hz-ink-2);
+}
+.hz-row__arrow {
+  font-size: 1rem;
+  line-height: 1;
+  color: var(--hz-ink-3);
+  transition: transform var(--d-2) var(--e-out), color var(--d-2);
+}
+.hz-row:hover .hz-row__arrow,
+.hz-row.is-linked .hz-row__arrow {
+  color: var(--hz-hot);
+  transform: translate(3px, -3px);
+}
+
+/* —— 悬浮爱因斯坦环封面透镜 —— */
+.hz-lens {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 42;
+  width: 210px;
+  height: 210px;
+  border-radius: 50%;
+  border: 1px solid var(--hz-hot);
+  background: var(--hz-void);
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+  scale: 0.72;
+  transition: opacity var(--d-2) var(--e-out), scale var(--d-2) var(--e-out);
+  will-change: transform, opacity;
+  box-shadow: 0 0 0 8px rgb(255 90 26 / 0.08);
+}
+.hz-lens.is-visible {
+  opacity: 1;
+  scale: 1;
+}
+.hz-lens img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.hz-lens__ring {
+  position: absolute;
+  inset: 8px;
+  border-radius: 50%;
+  border: 1px dashed rgb(255 241 214 / 0.45);
+  pointer-events: none;
+}
+.hz-lens__cap {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  padding: 2px 7px;
+  background: rgb(8 8 11 / 0.82);
+  color: #fff1d6;
+  font-size: 0.6rem;
+  white-space: nowrap;
+}
+
+/* ==========================================================================
+   /blog/ 光谱仪头部与控制器
+   ========================================================================== */
+.hz-log-head {
+  display: grid;
+  gap: var(--s-4);
+  padding-bottom: var(--s-6);
+}
+.hz-log-head__top {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: var(--s-4);
+}
+.hz-log-head__title {
+  font-family: var(--f-display);
+  font-size: var(--t-h1);
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  line-height: 1.02;
+}
+.hz-log-head__deck {
+  color: var(--hz-ink-2);
+  font-size: var(--t-lead);
+  max-width: 36em;
+}
+.hz-log-head__kicker {
+  color: var(--hz-hot-ink);
+  margin-bottom: var(--s-2);
+}
+
+/* 光谱发射线图 */
+.hz-spec {
+  border: 1px solid var(--hz-line);
+  background: var(--hz-bg-2);
+  padding: var(--s-4);
+  margin-bottom: var(--s-5);
+}
+.hz-spec__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--s-4);
+  flex-wrap: wrap;
+  margin-bottom: var(--s-3);
+  color: var(--hz-ink-2);
+}
+.hz-spec__readout {
+  color: var(--hz-hot-ink);
+  min-height: 1.4em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+.hz-spec__bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 92px;
+  padding-top: var(--s-2);
+  border-bottom: 1px solid var(--hz-line-2);
+}
+.hz-spec__bar {
+  flex: 1 1 0;
+  min-width: 3px;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  padding: 0 1px;
+  cursor: pointer;
+}
+.hz-spec__bar i {
+  display: block;
+  width: 100%;
+  height: var(--bar-h, 40%);
+  background: color-mix(
+    in oklab,
+    var(--hz-hot-2) calc((1 - var(--bar-age, 0)) * 85%),
+    var(--hz-red) calc(var(--bar-age, 0) * 100%)
+  );
+  transition: transform var(--d-1) var(--e-out), opacity var(--d-1), background-color var(--d-1);
+  transform-origin: bottom;
+}
+.hz-spec__bar:hover i,
+.hz-spec__bar:focus-visible i,
+.hz-spec__bar.is-linked i {
+  background: var(--hz-white-hot);
+  transform: scaleY(1.16);
+}
+.hz-spec__bar.is-dimmed i {
+  opacity: 0.16;
+}
+.hz-spec__scale {
+  display: flex;
+  justify-content: space-between;
+  padding-top: var(--s-2);
+  color: var(--hz-ink-3);
+}
+
+/* 控制栏 */
+.hz-controls {
+  display: grid;
+  gap: var(--s-4);
+  margin-bottom: var(--s-6);
+}
+.hz-controls__bar {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto auto;
+  gap: var(--s-3);
+  align-items: center;
+}
+.hz-search {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  border: 1px solid var(--hz-line-2);
+  background: var(--hz-bg-2);
+  padding: 0 var(--s-4);
+  min-height: 46px;
+}
+.hz-search:focus-within {
+  border-color: var(--hz-hot);
+}
+.hz-search kbd {
+  padding: 2px 6px;
+  border: 1px solid var(--hz-line-2);
+  font-size: 0.65rem;
+  color: var(--hz-ink-3);
+}
+.hz-search input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  outline: none;
+  font-size: var(--t-small);
+}
+
+.hz-tags-rail {
+  display: flex;
+  gap: var(--s-2);
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
+}
+.hz-tags-rail button {
+  flex: none;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--hz-line);
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: 0.06em;
+  color: var(--hz-ink-2);
+  white-space: nowrap;
+  transition: border-color var(--d-1), color var(--d-1), background-color var(--d-1);
+}
+.hz-tags-rail button:hover {
+  border-color: var(--hz-line-2);
+  color: var(--hz-ink);
+}
+.hz-tags-rail button[aria-pressed='true'] {
+  border-color: var(--hz-hot);
+  background: var(--hz-hot);
+  color: #08080b;
+}
+
+.hz-empty {
+  display: grid;
+  justify-items: center;
+  gap: var(--s-4);
+  padding: var(--s-9) var(--s-4);
+  border-bottom: 1px solid var(--hz-line);
+  text-align: center;
+  color: var(--hz-ink-2);
+}
+
+@media (max-width: 900px) {
+  .hz-controls__bar {
+    grid-template-columns: 1fr;
+  }
+  .hz-seg {
+    justify-self: start;
+    flex-wrap: wrap;
+  }
+}
+@media (max-width: 720px) {
+  .hz-row {
+    grid-template-columns: 3px 1fr;
+    gap: var(--s-2) var(--s-3);
+    padding-block: var(--s-4);
+  }
+  .hz-row__tick {
+    grid-row: span 3;
+    height: 100%;
+  }
+  .hz-row__tele {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s-3);
+  }
+  .hz-row__stat {
+    display: flex;
+    align-items: center;
+    gap: var(--s-4);
+    justify-items: start;
+  }
+  .hz-lens {
+    display: none;
+  }
+}

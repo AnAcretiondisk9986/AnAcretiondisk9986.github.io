@@ -1109,8 +1109,12 @@ function init(): void {
   void refresh(false);
 }
 
-/* 初始化只挂在 astro:page-load：首次直载与每次 View Transitions 导航都会触发；
-   离开时统一 teardown，防止往返几次后堆叠出多个定时器。 */
+/* 原生 MPA + 跨文档 View Transitions 下直接就绪初始化；同时保留 astro:page-load 兼容 */
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
 document.addEventListener('astro:page-load', init);
 document.addEventListener('astro:before-swap', teardown);
 window.addEventListener('pagehide', teardown);

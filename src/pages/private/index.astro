@@ -1,113 +1,79 @@
 ---
 import { getCollection } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import '../../styles/catalog.css';
-import ThemeCopy from '../../components/ThemeCopy.astro';
+import Gate from '../../components/hz/Gate.astro';
+import PostRow from '../../components/hz/PostRow.astro';
+import { folioCodes } from '../../lib/horizon';
 import privateAccess from '../../data/private-access.json';
+import '../../styles/hz/log.css';
+import '../../styles/hz/entry.css';
+import '../../styles/hz/misc.css';
 
 const posts = (await getCollection('blog', ({ data }) => !data.draft && data.access === 'admin'))
   .sort((a, b) =>
     b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
     || (b.data.dayIndex ?? 0) - (a.data.dayIndex ?? 0)
     || b.id.localeCompare(a.id));
+
+const folioFor = folioCodes(posts);
 const passwordHash = privateAccess.passwordHash;
-const fmtDate = (d: Date) =>
-  `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
 ---
 
-<BaseLayout title="私密文章" description="管理员级文章入口。">
-  {/* BaseLayout 已经提供了一个 <main>；这里只能用普通容器，避免一页两个 main 地标 */}
-  <div class="private-index">
-    <section class="f-section private-head">
-      <div class="f-fleuron" aria-hidden="true"><i></i></div>
-      <div class="f-cover__folio"><span>PRIVATE ARCHIVE</span><span>·</span><span>MMXXVI</span></div>
-      <h1 class="private-head__title"><ThemeCopy minimal="私密文章" trace="私密卷册" /></h1>
-      <p class="private-head__deck"><ThemeCopy minimal="此处文章不会出现在公开文章目录中。" trace="此处文章不会出现在公开文章目录中。" cyanotype="一些观察暂时收在暗房里，不列入公开手记。" /></p>
-      <dl class="private-head__register">
-        <div><dt><ThemeCopy minimal="文章总数" trace="私密馆藏总数" /></dt><dd class="f-num">{String(posts.length).padStart(3, '0')}</dd></div>
-        <div><dt><ThemeCopy minimal="访问状态" trace="权限状态" /></dt><dd>需验证</dd></div>
-        <div><dt>排序规则</dt><dd data-order-text>由新至旧</dd></div>
-      </dl>
-    </section>
+<BaseLayout title="暗房私密" description="管理员级私密文章入口。" page="darkroom">
+  <div class="hz-wrap hz-darkroom">
+    <header class="hz-darkroom__head">
+      <p class="hz-mono hz-darkroom__kicker">DARKROOM ARCHIVE // CLEARANCE: ADMIN</p>
+      <h1 class="hz-darkroom__title">私密文章</h1>
+      <p class="hz-darkroom__deck">这里收录未进入公开光谱的个人记录，需验证口令后展开。</p>
+      <div class="hz-darkroom__tele hz-mono">
+        <span>ENTRIES: {String(posts.length).padStart(3, '0')}</span>
+        <span>SORT: NEWEST → OLDEST</span>
+        <span>STATUS: ENCRYPTED HASH GATE</span>
+      </div>
+    </header>
 
-    <div class="access-gate private-gate" data-private-index-gate>
-      <p class="access-gate__eyebrow"><ThemeCopy minimal="管理员级文章" trace="管理员级文章" cyanotype="THE DARKROOM / 非公开区域" /></p>
-      <h2><ThemeCopy minimal="输入密码后查看私密目录" trace="输入密码后查看私密目录" cyanotype="持有口令，才能展开这些底片。" /></h2>
-      <form data-private-index-form><input name="password" type="password" autocomplete="current-password" required placeholder="私密文章密码" aria-label="私密文章密码" /><button class="f-btn" type="submit">验证并打开</button></form>
-      <p class="access-gate__error" data-private-index-error role="alert"></p>
-    </div>
-
-    <div class="private-body" data-private-index-body hidden>
-      {posts.length ? (
-        <div class="f-catalog">
-          {posts.map((post, i) => (
-            <a class="f-entry" href={`/private/${post.id}/`}>
-              <span class="f-entry__no">{String(posts.length - i).padStart(3, '0')}</span>
-              <span class="f-entry__title"><span>{post.data.title}</span></span>
-              <span class="f-entry__tag">{post.data.tags?.[0] ?? 'PRIVATE'}</span>
-              <span class="f-entry__date">{fmtDate(post.data.pubDate)}</span>
-            </a>
+    <Gate
+      mode="admin"
+      articleId="private-index"
+      hash={passwordHash}
+      kicker="DARKROOM // CLEARANCE REQUIRED"
+      title="输入暗房口令以开启私密卷册"
+      hint="密码由站长在后台设置；验证通过后将记住本设备状态。"
+      placeholder="私密文章密码"
+    >
+      {posts.length > 0 ? (
+        <div class="hz-ledger">
+          {posts.map((post, idx) => (
+            <PostRow
+              post={post}
+              folioCode={folioFor(post)}
+              index={idx}
+              basePath="/private/"
+              isPrivate
+              headingLevel={2}
+            />
           ))}
         </div>
       ) : (
-        <p class="private-empty">暂无私密文章。</p>
+        <div class="hz-empty">
+          <p class="hz-mono">DARKROOM EMPTY // NO PRIVATE ENTRIES</p>
+        </div>
       )}
-      <footer class="private-footer">
-        <span><ThemeCopy minimal="私密文章仅在验证后展示" trace="受权限控制的私密卷册" /></span>
-        <span class="f-num">ACR / PRIVATE / {new Date().getFullYear()}</span>
+
+      <footer class="hz-darkroom__foot hz-mono">
+        <span>PRIVATE ARCHIVE · UNLISTED</span>
+        <span>ACR / DARKROOM / {new Date().getFullYear()}</span>
       </footer>
-    </div>
+    </Gate>
+  </div>
+
+  <div class="hz-lens" data-lens aria-hidden="true">
+    <img data-lens-img alt="" />
+    <span class="hz-lens__ring"></span>
+    <span class="hz-lens__cap hz-mono" data-lens-cap></span>
   </div>
 </BaseLayout>
 
-<!-- 私密页版式（页头 + 登记条 + 细线门禁 + f-entry 编目）统一定义在
-     src/styles/pages-next.css 的 components 层；锁定态由下方内联脚本切换。 -->
-
-<script is:inline data-astro-rerun define:vars={{ passwordHash }}>
-  (() => {
-    const unlockKey = 'acr-private-admin-unlocked';
-    const gate = document.querySelector('[data-private-index-gate]');
-    const form = document.querySelector('[data-private-index-form]');
-    const error = document.querySelector('[data-private-index-error]');
-    const body = document.querySelector('[data-private-index-body]');
-    if (!gate || !form || !error || !body) return;
-    const isUnlocked = () => {
-      try { return localStorage.getItem(unlockKey) === passwordHash; } catch { return false; }
-    };
-    const rememberUnlock = () => {
-      try { localStorage.setItem(unlockKey, passwordHash); } catch {}
-    };
-    const reveal = () => {
-      body.hidden = false;
-      gate.replaceWith(body);
-      document.dispatchEvent(new CustomEvent('astro:page-load'));
-    };
-    if (isUnlocked()) reveal();
-    form.addEventListener('submit', async (event) => {
-      event.preventDefault();
-      const password = String(new FormData(form).get('password') || '');
-      const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(password));
-      const hash = [...new Uint8Array(digest)].map((v) => v.toString(16).padStart(2, '0')).join('');
-      if (hash === passwordHash) { rememberUnlock(); reveal(); }
-      else error.textContent = '密码不正确。';
-    });
-  })();
+<script>
+  import '../../scripts/hz/lens';
 </script>
-
-<style is:global>
-  /* 焦点环故意不放进 @layer：pages-next.css 的 components 层让 .access-gate input
-     和 .f-btn 只拿到几乎看不见的环（实测环色与纸色同亮度，对比度 1.00）。
-     这里统一换成墨色 2px，明暗两套主题都能拿到 ≥3:1。 */
-  .private-index :is(a, button, input, textarea, select, summary):focus-visible {
-    outline: 2px solid var(--c-ink);
-    outline-offset: 3px;
-  }
-  .private-index .access-gate input:focus-visible {
-    border-color: var(--c-ink);
-  }
-
-  /* 触控热区：门禁输入框补到 44px（实测 316×37 不达标签要求） */
-  .private-index .access-gate input {
-    min-height: 44px;
-  }
-</style>

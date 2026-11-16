@@ -1,184 +1,174 @@
 ---
-import Icon from '../components/Icon.astro';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PostRow from '../components/hz/PostRow.astro';
 import { getPublicPosts } from '../lib/posts';
 import { sortNewestFirst, thumbOf, type GalleryImageBrief } from '../lib/gallery';
-import { firstImageFromBody } from '../lib/post-cover';
-import BaseLayout from '../layouts/BaseLayout.astro';
-import AboutTeaser from '../components/AboutTeaser.astro';
 import { safeLink } from '../lib/safe-link';
+import { fmtMass, folioCodes, massOf, mjd } from '../lib/horizon';
 import frontend from '../data/frontend.json';
 import about from '../data/about.json';
 import standaloneGallery from '../data/gallery.json';
-import '../styles/home.css';
-// 首页专属的滚动动效样式：放在 BaseLayout 和 home.css 之后引入，保证在同一 @layer 里后胜出
-import '../styles/home-cinematic.css';
+import '../styles/hz/home.css';
+import '../styles/hz/log.css';
 
 const posts = await getPublicPosts();
-const primaryCtaHref = safeLink(frontend.primaryCtaHref, '/blog/');
-const recentPosts = posts.slice(0, 6);
+const folioFor = folioCodes(posts);
+const recentPosts = posts.slice(0, 8);
+const totalChars = posts.reduce((sum, p) => sum + massOf(p.body ?? ''), 0);
+const latestMjd = posts[0] ? mjd(posts[0].data.pubDate).toFixed(1) : '—';
 
-const galleryTeaserImages: (GalleryImageBrief & { thumb?: string })[] = sortNewestFirst(
-  standaloneGallery as GalleryImageBrief[],
-)
-  .slice(0, 3)
-  .map((img) => ({ ...img, thumb: img.thumb ?? thumbOf(img.src) }));
+const galleryPlates = sortNewestFirst(standaloneGallery as GalleryImageBrief[])
+  .slice(0, 4)
+  .map((img) => {
+    const thumb = img.thumb ?? thumbOf(img.src);
+    return { ...img, thumb, fallback: thumb !== img.src ? img.src : '' };
+  });
 
-/* 首屏标题：frontend.heroTitleLine1 里同时含有中文与域名（如「欢迎来到Blog.Acretiondisk.top」）。
-   按第一个拉丁字符拆成两行，各自定标——中文行用 --type-display，域名行用更小的 clamp，
-   否则 21 字符的域名会被断行算法从词中间劈开。 */
 const rawTitle1 = String(frontend.heroTitleLine1 ?? '').trim();
 const latinAt = rawTitle1.search(/[A-Za-z0-9]/);
 const titleCjk = latinAt > 0 ? rawTitle1.slice(0, latinAt).trim() : rawTitle1;
 const titleLatin = latinAt > 0 ? rawTitle1.slice(latinAt).trim() : '';
-const titleLine3 = String(frontend.heroTitleLine2 ?? '').trim();
-
-/* 域名拆成「前缀」与「主域」两段：前缀（blog.）保持原样，主域单独加克制的光效。
-   只按第一个点切分，因此 blog.Acretiondisk.top / www.example.com 都成立；
-   没有点（纯单词）时整段按主域处理。 */
-const domainSplit = titleLatin.match(/^([A-Za-z0-9-]{1,12}\.)(.+)$/);
-const domainPrefix = domainSplit?.[1] ?? '';
-const domainZone = domainSplit?.[2] ?? titleLatin;
-
-const fmtDate = (d: Date) =>
-  `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`;
-
-/* 六张编目卡片：封面走 480px 缩略图（image/thumb/*.webp），没有封面时退回正文首图；
-   两者都没有就渲染「NO PLATE」骨架，而不是留一个空洞。 */
-const recentCards = recentPosts.map((post, index) => {
-  const original = post.data.cover?.trim() || firstImageFromBody(post.body ?? '');
-  return {
-    href: `/blog/${post.id}/`,
-    title: post.data.title,
-    excerpt: post.data.description,
-    tag: post.data.tags?.[0] ?? '',
-    date: fmtDate(post.data.pubDate),
-    iso: post.data.pubDate.toISOString(),
-    no: String(posts.length - index).padStart(3, '0'),
-    cover: original ? thumbOf(original) : '',
-    original: original && original !== thumbOf(original) ? original : '',
-  };
-});
-
-const heroPosition = String(frontend.stillImagePosition || 'center');
+const titleLine2 = String(frontend.heroTitleLine2 ?? '').trim();
+const primaryCtaHref = safeLink(frontend.primaryCtaHref, '/blog/');
 ---
 
-<BaseLayout>
-  <!-- 首屏横幅：图片层是 100vw 对称出血的全幅底图，内容层留在纸面内容框内，
-       两者共享同一水平中心，所以文字在任意宽度下都严格居中。 -->
-  <section class="f-hero" aria-labelledby="cover-title" data-hero>
-    <div class="f-hero__media" aria-hidden="true">
-      <img
-        class="f-hero__image"
-        src={frontend.stillHeroImage}
-        alt=""
-        decoding="async"
-        fetchpriority="high"
-        crossorigin="anonymous"
-        style={`--hero-image-position:${heroPosition}`}
-      />
-    </div>
-    <div class="f-hero__scrim" aria-hidden="true"></div>
+<BaseLayout page="origin" bleed>
+  <section class="hz-hero" data-hero aria-labelledby="hz-hero-title">
+    <canvas
+      class="hz-hero__canvas"
+      data-disk
+      data-sky-src={frontend.stillHeroImage || ''}
+      aria-hidden="true"
+    ></canvas>
+    <div class="hz-hero__fallback" aria-hidden="true"></div>
+    <div class="hz-hero__scrim" aria-hidden="true"></div>
 
-    <div class="f-hero__body">
-      <h1 id="cover-title" class="f-hero__title">
-        <span class="f-hero__line1">{titleCjk}</span>
-        {titleLatin && (
-          <span class="f-hero__domain">
-            {domainPrefix && <em class="f-hero__domain-prefix">{domainPrefix}</em>}
-            <em class="f-hero__domain-zone">{domainZone}</em>
-          </span>
-        )}
+    <div class="hz-hero__inner hz-wrap">
+      <p class="hz-hero__eyebrow hz-mono">
+        <i class="hz-hero__pulse" aria-hidden="true"></i>
+        <span>{frontend.heroEyebrow || 'EVENT HORIZON OBSERVATORY · 2026'}</span>
+      </p>
+
+      <h1 id="hz-hero-title" class="hz-hero__title">
+        <span class="hz-hero__l1">{titleCjk}</span>
+        {titleLatin && <span class="hz-hero__domain">{titleLatin}</span>}
+        {titleLine2 && <span class="hz-hero__l2">{titleLine2}</span>}
       </h1>
-      {titleLatin && <span class="f-hero__domain-rule" aria-hidden="true"></span>}
-      {titleLine3 && <p class="f-hero__line3">{titleLine3}</p>}
 
-      <p class="f-hero__deck">{frontend.heroDescription}</p>
+      {frontend.heroDescription && (
+        <p class="hz-hero__deck">{frontend.heroDescription}</p>
+      )}
 
-      <div class="f-hero__meta">
-        <span>{posts.length} 篇手记</span>
-        <span>{(standaloneGallery as unknown[]).length} 幅图版</span>
-        <span>自 2026 年起</span>
+      <div class="hz-hero__tele hz-mono">
+        <span><b>{posts.length}</b> 篇观测记录</span>
+        <span><b>{fmtMass(totalChars)}</b> 有效字符</span>
+        <span><b>{(standaloneGallery as unknown[]).length}</b> 幅独立图版</span>
+        <span>LATEST MJD <b>{latestMjd}</b></span>
       </div>
 
-      <div class="f-hero__actions">
-        <a class="f-btn" href={primaryCtaHref}>
-          {frontend.primaryCtaLabel}
-          <Icon name="arrow-right" />
+      <div class="hz-hero__actions">
+        <a class="hz-btn hz-btn--hot" href={primaryCtaHref}>
+          <span>{frontend.primaryCtaLabel || '浏览文章'}</span>
+          <span aria-hidden="true">→</span>
         </a>
-        <a class="f-btn f-btn--ghost" href="/gallery/">查看图志</a>
+        <a class="hz-btn" href="/gallery/">
+          <span>进入透镜图志</span>
+          <span aria-hidden="true">↗</span>
+        </a>
       </div>
+    </div>
+
+    <div class="hz-hero__cue hz-wrap hz-mono" aria-hidden="true">
+      <span>R_s = 2GM / c² · SCHWARZSCHILD METRIC</span>
+      <span>↓ SCROLL TO CROSS HORIZON</span>
     </div>
   </section>
 
-  <section class="f-section">
-    <div class="f-section-head" data-reveal="head">
-      <h2 class="f-section-title">近期文章</h2>
-      <a class="f-section-more" href="/blog/">全部 {posts.length} 篇</a>
+  <section class="hz-home-sec hz-wrap" aria-labelledby="sec-recent">
+    <div class="hz-sect">
+      <span class="hz-sect__no">01</span>
+      <h2 class="hz-sect__title" id="sec-recent">近期观测记录</h2>
+      <span class="hz-sect__rule" aria-hidden="true"></span>
+      <a class="hz-sect__more" href="/blog/">全部 {posts.length} 篇光谱 →</a>
     </div>
-    <div class="f-recent">
-      {recentCards.map((card) => (
-        <a class="f-card" href={card.href} data-reveal="card">
-          <span
-            class="f-card__frame"
-            data-loading={card.cover ? 'true' : undefined}
-            data-empty={card.cover ? undefined : 'true'}
+
+    <div class="hz-ledger">
+      {recentPosts.map((post, idx) => (
+        <PostRow post={post} folioCode={folioFor(post)} index={idx} headingLevel={3} />
+      ))}
+    </div>
+  </section>
+
+  {galleryPlates.length > 0 && (
+    <section class="hz-home-sec hz-wrap" aria-labelledby="sec-plates">
+      <div class="hz-sect">
+        <span class="hz-sect__no">02</span>
+        <h2 class="hz-sect__title" id="sec-plates">引力透镜图版</h2>
+        <span class="hz-sect__rule" aria-hidden="true"></span>
+        <a class="hz-sect__more" href="/gallery/">进入透镜场 →</a>
+      </div>
+
+      <div class="hz-plates-strip">
+        {galleryPlates.map((img, i) => (
+          <a
+            class:list={['hz-hplate', { 'hz-hplate--lead': i === 0 }]}
+            href={`/gallery/?plate=${encodeURIComponent(img.id)}`}
           >
-            {card.cover && (
+            <span class="hz-hplate__frame">
               <img
-                class="f-card__img"
-                src={card.cover}
-                alt=""
+                src={img.thumb}
+                alt={img.alt || img.title || ''}
                 loading="lazy"
                 decoding="async"
-                data-original-cover={card.original || undefined}
+                data-gallery-fallback={img.fallback || undefined}
               />
-            )}
-          </span>
-          <span class="f-card__body">
-            <span class="f-card__title">{card.title}</span>
-            {card.excerpt && <span class="f-card__excerpt">{card.excerpt}</span>}
-            <span class="f-card__meta">
-              <span class="f-card__tag">{card.tag || '未分类'}</span>
-              <time datetime={card.iso}>{card.date}</time>
+              <span class="hz-hplate__cross" aria-hidden="true"></span>
             </span>
-          </span>
-        </a>
-      ))}
+            <span class="hz-hplate__meta">
+              <span class="hz-hplate__title">{img.title || '未命名图版'}</span>
+              <span class="hz-hplate__no hz-mono">PL.{String(i + 1).padStart(2, '0')}</span>
+            </span>
+          </a>
+        ))}
+      </div>
+    </section>
+  )}
+
+  <section class="hz-home-sec hz-wrap" aria-labelledby="sec-observer">
+    <div class="hz-sect">
+      <span class="hz-sect__no">03</span>
+      <h2 class="hz-sect__title" id="sec-observer">观测者档案</h2>
+      <span class="hz-sect__rule" aria-hidden="true"></span>
+      <a class="hz-sect__more" href="/about/">完整档案与项目 →</a>
+    </div>
+
+    <div class="hz-dossier-teaser">
+      <div class="hz-dossier-teaser__orbit">
+        <span class="hz-dossier-teaser__ring" aria-hidden="true"></span>
+        <img src={about.avatar || '/logo.webp'} alt="Acretiondisk" loading="lazy" decoding="async" />
+      </div>
+      <div class="hz-dossier-teaser__copy">
+        <p class="hz-dossier-teaser__lead">{about.lead}</p>
+        {about.paragraphs?.[0] && <p>{about.paragraphs[0]}</p>}
+        {about.quoteText && (
+          <blockquote class="hz-dossier-teaser__quote">{about.quoteText}</blockquote>
+        )}
+        <div class="hz-dossier-teaser__links">
+          <a class="hz-btn" href="/about/">查看完整档案 + {(about.projects || []).length} 个项目 →</a>
+          <a class="hz-btn" href="/ai-quota/">AI 额度监控 ↗</a>
+        </div>
+      </div>
     </div>
   </section>
 
-  <section class="f-section">
-    <div class="f-section-head" data-reveal="head">
-      <h2 class="f-section-title">最近收藏的图</h2>
-      <a class="f-section-more" href="/gallery/">打开图志</a>
-    </div>
-    <div class="f-plates">
-      {galleryTeaserImages.map((img, i) => (
-        <a class="f-plate" href="/gallery/" data-reveal="plate">
-          <span class="f-plate__frame">
-            <img src={img.thumb ?? img.src} alt={img.alt || img.title || ''} loading="lazy" decoding="async" />
-          </span>
-          <span class="f-plate__cap">
-            <span class="f-plate__title">{img.title || '未命名'}</span>
-          </span>
-        </a>
-      ))}
-    </div>
-  </section>
-
-  <AboutTeaser
-    avatar={about.avatar}
-    lead={about.lead}
-    paragraphs={about.paragraphs}
-    quoteText={about.quoteText}
-  />
-
-  <section class="f-section f-coda" data-reveal="coda">
-    <blockquote>写下来，是为了更清楚地看见自己。</blockquote>
-  </section>
+  <div class="hz-lens" data-lens aria-hidden="true">
+    <img data-lens-img alt="" />
+    <span class="hz-lens__ring"></span>
+    <span class="hz-lens__cap hz-mono" data-lens-cap></span>
+  </div>
 </BaseLayout>
 
 <script>
-  import '../scripts/home-media';
-  import '../scripts/home-cinematic';
+  import '../scripts/hz/disk';
+  import '../scripts/hz/lens';
 </script>

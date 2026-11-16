@@ -1,0 +1,88 @@
+/* ==========================================================================
+   HORIZON · misc.css —— 404 / 私密暗房索引页
+   ========================================================================== */
+
+.hz-404 {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  gap: var(--s-5);
+  padding-block: var(--s-8) var(--s-9);
+}
+.hz-404__ring {
+  position: relative;
+  width: 140px;
+  height: 140px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--hz-line-2);
+  border-radius: 50%;
+}
+.hz-404__ring::after {
+  content: '';
+  position: absolute;
+  inset: 14px;
+  border: 1px dashed var(--hz-hot);
+  border-radius: 50%;
+}
+.hz-404__code {
+  font-family: var(--f-display);
+  font-size: 2.1rem;
+  font-weight: 800;
+  color: var(--hz-hot-ink);
+}
+.hz-404__title {
+  font-family: var(--f-display);
+  font-size: var(--t-h1);
+  font-weight: 800;
+}
+.hz-404__deck {
+  color: var(--hz-ink-2);
+  max-width: 34em;
+}
+.hz-404__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--s-3);
+}
+
+/* —— 私密暗房页 —— */
+.hz-darkroom {
+  display: grid;
+  gap: var(--s-6);
+}
+.hz-darkroom__head {
+  display: grid;
+  gap: var(--s-3);
+  padding-bottom: var(--s-5);
+  border-bottom: 1px solid var(--hz-line-2);
+}
+.hz-darkroom__kicker {
+  color: var(--hz-hot-ink);
+}
+.hz-darkroom__title {
+  font-family: var(--f-display);
+  font-size: var(--t-h1);
+  font-weight: 800;
+  line-height: 1.04;
+}
+.hz-darkroom__deck {
+  color: var(--hz-ink-2);
+  font-size: var(--t-lead);
+}
+.hz-darkroom__tele {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-4);
+  color: var(--hz-ink-3);
+  padding-top: var(--s-2);
+}
+.hz-darkroom__foot {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--s-3);
+  padding-top: var(--s-4);
+  color: var(--hz-ink-3);
+}

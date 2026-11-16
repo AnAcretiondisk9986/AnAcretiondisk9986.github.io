@@ -19,6 +19,7 @@ import { resolve } from 'node:path';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Icon from '../components/Icon.astro';
 import quota from '../data/ai-quota.json';
+import '../styles/hz/legacy-bridge.css';
 import '../styles/ai-quota.css';
 
 interface ProviderLink {
@@ -95,7 +96,7 @@ const amountLabel = (group: string) =>
   group === 'subscription' ? '总额度' : group === 'platform' ? '可用余额' : '余额';
 ---
 
-<BaseLayout title={quota.title} description={quota.subtitle} bodyClass="page-quota">
+<BaseLayout title={quota.title} description={quota.subtitle} bodyClass="page-quota" page="flux" noFoot>
   <div
     class="aq-page"
     data-aq-page

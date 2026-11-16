@@ -1,14 +1,14 @@
 ---
 import { getCollection } from 'astro:content';
 import { shortIdForPath } from '../../lib/shortlink';
+import { isListable } from '../../lib/horizon';
 
 /**
- * 短链跳转页:构建时为每篇非草稿文章生成一个 /s/<短码> 页面,
- * 打开后立即跳到文章真实地址(meta refresh 兜底 + JS location.replace)。
- * 短码与文章页侧栏展示的「分享短链」由同一函数 shortIdForPath 生成,保证一致。
+ * 短链跳转页：构建时为每篇可公开列出的文章生成一个 /s/<短码> 页面，
+ * 打开后立即跳转到真实地址（meta refresh 兜底 + JS location.replace）。
  */
 export async function getStaticPaths() {
-  const posts = await getCollection('blog', ({ data }) => !data.draft && !data.archived && data.access !== 'admin' && (!data.scheduledAt || data.scheduledAt.getTime() <= Date.now()));
+  const posts = await getCollection('blog', isListable);
   const site = import.meta.env.SITE;
   const used = new Map<string, string>();
   return posts.map((post) => {
@@ -16,12 +16,10 @@ export async function getStaticPaths() {
     const conflict = used.get(shortId);
     if (conflict) {
       throw new Error(
-        `[shortlink] 短链冲突:「${conflict}」与「${post.id}」生成了相同的短码 /s/${shortId}。` +
-          `请调大 src/lib/shortlink.ts 中 hash 的位数。`,
+        `[shortlink] 短链冲突:「${conflict}」与「${post.id}」生成了相同的短码 /s/${shortId}。请调大 src/lib/shortlink.ts 中 hash 的位数。`,
       );
     }
     used.set(shortId, post.id);
-    // new URL 会自动对中文 slug 做百分号编码,得到可直接请求的规范地址
     const target = new URL(`/blog/${post.id}/`, site).href;
     return { params: { id: shortId }, props: { target, title: post.data.title } };
   });
@@ -39,39 +37,57 @@ const { target, title } = Astro.props;
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex" />
     <meta http-equiv="refresh" content={`0; url=${target}`} />
     <title>正在跳转 · {title}</title>
     <style>
-      :root { color-scheme: light dark; }
+      :root { color-scheme: dark light; }
       * { box-sizing: border-box; }
       body {
         margin: 0;
-        min-height: 100vh;
+        min-height: 100svh;
         display: grid;
         place-items: center;
-        font-family: Georgia, 'Times New Roman', 'Noto Serif SC', 'Songti SC', serif;
-        background: #f3eddf;
-        color: #2c261b;
+        font-family: ui-monospace, 'Cascadia Code', Consolas, system-ui, sans-serif;
+        background: #08080b;
+        color: #ece7dc;
       }
-      @media (prefers-color-scheme: dark) {
-        body { background: #24211b; color: #e8e0cd; }
+      @media (prefers-color-scheme: light) {
+        body { background: #eae8e2; color: #0d0d10; }
       }
-      main { text-align: center; padding: 32px; max-width: 560px; }
-      h1 { font-size: 1.05rem; font-weight: 500; letter-spacing: 0.04em; margin: 0 0 18px; }
-      p { font-size: 0.8rem; line-height: 1.8; opacity: 0.75; margin: 0; }
-      a { color: inherit; }
+      main {
+        padding: 32px;
+        max-width: 560px;
+        border: 1px solid currentColor;
+      }
+      p.kicker {
+        margin: 0 0 12px;
+        font-size: 0.72rem;
+        letter-spacing: 0.14em;
+        color: #ff5a1a;
+      }
+      h1 {
+        margin: 0 0 14px;
+        font-size: 1.05rem;
+        font-weight: 700;
+      }
+      p.note {
+        margin: 0;
+        font-size: 0.82rem;
+        line-height: 1.7;
+        opacity: 0.78;
+      }
+      a { color: #ff5a1a; }
     </style>
   </head>
   <body>
     <main>
-      <h1>正在跳转到文章…</h1>
-      <p>《{title}》</p>
-      <p><a href={target}>如果未自动跳转,请点击这里</a></p>
+      <p class="kicker">HORIZON // SHORTLINK RELAY</p>
+      <h1>正在跳转至《{title}》…</h1>
+      <p class="note"><a href={target}>如果未自动跳转，请点击这里 →</a></p>
     </main>
     <script is:inline define:vars={{ target }}>
-      // target 已是 new URL(...).href 的合法百分号编码地址,不可再 encodeURI(会双重编码导致中文 slug 404)
       location.replace(target);
     </script>
   </body>

@@ -1,0 +1,326 @@
+/* ==========================================================================
+   HORIZON · home.css —— 首页黑洞首屏 + 不对称观测板块
+   ========================================================================== */
+
+/* —— 首屏：全出血 WebGL 黑洞 —— */
+.hz-hero {
+  position: relative;
+  min-height: 100svh;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  align-items: end;
+  padding-top: calc(var(--hud-h) + var(--s-6));
+  padding-bottom: var(--s-7);
+  overflow: hidden;
+  border-bottom: 1px solid var(--hz-line);
+}
+
+.hz-hero__canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* WebGL 不可用时的纯 CSS 日冕兜底 */
+.hz-hero__fallback {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: none;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 66% 48%, #000 0 11%, rgb(255 90 26 / 0.9) 12%, rgb(255 179 107 / 0.25) 17%, transparent 48%),
+    radial-gradient(ellipse 52% 16% at 66% 50%, rgb(255 90 26 / 0.42), transparent 72%);
+}
+.hz-hero[data-disk-mode='fallback'] .hz-hero__canvas {
+  display: none;
+}
+.hz-hero[data-disk-mode='fallback'] .hz-hero__fallback {
+  display: block;
+}
+
+/* 左侧微弱暗角，保证标题与正文在光子环前始终高对比 */
+.hz-hero__scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(95deg, rgb(8 8 11 / 0.72) 0%, rgb(8 8 11 / 0.36) 44%, transparent 78%);
+}
+:root[data-theme='light'] .hz-hero__scrim {
+  background: linear-gradient(95deg, rgb(234 232 226 / 0.82) 0%, rgb(234 232 226 / 0.44) 44%, transparent 78%);
+}
+
+.hz-hero__inner {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  gap: var(--s-5);
+  max-width: 44rem;
+}
+
+.hz-hero__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-3);
+  color: var(--hz-hot-ink);
+}
+.hz-hero__pulse {
+  width: 7px;
+  height: 7px;
+  background: var(--hz-hot);
+  box-shadow: var(--hz-glow);
+  animation: hz-pulse 2.2s ease-in-out infinite;
+}
+@keyframes hz-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.hz-hero__title {
+  display: grid;
+  gap: 0.14em;
+  font-family: var(--f-display);
+  font-weight: 800;
+  line-height: 1.02;
+  letter-spacing: -0.025em;
+}
+.hz-hero__l1 {
+  font-size: clamp(2rem, 1rem + 3.6vw, 4.4rem);
+}
+.hz-hero__domain {
+  display: inline-block;
+  font-size: clamp(1.25rem, 0.7rem + 2.2vw, 2.75rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--hz-hot-ink);
+  word-break: break-word;
+}
+.hz-hero__l2 {
+  font-family: var(--f-cjk);
+  font-size: clamp(1.15rem, 0.9rem + 1vw, 1.75rem);
+  font-weight: 500;
+  color: var(--hz-ink-2);
+  margin-top: 0.25em;
+}
+
+.hz-hero__deck {
+  font-size: var(--t-lead);
+  color: var(--hz-ink-2);
+  max-width: 34em;
+  line-height: 1.55;
+}
+
+.hz-hero__tele {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2) var(--s-5);
+  padding-block: var(--s-3);
+  border-top: 1px solid var(--hz-line);
+  border-bottom: 1px solid var(--hz-line);
+  color: var(--hz-ink-2);
+}
+.hz-hero__tele span b {
+  color: var(--hz-ink);
+  font-weight: 600;
+}
+
+.hz-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-3);
+  padding-top: var(--s-1);
+}
+
+.hz-hero__cue {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: var(--s-6);
+  color: var(--hz-ink-3);
+}
+
+/* —— 通用首页区块节奏 —— */
+.hz-home-sec {
+  padding-block: var(--s-9) var(--s-6);
+}
+
+/* —— 02 · 引力透镜精选图版（不对称暗房底片条） —— */
+.hz-plates-strip {
+  display: grid;
+  grid-template-columns: 1.45fr 1fr 1fr 1fr;
+  border-top: 1px solid var(--hz-line);
+  border-left: 1px solid var(--hz-line);
+}
+.hz-hplate {
+  position: relative;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  border-right: 1px solid var(--hz-line);
+  border-bottom: 1px solid var(--hz-line);
+  background: var(--hz-bg-2);
+  overflow: hidden;
+  transition: border-color var(--d-2) var(--e-out);
+}
+.hz-hplate__frame {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: var(--hz-void);
+}
+.hz-hplate--lead .hz-hplate__frame {
+  aspect-ratio: 16 / 10;
+}
+.hz-hplate__frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: grayscale(20%) contrast(1.04);
+  transition: transform var(--d-3) var(--e-out), filter var(--d-3) var(--e-out);
+}
+.hz-hplate:hover .hz-hplate__frame img {
+  transform: scale(1.045);
+  filter: grayscale(0%) contrast(1.08);
+}
+.hz-hplate__cross {
+  position: absolute;
+  inset: 10px;
+  border: 1px solid rgb(255 90 26 / 0);
+  pointer-events: none;
+  transition: border-color var(--d-2);
+}
+.hz-hplate:hover .hz-hplate__cross {
+  border-color: rgb(255 90 26 / 0.55);
+}
+.hz-hplate__meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-3);
+  padding: var(--s-3) var(--s-4);
+  border-top: 1px solid var(--hz-line);
+}
+.hz-hplate__title {
+  font-size: var(--t-small);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hz-hplate__no {
+  color: var(--hz-ink-3);
+  flex-shrink: 0;
+}
+.hz-hplate:hover .hz-hplate__no {
+  color: var(--hz-hot-ink);
+}
+
+/* —— 03 · 观测者档案导览 —— */
+.hz-dossier-teaser {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--s-8);
+  align-items: center;
+  padding: var(--s-7);
+  border: 1px solid var(--hz-line);
+  background: var(--hz-bg-2);
+}
+.hz-dossier-teaser__orbit {
+  position: relative;
+  width: 196px;
+  height: 196px;
+  display: grid;
+  place-items: center;
+}
+.hz-dossier-teaser__ring {
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--hz-line-2);
+  border-radius: 50%;
+}
+.hz-dossier-teaser__ring::after {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: 50%;
+  width: 6px;
+  height: 6px;
+  background: var(--hz-hot);
+  transform: translateX(-50%);
+}
+.hz-dossier-teaser__orbit img {
+  width: 152px;
+  height: 152px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--hz-line-2);
+}
+.hz-dossier-teaser__copy {
+  display: grid;
+  gap: var(--s-4);
+}
+.hz-dossier-teaser__lead {
+  font-family: var(--f-display);
+  font-size: var(--t-h3);
+  font-weight: 700;
+}
+.hz-dossier-teaser__copy p {
+  color: var(--hz-ink-2);
+  max-width: 44em;
+}
+.hz-dossier-teaser__quote {
+  padding-left: var(--s-4);
+  border-left: 2px solid var(--hz-hot);
+  font-family: var(--f-mono);
+  font-size: var(--t-small);
+  color: var(--hz-ink);
+}
+.hz-dossier-teaser__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-3);
+  align-items: center;
+}
+
+@media (max-width: 1100px) {
+  .hz-plates-strip {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .hz-hplate--lead .hz-hplate__frame {
+    aspect-ratio: 4 / 3;
+  }
+}
+@media (max-width: 780px) {
+  .hz-dossier-teaser {
+    grid-template-columns: 1fr;
+    gap: var(--s-5);
+    padding: var(--s-5);
+  }
+  .hz-dossier-teaser__orbit {
+    width: 140px;
+    height: 140px;
+  }
+  .hz-dossier-teaser__orbit img {
+    width: 108px;
+    height: 108px;
+  }
+}
+@media (max-width: 560px) {
+  .hz-plates-strip {
+    grid-template-columns: 1fr;
+  }
+  .hz-hero__cue {
+    display: none;
+  }
+}

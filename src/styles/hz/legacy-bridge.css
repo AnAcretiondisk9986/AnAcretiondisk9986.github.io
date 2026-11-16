@@ -1,0 +1,61 @@
+/* ==========================================================================
+   HORIZON · legacy-bridge.css
+   仅供 /ai-quota/ 与 /ai-quota/pricing/ 引入：
+   把旧版语义 token 映射到 HORIZON 色板、字号与直角几何，保留全部业务逻辑与布局。
+   ========================================================================== */
+
+:root {
+  --c-paper: var(--hz-bg);
+  --c-paper-raised: var(--hz-bg-2);
+  --c-paper-sunken: var(--hz-void);
+  --c-ink: var(--hz-ink);
+  --c-ink-2: var(--hz-ink-2);
+  --c-ink-3: var(--hz-ink-3);
+  --c-rule: var(--hz-line);
+  --c-rule-strong: var(--hz-line-2);
+  --c-accent: var(--hz-hot);
+  --c-accent-2: var(--hz-blue);
+  --c-metal: var(--hz-hot-ink);
+  --c-metal-ink: var(--hz-hot-ink);
+
+  --hero-font: var(--f-display);
+  --font-mono: var(--f-mono);
+  --type-body: var(--t-body);
+  --type-sm: 0.875rem;
+  --type-meta: 0.78rem;
+  --type-micro: var(--t-micro);
+  --lh-snug: 1.42;
+
+  --p-sp-2: 8px;
+  --p-sp-3: 12px;
+  --p-sp-4: 16px;
+  --p-sp-5: 24px;
+
+  --r-card: 0px;
+  --r-pill: 0px;
+  --shadow-card: none;
+  --shadow-elevated: none;
+  --p-dur-fast: var(--d-1);
+  --p-ease: var(--e-out);
+}
+
+body.page-quota .hz-main,
+body.page-pricing .hz-main {
+  padding-inline: var(--gutter);
+  padding-top: calc(var(--hud-h) + 16px);
+  padding-bottom: var(--s-6);
+}
+
+body.page-quota .hz-foot {
+  display: none;
+}
+
+/* 对齐 HORIZON 锐利直角与等宽读数细节 */
+body.page-quota .aq-card,
+body.page-quota .aq-btn,
+body.page-quota .aq-notice,
+body.page-pricing .pr-sort,
+body.page-pricing .pr-dir {
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}

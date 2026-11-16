@@ -1,0 +1,111 @@
+/* ==========================================================================
+   HORIZON · tokens
+   VOID（暗，默认） / PLATE（亮，照相底片）
+   ========================================================================== */
+
+@font-face {
+  font-family: 'Unbounded';
+  src: url('/fonts/unbounded-latin.woff2') format('woff2');
+  font-weight: 200 900;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308,
+    U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('/fonts/jetbrains-mono.woff2') format('woff2');
+  font-weight: 100 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  color-scheme: dark;
+
+  /* —— 色 —— */
+  --hz-void: #040406;
+  --hz-bg: #08080b;
+  --hz-bg-2: #0e0e13;
+  --hz-bg-3: #15151c;
+  --hz-ink: #ece7dc;
+  --hz-ink-2: #aaa49a;
+  --hz-ink-3: #6e6a62;
+  --hz-line: rgb(236 231 220 / 0.11);
+  --hz-line-2: rgb(236 231 220 / 0.24);
+  --hz-hot: #ff5a1a;
+  --hz-hot-2: #ffb36b;
+  --hz-hot-ink: #ff7a43;
+  --hz-white-hot: #fff1d6;
+  --hz-blue: #8fb3ff;
+  --hz-red: #c2361b;
+  --hz-glow: 0 0 24px rgb(255 90 26 / 0.45);
+  /* HUD 用 difference 混合，颜色在两套主题下都必须是亮色 */
+  --hz-hud-ink: #f1ece2;
+
+  /* —— 字 —— */
+  --f-display: 'Unbounded', 'PingFang SC', 'Noto Sans SC', 'Source Han Sans SC', 'Microsoft YaHei', sans-serif;
+  --f-cjk: 'PingFang SC', 'Noto Sans SC', 'Source Han Sans SC', 'Microsoft YaHei', sans-serif;
+  --f-body: system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+  --f-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Code', Consolas, monospace;
+
+  --t-micro: 0.6875rem; /* 11 */
+  --t-small: 0.8125rem; /* 13 */
+  --t-body: 1.0625rem; /* 17 */
+  --t-lead: clamp(1.125rem, 1rem + 0.5vw, 1.375rem);
+  --t-h3: clamp(1.25rem, 1.1rem + 0.6vw, 1.5rem);
+  --t-h2: clamp(1.6rem, 1.2rem + 1.6vw, 2.5rem);
+  --t-h1: clamp(2.2rem, 1.2rem + 4.2vw, 5.4rem);
+  --t-mega: clamp(3.2rem, 1rem + 9vw, 11rem);
+
+  /* —— 距 —— */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 24px;
+  --s-6: 32px;
+  --s-7: 48px;
+  --s-8: 72px;
+  --s-9: 112px;
+  --s-10: 160px;
+
+  --gutter: clamp(18px, 4vw, 56px);
+  --hud-h: 64px;
+  --measure: 40em;
+  --wide: 1440px;
+
+  /* —— 动 —— */
+  --e-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --e-io: cubic-bezier(0.65, 0, 0.35, 1);
+  --d-1: 160ms;
+  --d-2: 320ms;
+  --d-3: 640ms;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --hz-void: #f3f1ec;
+  --hz-bg: #eae8e2;
+  --hz-bg-2: #e1dfd8;
+  --hz-bg-3: #d6d3ca;
+  --hz-ink: #0d0d10;
+  --hz-ink-2: #46453f;
+  --hz-ink-3: #7c7970;
+  --hz-line: rgb(13 13 16 / 0.13);
+  --hz-line-2: rgb(13 13 16 / 0.3);
+  --hz-hot: #e4430a;
+  --hz-hot-2: #b4500e;
+  --hz-hot-ink: #c63a07;
+  --hz-white-hot: #0d0d10;
+  --hz-blue: #2f5bd3;
+  --hz-red: #a32a12;
+  --hz-glow: none;
+}
+
+@media (max-width: 900px) {
+  :root {
+    --hud-h: 56px;
+  }
+}

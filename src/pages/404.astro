@@ -1,24 +1,19 @@
 ---
-import Icon from '../components/Icon.astro';
 import BaseLayout from '../layouts/BaseLayout.astro';
-import '../styles/about.css';
+import '../styles/hz/misc.css';
 ---
 
-<BaseLayout title="页面未找到">
-  <section class="f-section f-notfound" aria-labelledby="nf-title">
-    <div class="f-frame f-frame--plain">
-      <span class="f-crop f-crop--tl"></span><span class="f-crop f-crop--tr"></span>
-      <span class="f-crop f-crop--bl"></span><span class="f-crop f-crop--br"></span>
-      <div class="f-cover__inner">
-        <div class="f-fleuron" aria-hidden="true"><i></i></div>
-        <div class="f-cover__folio"><span>IV · 04</span><span>·</span><span>FOLIO NON INVENTUM</span></div>
-        <h1 id="nf-title" class="f-notfound__title">页面不存在</h1>
-        <p class="f-cover__deck">链接可能有误，或这一页已经被移到新的编目位置。</p>
-        <div class="f-actions">
-          <a class="f-btn" href="/">返回首页 <Icon name="arrow-right" /></a>
-          <a class="f-btn f-btn--ghost" href="/blog/">浏览编目</a>
-        </div>
-      </div>
+<BaseLayout title="信号丢失 · 404" description="页面不存在或已被移出当前轨道。" page="404">
+  <section class="hz-wrap hz-404" aria-labelledby="hz-404-title">
+    <div class="hz-404__ring" aria-hidden="true">
+      <span class="hz-404__code">404</span>
+    </div>
+    <p class="hz-mono" style="color:var(--hz-hot-ink)">SIGNAL LOST // BEYOND EVENT HORIZON</p>
+    <h1 id="hz-404-title" class="hz-404__title">信号越过视界</h1>
+    <p class="hz-404__deck">请求的路径没有返回任何观测记录，可能已被删除或迁往新的编目坐标。</p>
+    <div class="hz-404__actions">
+      <a class="hz-btn hz-btn--hot" href="/">返回首页 →</a>
+      <a class="hz-btn" href="/blog/">浏览全部文章 ↗</a>
     </div>
   </section>
 </BaseLayout>

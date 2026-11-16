@@ -1,22 +1,154 @@
 ---
-import { getPublicPosts } from '../../lib/posts';
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import PostCatalog from '../../components/PostCatalog.astro';
+import PostRow from '../../components/hz/PostRow.astro';
+import { getPublicPosts } from '../../lib/posts';
+import { fmtDot, fmtMass, folioCodes, massOf, redshift } from '../../lib/horizon';
+import '../../styles/hz/log.css';
 
 const posts = await getPublicPosts();
+const folioFor = folioCodes(posts);
+
+const tagMap = new Map<string, number>();
+for (const post of posts) {
+  for (const tag of post.data.tags) {
+    tagMap.set(tag, (tagMap.get(tag) ?? 0) + 1);
+  }
+}
+const allTags = [...tagMap.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+
+const masses = posts.map((p) => massOf(p.body ?? ''));
+const maxLogMass = Math.max(1, ...masses.map((m) => Math.log10(Math.max(50, m))));
+const totalChars = masses.reduce((a, b) => a + b, 0);
+
+// 光谱条按时间从旧(左/红移)到新(右/蓝移)排列
+const spectralBars = [...posts]
+  .reverse()
+  .map((post) => {
+    const mass = massOf(post.body ?? '');
+    const h = Math.round(18 + (Math.log10(Math.max(50, mass)) / maxLogMass) * 82);
+    const rs = redshift(post.data.pubDate);
+    return {
+      id: post.id,
+      title: post.data.title,
+      folio: folioFor(post),
+      mass,
+      z: rs.z.toFixed(3),
+      age: rs.age.toFixed(3),
+      height: h,
+    };
+  });
+
+const oldestDate = posts.length > 0 ? fmtDot(posts[posts.length - 1].data.pubDate) : '—';
+const newestDate = posts.length > 0 ? fmtDot(posts[0].data.pubDate) : '—';
 ---
 
-<BaseLayout title="编目" description="Acretiondisk 的全部文章。">
-  <section class="f-section f-opener">
-    <h1 class="f-opener__title">全部文章</h1>
-    <p class="f-opener__deck">技术、医学、艺术，以及日常生活中的记录。</p>
-    <p class="f-opener__meta">共 {posts.length} 篇</p>
-  </section>
+<BaseLayout title="文章光谱" description="Acretiondisk 的全部公开文章与发射光谱检索。" page="spectrum">
+  <div class="hz-wrap" data-spectrum-root>
+    <header class="hz-log-head">
+      <div class="hz-log-head__top">
+        <div>
+          <p class="hz-mono hz-log-head__kicker">EMISSION SPECTRUM // 02</p>
+          <h1 class="hz-log-head__title">全部文章</h1>
+        </div>
+        <p class="hz-mono" data-spec-count>
+          {posts.length} / {posts.length} RECORDS · {fmtMass(totalChars)} CHARS
+        </p>
+      </div>
+      <p class="hz-log-head__deck">
+        每篇文章都是一条按时间红移、按字数标定高度的谱线。悬停谱线以锁定波长，或使用下方筛选。
+      </p>
+    </header>
 
-  <PostCatalog posts={posts} />
+    {spectralBars.length > 0 && (
+      <section class="hz-spec" aria-label="文章时间与字数光谱图">
+        <div class="hz-spec__head hz-mono">
+          <span>OPTICAL SPECTRUM · λ(t)</span>
+          <span class="hz-spec__readout" data-spec-readout>
+            HOVER SPECTRAL LINE OR RECORD TO LOCK WAVELENGTH
+          </span>
+        </div>
+        <div class="hz-spec__bars">
+          {spectralBars.map((bar) => (
+            <button
+              type="button"
+              class="hz-spec__bar"
+              data-spec-bar
+              data-id={bar.id}
+              data-title={bar.title}
+              data-folio={bar.folio}
+              data-mass={String(bar.mass)}
+              data-z={bar.z}
+              aria-label={`定位文章：${bar.title}（${bar.folio}）`}
+              style={`--bar-h:${bar.height}%;--bar-age:${bar.age}`}
+            >
+              <i></i>
+            </button>
+          ))}
+        </div>
+        <div class="hz-spec__scale hz-mono">
+          <span>REDSHIFT · {oldestDate}</span>
+          <span>EMISSION MASS ∝ LOG(CHARS)</span>
+          <span>BLUESHIFT · {newestDate}</span>
+        </div>
+      </section>
+    )}
 
+    <section class="hz-controls" aria-label="文章检索与排序">
+      <div class="hz-controls__bar">
+        <label class="hz-search" id="catalog-search">
+          <span class="hz-mono" aria-hidden="true">SEARCH</span>
+          <input
+            type="search"
+            data-spec-search
+            aria-label="搜索文章标题、摘要或标签"
+            placeholder="搜索标题、摘要或标签…"
+            autocomplete="off"
+          />
+          <kbd aria-hidden="true">/</kbd>
+        </label>
+
+        <div class="hz-seg" role="group" aria-label="排序方式">
+          <button type="button" data-spec-sort="newest" aria-pressed="true">从新至旧</button>
+          <button type="button" data-spec-sort="oldest" aria-pressed="false">从旧至新</button>
+          <button type="button" data-spec-sort="mass" aria-pressed="false">按字数</button>
+        </div>
+
+        <a class="hz-mini-btn" href="/private/">暗房私密 →</a>
+      </div>
+
+      {allTags.length > 0 && (
+        <div class="hz-tags-rail" role="group" aria-label="按标签筛选">
+          <button type="button" data-spec-tag="all" aria-pressed="true">ALL ({posts.length})</button>
+          {allTags.map(([tag, count]) => (
+            <button type="button" data-spec-tag={tag} aria-pressed="false">
+              {tag} ({count})
+            </button>
+          ))}
+        </div>
+      )}
+    </section>
+
+    <div class="hz-ledger" data-spec-list>
+      {posts.map((post, idx) => (
+        <PostRow post={post} folioCode={folioFor(post)} index={idx} headingLevel={2} />
+      ))}
+    </div>
+
+    <div class="hz-empty" data-spec-empty hidden>
+      <p class="hz-mono">NO SPECTRAL LINES MATCH CURRENT QUERY</p>
+      <p>没有找到符合条件的文章，试试清除搜索词或切换标签。</p>
+      <button type="button" class="hz-btn" data-spec-reset>重置全部筛选</button>
+    </div>
+  </div>
+
+  <div class="hz-lens" data-lens aria-hidden="true">
+    <img data-lens-img alt="" />
+    <span class="hz-lens__ring"></span>
+    <span class="hz-lens__cap hz-mono" data-lens-cap></span>
+  </div>
 </BaseLayout>
 
-<!-- 编目页版式（页头 + 工具栏 + 条目网格）统一定义在 src/styles/pages-next.css 的
-     components 层，页面本身不再带 <style>，避免"页面样式晚于全局样式加载"
-     造成同一组件两处来源、互相打架。 -->
+<script>
+  import '../../scripts/hz/spectrum';
+  import '../../scripts/hz/lens';
+</script>

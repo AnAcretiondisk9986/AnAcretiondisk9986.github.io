@@ -1,282 +1,183 @@
 ---
-import Icon from '../components/Icon.astro';
+import BaseLayout from '../layouts/BaseLayout.astro';
 import { getPublicPosts } from '../lib/posts';
 import { sortNewestFirst, thumbOf } from '../lib/gallery';
-import BaseLayout from '../layouts/BaseLayout.astro';
-import '../styles/gallery.css';
-import ThemeCopy from '../components/ThemeCopy.astro';
 import { safeLink } from '../lib/safe-link';
 import standaloneGallery from '../data/gallery.json';
+import '../styles/hz/gallery.css';
 
-interface GalleryImage {
+interface GalleryItem {
   id: string;
   src: string;
   thumb?: string;
+  original?: string;
   alt: string;
   title: string;
   caption?: string;
   date?: string;
   dayIndex?: number;
-  daySequence?: number;
-  dayTotal?: number;
   sourceUrl?: string;
   sourceTitle?: string;
-  original?: string;
 }
-
-// 为同一天内的图像分配日内序号（1 = 当天最早），不改变数组本身顺序
-const assignDaySequence = (images: GalleryImage[]) => {
-  const byDay = new Map<string, GalleryImage[]>();
-  for (const image of images) {
-    if (!image.date) continue;
-    const day = image.date.slice(0, 10);
-    const list = byDay.get(day);
-    if (list) list.push(image);
-    else byDay.set(day, [image]);
-  }
-  for (const list of byDay.values()) {
-    list.sort((a, b) => (a.dayIndex ?? 0) - (b.dayIndex ?? 0));
-    list.forEach((image, i) => {
-      image.daySequence = i + 1;
-      image.dayTotal = list.length;
-    });
-  }
-};
 
 const posts = await getPublicPosts();
-
 const markdownImage = /!\[([^\]]*)\]\(([^)\s]+)(?:\s+["'][^"']*["'])?\)/g;
-const journalImages: GalleryImage[] = posts.flatMap((post) => {
-    const body = post.body ?? '';
-    return [...body.matchAll(markdownImage)].map((match, index) => {
-      const src = match[2];
-      const fileName = decodeURIComponent(src.split('/').pop() || `image-${index + 1}`);
-      return {
-        id: `journal-${post.id}-${index + 1}`,
-        src,
-        alt: match[1] || `${post.data.title}中的图像 ${index + 1}`,
-        title: post.data.title,
-        caption: match[1] || fileName,
-        date: post.data.pubDate.toISOString().slice(0, 10),
-        // 继承文章的同日索引号：保证 assignDaySequence 按 dayIndex 分配日内序号，
-        // 使同日随文图片/图集在「从新至旧」下按文章发表顺序排列
-        dayIndex: post.data.dayIndex ?? 0,
-        sourceUrl: `/blog/${post.id}/`,
-        sourceTitle: post.data.title,
-      };
-    });
-  }).map((img) => ({ ...img, thumb: img.thumb || thumbOf(img.src) }));
 
-const standaloneImages: GalleryImage[] = sortNewestFirst(standaloneGallery as GalleryImage[]).map((img) => ({
-    ...img,
-    thumb: img.thumb || thumbOf(img.src),
-    sourceUrl: safeLink(img.sourceUrl),
-  }));
-assignDaySequence(journalImages);
-assignDaySequence(standaloneImages);
-const totalImages = journalImages.length + standaloneImages.length;
-
-// 按文章(sourceUrl)分组随文图像,生成文章图集视图的数据
-interface JournalGroup {
-  images: GalleryImage[];
-  firstIndex: number;
-}
-const journalGroupMap = new Map<string, JournalGroup>();
-journalImages.forEach((image, index) => {
-  const key = image.sourceUrl || '';
-  const group = journalGroupMap.get(key);
-  if (group) group.images.push(image);
-  else journalGroupMap.set(key, { images: [image], firstIndex: index });
+const journalImages: GalleryItem[] = posts.flatMap((post) => {
+  const body = post.body ?? '';
+  return [...body.matchAll(markdownImage)].map((match, idx) => {
+    const src = match[2];
+    const fileName = decodeURIComponent(src.split('/').pop() || `image-${idx + 1}`);
+    return {
+      id: `journal-${post.id}-${idx + 1}`,
+      src,
+      thumb: thumbOf(src),
+      alt: match[1] || `${post.data.title} 中的图像 ${idx + 1}`,
+      title: post.data.title,
+      caption: match[1] || fileName,
+      date: post.data.pubDate.toISOString().slice(0, 10),
+      dayIndex: post.data.dayIndex ?? 0,
+      sourceUrl: `/blog/${post.id}/`,
+      sourceTitle: post.data.title,
+    };
+  });
 });
-const journalGroups: JournalGroup[] = [...journalGroupMap.values()];
+
+const standaloneImages: GalleryItem[] = sortNewestFirst(standaloneGallery as GalleryItem[]).map((img) => ({
+  ...img,
+  thumb: img.thumb || thumbOf(img.src),
+  sourceUrl: safeLink(img.sourceUrl),
+}));
+
+const totalCount = standaloneImages.length + journalImages.length;
 ---
 
-<BaseLayout title="照片" description="Acretiondisk 的照片。">
-  <div class="gallery-shell">
-    <header class="f-gallery-head">
-      <h1 class="f-gallery-head__title">照片</h1>
-      <p class="f-gallery-head__deck"><ThemeCopy minimal="文章中的图片，以及单独收藏的照片。" trace="从文字中显影的片段，以及尚未归入卷册的独立收藏。" /></p>
-      <p class="f-opener__meta">共 {totalImages} 张，其中 {standaloneImages.length} 张单独收藏</p>
+<BaseLayout title="图像透镜" description="Acretiondisk 的独立影像收藏与文章随文图版。" page="lensing">
+  <div class="hz-wrap hz-gal" data-gal-root>
+    <header class="hz-gal-head">
+      <p class="hz-mono hz-gal-head__kicker">GRAVITATIONAL LENSING // 03</p>
+      <h1 class="hz-gal-head__title">图像档案</h1>
+      <p class="hz-gal-head__deck">
+        独立收藏的散页影像与文章中显影的摄影片段。拖拽透镜场以引力放大局部，或切换为索引网格翻阅。
+      </p>
     </header>
 
-    <div class="gallery-tabs" role="tablist" aria-label="图像档案视图">
-      <button class="gallery-tab" type="button" role="tab" aria-selected="true" aria-controls="gallery-journal" id="tab-journal" data-gallery-tab="journal">
-                <span><ThemeCopy minimal="文章图片" trace="随文图像" /></span>
-        <b>{String(journalImages.length).padStart(2, '0')}</b>
-      </button>
-      <button class="gallery-tab" type="button" role="tab" aria-selected="false" aria-controls="gallery-independent" id="tab-independent" data-gallery-tab="independent">
-                <span><ThemeCopy minimal="独立照片" trace="独立收藏" /></span>
-        <b>{String(standaloneImages.length).padStart(2, '0')}</b>
-      </button>
-    </div>
-
-    <div class="gallery-order-bar">
-      <div class="gallery-order-label">
-        <span>排序</span>
-        <strong data-gallery-order-status>从新至旧</strong>
-      </div>
-      <div class="gallery-sort" role="group" aria-label="照片展示顺序">
-        <button type="button" data-gallery-sort="newest" aria-pressed="true">
-          <span aria-hidden="true"><Icon name="arrow-down" /></span>从新至旧
+    <div class="hz-gal-bar">
+      <div class="hz-gal-tabs" role="tablist" aria-label="图像集合">
+        <button type="button" role="tab" data-gal-tab="plates" aria-selected="true">
+          <span>独立收藏</span>
+          <b>{String(standaloneImages.length).padStart(2, '0')}</b>
         </button>
-        <button type="button" data-gallery-sort="oldest" aria-pressed="false">
-          <span aria-hidden="true"><Icon name="arrow-up" /></span>从旧至新
+        <button type="button" role="tab" data-gal-tab="journal" aria-selected="false">
+          <span>随文影像</span>
+          <b>{String(journalImages.length).padStart(2, '0')}</b>
+        </button>
+        <button type="button" role="tab" data-gal-tab="all" aria-selected="false">
+          <span>全部</span>
+          <b>{String(totalCount).padStart(2, '0')}</b>
         </button>
       </div>
+
+      <div class="hz-gal-tools">
+        <label class="sr-only" for="hz-gal-filter">按标题或日期筛选图像</label>
+        <input
+          id="hz-gal-filter"
+          class="hz-gal-filter"
+          type="search"
+          data-gal-filter
+          placeholder="筛选标题、日期或来源…"
+          autocomplete="off"
+        />
+
+        <div class="hz-seg" role="group" aria-label="排序">
+          <button type="button" data-gal-sort="newest" aria-pressed="true">最新</button>
+          <button type="button" data-gal-sort="oldest" aria-pressed="false">最早</button>
+        </div>
+
+        <div class="hz-seg" role="group" aria-label="视图模式">
+          <button type="button" data-gal-mode="field" aria-pressed="true">透镜场</button>
+          <button type="button" data-gal-mode="index" aria-pressed="false">索引</button>
+        </div>
+
+        <span class="hz-mono" data-gal-count>{standaloneImages.length} PLATES</span>
+      </div>
     </div>
 
-    <section class="gallery-panel" id="gallery-journal" role="tabpanel" aria-labelledby="tab-journal" data-gallery-panel="journal">
-      <div class="gallery-index-bar">
-        <span><ThemeCopy minimal="来自文章的图片" trace="IMAGES FOUND IN PUBLISHED FOLIOS" /></span>
-        <span><ThemeCopy cyanotype={`${journalImages.length} 次快门 · 随手记显影`} minimal={`${journalImages.length} 张 · 自动整理`} trace={`${journalImages.length} ITEMS / AUTO INDEXED`} /></span>
-      </div>
-      <div class="gallery-view-bar">
-        <div class="gallery-view-label">
-          <span>查看方式</span>
-          <strong data-gallery-view-status><ThemeCopy minimal="按文章" trace="文章图集" /></strong>
-        </div>
-        <div class="gallery-view-switch" role="group" aria-label="随文图像展示方式">
-          <button type="button" data-gallery-view="timeline" aria-pressed="false">
-            <span aria-hidden="true"><Icon name="rows" /></span>时间线
-          </button>
-          <button type="button" data-gallery-view="albums" aria-pressed="true">
-            <span aria-hidden="true"><Icon name="grid" /></span><ThemeCopy minimal="按文章" trace="文章图集" />
-          </button>
+    <section class="hz-field-wrap" data-gal-field-wrap aria-label="引力透镜交互视场">
+      <div class="hz-field-hud hz-mono">
+        <span data-field-coord>OFFSET [0, 0]</span>
+        <div class="hz-field-hud__btns">
+          <span data-field-sector>SECTOR 01 / 01</span>
+          <button type="button" class="hz-mini-btn" data-sector-prev>← PREV</button>
+          <button type="button" class="hz-mini-btn" data-sector-next>NEXT →</button>
+          <button type="button" class="hz-mini-btn" data-field-orbit>RE-ORBIT</button>
+          <button type="button" class="hz-mini-btn" data-field-reset>RESET [0,0]</button>
         </div>
       </div>
-      {journalImages.length > 0 ? (
-        <div class="gallery-masonry gallery-masonry--journal" data-gallery-masonry hidden>
+
+      <div
+        class="hz-field-stage"
+        data-field-stage
+        tabindex="0"
+        aria-label="可拖拽或使用方向键平移的图像透镜场"
+      >
+        <div class="hz-field-canvas" data-field-canvas></div>
+        <div class="hz-field-reticle" aria-hidden="true"></div>
+        <div class="hz-field-lock" aria-live="polite">
+          <span class="hz-field-lock__title" data-lock-title>DRAG TO SURVEY FIELD</span>
+          <span class="hz-field-lock__meta hz-mono" data-lock-meta>SELECT ANY PLATE TO INSPECT</span>
         </div>
-        <nav class="gallery-pager" data-gallery-pager aria-label="随文图像翻页" hidden>
-          <button type="button" data-gallery-page="prev" aria-label="上一页"><Icon name="arrow-left" /></button>
-          <span class="gallery-pager-status"><b data-gallery-page-current>01</b> / <b data-gallery-page-total>01</b></span>
-          <button type="button" data-gallery-page="next" aria-label="下一页"><Icon name="arrow-right" /></button>
-        </nav>
-        <div class="gallery-albums" data-gallery-albums>
-          {journalGroups.map((group, groupIndex) => {
-            const lead = group.images[0];
-            return (
-              <section
-                class="gallery-album"
-                data-gallery-album
-                data-gallery-date={lead.date}
-                data-gallery-day-sequence={lead.daySequence ?? 0}
-                data-gallery-position={group.firstIndex}
-              >
-                <header class="gallery-album-head">
-                  <div>
-                    <span class="gallery-card-label" data-gallery-sequence data-gallery-sequence-cyanotype-prefix="手记 " data-gallery-sequence-minimal-prefix="文章 " data-gallery-sequence-trace-prefix="FOLIO "><ThemeCopy cyanotype={`手记 ${String(groupIndex + 1).padStart(2, '0')}`} minimal={`文章 ${String(groupIndex + 1).padStart(2, '0')}`} trace={`FOLIO ${String(groupIndex + 1).padStart(2, '0')}`} /></span>
-                    <span class="gallery-card-label"><ThemeCopy minimal={`${lead.date} · ${group.images.length} 张`} trace={`${lead.date} · ${group.images.length} IMAGES`} /></span>
-                  </div>
-                  <h2>{lead.sourceTitle}</h2>
-                  <a href={lead.sourceUrl}><ThemeCopy minimal="阅读全文" trace="阅览全文" /> <Icon name="arrow-up-right" /></a>
-                </header>
-                <div class="gallery-album-grid">
-                  {group.images.map((image, imageIndex) => (
-                    <button
-                      class="gallery-album-thumb"
-                      type="button"
-                      data-gallery-open
-                      data-gallery-src={image.src}
-                      data-gallery-alt={image.alt || image.title}
-                      data-gallery-title={image.title}
-                      data-gallery-caption={image.caption}
-                      data-gallery-source={image.sourceUrl}
-                      data-gallery-source-title={image.sourceTitle}
-                      aria-label={`查看${image.title}中的${image.caption}`}
-                    >
-                      <img src={image.thumb || image.src} data-gallery-fallback={image.thumb && image.thumb !== image.src ? image.src : undefined} alt={image.alt || image.title} loading="lazy" decoding="async" referrerpolicy="no-referrer" />
-                      <span class="gallery-image-expand" aria-hidden="true"><Icon name="arrow-up-right" /></span>
-                      <span class="gallery-album-thumb-index">{String(imageIndex + 1).padStart(2, '0')}</span>
-                    </button>
-                  ))}
-                </div>
-              </section>
-            );
-          })}
-        </div>
-      ) : (
-        <div class="gallery-empty"><strong><ThemeCopy minimal="还没有文章图片" trace="尚无随文图像" /></strong><span><ThemeCopy minimal="文章中的图片会自动显示在这里。" trace="等待新的图像进入公开卷册。" /></span></div>
-      )}
+      </div>
     </section>
 
-    <section class="gallery-panel" id="gallery-independent" role="tabpanel" aria-labelledby="tab-independent" data-gallery-panel="independent" hidden>
-      {standaloneImages.length > 0 && (
-        <div class="gallery-billboard" data-gallery-billboard>
-          <div class="gallery-billboard-head">
-            <span class="gallery-billboard-head__label">
-              <ThemeCopy minimal="照片轮播" trace="BILLBOARD / FULL COLLECTION" />
-              <b class="gallery-billboard-count" data-billboard-counter>01 / {String(standaloneImages.length).padStart(2, '0')}</b>
-            </span>
-            <span data-billboard-caption><ThemeCopy cyanotype={`${standaloneImages.length} 张散页 · 逐一翻看`} minimal={`共 ${standaloneImages.length} 张独立照片`} trace={`轮播全部 ${standaloneImages.length} 张独立收藏`} /></span>
-          </div>
-          <div class="gallery-billboard-stage">
-            <button class="gallery-billboard-arrow" type="button" data-billboard-prev aria-label="上一张"><Icon name="arrow-left" /></button>
-            <div class="gallery-billboard-viewport" data-billboard-viewport tabindex="0" aria-label="独立收藏随机广告牌,左右切换">
-              <div class="gallery-billboard-track" data-billboard-track></div>
-            </div>
-            <button class="gallery-billboard-arrow" type="button" data-billboard-next aria-label="下一张"><Icon name="arrow-right" /></button>
-          </div>
-          <div class="gallery-billboard-dots" data-billboard-dots></div>
-        </div>
-      )}
-      <div class="gallery-index-bar">
-        <span><ThemeCopy minimal="独立照片" trace="INDEPENDENT IMAGE COLLECTION" /></span>
-        <span><ThemeCopy cyanotype={`${standaloneImages.length} 张散页影像`} minimal={`${standaloneImages.length} 张`} trace={`${standaloneImages.length} ITEMS / CURATED`} /></span>
-      </div>
-      {standaloneImages.length > 0 ? (
-        <div class="gallery-masonry gallery-masonry--independent" data-independent-masonry>
-        </div>
-        <nav class="gallery-pager" data-independent-pager aria-label="独立收藏翻页">
-          <button type="button" data-independent-page="prev" aria-label="上一页"><Icon name="arrow-left" /></button>
-          <span class="gallery-pager-status"><b data-independent-page-current>01</b> / <b data-independent-page-total>01</b></span>
-          <button type="button" data-independent-page="next" aria-label="下一页"><Icon name="arrow-right" /></button>
-        </nav>
-      ) : (
-        <div class="gallery-empty gallery-empty--independent">
-          <img class="archive-seal" src="/logo.webp" alt="" width="180" height="180" loading="lazy" />
-          <strong><ThemeCopy minimal="还没有独立照片" trace="独立收藏尚未入藏" /></strong>
-          <span><ThemeCopy minimal="单独收藏的照片会显示在这里。" trace="此处保留给未附着于文章的图像记录。" /></span>
-        </div>
-      )}
+    <section class="hz-index-wrap" data-gal-index-wrap hidden aria-label="图像索引网格">
+      <div class="hz-index-grid" data-index-grid></div>
+      <nav class="hz-gal-pager" aria-label="图像分页">
+        <button type="button" class="hz-mini-btn" data-page-prev>← 上一页</button>
+        <span class="hz-mono" data-page-status>01 / 01</span>
+        <button type="button" class="hz-mini-btn" data-page-next>下一页 →</button>
+      </nav>
     </section>
-
-    <footer class="gallery-footer">
-      <span><ThemeCopy minimal="照片与文章同步整理" trace="IMAGO / INDEXED WITH THE PUBLISHED ARCHIVE" /></span>
-      <span>{new Date().getFullYear()} · ACR—GALLERY</span>
-    </footer>
   </div>
 </BaseLayout>
 
-<dialog class="gallery-viewer" id="gallery-viewer" aria-labelledby="gallery-viewer-title">
-  <div class="gallery-viewer-frame">
-    <button class="gallery-viewer-close" type="button" data-gallery-close aria-label="关闭图像预览"><Icon name="close" /></button>
-    <div class="gallery-viewer-media" id="gallery-viewer-media"><img id="gallery-viewer-image" alt="" referrerpolicy="no-referrer" draggable="false" /></div>
-    <div class="gallery-viewer-tools">
-      <button class="gallery-viewer-original" type="button" data-gallery-original-btn hidden>加载原图</button>
-      <label class="gallery-viewer-zoom">
-        <span>缩放</span>
-        <input type="range" min="100" max="400" step="5" value="100" data-gallery-zoom aria-label="图像缩放" />
-        <b data-gallery-zoom-label>100%</b>
-      </label>
-      <button class="gallery-viewer-reset" type="button" data-gallery-zoom-reset>复位</button>
-    </div>
-    <footer class="gallery-viewer-meta">
-      <div>
-        <span class="gallery-card-label" id="gallery-viewer-caption"></span>
-        <h2 id="gallery-viewer-title"></h2>
+<dialog class="hz-viewer" id="hz-viewer" aria-labelledby="hz-viewer-title">
+  <div class="hz-viewer__shell">
+    <div class="hz-viewer__top">
+      <div class="hz-viewer__nav">
+        <button type="button" class="hz-mini-btn" data-viewer-prev aria-label="上一张">← PREV</button>
+        <button type="button" class="hz-mini-btn" data-viewer-next aria-label="下一张">NEXT →</button>
       </div>
-      <a id="gallery-viewer-source" href="#" hidden>查看来源 <Icon name="arrow-up-right" /></a>
+      <button type="button" class="hz-mini-btn" data-viewer-close aria-label="关闭灯箱">CLOSE ✕</button>
+    </div>
+
+    <div class="hz-viewer__media" data-viewer-media>
+      <img data-viewer-img alt="" referrerpolicy="no-referrer" draggable="false" />
+    </div>
+
+    <div class="hz-viewer__tools">
+      <div class="hz-viewer__zoom">
+        <span class="hz-mono">ZOOM</span>
+        <input type="range" min="100" max="400" step="5" value="100" data-viewer-zoom aria-label="缩放比例" />
+        <b class="hz-mono" data-viewer-zoom-val>100%</b>
+        <button type="button" class="hz-mini-btn" data-viewer-reset>复位</button>
+      </div>
+      <button type="button" class="hz-mini-btn" data-viewer-original hidden>加载无损原图</button>
+    </div>
+
+    <footer class="hz-viewer__foot">
+      <div>
+        <span class="hz-mono hz-viewer__cap" data-viewer-cap></span>
+        <h2 id="hz-viewer-title" data-viewer-title></h2>
+      </div>
+      <a class="hz-mini-btn" data-viewer-source href="#" hidden>查看来源文章 ↗</a>
     </footer>
   </div>
 </dialog>
 
-<script type="application/json" id="journal-pool" set:html={JSON.stringify(journalImages).replace(/</g, '\\u003c')}></script>
-<script type="application/json" id="gallery-pool" set:html={JSON.stringify(standaloneImages).replace(/</g, '\\u003c')}></script>
+<script type="application/json" id="hz-plates-pool" set:html={JSON.stringify(standaloneImages).replace(/</g, '\\u003c')}></script>
+<script type="application/json" id="hz-journal-pool" set:html={JSON.stringify(journalImages).replace(/</g, '\\u003c')}></script>
 
 <script>
-  import '../scripts/gallery-page';
+  import '../scripts/hz/gallery-field';
 </script>
-
-
-

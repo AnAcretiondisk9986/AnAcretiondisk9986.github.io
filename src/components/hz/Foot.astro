@@ -1,0 +1,36 @@
+---
+interface Props {
+  siteName: string;
+  siteTagline: string;
+}
+const { siteName, siteTagline } = Astro.props;
+const year = new Date().getFullYear();
+const word = siteName.toUpperCase();
+---
+
+<footer class="hz-foot">
+  <div class="hz-foot__grid hz-wrap">
+    <div class="hz-foot__coda">
+      <p class="hz-mono">END OF TRANSMISSION</p>
+      <p class="hz-foot__line">写下来，是为了更清楚地看见自己。</p>
+    </div>
+    <dl class="hz-foot__meta">
+      <div><dt>站点</dt><dd>{siteName} · {siteTagline}</dd></div>
+      <div><dt>授权</dt><dd>文字 CC BY-NC 4.0 · 图片版权归原作者</dd></div>
+      <div><dt>信号</dt><dd><a href="https://github.com/AnAcretiondisk9986" target="_blank" rel="noopener noreferrer">GitHub ↗</a> · <a href="/private/">私密文章</a> · <a href="/ai-quota/pricing/">定价表</a></dd></div>
+    </dl>
+    <a class="hz-foot__top" href="#main">
+      <span aria-hidden="true">↑</span>
+      <span>回到视界之外</span>
+    </a>
+  </div>
+  <div class="hz-foot__word" aria-hidden="true">
+    <svg viewBox="0 0 1000 150" preserveAspectRatio="none">
+      <text x="0" y="138" textLength="1000" lengthAdjust="spacingAndGlyphs">{word}</text>
+    </svg>
+  </div>
+  <p class="hz-foot__copy hz-wrap hz-mono">
+    <span>© {year} {siteName}</span>
+    <span>HORIZON · 视界 · BUILD {new Date().toISOString().slice(0, 10)}</span>
+  </p>
+</footer>

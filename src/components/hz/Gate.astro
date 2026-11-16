@@ -1,0 +1,70 @@
+---
+interface Props {
+  mode: 'authorized' | 'admin';
+  /** authorized 模式用于隔离每篇的解锁状态 */
+  articleId?: string;
+  /** admin 模式用于比对的 SHA-256 摘要 */
+  hash?: string;
+  kicker?: string;
+  title?: string;
+  hint?: string;
+  placeholder?: string;
+}
+
+const {
+  mode,
+  articleId = 'article',
+  hash = '',
+  kicker = mode === 'admin' ? 'DARKROOM // CLEARANCE: ADMIN' : 'AIRLOCK // CLEARANCE: AUTHORIZED',
+  title = mode === 'admin' ? '这一页收在暗房里，需要口令。' : '输入站长的网名以穿越视界',
+  hint = mode === 'admin' ? '口令由站长在管理面板中设置，验证结果缓存在本地浏览器。' : '不区分大小写，验证后仅在当前会话内有效。',
+  placeholder = mode === 'admin' ? '输入暗房口令' : '站长的网名',
+} = Astro.props;
+---
+
+<div
+  class="hz-gate"
+  data-hz-gate
+  data-gate-mode={mode}
+  data-gate-id={articleId}
+  data-gate-hash={hash}
+>
+  <div class="hz-gate__box" data-gate-box>
+    <div class="hz-gate__ring" aria-hidden="true">
+      <svg viewBox="0 0 64 64">
+        <circle cx="32" cy="32" r="28" />
+        <circle cx="32" cy="32" r="18" stroke-dasharray="3 4" />
+        <path d="M32 2v8M32 54v8M2 32h8M54 32h8" />
+      </svg>
+    </div>
+    <p class="hz-mono hz-gate__kicker">{kicker}</p>
+    <h2 class="hz-gate__title">{title}</h2>
+    <p class="hz-gate__hint">{hint}</p>
+
+    <form class="hz-gate__form" data-gate-form>
+      <label class="sr-only" for={`gate-input-${articleId}`}>{placeholder}</label>
+      <input
+        id={`gate-input-${articleId}`}
+        name="credential"
+        type={mode === 'admin' ? 'password' : 'text'}
+        autocomplete={mode === 'admin' ? 'current-password' : 'off'}
+        required
+        placeholder={placeholder}
+      />
+      <button class="hz-btn hz-btn--hot" type="submit">
+        <span>验证并解锁</span>
+        <span aria-hidden="true">→</span>
+      </button>
+    </form>
+
+    <p class="hz-gate__err" data-gate-err role="alert"></p>
+  </div>
+
+  <template data-gate-body>
+    <slot />
+  </template>
+</div>
+
+<script>
+  import '../../scripts/hz/gate';
+</script>

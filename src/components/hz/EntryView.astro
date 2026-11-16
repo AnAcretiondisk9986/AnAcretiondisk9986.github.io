@@ -1,0 +1,256 @@
+---
+import { render, type CollectionEntry } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Gate from './Gate.astro';
+import { firstImageFromBody } from '../../lib/post-cover';
+import { shortIdForPath } from '../../lib/shortlink';
+import { fmtMass, fmtMinute, massOf, mjd, readingMinutes, redshift } from '../../lib/horizon';
+import '../../styles/hz/prose.css';
+import '../../styles/hz/entry.css';
+
+interface NavBrief {
+  id: string;
+  title: string;
+  folioCode: string;
+}
+
+interface Props {
+  post: CollectionEntry<'blog'>;
+  folioCode: string;
+  mode: 'public' | 'authorized' | 'admin';
+  passwordHash?: string;
+  prevPost?: NavBrief | null;
+  nextPost?: NavBrief | null;
+}
+
+const {
+  post,
+  folioCode,
+  mode,
+  passwordHash = '',
+  prevPost = null,
+  nextPost = null,
+} = Astro.props;
+
+const { Content } = await render(post);
+const body = post.body ?? '';
+const mass = massOf(body);
+const minutes = readingMinutes(body);
+const mjdVal = mjd(post.data.pubDate);
+const rs = redshift(post.data.pubDate);
+const articleCover = post.data.cover?.trim() || firstImageFromBody(body);
+const isAdmin = mode === 'admin';
+const backHref = isAdmin ? '/private/' : '/blog/';
+const backLabel = isAdmin ? '返回暗房目录' : '返回文章光谱';
+const shortUrl = `${Astro.site?.origin ?? 'https://blog.acretiondisk.top'}/s/${shortIdForPath(post.id)}`;
+const printFolio = JSON.stringify(`FOLIO ${folioCode}`);
+const printUrl = JSON.stringify(
+  `${Astro.site?.origin ?? ''}${Astro.url.pathname}`.replace(/\/$/, ''),
+);
+const pageTitle = isAdmin ? `私密文章｜${post.data.title}` : post.data.title;
+const pageDesc = isAdmin ? '管理员级文章。' : post.data.description;
+---
+
+<BaseLayout title={pageTitle} description={pageDesc} page={isAdmin ? 'darkroom' : 'entry'}>
+  <div class="hz-progress" aria-hidden="true"><span data-reading-bar></span></div>
+
+  <div
+    class="hz-entry hz-wrap"
+    id="top"
+    data-entry-root
+    data-busuanzi={isAdmin ? undefined : 'true'}
+  >
+    <header class="hz-entry__head">
+      <div class="hz-entry__bar">
+        <a class="hz-entry__back" href={backHref}>
+          <span aria-hidden="true">←</span>
+          <span>{backLabel}</span>
+        </a>
+        <div class="hz-entry__tele hz-mono">
+          <span>FOLIO {folioCode}</span>
+          <span>MJD {mjdVal.toFixed(2)}</span>
+          <span>z={rs.z.toFixed(4)}</span>
+          <span>{fmtMass(mass)} CHARS</span>
+          <span>~{minutes} MIN</span>
+        </div>
+      </div>
+
+      <h1 class="hz-entry__title">{post.data.title}</h1>
+      {post.data.description && <p class="hz-entry__deck">{post.data.description}</p>}
+
+      <div class="hz-entry__sub">
+        <div class="hz-entry__dates hz-mono">
+          <time datetime={post.data.pubDate.toISOString()}>
+            PUBLISHED {fmtMinute(post.data.pubDate)}
+          </time>
+          {post.data.updatedDate && (
+            <time datetime={post.data.updatedDate.toISOString()}>
+              UPDATED {fmtMinute(post.data.updatedDate)}
+            </time>
+          )}
+          {!isAdmin && (
+            <span class="hz-entry__pv" id="busuanzi_container_page_pv" hidden>
+              <span id="busuanzi_value_page_pv">—</span> VIEWS
+            </span>
+          )}
+        </div>
+
+        {(post.data.tags.length > 0 || mode !== 'public') && (
+          <div class="hz-entry__tags">
+            {mode === 'admin' && <span class="hz-tag hz-tag--hot">DARKROOM</span>}
+            {mode === 'authorized' && <span class="hz-tag hz-tag--hot">AUTHORIZED</span>}
+            {post.data.tags.map((tag) => <span class="hz-tag">{tag}</span>)}
+          </div>
+        )}
+      </div>
+
+      {articleCover && (
+        <figure class="hz-entry__cover">
+          <img src={articleCover} alt="" loading="eager" decoding="async" fetchpriority="high" />
+          <figcaption class="hz-mono">
+            <span>PLATE // {folioCode}</span>
+            <span>OPTICAL OBSERVATION</span>
+          </figcaption>
+        </figure>
+      )}
+    </header>
+
+    <div class="hz-entry__grid">
+      <aside class="hz-entry__rail" aria-label="记录仪器面板">
+        <div class="hz-entry__rail-inner">
+          <div class="hz-entry__actions">
+            <button class="hz-rail-btn" type="button" data-print-btn>
+              <span>导出 PDF</span>
+              <span class="hz-mono" aria-hidden="true">PRINT</span>
+            </button>
+
+            {!isAdmin && (
+              <div class="hz-shortlink" data-shortlink>
+                <button class="hz-rail-btn" type="button" data-shortlink-generate>
+                  <span>生成分享短链</span>
+                  <span class="hz-mono" aria-hidden="true">LINK</span>
+                </button>
+                <div class="hz-shortlink__panel" data-shortlink-panel hidden>
+                  <span class="hz-shortlink__title" data-shortlink-title>《{post.data.title}》</span>
+                  <code class="hz-shortlink__url" data-shortlink-url title="点击复制">{shortUrl}</code>
+                  <div class="hz-shortlink__foot">
+                    <button class="hz-shortlink__copy hz-mono" type="button" data-shortlink-copy>COPY</button>
+                    <span class="hz-shortlink__hint hz-mono" data-shortlink-hint role="status"></span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {!isAdmin && (
+              <a class="hz-rail-btn" href="/private/">
+                <span>暗房 · 私密文章</span>
+                <span class="hz-mono" aria-hidden="true">↗</span>
+              </a>
+            )}
+          </div>
+
+          <dl class="hz-entry__dl">
+            <div><dt>编号</dt><dd>{folioCode}</dd></div>
+            <div><dt>儒略日</dt><dd>{mjdVal.toFixed(2)}</dd></div>
+            <div><dt>红移</dt><dd>z = {rs.z.toFixed(4)}</dd></div>
+            <div><dt>质量</dt><dd>{mass.toLocaleString('zh-CN')} 字</dd></div>
+            <div><dt>作者</dt><dd>Acretiondisk</dd></div>
+            <div>
+              <dt>密级</dt>
+              <dd>{mode === 'admin' ? 'ADMIN // 暗房' : mode === 'authorized' ? 'AUTH // 授权' : 'PUBLIC // 公开'}</dd>
+            </div>
+          </dl>
+
+          <nav class="hz-toc" data-entry-toc aria-label="文章目录" hidden>
+            <p class="hz-mono hz-toc__head">SECTIONS // 目录</p>
+            <ol data-toc-list></ol>
+          </nav>
+
+          <p class="hz-entry__note">文字与观点会随观测深度持续修订。</p>
+        </div>
+      </aside>
+
+      <article class="hz-entry__well" data-entry-article>
+        {mode === 'public' && (
+          <div class="hz-prose prose"><Content /></div>
+        )}
+
+        {mode === 'authorized' && (
+          <Gate mode="authorized" articleId={post.id}>
+            <div class="hz-prose prose"><Content /></div>
+          </Gate>
+        )}
+
+        {mode === 'admin' && (
+          <Gate mode="admin" articleId={post.id} hash={passwordHash}>
+            <div class="hz-prose prose"><Content /></div>
+          </Gate>
+        )}
+
+        <footer class="hz-endmark">
+          <span class="hz-mono">END OF TRANSMISSION // {folioCode}</span>
+          <a class="hz-endmark__top hz-mono" href="#top">↑ RETURN TO TOP</a>
+        </footer>
+
+        {(prevPost || nextPost) && (
+          <nav class="hz-pager" aria-label="前一篇与后一篇">
+            {prevPost ? (
+              <a class="hz-pager__link hz-pager__link--prev" href={`/blog/${encodeURI(prevPost.id)}/`} rel="prev">
+                <span class="hz-mono">← PREV · {prevPost.folioCode}</span>
+                <strong>{prevPost.title}</strong>
+              </a>
+            ) : <span class="hz-pager__empty" aria-hidden="true"></span>}
+
+            {nextPost ? (
+              <a class="hz-pager__link hz-pager__link--next" href={`/blog/${encodeURI(nextPost.id)}/`} rel="next">
+                <span class="hz-mono">NEXT · {nextPost.folioCode} →</span>
+                <strong>{nextPost.title}</strong>
+              </a>
+            ) : <span class="hz-pager__empty" aria-hidden="true"></span>}
+          </nav>
+        )}
+      </article>
+    </div>
+  </div>
+</BaseLayout>
+
+<script>
+  import '../../scripts/hz/entry';
+  import { initSongPlayers } from '../../scripts/song-player';
+
+  initSongPlayers();
+  document.addEventListener('hz:gate-unlocked', () => initSongPlayers());
+</script>
+
+<style is:global is:inline>
+  @page {
+    size: A4;
+    margin: 20mm 18mm 20mm;
+    @top-left {
+      content: 'ACRETIONDISK — HORIZON ARCHIVE';
+      font-family: Georgia, 'Times New Roman', serif;
+      font-size: 7.5pt;
+      letter-spacing: 0.14em;
+      color: #6e6a62;
+    }
+    @top-right {
+      content: ${printFolio};
+      font-family: Georgia, 'Times New Roman', serif;
+      font-size: 7.5pt;
+      letter-spacing: 0.14em;
+      color: #c2361b;
+    }
+    @bottom-left {
+      content: ${printUrl};
+      font-family: 'Cascadia Code', Consolas, monospace;
+      font-size: 7pt;
+      color: #6e6a62;
+    }
+    @bottom-right {
+      content: '第 ' counter(page) ' 页 · 共 ' counter(pages) ' 页';
+      font-family: Georgia, 'Times New Roman', serif;
+      font-size: 7.5pt;
+      color: #6e6a62;
+    }
+  }
+</style>
