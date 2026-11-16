@@ -65,13 +65,6 @@ const normW = (w: number) =>
           {(about.paragraphs || []).map((text) => (
             <p set:html={linkify(text)} />
           ))}
-
-          {about.quoteText && (
-            <blockquote class="hz-about-quote">
-              <span class="hz-mono">{about.quoteLabel || 'PRINCIPLE'}</span>
-              <div set:html={linkify(about.quoteText)} />
-            </blockquote>
-          )}
         </section>
 
         {(about.interests || []).length > 0 && (

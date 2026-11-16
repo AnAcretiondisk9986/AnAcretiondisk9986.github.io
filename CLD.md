@@ -79,10 +79,13 @@ src/
 
 ## 3. 当前状态
 
-- **Phase 1.3（新增 `/academics/`「学业」二级页：纵向连续课程拼贴墙与原地翻转卡片）已完成构建与视觉复检**：
-  - 在 [Hud.astro](src/components/hz/Hud.astro) 顶栏接入 `05 学业（TRAJECTORY）`，将 `额度` 顺延至 `06`；
-  - 新增结构化课程数据 [academics.json](src/data/academics.json)（99 门去重课程 + 大四「医院见习」/ 大五「医院实习」巨型阶段方块，覆盖原·信息管理与信息系统大一至临床医学五年制全周期，预留 `grade` 字段）；
-  - 在 [academics.ts](src/lib/academics.ts)、[academics.astro](src/pages/academics.astro)、[academics.css](src/styles/hz/academics.css) 与 [academics.ts](src/scripts/hz/academics.ts) 实现两段轨道的纵向连续无缝拼接（无学期分割线，中间以 `── 转专业 ──` 细线隔开），卡片正面仅展示课程名与学分，点击卡片在原地 3D 翻转为开课部门与成绩（未录入显示 `NULL`）。
+- **Phase 1.4（全站液态玻璃 HUD + 黑洞/白洞着色器升级 + 学业坐标轴圆角排版 + 图像/文章/关于精细打磨）已完成构建、无头浏览器复检与推送**：
+  - **学业页**（[academics.json](src/data/academics.json)、[academics.ts](src/lib/academics.ts)、[academics.astro](src/pages/academics.astro)、[academics.css](src/styles/hz/academics.css)）：互认课程归入 `completed`（已修 38 门）；左侧新增与网格行严格对齐的纵向年份/学段坐标轴；方块改为圆角矩形并按卡片宽高与字数自动放大课程标题以撑满版面；
+  - **全站外壳与首页**：[shell.css](src/styles/hz/shell.css) 将顶栏从 `mix-blend-mode: difference` 升级为 VOID/PLATE 双模式液态玻璃导航栏；[Foot.astro](src/components/hz/Foot.astro) 与 [shell.css](src/styles/hz/shell.css) 将「回到视界之外」改为 `50×50px` 圆形按钮；[disk.ts](src/scripts/hz/disk.ts) 与 [home.css](src/styles/hz/home.css) 提升光线步进精度（112 步）、多尺度涡旋与多普勒对比及 ACES + 饱和度，优化 VOID 黑洞与 PLATE 白洞呈现，并补充左侧局域径向文字护底渐变以兼顾视界绚丽度与文案对比度；
+  - **图像页**（[gallery.astro](src/pages/gallery.astro)、[gallery-field.ts](src/scripts/hz/gallery-field.ts)、[gallery.css](src/styles/hz/gallery.css)）：移除透镜场 32 张分扇区限制，改为容纳全集图片（近视口懒加载）并按原始宽高比例展示，新增「随机跳转 ↗」按钮；
+  - **文章列表**（[PostRow.astro](src/components/hz/PostRow.astro)、[log.css](src/styles/hz/log.css)、[lens.ts](src/scripts/hz/lens.ts)）：桌面悬浮封面缩小至 `204×132`，移动端/触控端在列表左侧直接展示圆角封面；
+  - **关于页**（[about.astro](src/pages/about.astro)、[about.css](src/styles/hz/about.css)）：移除「编目原则」引语块。
+- **Phase 1.3（新增 `/academics/`「学业」二级页：纵向连续课程拼贴墙与原地翻转卡片）已完成**。
 - **Phase 1.2（字体体系收敛：Noto Sans/思源宋体 + Anthropic Fonts System + 溢出修复）已完成构建、视觉复检与推送**：
   - 中文严格限定为自托管 `Noto Sans SC`（400/700）与 `Noto Serif SC / 思源宋体`（600），已删除站酷黄油/小薇/马善政/霞鹜文楷等非 Noto 中文字体分片；
   - 英文主力全面采用站长提供的 `Anthropic Sans`、`Anthropic Serif`、`Anthropic Mono`（含全字重与斜体，沿用 `public/fonts/anthropic-*.woff2`）+ `JetBrains Mono`；`Unbounded` 收敛至品牌标、巨型页脚与序号；日文仅在 `[lang="ja"]` 徽标保留 `DotGothic16`；
@@ -102,6 +105,21 @@ src/
 ## 5. 更改日志（新的在上）
 
 <!-- 新条目追加在这里 -->
+
+### 2026-11-16 · Phase 1.4：全站体验增强与 5 个板块定向精修
+
+- **学业板块**：
+  - 将原专业互认的 14 门课程统一并入 `completed`（已修共 38 门），简化筛选条为 `全部 / 已点亮 / 已修 / 在修 / 提前 / 待修`。
+  - 在 [academics.ts](src/lib/academics.ts) 中于 `packTrackWall()` 输出分段坐标轴 `axis`，与网格行共享同一套 `grid-row` 轨道渲染左侧纵向年份/学段坐标轴。
+  - 方块改为 `12px/16px` 圆角矩形并放宽拼贴间距；新增构建期标题字号求解器 `computeTitleRem()`，使课程名在零裁剪前提下尽量撑满方块版面。
+- **整站与首页**：
+  - [shell.css](src/styles/hz/shell.css) 将固定顶栏从纯差值反色改为双主题半透明液态玻璃（`backdrop-filter: blur(22px) saturate(190%)` + 顶部高光描边与光泽渐变），保证在黑洞、拼贴墙与图片上方始终清晰可读。
+  - [disk.ts](src/scripts/hz/disk.ts) 与 [home.css](src/styles/hz/home.css) 将黑洞光线积分步数提至 112 步、提升 HiDPI 分辨率上限至 `1.65`、强化开普勒旋涡细节、双层光子环、多普勒蓝/红移及 ACES 饱和度，并重构 PLATE 模式下的白洞光谱反相渲染。
+  - [Foot.astro](src/components/hz/Foot.astro) 与 [shell.css](src/styles/hz/shell.css) 将「回到视界之外」改为 `50×50px` 圆形按钮。
+- **图像 / 文章列表 / 关于页**：
+  - [gallery.astro](src/pages/gallery.astro)、[gallery-field.ts](src/scripts/hz/gallery-field.ts) 与 [gallery.css](src/styles/hz/gallery.css)：透镜场改为加载当前池全部图片（视口附近按需水合图片 `src` 并剔除远端节点），取消 `4:3` 裁剪改为按原图比例自然尺寸展示，并用「随机跳转 ↗」替代分扇区翻页。
+  - [PostRow.astro](src/components/hz/PostRow.astro)、[log.css](src/styles/hz/log.css) 与 [lens.ts](src/scripts/hz/lens.ts)：桌面悬浮封面尺寸由 `288×186` 缩小至 `204×132`，并在 `<= 720px` 及触控设备上于文章行左侧直接显示圆角封面。
+  - [about.astro](src/pages/about.astro) 与 [about.css](src/styles/hz/about.css)：去除「编目原则」引语块。
 
 ### 2026-11-16 · Phase 1.3 数据校对：调整下学期提前修读课程状态
 

@@ -6,6 +6,7 @@ import {
   packAcademics,
   packTrackWall,
   type AcademicData,
+  type AxisSegment,
   type PackedCourse,
 } from '../lib/academics';
 import rawData from '../data/academics.json';
@@ -19,15 +20,18 @@ const packedSemesters = packAcademics(data);
 const origWall = packTrackWall(packedSemesters.filter((s) => s.track === 'orig'));
 const clinWall = packTrackWall(packedSemesters.filter((s) => s.track === 'clin'));
 
-const litTotal = stats.completedCount + stats.recognizedCount + stats.activeCount;
+const litTotal = stats.completedCount + stats.activeCount;
 
-const walls: { id: 'orig' | 'clin'; label: string; courses: PackedCourse[] }[] = [
-  { id: 'orig', label: data.tracks.orig.name, courses: origWall.courses },
-  { id: 'clin', label: data.tracks.clin.name, courses: clinWall.courses },
+const walls: { id: 'orig' | 'clin'; label: string; courses: PackedCourse[]; axis: AxisSegment[] }[] = [
+  { id: 'orig', label: data.tracks.orig.name, courses: origWall.courses, axis: origWall.axis },
+  { id: 'clin', label: data.tracks.clin.name, courses: clinWall.courses, axis: clinWall.axis },
 ];
 
 const tileStyle = (c: PackedCourse) =>
-  `--sem-hue:${c.hue};--dc:${c.desktop.x};--dr:${c.desktop.y};--dw:${c.desktop.w};--dh:${c.desktop.h};--tc:${c.tablet.x};--tr:${c.tablet.y};--tw:${c.tablet.w};--th:${c.tablet.h};--mc:${c.mobile.x};--mr:${c.mobile.y};--mw:${c.mobile.w};--mh:${c.mobile.h}`;
+  `--sem-hue:${c.hue};--fs-d:${c.titleRemD}rem;--fs-m:${c.titleRemM}rem;--dc:${c.desktop.x};--dr:${c.desktop.y};--dw:${c.desktop.w};--dh:${c.desktop.h};--tc:${c.tablet.x};--tr:${c.tablet.y};--tw:${c.tablet.w};--th:${c.tablet.h};--mc:${c.mobile.x};--mr:${c.mobile.y};--mw:${c.mobile.w};--mh:${c.mobile.h}`;
+
+const axisStyle = (a: AxisSegment) =>
+  `--sem-hue:${a.hue};--dr:${a.desktopRow};--dh:${a.desktopSpan};--tr:${a.tabletRow};--th:${a.tabletSpan};--mr:${a.mobileRow};--mh:${a.mobileSpan}`;
 
 const badgeText = (c: PackedCourse) => {
   if (c.kind === 'milestone') {
@@ -74,9 +78,6 @@ const badgeText = (c: PackedCourse) => {
           <button type="button" data-acad-filter="active" aria-pressed="false">
             <i class="hz-swatch hz-swatch--active" aria-hidden="true"></i>在修 ({stats.activeCount})
           </button>
-          <button type="button" data-acad-filter="recognized" aria-pressed="false">
-            <i class="hz-swatch hz-swatch--rec" aria-hidden="true"></i>互认 ({stats.recognizedCount})
-          </button>
           <button type="button" data-acad-filter="early" aria-pressed="false">提前 ({stats.earlyCount})</button>
           <button type="button" data-acad-filter="planned" aria-pressed="false">
             <i class="hz-swatch hz-swatch--plan" aria-hidden="true"></i>待修 ({stats.plannedCount})
@@ -89,6 +90,28 @@ const badgeText = (c: PackedCourse) => {
       {walls.map((wall, idx) => (
         <>
           <section class="hz-mosaic" aria-label={wall.label}>
+            {wall.axis.map((seg) => (
+              <div
+                class:list={['hz-axis-seg', { 'is-year-start': seg.showYear }]}
+                style={axisStyle(seg)}
+                aria-hidden="true"
+              >
+                <i class="hz-axis-seg__tick"></i>
+                <div class="hz-axis-seg__meta">
+                  {seg.showYear && (
+                    <span class="hz-axis-seg__year">
+                      <b class="hz-axis-full">{seg.year}</b>
+                      <b class="hz-axis-short">{seg.shortYear}</b>
+                    </span>
+                  )}
+                  <span class="hz-axis-seg__label">
+                    <b class="hz-axis-full">{seg.label}</b>
+                    <b class="hz-axis-short">{seg.shortLabel}</b>
+                  </span>
+                </div>
+              </div>
+            ))}
+
             {wall.courses.map((c) => {
               const isMilestone = c.kind === 'milestone';
               const milestoneTier = isMilestone ? (c.milestoneSpan && c.milestoneSpan >= 4 ? 'internship' : 'clerkship') : undefined;
@@ -105,7 +128,6 @@ const badgeText = (c: PackedCourse) => {
                   data-hero={c.desktop.h > 1 ? 'true' : undefined}
                   data-milestone={isMilestone ? 'true' : undefined}
                   data-milestone-tier={milestoneTier}
-                  data-linked={c.linkedIds?.join(',') || undefined}
                   data-search={`${c.name} ${c.dept}`.toLowerCase()}
                   style={tileStyle(c)}
                   aria-pressed="false"

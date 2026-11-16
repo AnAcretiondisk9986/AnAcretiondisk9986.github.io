@@ -20,11 +20,11 @@ export function initLens() {
   let raf = 0;
 
   const clampTarget = (x: number, y: number) => {
-    const padX = 160;
-    const padY = 108;
+    const padX = 114;
+    const padY = 78;
     return {
-      x: Math.max(padX, Math.min(window.innerWidth - padX, x + 28)),
-      y: Math.max(padY, Math.min(window.innerHeight - padY, y - 24)),
+      x: Math.max(padX, Math.min(window.innerWidth - padX, x + 22)),
+      y: Math.max(padY, Math.min(window.innerHeight - padY, y - 18)),
     };
   };
 

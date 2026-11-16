@@ -20,7 +20,6 @@ interface GalleryItem {
   sourceTitle?: string;
 }
 
-const FIELD_PAGE_SIZE = 32;
 const INDEX_PAGE_SIZE = 24;
 
 function readPool(id: string): GalleryItem[] {
@@ -55,8 +54,7 @@ export function initGallery() {
   const sectorLabel = root.querySelector<HTMLElement>('[data-field-sector]');
   const resetBtn = root.querySelector<HTMLButtonElement>('[data-field-reset]');
   const orbitBtn = root.querySelector<HTMLButtonElement>('[data-field-orbit]');
-  const secPrev = root.querySelector<HTMLButtonElement>('[data-sector-prev]');
-  const secNext = root.querySelector<HTMLButtonElement>('[data-sector-next]');
+  const randomBtn = root.querySelector<HTMLButtonElement>('[data-field-random]');
 
   const indexWrap = root.querySelector<HTMLElement>('[data-gal-index-wrap]');
   const gridEl = root.querySelector<HTMLElement>('[data-index-grid]');
@@ -89,7 +87,6 @@ export function initGallery() {
   let sortOrder: 'newest' | 'oldest' = 'newest';
   let filterText = '';
   let indexPage = 1;
-  let fieldSector = 1;
   let orbitSeed = 0;
 
   let currentList: GalleryItem[] = [];
@@ -112,11 +109,14 @@ export function initGallery() {
 
   interface NodePos {
     el: HTMLElement;
+    img: HTMLImageElement;
     bx: number;
     by: number;
     item: GalleryItem;
+    hydrated: boolean;
   }
   let fieldNodes: NodePos[] = [];
+  let currentNearest: NodePos | null = null;
 
   const getRawPool = (): GalleryItem[] => {
     if (activeTab === 'plates') return platesPool;
@@ -140,22 +140,25 @@ export function initGallery() {
     });
   };
 
+  const hydrateNode = (node: NodePos) => {
+    if (node.hydrated) return;
+    node.hydrated = true;
+    node.img.src = node.item.src;
+  };
+
   const renderField = () => {
     if (!canvasEl || !stage) return;
-    const totalSectors = Math.max(1, Math.ceil(currentList.length / FIELD_PAGE_SIZE));
-    fieldSector = Math.min(Math.max(1, fieldSector), totalSectors);
-    const slice = currentList.slice((fieldSector - 1) * FIELD_PAGE_SIZE, fieldSector * FIELD_PAGE_SIZE);
 
     if (sectorLabel) {
-      sectorLabel.textContent = `SECTOR ${String(fieldSector).padStart(2, '0')} / ${String(totalSectors).padStart(2, '0')}`;
+      sectorLabel.textContent = `ALL ${String(currentList.length).padStart(2, '0')} PLATES`;
     }
-    if (secPrev) secPrev.disabled = fieldSector <= 1;
-    if (secNext) secNext.disabled = fieldSector >= totalSectors;
+    if (randomBtn) randomBtn.disabled = currentList.length <= 1;
 
     canvasEl.innerHTML = '';
     fieldNodes = [];
+    currentNearest = null;
 
-    if (slice.length === 0) {
+    if (currentList.length === 0) {
       const empty = document.createElement('p');
       empty.className = 'hz-gal-empty hz-mono';
       empty.textContent = 'NO OPTICAL SIGNATURES MATCH CURRENT FILTER';
@@ -165,7 +168,7 @@ export function initGallery() {
 
     const golden = 2.399963229728653;
     const frag = document.createDocumentFragment();
-    slice.forEach((item, i) => {
+    currentList.forEach((item, i) => {
       const card = document.createElement('button');
       card.type = 'button';
       card.className = 'hz-fplate';
@@ -173,20 +176,19 @@ export function initGallery() {
       card.setAttribute('aria-label', `打开图像：${item.title || item.caption || item.id}`);
 
       const angle = i * golden + orbitSeed * 1.1;
-      const radius = i === 0 ? 0 : 195 + Math.sqrt(i) * 142;
+      const radius = i === 0 ? 0 : 410 + Math.sqrt(i) * 320;
       const bx = Math.cos(angle) * radius * 1.18;
-      const by = Math.sin(angle) * radius * 0.88;
+      const by = Math.sin(angle) * radius * 0.92;
 
       const frame = document.createElement('span');
       frame.className = 'hz-fplate__frame';
       const img = document.createElement('img');
-      img.src = item.thumb || item.src;
       img.alt = item.alt || item.title || '';
-      img.loading = i < 12 ? 'eager' : 'lazy';
+      img.loading = i < 16 ? 'eager' : 'lazy';
       img.decoding = 'async';
       img.draggable = false;
       if (item.thumb && item.src && item.thumb !== item.src) {
-        img.dataset.galleryFallback = item.src;
+        img.dataset.galleryFallback = item.thumb;
       }
       img.addEventListener('load', () => card.classList.add('is-ready'), { once: true });
       img.addEventListener('error', () => card.classList.add('is-error'), { once: true });
@@ -194,18 +196,17 @@ export function initGallery() {
 
       const cap = document.createElement('span');
       cap.className = 'hz-fplate__cap hz-mono';
-      const no = String((fieldSector - 1) * FIELD_PAGE_SIZE + i + 1).padStart(2, '0');
+      const no = String(i + 1).padStart(3, '0');
       cap.innerHTML = `<span>PL.${no}</span><span>${escapeHtml(item.title || item.date || 'PLATE')}</span>`;
 
       card.append(frame, cap);
       card.addEventListener('click', () => {
         if (movedPx > 7) return;
-        const globalIdx = currentList.indexOf(item);
-        if (globalIdx >= 0) openViewer(globalIdx);
+        openViewer(i);
       });
 
       frag.append(card);
-      fieldNodes.push({ el: card, bx, by, item });
+      fieldNodes.push({ el: card, img, bx, by, item, hydrated: false });
     });
 
     canvasEl.append(frag);
@@ -218,7 +219,11 @@ export function initGallery() {
     const sh = stage.clientHeight || 640;
     const cx = sw * 0.5;
     const cy = sh * 0.5;
-    const lensRadius = Math.min(sw, sh) * 0.55;
+    const lensRadius = Math.min(sw, sh) * 0.65;
+    const cullX = sw * 0.95 + 700;
+    const cullY = sh * 0.95 + 700;
+    const loadX = sw * 1.45 + 900;
+    const loadY = sh * 1.45 + 900;
 
     let nearest: NodePos | null = null;
     let nearestDist = Infinity;
@@ -227,13 +232,23 @@ export function initGallery() {
       const sx = node.bx - camX;
       const sy = node.by - camY;
       const d = Math.hypot(sx, sy);
-      const prox = Math.max(0, 1 - d / Math.max(240, lensRadius));
-      const scale = 0.78 + 0.44 * prox * prox;
-      const op = 0.36 + 0.64 * prox;
 
-      node.el.style.transform = `translate3d(${(cx + sx).toFixed(1)}px, ${(cy + sy).toFixed(1)}px, 0) translate(-50%, -50%) scale(${scale.toFixed(3)})`;
-      node.el.style.opacity = op.toFixed(3);
-      node.el.style.zIndex = String(Math.round(prox * 100) + 1);
+      if (!node.hydrated && Math.abs(sx) < loadX && Math.abs(sy) < loadY) {
+        hydrateNode(node);
+      }
+
+      const visible = Math.abs(sx) < cullX && Math.abs(sy) < cullY;
+      node.el.style.display = visible ? 'grid' : 'none';
+
+      if (visible) {
+        const prox = Math.max(0, 1 - d / Math.max(260, lensRadius));
+        const scale = 0.72 + 0.34 * prox * prox;
+        const op = 0.34 + 0.66 * prox;
+
+        node.el.style.transform = `translate3d(${(cx + sx).toFixed(1)}px, ${(cy + sy).toFixed(1)}px, 0) translate(-50%, -50%) scale(${scale.toFixed(3)})`;
+        node.el.style.opacity = op.toFixed(3);
+        node.el.style.zIndex = String(Math.round(prox * 100) + 1);
+      }
 
       if (d < nearestDist) {
         nearestDist = d;
@@ -241,9 +256,10 @@ export function initGallery() {
       }
     }
 
-    fieldNodes.forEach((n) => n.el.classList.toggle('is-locked', n === nearest && nearestDist < 220));
+    currentNearest = nearest;
+    fieldNodes.forEach((n) => n.el.classList.toggle('is-locked', n === nearest && nearestDist < 260));
     if (lockTitle && lockMeta) {
-      if (nearest && nearestDist < 260) {
+      if (nearest && nearestDist < 320) {
         lockTitle.textContent = nearest.item.title || 'UNTITLED PLATE';
         lockMeta.textContent = `${nearest.item.date || 'NO DATE'}${nearest.item.sourceTitle ? ` · ${nearest.item.sourceTitle}` : ''}`;
       } else {
@@ -557,23 +573,25 @@ export function initGallery() {
     camY = 0;
     renderField();
   });
-  secPrev?.addEventListener('click', () => {
-    if (fieldSector > 1) {
-      fieldSector -= 1;
-      targetX = 0;
-      targetY = 0;
-      camX = 0;
-      camY = 0;
-      renderField();
+  randomBtn?.addEventListener('click', () => {
+    if (fieldNodes.length === 0) return;
+    let idx = Math.floor(Math.random() * fieldNodes.length);
+    if (fieldNodes.length > 1 && fieldNodes[idx] === currentNearest) {
+      idx = (idx + 1 + Math.floor(Math.random() * (fieldNodes.length - 1))) % fieldNodes.length;
     }
-  });
-  secNext?.addEventListener('click', () => {
-    fieldSector += 1;
-    targetX = 0;
-    targetY = 0;
-    camX = 0;
-    camY = 0;
-    renderField();
+    const chosen = fieldNodes[idx];
+    hydrateNode(chosen);
+    targetX = chosen.bx;
+    targetY = chosen.by;
+    vx = 0;
+    vy = 0;
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      camX = targetX;
+      camY = targetY;
+      layoutField();
+    } else {
+      kickField();
+    }
   });
 
   // 事件绑定
@@ -583,7 +601,6 @@ export function initGallery() {
       if (!next || next === activeTab) return;
       activeTab = next;
       indexPage = 1;
-      fieldSector = 1;
       targetX = 0;
       targetY = 0;
       camX = 0;
@@ -607,7 +624,6 @@ export function initGallery() {
       if (!next || next === sortOrder) return;
       sortOrder = next;
       indexPage = 1;
-      fieldSector = 1;
       syncAll();
     });
   });
@@ -615,7 +631,6 @@ export function initGallery() {
   filterInput?.addEventListener('input', () => {
     filterText = filterInput.value.trim().toLowerCase();
     indexPage = 1;
-    fieldSector = 1;
     targetX = 0;
     targetY = 0;
     camX = 0;

@@ -43,16 +43,20 @@
   display: block;
 }
 
-/* 左侧微弱暗角，保证标题与正文在光子环前始终高对比 */
+/* 左侧软保护暗角，只护住文字区域，右侧完全透出高亮吸积盘与视界 */
 .hz-hero__scrim {
   position: absolute;
   inset: 0;
   z-index: 1;
   pointer-events: none;
-  background: linear-gradient(95deg, rgb(8 8 11 / 0.72) 0%, rgb(8 8 11 / 0.36) 44%, transparent 78%);
+  background:
+    radial-gradient(ellipse 46% 62% at 24% 52%, rgb(8 8 11 / 0.72) 0%, rgb(8 8 11 / 0.34) 55%, transparent 100%),
+    linear-gradient(95deg, rgb(8 8 11 / 0.72) 0%, rgb(8 8 11 / 0.28) 42%, transparent 64%);
 }
 :root[data-theme='light'] .hz-hero__scrim {
-  background: linear-gradient(95deg, rgb(234 232 226 / 0.82) 0%, rgb(234 232 226 / 0.44) 44%, transparent 78%);
+  background:
+    radial-gradient(ellipse 46% 62% at 24% 52%, rgb(234 232 226 / 0.82) 0%, rgb(234 232 226 / 0.42) 55%, transparent 100%),
+    linear-gradient(95deg, rgb(234 232 226 / 0.8) 0%, rgb(234 232 226 / 0.36) 42%, transparent 64%);
 }
 
 .hz-hero__inner {
@@ -61,6 +65,10 @@
   display: grid;
   gap: var(--s-5);
   max-width: 54rem;
+  text-shadow: 0 2px 18px rgb(8 8 11 / 0.85), 0 1px 3px rgb(8 8 11 / 0.9);
+}
+:root[data-theme='light'] .hz-hero__inner {
+  text-shadow: 0 2px 16px rgb(234 232 226 / 0.92), 0 1px 2px rgb(234 232 226 / 0.88);
 }
 
 .hz-hero__eyebrow {
@@ -154,6 +162,7 @@
   flex-wrap: wrap;
   gap: var(--s-3);
   padding-top: var(--s-1);
+  text-shadow: none;
 }
 
 .hz-hero__cue {

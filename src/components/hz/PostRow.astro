@@ -51,6 +51,18 @@ const Heading = headingLevel === 2 ? 'h2' : 'h3';
 >
   <div class="hz-row__tick" aria-hidden="true"></div>
 
+  {cover.thumb && (
+    <span class="hz-row__thumb" aria-hidden="true">
+      <img
+        src={cover.thumb}
+        alt=""
+        loading="lazy"
+        decoding="async"
+        data-original-cover={cover.original || undefined}
+      />
+    </span>
+  )}
+
   <div class="hz-row__tele">
     <span class="hz-row__folio">{folioCode}</span>
     <span class="hz-row__mjd">MJD {mjdVal.toFixed(1)}</span>

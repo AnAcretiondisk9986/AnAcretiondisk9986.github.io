@@ -137,15 +137,25 @@
   transform: translate(3px, -3px);
 }
 
+.hz-row__thumb {
+  display: none;
+}
+.hz-row__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
 /* —— 悬浮圆角矩形文章封面预览 —— */
 .hz-lens {
   position: fixed;
   top: 0;
   left: 0;
   z-index: 42;
-  width: 288px;
-  height: 186px;
-  border-radius: 14px;
+  width: 204px;
+  height: 132px;
+  border-radius: 10px;
   border: 1px solid var(--hz-hot);
   background: var(--hz-void);
   overflow: hidden;
@@ -154,7 +164,7 @@
   scale: 0.86;
   transition: opacity var(--d-2) var(--e-out), scale var(--d-2) var(--e-out);
   will-change: transform, opacity;
-  box-shadow: 0 12px 32px -12px rgb(0 0 0 / 0.65), 0 0 0 6px rgb(255 90 26 / 0.08);
+  box-shadow: 0 10px 26px -10px rgb(0 0 0 / 0.65), 0 0 0 4px rgb(255 90 26 / 0.08);
 }
 .hz-lens.is-visible {
   opacity: 1;
@@ -167,21 +177,21 @@
 }
 .hz-lens__ring {
   position: absolute;
-  inset: 7px;
-  border-radius: 9px;
+  inset: 5px;
+  border-radius: 6px;
   border: 1px dashed rgb(255 241 214 / 0.42);
   pointer-events: none;
 }
 .hz-lens__cap {
   position: absolute;
-  left: 14px;
-  bottom: 12px;
-  padding: 2px 8px;
-  border-radius: 5px;
+  left: 10px;
+  bottom: 8px;
+  padding: 2px 6px;
+  border-radius: 4px;
   background: rgb(8 8 11 / 0.84);
   color: #fff1d6;
   font-family: var(--f-mono);
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   letter-spacing: 0.08em;
   white-space: nowrap;
 }
@@ -376,15 +386,55 @@
     flex-wrap: wrap;
   }
 }
+@media (hover: none) and (pointer: coarse) {
+  .hz-lens {
+    display: none;
+  }
+  .hz-row:has(.hz-row__thumb) {
+    grid-template-columns: 4px 116px minmax(92px, 128px) minmax(0, 1fr) auto;
+  }
+  .hz-row__thumb {
+    display: block;
+    width: 116px;
+    aspect-ratio: 16 / 11;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--hz-line-2);
+    background: var(--hz-void);
+    align-self: center;
+  }
+}
+
 @media (max-width: 720px) {
   .hz-row {
     grid-template-columns: 3px 1fr;
     gap: var(--s-2) var(--s-3);
     padding-block: var(--s-4);
   }
+  .hz-row:has(.hz-row__thumb) {
+    grid-template-columns: 3px 92px minmax(0, 1fr);
+  }
   .hz-row__tick {
-    grid-row: span 3;
+    grid-column: 1;
+    grid-row: 1 / span 3;
     height: 100%;
+  }
+  .hz-row__thumb {
+    display: block;
+    grid-column: 2;
+    grid-row: 1 / span 3;
+    align-self: start;
+    width: 92px;
+    aspect-ratio: 16 / 11;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--hz-line-2);
+    background: var(--hz-void);
+  }
+  .hz-row:has(.hz-row__thumb) .hz-row__tele,
+  .hz-row:has(.hz-row__thumb) .hz-row__main,
+  .hz-row:has(.hz-row__thumb) .hz-row__stat {
+    grid-column: 3;
   }
   .hz-row__tele {
     display: flex;

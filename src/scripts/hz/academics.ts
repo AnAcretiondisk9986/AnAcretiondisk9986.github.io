@@ -1,6 +1,6 @@
 /**
  * HORIZON · academics.ts
- * /academics/ 连续课程拼贴墙：原地 3D 翻转展示开课部门与成绩、聚光灯筛选、/ 搜索、跨轨互认联动。
+ * /academics/ 连续课程拼贴墙：原地 3D 翻转展示开课部门与成绩、聚光灯筛选、/ 搜索。
  */
 
 function initAcademics() {
@@ -8,7 +8,6 @@ function initAcademics() {
   if (!root) return;
 
   const tiles = [...root.querySelectorAll<HTMLButtonElement>('[data-acad-tile]')];
-  const tileMap = new Map(tiles.map((t) => [t.dataset.id || '', t]));
   const filterBtns = [...root.querySelectorAll<HTMLButtonElement>('[data-acad-filter]')];
   const search = root.querySelector<HTMLInputElement>('[data-acad-search]');
   const readout = root.querySelector<HTMLElement>('[data-acad-readout]');
@@ -59,19 +58,6 @@ function initAcademics() {
     });
   }
 
-  const clearPeers = () => {
-    tiles.forEach((t) => t.classList.remove('is-peer'));
-  };
-
-  const highlightPeers = (tile: HTMLButtonElement) => {
-    clearPeers();
-    const raw = tile.dataset.linked;
-    if (!raw) return;
-    for (const id of raw.split(',')) {
-      tileMap.get(id)?.classList.add('is-peer');
-    }
-  };
-
   const toggleFlip = (tile: HTMLButtonElement) => {
     const flipped = tile.classList.toggle('is-flipped');
     tile.setAttribute('aria-pressed', String(flipped));
@@ -82,10 +68,6 @@ function initAcademics() {
   };
 
   tiles.forEach((tile) => {
-    tile.addEventListener('pointerenter', () => highlightPeers(tile));
-    tile.addEventListener('pointerleave', clearPeers);
-    tile.addEventListener('focus', () => highlightPeers(tile));
-    tile.addEventListener('blur', clearPeers);
     tile.addEventListener('click', () => toggleFlip(tile));
   });
 

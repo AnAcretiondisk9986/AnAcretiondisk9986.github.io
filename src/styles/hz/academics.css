@@ -1,5 +1,5 @@
 /* ==========================================================================
-   HORIZON · academics.css —— 连续纵向课程拼贴墙与原地翻转卡片
+   HORIZON · academics.css —— 纵向坐标轴 + 圆角冲击力拼贴墙 + 原地翻转
    ========================================================================== */
 
 .hz-acad {
@@ -45,10 +45,10 @@
   gap: 7px;
 }
 
-/* 按钮内联微底纹示例 */
 .hz-swatch {
   width: 11px;
   height: 11px;
+  border-radius: 3px;
   border: 1px solid currentColor;
   flex: none;
 }
@@ -57,11 +57,6 @@
 }
 .hz-swatch--active {
   background-image: repeating-linear-gradient(-45deg, currentColor 0 1.5px, transparent 1.5px 4px);
-}
-.hz-swatch--rec {
-  background-image:
-    repeating-linear-gradient(0deg, currentColor 0 1px, transparent 1px 4px),
-    repeating-linear-gradient(90deg, currentColor 0 1px, transparent 1px 4px);
 }
 .hz-swatch--plan {
   background-image: radial-gradient(currentColor 1px, transparent 1px);
@@ -74,7 +69,7 @@
   display: flex;
   align-items: center;
   gap: var(--s-4);
-  margin-block: var(--s-5);
+  margin-block: var(--s-6);
   color: var(--hz-ink-2);
 }
 .hz-transfer-line::before,
@@ -92,24 +87,77 @@
   white-space: nowrap;
 }
 
-/* —— 连续拼贴网格（24 列桌面 -> 12 列平板 -> 6 列手机） —— */
+/* —— 连续拼贴网格：第 1 列为纵向坐标轴，第 2..25 列为圆角方块 —— */
 .hz-mosaic {
   display: grid;
-  grid-template-columns: repeat(24, minmax(0, 1fr));
-  grid-auto-rows: minmax(88px, auto);
-  gap: 2px;
-  padding: 2px;
-  background: var(--hz-line-2);
-  border: 1px solid var(--hz-line-2);
+  grid-template-columns: 118px repeat(24, minmax(0, 1fr));
+  grid-auto-rows: minmax(92px, auto);
+  gap: 6px;
 }
 
-/* —— 单个方块（支持原地 3D 翻转；不能给 tile/inner 加 overflow:hidden） —— */
+/* —— 左侧纵向年份/学段坐标轴 —— */
+.hz-axis-seg {
+  --sem-hue: 200;
+  grid-column: 1;
+  grid-row: var(--dr) / span var(--dh);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  padding: 8px 14px 8px 0;
+  border-right: 1px solid var(--hz-line-2);
+  border-top: 1px solid var(--hz-line);
+  min-width: 0;
+}
+.hz-axis-seg.is-year-start {
+  border-top-color: hsl(var(--sem-hue) 70% 58% / 0.72);
+}
+.hz-axis-seg__tick {
+  position: absolute;
+  top: -1px;
+  right: -4px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: hsl(var(--sem-hue) 78% 58%);
+  box-shadow: 0 0 0 2px var(--hz-bg);
+}
+.hz-axis-seg__meta {
+  display: grid;
+  gap: 3px;
+}
+.hz-axis-seg__year {
+  font-family: var(--f-mono);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: hsl(var(--sem-hue) 76% 68%);
+}
+:root[data-theme='light'] .hz-axis-seg__year {
+  color: hsl(var(--sem-hue) 68% 36%);
+}
+.hz-axis-seg__label {
+  font-family: var(--f-sans);
+  font-size: 0.84rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--hz-ink-2);
+}
+.hz-axis-seg__year b,
+.hz-axis-seg__label b {
+  font-weight: inherit;
+}
+.hz-axis-short {
+  display: none;
+}
+
+/* —— 圆角方块（支持原地 3D 翻转） —— */
 .hz-tile {
-  --tile-bg: hsl(var(--sem-hue) 26% 15%);
-  --tile-bd: hsl(var(--sem-hue) 44% 44% / 0.48);
-  --tile-ink: #f1ece2;
-  --tile-ink-2: rgb(241 236 226 / 0.72);
-  --tile-accent: hsl(var(--sem-hue) 82% 64%);
+  --tile-bg: hsl(var(--sem-hue) 28% 16%);
+  --tile-bd: hsl(var(--sem-hue) 46% 48% / 0.48);
+  --tile-ink: #f4f0e8;
+  --tile-ink-2: rgb(244 240 232 / 0.72);
+  --tile-accent: hsl(var(--sem-hue) 86% 66%);
 
   position: relative;
   display: block;
@@ -117,7 +165,7 @@
   padding: 0;
   text-align: left;
   color: var(--tile-ink);
-  grid-column: var(--dc) / span var(--dw);
+  grid-column: calc(var(--dc) + 1) / span var(--dw);
   grid-row: var(--dr) / span var(--dh);
   perspective: 1100px;
   cursor: pointer;
@@ -125,11 +173,11 @@
 }
 
 :root[data-theme='light'] .hz-tile {
-  --tile-bg: hsl(var(--sem-hue) 46% 86%);
-  --tile-bd: hsl(var(--sem-hue) 44% 44% / 0.56);
-  --tile-ink: #111216;
-  --tile-ink-2: rgb(17 18 22 / 0.7);
-  --tile-accent: hsl(var(--sem-hue) 74% 38%);
+  --tile-bg: hsl(var(--sem-hue) 50% 85%);
+  --tile-bd: hsl(var(--sem-hue) 48% 42% / 0.55);
+  --tile-ink: #101116;
+  --tile-ink-2: rgb(16 17 22 / 0.68);
+  --tile-accent: hsl(var(--sem-hue) 76% 36%);
 }
 
 .hz-tile__inner {
@@ -154,7 +202,8 @@
   min-width: 0;
   width: 100%;
   height: 100%;
-  padding: 10px 12px;
+  padding: 11px 13px;
+  border-radius: 12px;
   background-color: var(--tile-bg);
   border: 1px solid var(--tile-bd);
   backface-visibility: hidden;
@@ -169,24 +218,22 @@
   border-color: var(--tile-accent);
 }
 :root[data-theme='light'] .hz-tile__face--back {
-  background-color: color-mix(in oklab, var(--tile-bg) 72%, #fff);
+  background-color: color-mix(in oklab, var(--tile-bg) 74%, #fff);
 }
 
-/* —— 四种修读状态底纹（正反两面保持同一底纹基因） —— */
-/* 1) 已修读：实色 */
+/* —— 三种修读状态底纹：已修(实色) / 在修(45°斜纹) / 待修(点阵虚框) —— */
 .hz-tile[data-status='completed'] {
-  --tile-bg: hsl(var(--sem-hue) 32% 19%);
-  --tile-bd: hsl(var(--sem-hue) 56% 52% / 0.54);
+  --tile-bg: hsl(var(--sem-hue) 34% 19%);
+  --tile-bd: hsl(var(--sem-hue) 58% 54% / 0.54);
 }
 :root[data-theme='light'] .hz-tile[data-status='completed'] {
-  --tile-bg: hsl(var(--sem-hue) 48% 83%);
-  --tile-bd: hsl(var(--sem-hue) 52% 40% / 0.56);
+  --tile-bg: hsl(var(--sem-hue) 52% 82%);
+  --tile-bd: hsl(var(--sem-hue) 54% 40% / 0.56);
 }
 
-/* 2) 正在修读（含提前修读）：45° 斜纹 */
 .hz-tile[data-status='active'] {
-  --tile-bg: hsl(var(--sem-hue) 44% 21%);
-  --tile-bd: hsl(var(--sem-hue) 86% 62% / 0.85);
+  --tile-bg: hsl(var(--sem-hue) 48% 21%);
+  --tile-bd: hsl(var(--sem-hue) 88% 62% / 0.85);
 }
 .hz-tile[data-status='active'] .hz-tile__face--front {
   background-image: repeating-linear-gradient(
@@ -194,10 +241,10 @@
     hsl(var(--sem-hue) 90% 68% / 0.14) 0 3px,
     transparent 3px 10px
   );
-  box-shadow: inset 0 0 0 1px hsl(var(--sem-hue) 86% 62% / 0.25);
+  box-shadow: inset 0 0 0 1px hsl(var(--sem-hue) 86% 62% / 0.24);
 }
 :root[data-theme='light'] .hz-tile[data-status='active'] {
-  --tile-bg: hsl(var(--sem-hue) 68% 86%);
+  --tile-bg: hsl(var(--sem-hue) 70% 85%);
   --tile-bd: hsl(var(--sem-hue) 78% 42% / 0.88);
 }
 :root[data-theme='light'] .hz-tile[data-status='active'] .hz-tile__face--front {
@@ -208,37 +255,10 @@
   );
 }
 
-/* 3) 互认：交叉网格 + 双层内框 */
-.hz-tile[data-status='recognized'] {
-  --tile-bg: hsl(var(--sem-hue) 24% 16%);
-  --tile-bd: hsl(var(--sem-hue) 48% 52% / 0.58);
-}
-.hz-tile[data-status='recognized'] .hz-tile__face--front {
-  background-image:
-    repeating-linear-gradient(0deg, hsl(var(--sem-hue) 55% 70% / 0.1) 0 1px, transparent 1px 10px),
-    repeating-linear-gradient(90deg, hsl(var(--sem-hue) 55% 70% / 0.1) 0 1px, transparent 1px 10px);
-}
-.hz-tile[data-status='recognized'] .hz-tile__face--front::after {
-  content: '';
-  position: absolute;
-  inset: 3px;
-  border: 1px solid hsl(var(--sem-hue) 50% 65% / 0.26);
-  pointer-events: none;
-}
-:root[data-theme='light'] .hz-tile[data-status='recognized'] {
-  --tile-bg: hsl(var(--sem-hue) 34% 88%);
-}
-:root[data-theme='light'] .hz-tile[data-status='recognized'] .hz-tile__face--front {
-  background-image:
-    repeating-linear-gradient(0deg, hsl(var(--sem-hue) 45% 32% / 0.12) 0 1px, transparent 1px 10px),
-    repeating-linear-gradient(90deg, hsl(var(--sem-hue) 45% 32% / 0.12) 0 1px, transparent 1px 10px);
-}
-
-/* 4) 未修 / 待修：疏点阵 + 虚线内框 */
 .hz-tile[data-status='planned'] {
   --tile-bg: hsl(var(--sem-hue) 20% 10%);
   --tile-bd: hsl(var(--sem-hue) 30% 42% / 0.34);
-  --tile-ink: rgb(236 231 220 / 0.8);
+  --tile-ink: rgb(236 231 220 / 0.82);
   --tile-ink-2: rgb(236 231 220 / 0.48);
 }
 .hz-tile[data-status='planned'] .hz-tile__face--front {
@@ -249,13 +269,14 @@
   content: '';
   position: absolute;
   inset: 4px;
+  border-radius: 9px;
   border: 1px dashed hsl(var(--sem-hue) 38% 58% / 0.22);
   pointer-events: none;
 }
 :root[data-theme='light'] .hz-tile[data-status='planned'] {
   --tile-bg: hsl(var(--sem-hue) 24% 92%);
   --tile-bd: hsl(var(--sem-hue) 30% 42% / 0.36);
-  --tile-ink: rgb(17 18 22 / 0.8);
+  --tile-ink: rgb(17 18 22 / 0.82);
   --tile-ink-2: rgb(17 18 22 / 0.5);
 }
 :root[data-theme='light'] .hz-tile[data-status='planned'] .hz-tile__face--front {
@@ -263,32 +284,32 @@
   background-size: 9px 9px;
 }
 
-/* 原专业 vs 现专业区分（正面切角 vs 十字准星） */
+/* 原专业 vs 现专业细腻标记 */
 .hz-tile[data-track='orig'] .hz-tile__face::before {
-  content: '';
+  content: '//';
   position: absolute;
-  right: 0;
-  bottom: 0;
-  width: 9px;
-  height: 9px;
-  background: linear-gradient(135deg, transparent 48%, var(--tile-accent) 50%);
-  opacity: 0.6;
+  right: 10px;
+  bottom: 9px;
+  font-family: var(--f-mono);
+  font-size: 0.62rem;
+  color: var(--tile-accent);
+  opacity: 0.52;
   pointer-events: none;
 }
 .hz-tile[data-track='clin'] .hz-tile__face::before {
   content: '+';
   position: absolute;
-  top: 5px;
-  right: 7px;
+  top: 7px;
+  right: 9px;
   font-family: var(--f-mono);
-  font-size: 0.6rem;
+  font-size: 0.68rem;
   line-height: 1;
   color: var(--tile-accent);
   opacity: 0.45;
   pointer-events: none;
 }
 
-/* 悬停 / 跨轨连亮 / 聚光灯压暗 */
+/* 悬停 / 聚光灯压暗 */
 .hz-tile:hover,
 .hz-tile:focus-visible {
   z-index: 3;
@@ -298,41 +319,43 @@
 .hz-tile:focus-visible .hz-tile__face {
   border-color: var(--hz-hot);
 }
-.hz-tile.is-peer {
-  z-index: 3;
-}
-.hz-tile.is-peer .hz-tile__face {
-  border-color: var(--hz-hot);
-  box-shadow: inset 0 0 0 2px var(--hz-hot), 0 0 18px rgb(255 90 26 / 0.35);
-}
 .hz-tile.is-dimmed {
-  opacity: 0.2;
-  filter: saturate(0.25);
+  opacity: 0.18;
+  filter: saturate(0.22);
 }
 
-/* 正面文字（仅课程名 + 学分） */
+/* —— 高冲击力正面排版：课程名称尽量填满方块 —— */
 .hz-tile__name {
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
   font-family: var(--f-sans);
-  font-size: clamp(0.84rem, 0.78rem + 0.26vw, 0.98rem);
-  font-weight: 700;
-  line-height: 1.28;
+  font-size: var(--fs-d, 1.05rem);
+  font-weight: 800;
+  line-height: 1.08;
+  letter-spacing: -0.025em;
   color: var(--tile-ink);
   padding-right: 12px;
   overflow-wrap: anywhere;
 }
-.hz-tile[data-hero='true'] .hz-tile__name {
-  font-size: clamp(1.04rem, 0.92rem + 0.45vw, 1.34rem);
-}
 .hz-tile__cr {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  align-self: flex-start;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: rgb(0 0 0 / 0.22);
   font-family: var(--f-mono);
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   font-weight: 700;
+  line-height: 1.2;
   color: var(--tile-accent);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+:root[data-theme='light'] .hz-tile__cr {
+  background: rgb(255 255 255 / 0.55);
 }
 .hz-tile__early {
   color: var(--hz-hot-ink);
@@ -340,20 +363,11 @@
 
 /* 巨型阶段方块：大五「医院实习」显著大于大四「医院见习」 */
 .hz-tile[data-milestone='true'] .hz-tile__face {
-  padding: 18px 22px;
-}
-.hz-tile[data-milestone-tier='clerkship'] .hz-tile__name {
-  font-size: clamp(1.6rem, 1.25rem + 1.4vw, 2.4rem);
-  font-weight: 800;
-  letter-spacing: -0.02em;
+  border-radius: 16px;
+  padding: 20px 24px;
 }
 .hz-tile[data-milestone-tier='internship'] .hz-tile__face {
-  padding: 24px 26px;
-}
-.hz-tile[data-milestone-tier='internship'] .hz-tile__name {
-  font-size: clamp(2.1rem, 1.6rem + 2.2vw, 3.35rem);
-  font-weight: 800;
-  letter-spacing: -0.025em;
+  padding: 26px 28px;
 }
 
 /* 背面信息（仅开课部门 + 成绩） */
@@ -378,15 +392,15 @@
 }
 .hz-tile__v--grade {
   font-family: var(--f-mono);
-  font-size: 0.82rem;
+  font-size: 0.84rem;
   font-weight: 700;
   color: var(--tile-accent);
 }
 .hz-tile[data-hero='true'] .hz-tile__v {
-  font-size: 0.9rem;
+  font-size: 0.92rem;
 }
 .hz-tile[data-hero='true'] .hz-tile__v--grade {
-  font-size: 1rem;
+  font-size: 1.04rem;
 }
 .hz-tile[data-milestone='true'] .hz-tile__face--back {
   gap: 12px;
@@ -401,26 +415,58 @@
 /* —— 响应式断点 —— */
 @media (max-width: 1024px) {
   .hz-mosaic {
-    grid-template-columns: repeat(12, minmax(0, 1fr));
-    grid-auto-rows: minmax(82px, auto);
+    grid-template-columns: 88px repeat(12, minmax(0, 1fr));
+    grid-auto-rows: minmax(84px, auto);
+    gap: 5px;
+  }
+  .hz-axis-seg {
+    grid-row: var(--tr) / span var(--th);
+    padding-right: 10px;
   }
   .hz-tile {
-    grid-column: var(--tc) / span var(--tw);
+    grid-column: calc(var(--tc) + 1) / span var(--tw);
     grid-row: var(--tr) / span var(--th);
   }
 }
 
 @media (max-width: 640px) {
   .hz-mosaic {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-    grid-auto-rows: minmax(80px, auto);
+    grid-template-columns: 52px repeat(6, minmax(0, 1fr));
+    grid-auto-rows: minmax(82px, auto);
+    gap: 4px;
+  }
+  .hz-axis-seg {
+    grid-row: var(--mr) / span var(--mh);
+    padding: 6px 6px 6px 0;
+  }
+  .hz-axis-full {
+    display: none;
+  }
+  .hz-axis-short {
+    display: inline;
+  }
+  .hz-axis-seg__year {
+    font-size: 0.58rem;
+  }
+  .hz-axis-seg__label {
+    font-size: 0.68rem;
+    line-height: 1.15;
   }
   .hz-tile {
-    grid-column: var(--mc) / span var(--mw);
+    grid-column: calc(var(--mc) + 1) / span var(--mw);
     grid-row: var(--mr) / span var(--mh);
   }
   .hz-tile__face {
     padding: 8px 9px;
+    border-radius: 10px;
+  }
+  .hz-tile__name {
+    font-size: var(--fs-m, 0.88rem);
+    padding-right: 8px;
+  }
+  .hz-tile__cr {
+    font-size: 0.6rem;
+    padding: 1px 5px;
   }
   .hz-tile__v {
     font-size: 0.7rem;

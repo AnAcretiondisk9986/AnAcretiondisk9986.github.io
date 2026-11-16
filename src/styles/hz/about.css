@@ -128,26 +128,9 @@
   max-width: 44em;
   line-height: 1.8;
 }
-.hz-about-copy p a,
-.hz-about-quote a {
+.hz-about-copy p a {
   color: var(--hz-hot-ink);
   border-bottom: 1px solid color-mix(in oklab, var(--hz-hot-ink) 45%, transparent);
-}
-.hz-about-quote {
-  display: grid;
-  gap: var(--s-2);
-  padding: var(--s-4) var(--s-5);
-  border-left: 2px solid var(--hz-hot);
-  background: var(--hz-bg-2);
-}
-.hz-about-quote span {
-  font-family: var(--f-mono);
-  color: var(--hz-hot-ink);
-}
-.hz-about-quote div {
-  font-family: var(--f-serif);
-  font-size: clamp(1.15rem, 1.02rem + 0.4vw, 1.38rem);
-  font-weight: 600;
 }
 
 .hz-ledger-box {
