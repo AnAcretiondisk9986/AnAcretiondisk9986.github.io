@@ -3,7 +3,7 @@
     "title": "学业轨线",
     "subtitle": "从信息管理与信息系统到临床医学五年制：用五年半的课程拼贴，记录一次跨专业变轨与医学学习的全部轨迹。",
     "updatedAt": "2026-11-16",
-    "activeTermLabel": "2026–2027 · 第一学期（新·大一上 + 6 门提前修读）"
+    "activeTermLabel": "2026–2027 · 第一学期（新·大一上 + 4 门本学期提前修读）"
   },
   "tracks": {
     "orig": {
@@ -1272,9 +1272,9 @@
       "nature": "必修课",
       "semesterId": "clin-2728-2",
       "track": "clin",
-      "status": "active",
+      "status": "planned",
       "early": true,
-      "earlyNote": "2026-2027 提前修读",
+      "earlyNote": "2026-2027 下学期提前修读",
       "grade": "",
       "gpa": null,
       "note": "",
@@ -1290,9 +1290,9 @@
       "nature": "必修课",
       "semesterId": "clin-2728-2",
       "track": "clin",
-      "status": "active",
+      "status": "planned",
       "early": true,
-      "earlyNote": "2026-2027 提前修读",
+      "earlyNote": "2026-2027 下学期提前修读",
       "grade": "",
       "gpa": null,
       "note": "",
