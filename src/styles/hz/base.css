@@ -175,17 +175,22 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
+.hz-pixel {
+  font-family: var(--f-pixel);
+  font-size: var(--t-micro);
+  letter-spacing: 0.08em;
+}
 .hz-wrap {
   width: min(100% - 2 * var(--gutter), var(--wide));
   margin-inline: auto;
 }
 
-/* 标签：方括号包裹的读数 */
+/* 标签：日系点阵像素括号读数 */
 .hz-tag {
   display: inline-flex;
   align-items: center;
   gap: 0.3em;
-  font-family: var(--f-mono);
+  font-family: var(--f-pixel);
   font-size: var(--t-micro);
   letter-spacing: 0.06em;
   color: var(--hz-ink-2);
@@ -318,10 +323,34 @@
   letter-spacing: 0.1em;
 }
 .hz-sect__title {
-  font-family: var(--f-display);
+  font-family: var(--f-avant);
   font-size: var(--t-h2);
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: -0.02em;
+}
+.hz-sect__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px var(--s-4);
+}
+.hz-sect__sub {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  color: var(--hz-ink-3);
+}
+.hz-sect__sub i {
+  font-family: var(--f-serif);
+  font-style: italic;
+  font-size: 1.15rem;
+  color: var(--hz-ink-2);
+}
+.hz-sect__sub span {
+  font-family: var(--f-pixel);
+  font-size: var(--t-micro);
+  letter-spacing: 0.08em;
+  color: var(--hz-hot-ink);
 }
 .hz-sect__rule {
   height: 1px;

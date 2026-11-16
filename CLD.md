@@ -79,9 +79,9 @@ src/
 
 ## 3. 当前状态
 
-- **Phase 1（全站前端表现层重写）已完成并完成本地构建与浏览器巡检**：
-  - `npx astro build` 生成 121 个静态页面，无报错；`node scripts/postbuild-rewrite.mjs` 正常运行。
-  - 无头 Chrome 覆盖 `1440×900`（VOID 暗色 / PLATE 底片亮色）与 `390×844`（移动端），所有主路由横向溢出 `overflow = 0`，WebGL 黑洞首屏、光谱检索、文章目录/短链/门禁、图志透镜场/索引/灯箱、关于词频墙、私密暗房、AI 额度与定价页全部验证通过。
+- **Phase 1.1（圆角矩形文章封面 + 中/日/英多语种分区排印系统）已完成构建与视觉回归验证**：
+  - `npx astro build` 生成 121 个静态页面，无报错；`node scripts/postbuild-rewrite.mjs` 改写 1410 处图片链接。
+  - 无头 Chrome 实测：文章悬浮预览框（`288×186` / `border-radius: 14px`）与文章详情页首图均已改为圆角矩形；首页英文域名 `Blog.Acretiondisk.top` 在 `1440px` 与 `390px` 均单行稳定显示；全站中 / 日 / 英分区多字体渲染无残缺字形或白块缺陷。
 
 ## 4. 待办 / 已知问题
 
@@ -97,6 +97,27 @@ src/
 ## 5. 更改日志（新的在上）
 
 <!-- 新条目追加在这里 -->
+
+### 2026-11-16 · Phase 1.1：圆角矩形文章封面与中/日/英多语种风格化分区排印
+
+- **文章封面形态改造**：
+  - [log.css](src/styles/hz/log.css) 与 [lens.ts](src/scripts/hz/lens.ts)：将文章行悬停封面预览 `.hz-lens` 从 `210×210` 圆形透镜改为 **`288×186`（16:10）圆角矩形**（`border-radius: 14px`），配内嵌虚线框（`9px` 圆角）、右下角渐变景深阴影与左下角 `DotGothic16` 日期徽标，同步调整视口边界防裁切边距。
+  - [entry.css](src/styles/hz/entry.css)：文章详情页主封面 `.hz-entry__cover` 同步改为 `border-radius: 14px; overflow: hidden;`，与悬浮封面预览统一语言。
+- **自托管多语种风格化字体体系**：
+  - 新增自托管字体文件与按 `unicode-range` 切分的 WOFF2 分片（位于 `public/fonts/` 与 `public/fonts/slices/`），汇总至 [fonts.css](src/styles/hz/fonts.css) 并在 [BaseLayout.astro](src/layouts/BaseLayout.astro) 顶部引入及预加载核心 Latin WOFF2：
+    - 英文：`Unbounded`（纪念碑宽体展示） / `Syne` 700·800（先锋几何展示） / `Instrument Serif` 正体·斜体（高对比杂志衬线） / `JetBrains Mono`（数值与代码）；
+    - 日文：`DotGothic16`（16px 点阵像素仪器字，涵盖假名/汉字/ASCII） / `Dela Gothic One`（重磅日系展示黑体）；
+    - 中文：`站酷庆科黄油体（ZCOOL QingKe HuangYou）`（几何现代标题） / `思源宋体（Noto Serif SC 600）`（高对比文艺正文标题） / `霞鹜文楷（LXGW WenKai Lite）`（导语与副题人文楷体） / `马善政楷书（Ma Shan Zheng）`（毛笔书法签名与引语）。
+  - **区域差异化映射**（[tokens.css](src/styles/hz/tokens.css) 及各页面样式）：
+    - 顶栏导航、首屏中文主标与各页 Mega H1 采用 `Syne + ZCOOL QingKe HuangYou`；
+    - 首页首屏增加日文点阵徽标 `事象の地平線`，各区块标题增配 `Instrument Serif` 斜体英文副标与 `DotGothic16` 日文观测代号（`観測記録` / `重力レンズ` / `観測者記録`）；
+    - 文章列表与文章页 H1/引用使用 `Instrument Serif + Noto Serif SC 600`，导语使用 `LXGW WenKai Lite`，正文首段新增毛笔/斜体衬线首字下沉（`::first-letter`）；
+    - 图志卡面与灯箱标题针对日/英画师名启用 `Syne + Dela Gothic One`，编号启用 `DotGothic16`；
+    - 页脚尾注与关于页导语/原则使用 `Ma Shan Zheng` 毛笔体；关于页词频光谱墙按 `:nth-child(4n+...)` 交替混排 4 套中英字体 + `DotGothic16` 计数角标。
+- **回归巡检发现并修复的排印缺陷**：
+  - 排查并替换掉存在「回」字轮廓绕向填充缺陷（渲染成实心白块 `■`）的 `ZCOOL XiaoWei`，改用全字形稳定的 `Noto Serif SC 600` + `LXGW WenKai Lite`；
+  - 调整首页 `.hz-hero__domain` 宽度与 `white-space: nowrap`，避免 `Syne 800` 下 `Blog.Acretiondisk.top` 末尾字母 `p` 单独换行；
+  - 移除词频墙小字号汉字上的 `Dela Gothic One`，改用 `LXGW WenKai Lite` 与 `Noto Serif SC` 保持清晰呼吸感。
 
 ### 2026-11-16 · Phase 1：HORIZON（视界）全站前端重写完成与首轮视觉巡检修复
 

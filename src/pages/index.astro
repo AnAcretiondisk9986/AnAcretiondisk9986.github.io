@@ -47,6 +47,7 @@ const primaryCtaHref = safeLink(frontend.primaryCtaHref, '/blog/');
       <p class="hz-hero__eyebrow hz-mono">
         <i class="hz-hero__pulse" aria-hidden="true"></i>
         <span>{frontend.heroEyebrow || 'EVENT HORIZON OBSERVATORY · 2026'}</span>
+        <span class="hz-hero__jp" lang="ja">事象の地平線</span>
       </p>
 
       <h1 id="hz-hero-title" class="hz-hero__title">
@@ -87,7 +88,10 @@ const primaryCtaHref = safeLink(frontend.primaryCtaHref, '/blog/');
   <section class="hz-home-sec hz-wrap" aria-labelledby="sec-recent">
     <div class="hz-sect">
       <span class="hz-sect__no">01</span>
-      <h2 class="hz-sect__title" id="sec-recent">近期观测记录</h2>
+      <div class="hz-sect__head">
+        <h2 class="hz-sect__title" id="sec-recent">近期观测记录</h2>
+        <span class="hz-sect__sub"><i>Recent Transmissions</i><span lang="ja">観測記録</span></span>
+      </div>
       <span class="hz-sect__rule" aria-hidden="true"></span>
       <a class="hz-sect__more" href="/blog/">全部 {posts.length} 篇光谱 →</a>
     </div>
@@ -103,7 +107,10 @@ const primaryCtaHref = safeLink(frontend.primaryCtaHref, '/blog/');
     <section class="hz-home-sec hz-wrap" aria-labelledby="sec-plates">
       <div class="hz-sect">
         <span class="hz-sect__no">02</span>
-        <h2 class="hz-sect__title" id="sec-plates">引力透镜图版</h2>
+        <div class="hz-sect__head">
+          <h2 class="hz-sect__title" id="sec-plates">引力透镜图版</h2>
+          <span class="hz-sect__sub"><i>Gravitational Lensing</i><span lang="ja">重力レンズ</span></span>
+        </div>
         <span class="hz-sect__rule" aria-hidden="true"></span>
         <a class="hz-sect__more" href="/gallery/">进入透镜场 →</a>
       </div>
@@ -137,7 +144,10 @@ const primaryCtaHref = safeLink(frontend.primaryCtaHref, '/blog/');
   <section class="hz-home-sec hz-wrap" aria-labelledby="sec-observer">
     <div class="hz-sect">
       <span class="hz-sect__no">03</span>
-      <h2 class="hz-sect__title" id="sec-observer">观测者档案</h2>
+      <div class="hz-sect__head">
+        <h2 class="hz-sect__title" id="sec-observer">观测者档案</h2>
+        <span class="hz-sect__sub"><i>Observer Dossier</i><span lang="ja">観測者記録</span></span>
+      </div>
       <span class="hz-sect__rule" aria-hidden="true"></span>
       <a class="hz-sect__more" href="/about/">完整档案与项目 →</a>
     </div>

@@ -66,11 +66,11 @@
   min-width: 0;
 }
 .hz-row__title {
-  font-family: var(--f-cjk);
-  font-size: clamp(1.1rem, 0.95rem + 0.55vw, 1.42rem);
-  font-weight: 700;
-  line-height: 1.3;
-  letter-spacing: -0.01em;
+  font-family: var(--f-serif);
+  font-size: clamp(1.18rem, 0.98rem + 0.6vw, 1.5rem);
+  font-weight: 600;
+  line-height: 1.32;
+  letter-spacing: 0.01em;
   color: color-mix(in oklab, var(--hz-ink) 80%, var(--hz-red) calc(var(--hz-age, 0) * 20%));
   overflow-wrap: anywhere;
 }
@@ -137,24 +137,24 @@
   transform: translate(3px, -3px);
 }
 
-/* —— 悬浮爱因斯坦环封面透镜 —— */
+/* —— 悬浮圆角矩形文章封面预览 —— */
 .hz-lens {
   position: fixed;
   top: 0;
   left: 0;
   z-index: 42;
-  width: 210px;
-  height: 210px;
-  border-radius: 50%;
+  width: 288px;
+  height: 186px;
+  border-radius: 14px;
   border: 1px solid var(--hz-hot);
   background: var(--hz-void);
   overflow: hidden;
   pointer-events: none;
   opacity: 0;
-  scale: 0.72;
+  scale: 0.86;
   transition: opacity var(--d-2) var(--e-out), scale var(--d-2) var(--e-out);
   will-change: transform, opacity;
-  box-shadow: 0 0 0 8px rgb(255 90 26 / 0.08);
+  box-shadow: 0 12px 32px -12px rgb(0 0 0 / 0.65), 0 0 0 6px rgb(255 90 26 / 0.08);
 }
 .hz-lens.is-visible {
   opacity: 1;
@@ -167,20 +167,22 @@
 }
 .hz-lens__ring {
   position: absolute;
-  inset: 8px;
-  border-radius: 50%;
-  border: 1px dashed rgb(255 241 214 / 0.45);
+  inset: 7px;
+  border-radius: 9px;
+  border: 1px dashed rgb(255 241 214 / 0.42);
   pointer-events: none;
 }
 .hz-lens__cap {
   position: absolute;
-  left: 50%;
-  bottom: 10px;
-  transform: translateX(-50%);
-  padding: 2px 7px;
-  background: rgb(8 8 11 / 0.82);
+  left: 14px;
+  bottom: 12px;
+  padding: 2px 8px;
+  border-radius: 5px;
+  background: rgb(8 8 11 / 0.84);
   color: #fff1d6;
-  font-size: 0.6rem;
+  font-family: var(--f-pixel);
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
   white-space: nowrap;
 }
 
@@ -200,18 +202,20 @@
   gap: var(--s-4);
 }
 .hz-log-head__title {
-  font-family: var(--f-display);
+  font-family: var(--f-avant);
   font-size: var(--t-h1);
   font-weight: 800;
-  letter-spacing: -0.025em;
-  line-height: 1.02;
+  letter-spacing: -0.02em;
+  line-height: 1.04;
 }
 .hz-log-head__deck {
+  font-family: var(--f-serif);
   color: var(--hz-ink-2);
-  font-size: var(--t-lead);
+  font-size: clamp(1.15rem, 1rem + 0.45vw, 1.4rem);
   max-width: 36em;
 }
 .hz-log-head__kicker {
+  font-family: var(--f-pixel);
   color: var(--hz-hot-ink);
   margin-bottom: var(--s-2);
 }

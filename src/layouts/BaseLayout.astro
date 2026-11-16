@@ -4,6 +4,7 @@
  * Props 与旧版兼容（title / description / bodyClass），额度页与定价页无需改动即可套用。
  * 不再使用 Astro ClientRouter：跨页过渡交给原生跨文档 View Transitions（见 styles/hz/base.css）。
  */
+import '../styles/hz/fonts.css';
 import '../styles/hz/tokens.css';
 import '../styles/hz/base.css';
 import '../styles/hz/shell.css';
@@ -54,6 +55,8 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? 'https://blog.acreti
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
     <link rel="preload" href="/fonts/unbounded-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/syne-800.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/instrument-serif-400-italic.woff2" as="font" type="font/woff2" crossorigin />
     <title>{fullTitle}</title>
     <script is:inline>
       (function () {

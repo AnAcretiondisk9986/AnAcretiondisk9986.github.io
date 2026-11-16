@@ -1,25 +1,8 @@
 /* ==========================================================================
    HORIZON · tokens
    VOID（暗，默认） / PLATE（亮，照相底片）
+   多语种风格化字体栈（具体 @font-face 定义见 fonts.css）
    ========================================================================== */
-
-@font-face {
-  font-family: 'Unbounded';
-  src: url('/fonts/unbounded-latin.woff2') format('woff2');
-  font-weight: 200 900;
-  font-style: normal;
-  font-display: swap;
-  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308,
-    U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
-}
-
-@font-face {
-  font-family: 'JetBrains Mono';
-  src: url('/fonts/jetbrains-mono.woff2') format('woff2');
-  font-weight: 100 800;
-  font-style: normal;
-  font-display: swap;
-}
 
 :root {
   color-scheme: dark;
@@ -44,10 +27,26 @@
   /* HUD 用 difference 混合，颜色在两套主题下都必须是亮色 */
   --hz-hud-ink: #f1ece2;
 
-  /* —— 字 —— */
-  --f-display: 'Unbounded', 'PingFang SC', 'Noto Sans SC', 'Source Han Sans SC', 'Microsoft YaHei', sans-serif;
-  --f-cjk: 'PingFang SC', 'Noto Sans SC', 'Source Han Sans SC', 'Microsoft YaHei', sans-serif;
+  /* —— 字（中 / 日 / 英 分区差异化） —— */
+  /* 纪念碑宽体展示（品牌 / 巨型页脚 / 大号数字） */
+  --f-display: 'Unbounded', 'ZCOOL QingKe HuangYou', 'Dela Gothic One', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  /* 先锋几何展示（首页域名 / 区块主标 / 各页 H1） */
+  --f-avant: 'Syne', 'ZCOOL QingKe HuangYou', 'Dela Gothic One', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  /* 高对比文艺衬线（文章标题 / 导语 / 引用 —— 思源宋体 600 + Instrument Serif） */
+  --f-serif: 'Instrument Serif', 'Noto Serif SC', 'Songti SC', Georgia, serif;
+  /* 文学楷书（副标题 / 导语 / 词频墙） */
+  --f-kai: 'Instrument Serif', 'LXGW WenKai Lite', 'Noto Serif SC', STKaiti, serif;
+  /* 书法墨迹 + 斜体衬线（诗意尾注 / 签名 / 编目原则） */
+  --f-brush: 'Instrument Serif', 'Ma Shan Zheng', 'LXGW WenKai Lite', STKaiti, serif;
+  /* 重磅日系视觉冲击体（图志日文/画师标题） */
+  --f-impact-jp: 'Syne', 'Dela Gothic One', 'Noto Serif SC', 'Hiragino Kaku Gothic ProN', sans-serif;
+  /* 日系 16px 点阵仪器字体（角标 / 标签 / 坐标 / 底片编号 / 日文副标） */
+  --f-pixel: 'DotGothic16', 'JetBrains Mono', ui-monospace, monospace;
+  /* 稳重中文字体栈（辅文） */
+  --f-cjk: 'LXGW WenKai Lite', 'PingFang SC', 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+  /* 长文正文（易读无衬线） */
   --f-body: system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+  /* 精密表格与代码等宽 */
   --f-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Code', Consolas, monospace;
 
   --t-micro: 0.6875rem; /* 11 */

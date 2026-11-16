@@ -12,18 +12,20 @@
   gap: var(--s-3);
 }
 .hz-gal-head__kicker {
+  font-family: var(--f-pixel);
   color: var(--hz-hot-ink);
 }
 .hz-gal-head__title {
-  font-family: var(--f-display);
+  font-family: var(--f-avant);
   font-size: var(--t-h1);
   font-weight: 800;
-  letter-spacing: -0.025em;
-  line-height: 1.02;
+  letter-spacing: -0.02em;
+  line-height: 1.04;
 }
 .hz-gal-head__deck {
+  font-family: var(--f-serif);
   color: var(--hz-ink-2);
-  font-size: var(--t-lead);
+  font-size: clamp(1.15rem, 1rem + 0.45vw, 1.4rem);
   max-width: 38em;
 }
 
@@ -182,7 +184,8 @@
 }
 .hz-field-lock__title {
   display: block;
-  font-size: var(--t-small);
+  font-family: var(--f-impact-jp);
+  font-size: 0.95rem;
   font-weight: 700;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -191,6 +194,7 @@
 .hz-field-lock__meta {
   display: block;
   margin-top: 2px;
+  font-family: var(--f-pixel);
   color: var(--hz-hot-ink);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -237,6 +241,7 @@
   gap: 8px;
   padding: 6px 8px;
   border-top: 1px solid var(--hz-line);
+  font-family: var(--f-pixel);
   color: var(--hz-ink-2);
 }
 .hz-fplate__cap span:last-child {
@@ -297,14 +302,16 @@
   border-top: 1px solid var(--hz-line);
 }
 .hz-iplate__no {
+  font-family: var(--f-pixel);
   color: var(--hz-ink-3);
 }
 .hz-iplate:hover .hz-iplate__no {
   color: var(--hz-hot-ink);
 }
 .hz-iplate__title {
-  font-size: var(--t-small);
-  font-weight: 600;
+  font-family: var(--f-impact-jp);
+  font-size: 0.92rem;
+  font-weight: 700;
   line-height: 1.35;
 }
 .hz-iplate__cap {
@@ -408,7 +415,8 @@ dialog.hz-viewer::backdrop {
   padding: var(--s-3) var(--s-4);
 }
 .hz-viewer__foot h2 {
-  font-size: var(--t-lead);
+  font-family: var(--f-impact-jp);
+  font-size: clamp(1.15rem, 1rem + 0.5vw, 1.45rem);
   margin-top: 2px;
 }
 .hz-viewer__cap {
