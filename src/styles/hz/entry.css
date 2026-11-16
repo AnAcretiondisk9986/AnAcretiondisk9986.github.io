@@ -65,17 +65,17 @@
 }
 
 .hz-entry__title {
-  font-family: var(--f-serif);
-  font-size: clamp(2rem, 1.05rem + 2.8vw, 3.65rem);
-  font-weight: 600;
-  line-height: 1.14;
-  letter-spacing: 0.005em;
-  max-width: 24em;
+  font-family: var(--f-sans);
+  font-size: clamp(1.85rem, 1rem + 2.6vw, 3.35rem);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  max-width: 100%;
   overflow-wrap: anywhere;
 }
 .hz-entry__deck {
-  font-family: var(--f-kai);
-  font-size: clamp(1.15rem, 1rem + 0.42vw, 1.4rem);
+  font-family: var(--f-sans);
+  font-size: var(--t-lead);
   color: var(--hz-ink-2);
   max-width: 44em;
   line-height: 1.55;
@@ -305,7 +305,7 @@
   color: var(--hz-hot-ink);
 }
 .hz-gate__title {
-  font-family: var(--f-cjk);
+  font-family: var(--f-sans);
   font-size: var(--t-h2);
   font-weight: 700;
 }

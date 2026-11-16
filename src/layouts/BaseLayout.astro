@@ -54,9 +54,10 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? 'https://blog.acreti
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <link rel="preload" href="/fonts/anthropic-sans.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/anthropic-mono.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/anthropic-serif-italic.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="/fonts/unbounded-latin.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="preload" href="/fonts/syne-800.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="preload" href="/fonts/instrument-serif-400-italic.woff2" as="font" type="font/woff2" crossorigin />
     <title>{fullTitle}</title>
     <script is:inline>
       (function () {

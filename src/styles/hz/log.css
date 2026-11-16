@@ -66,11 +66,11 @@
   min-width: 0;
 }
 .hz-row__title {
-  font-family: var(--f-serif);
-  font-size: clamp(1.18rem, 0.98rem + 0.6vw, 1.5rem);
-  font-weight: 600;
+  font-family: var(--f-sans);
+  font-size: clamp(1.12rem, 0.96rem + 0.55vw, 1.44rem);
+  font-weight: 700;
   line-height: 1.32;
-  letter-spacing: 0.01em;
+  letter-spacing: -0.01em;
   color: color-mix(in oklab, var(--hz-ink) 80%, var(--hz-red) calc(var(--hz-age, 0) * 20%));
   overflow-wrap: anywhere;
 }
@@ -180,7 +180,7 @@
   border-radius: 5px;
   background: rgb(8 8 11 / 0.84);
   color: #fff1d6;
-  font-family: var(--f-pixel);
+  font-family: var(--f-mono);
   font-size: 0.65rem;
   letter-spacing: 0.08em;
   white-space: nowrap;
@@ -202,20 +202,20 @@
   gap: var(--s-4);
 }
 .hz-log-head__title {
-  font-family: var(--f-avant);
+  font-family: var(--f-sans);
   font-size: var(--t-h1);
   font-weight: 800;
   letter-spacing: -0.02em;
-  line-height: 1.04;
+  line-height: 1.06;
 }
 .hz-log-head__deck {
-  font-family: var(--f-serif);
+  font-family: var(--f-sans);
   color: var(--hz-ink-2);
-  font-size: clamp(1.15rem, 1rem + 0.45vw, 1.4rem);
+  font-size: var(--t-lead);
   max-width: 36em;
 }
 .hz-log-head__kicker {
-  font-family: var(--f-pixel);
+  font-family: var(--f-mono);
   color: var(--hz-hot-ink);
   margin-bottom: var(--s-2);
 }

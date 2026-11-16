@@ -1,7 +1,9 @@
 /* ==========================================================================
    HORIZON · tokens
    VOID（暗，默认） / PLATE（亮，照相底片）
-   多语种风格化字体栈（具体 @font-face 定义见 fonts.css）
+   中文严格限定 Noto Sans SC / Noto Serif SC（思源宋体）
+   英文主力采用 Anthropic Sans / Anthropic Serif / Anthropic Mono + JetBrains Mono
+   日文仪表面板微标采用 DotGothic16 / Dela Gothic One（仅限 [lang="ja"]）
    ========================================================================== */
 
 :root {
@@ -27,35 +29,26 @@
   /* HUD 用 difference 混合，颜色在两套主题下都必须是亮色 */
   --hz-hud-ink: #f1ece2;
 
-  /* —— 字（中 / 日 / 英 分区差异化） —— */
-  /* 纪念碑宽体展示（品牌 / 巨型页脚 / 大号数字） */
-  --f-display: 'Unbounded', 'ZCOOL QingKe HuangYou', 'Dela Gothic One', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  /* 先锋几何展示（首页域名 / 区块主标 / 各页 H1） */
-  --f-avant: 'Syne', 'ZCOOL QingKe HuangYou', 'Dela Gothic One', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  /* 高对比文艺衬线（文章标题 / 导语 / 引用 —— 思源宋体 600 + Instrument Serif） */
-  --f-serif: 'Instrument Serif', 'Noto Serif SC', 'Songti SC', Georgia, serif;
-  /* 文学楷书（副标题 / 导语 / 词频墙） */
-  --f-kai: 'Instrument Serif', 'LXGW WenKai Lite', 'Noto Serif SC', STKaiti, serif;
-  /* 书法墨迹 + 斜体衬线（诗意尾注 / 签名 / 编目原则） */
-  --f-brush: 'Instrument Serif', 'Ma Shan Zheng', 'LXGW WenKai Lite', STKaiti, serif;
-  /* 重磅日系视觉冲击体（图志日文/画师标题） */
-  --f-impact-jp: 'Syne', 'Dela Gothic One', 'Noto Serif SC', 'Hiragino Kaku Gothic ProN', sans-serif;
-  /* 日系 16px 点阵仪器字体（角标 / 标签 / 坐标 / 底片编号 / 日文副标） */
-  --f-pixel: 'DotGothic16', 'JetBrains Mono', ui-monospace, monospace;
-  /* 稳重中文字体栈（辅文） */
-  --f-cjk: 'LXGW WenKai Lite', 'PingFang SC', 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
-  /* 长文正文（易读无衬线） */
-  --f-body: system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
-  /* 精密表格与代码等宽 */
-  --f-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Code', Consolas, monospace;
+  /* —— 字 —— */
+  --f-sans: 'Anthropic Sans', 'Noto Sans SC', 'Source Han Sans SC', system-ui, sans-serif;
+  --f-serif: 'Anthropic Serif', 'Noto Serif SC', 'Source Han Serif SC', Georgia, serif;
+  --f-mono: 'Anthropic Mono', 'JetBrains Mono', ui-monospace, monospace;
+  --f-code: 'JetBrains Mono', 'Anthropic Mono', ui-monospace, Consolas, monospace;
+  /* 纪念碑宽体仅限品牌字标、页脚大字与纯数字序号，不用于长句与混排正文标题 */
+  --f-display: 'Unbounded', 'Anthropic Sans', 'Noto Sans SC', sans-serif;
+  /* 仅限显式标记 lang="ja" 的日文仪器角标 */
+  --f-jp-pixel: 'Anthropic Mono', 'DotGothic16', 'Noto Sans SC', monospace;
+  --f-jp-impact: 'Anthropic Sans', 'Dela Gothic One', 'Noto Sans SC', sans-serif;
+
+  --f-body: var(--f-sans);
 
   --t-micro: 0.6875rem; /* 11 */
   --t-small: 0.8125rem; /* 13 */
   --t-body: 1.0625rem; /* 17 */
   --t-lead: clamp(1.125rem, 1rem + 0.5vw, 1.375rem);
-  --t-h3: clamp(1.25rem, 1.1rem + 0.6vw, 1.5rem);
-  --t-h2: clamp(1.6rem, 1.2rem + 1.6vw, 2.5rem);
-  --t-h1: clamp(2.2rem, 1.2rem + 4.2vw, 5.4rem);
+  --t-h3: clamp(1.22rem, 1.08rem + 0.55vw, 1.48rem);
+  --t-h2: clamp(1.45rem, 1.15rem + 1.25vw, 2.15rem);
+  --t-h1: clamp(2.1rem, 1.2rem + 3.6vw, 4.6rem);
   --t-mega: clamp(3.2rem, 1rem + 9vw, 11rem);
 
   /* —— 距 —— */

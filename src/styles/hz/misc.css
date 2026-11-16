@@ -32,14 +32,14 @@
   color: var(--hz-hot-ink);
 }
 .hz-404__title {
-  font-family: var(--f-avant);
+  font-family: var(--f-sans);
   font-size: var(--t-h1);
   font-weight: 800;
 }
 .hz-404__deck {
-  font-family: var(--f-serif);
+  font-family: var(--f-sans);
   color: var(--hz-ink-2);
-  font-size: clamp(1.1rem, 1rem + 0.4vw, 1.35rem);
+  font-size: var(--t-lead);
   max-width: 34em;
 }
 .hz-404__actions {
@@ -61,19 +61,19 @@
   border-bottom: 1px solid var(--hz-line-2);
 }
 .hz-darkroom__kicker {
-  font-family: var(--f-pixel);
+  font-family: var(--f-mono);
   color: var(--hz-hot-ink);
 }
 .hz-darkroom__title {
-  font-family: var(--f-avant);
+  font-family: var(--f-sans);
   font-size: var(--t-h1);
   font-weight: 800;
-  line-height: 1.04;
+  line-height: 1.06;
 }
 .hz-darkroom__deck {
-  font-family: var(--f-serif);
+  font-family: var(--f-sans);
   color: var(--hz-ink-2);
-  font-size: clamp(1.15rem, 1rem + 0.45vw, 1.38rem);
+  font-size: var(--t-lead);
 }
 .hz-darkroom__tele {
   display: flex;

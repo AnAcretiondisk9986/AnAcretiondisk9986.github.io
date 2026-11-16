@@ -79,9 +79,10 @@ src/
 
 ## 3. 当前状态
 
-- **Phase 1.1（圆角矩形文章封面 + 中/日/英多语种分区排印系统）已完成构建与视觉回归验证**：
-  - `npx astro build` 生成 121 个静态页面，无报错；`node scripts/postbuild-rewrite.mjs` 改写 1410 处图片链接。
-  - 无头 Chrome 实测：文章悬浮预览框（`288×186` / `border-radius: 14px`）与文章详情页首图均已改为圆角矩形；首页英文域名 `Blog.Acretiondisk.top` 在 `1440px` 与 `390px` 均单行稳定显示；全站中 / 日 / 英分区多字体渲染无残缺字形或白块缺陷。
+- **Phase 1.2（字体体系收敛：Noto Sans/思源宋体 + Anthropic Fonts System + 溢出修复）已完成构建、视觉复检与推送**：
+  - 中文严格限定为自托管 `Noto Sans SC`（400/700）与 `Noto Serif SC / 思源宋体`（600），已删除站酷黄油/小薇/马善政/霞鹜文楷等非 Noto 中文字体分片；
+  - 英文主力全面采用站长提供的 `Anthropic Sans`、`Anthropic Serif`、`Anthropic Mono`（含全字重与斜体，沿用 `public/fonts/anthropic-*.woff2`）+ `JetBrains Mono`；`Unbounded` 收敛至品牌标、巨型页脚与序号；日文仅在 `[lang="ja"]` 徽标保留 `DotGothic16`；
+  - 克制收敛衬线占比至引用、副标斜体、尾注与首字下沉等点缀位置；修复 `Syne` 等宽体英文在混排标题中溢出容器的问题。
 
 ## 4. 待办 / 已知问题
 
@@ -97,6 +98,21 @@ src/
 ## 5. 更改日志（新的在上）
 
 <!-- 新条目追加在这里 -->
+
+### 2026-11-16 · Phase 1.2：收敛至 Noto Sans/思源宋体 + Anthropic Fonts System，修复长英文标题溢出
+
+- **字体收敛与清理**：
+  - 删除 `public/fonts/slices/{zcool-qingke,ma-shan-zheng,lxgw-wenkai}/` 及 `public/fonts/{syne-*,instrument-serif-*}.woff2`；新增自托管 `Noto Sans SC`（400/700）分片至 `public/fonts/slices/noto-sans-sc/`。
+  - 更新 [fonts.css](src/styles/hz/fonts.css)、[tokens.css](src/styles/hz/tokens.css) 与 [BaseLayout.astro](src/layouts/BaseLayout.astro) 预加载项：
+    - 中文仅允许 `Noto Sans SC`（主轴）与 `Noto Serif SC / 思源宋体`（点缀）；
+    - 英文主力采用 `Anthropic Sans` / `Anthropic Serif` / `Anthropic Mono`（均含 300–800 可变字重与斜体）+ `JetBrains Mono`，仅保留 `Unbounded` 于品牌标、数字序号与全宽页脚字标；
+    - 日文专属点阵字 `DotGothic16` 严格限定在 `[lang="ja"]` 观测徽标（如 `事象の地平線`、`観測記録`）。
+- **克制衬线体用量**：
+  - 全站主标题、列表行（`.hz-row__title`）、文章页 `<h1>`/`<h2>`/`<h3>`、导语、图志卡面与按钮全面回归清爽的 `Anthropic Sans + Noto Sans SC`；
+  - `Anthropic Serif + 思源宋体` 仅保留在区块斜体英文副标、文章引用块 `blockquote`、首段首字下沉、页脚尾注与词频墙稀疏 20% 点缀位置。
+- **修复英文溢出容器问题**：
+  - 移除会造成长英文词汇横向超宽的 `Syne` 展示体，在 [prose.css](src/styles/hz/prose.css)、[entry.css](src/styles/hz/entry.css)、[home.css](src/styles/hz/home.css)、[gallery.css](src/styles/hz/gallery.css) 中补充 `max-width: 100%; min-width: 0; overflow-wrap: anywhere;` 并校对 `h2` 阶梯字号。
+  - 在无头浏览器对 `/blog/订阅google-ai-pro的一个小记录/` 的实测标题 `当我兴冲冲下载Gemini Desktop和Antigravity的时候` 复检中，`1440px` 与 `390px` 均 `h2Clipped: false`、`overflow: 0`。
 
 ### 2026-11-16 · Phase 1.1：圆角矩形文章封面与中/日/英多语种风格化分区排印
 

@@ -17,22 +17,22 @@
   border-bottom: 1px solid var(--hz-line-2);
 }
 .hz-about-head__kicker {
-  font-family: var(--f-pixel);
+  font-family: var(--f-mono);
   color: var(--hz-hot-ink);
   margin-bottom: var(--s-2);
 }
 .hz-about-head__title {
-  font-family: var(--f-avant);
+  font-family: var(--f-sans);
   font-size: var(--t-h1);
   font-weight: 800;
   letter-spacing: -0.02em;
-  line-height: 1.04;
+  line-height: 1.06;
 }
 .hz-about-head__sub {
   margin-top: var(--s-3);
-  font-family: var(--f-serif);
+  font-family: var(--f-sans);
   color: var(--hz-ink-2);
-  font-size: clamp(1.15rem, 1rem + 0.45vw, 1.4rem);
+  font-size: var(--t-lead);
   max-width: 36em;
 }
 
@@ -118,9 +118,9 @@
   gap: var(--s-4);
 }
 .hz-about-copy__lead {
-  font-family: var(--f-brush);
-  font-size: clamp(1.6rem, 1.2rem + 1.3vw, 2.35rem);
-  font-weight: 400;
+  font-family: var(--f-sans);
+  font-size: clamp(1.45rem, 1.15rem + 1vw, 2.05rem);
+  font-weight: 700;
   line-height: 1.25;
 }
 .hz-about-copy p {
@@ -141,13 +141,13 @@
   background: var(--hz-bg-2);
 }
 .hz-about-quote span {
-  font-family: var(--f-pixel);
+  font-family: var(--f-mono);
   color: var(--hz-hot-ink);
 }
 .hz-about-quote div {
-  font-family: var(--f-brush);
-  font-size: clamp(1.2rem, 1.05rem + 0.45vw, 1.48rem);
-  font-weight: 400;
+  font-family: var(--f-serif);
+  font-size: clamp(1.15rem, 1.02rem + 0.4vw, 1.38rem);
+  font-weight: 600;
 }
 
 .hz-ledger-box {
@@ -155,9 +155,9 @@
   gap: var(--s-3);
 }
 .hz-ledger-box h2 {
-  font-family: var(--f-avant);
+  font-family: var(--f-sans);
   font-size: var(--t-h3);
-  font-weight: 800;
+  font-weight: 700;
 }
 .hz-ledger-list {
   list-style: none;
@@ -224,28 +224,29 @@
   display: inline-flex;
   align-items: baseline;
   gap: 4px;
-  font-family: var(--f-avant);
-  font-size: calc(0.84rem + var(--w, 0.2) * 1.42rem);
+  font-family: var(--f-sans);
+  font-size: calc(0.84rem + var(--w, 0.2) * 1.38rem);
   font-weight: 700;
-  line-height: 1.18;
+  line-height: 1.2;
   color: color-mix(in oklab, var(--hz-ink-2) 55%, var(--hz-ink) calc(var(--w, 0) * 100%));
   transition: color var(--d-1), transform var(--d-1);
 }
 .hz-freq__word:nth-child(4n + 2) {
+  font-family: var(--f-sans);
+  font-style: italic;
+  font-weight: 500;
+}
+.hz-freq__word:nth-child(4n + 3) {
+  font-family: var(--f-mono), 'Noto Sans SC', sans-serif;
+  font-weight: 500;
+}
+.hz-freq__word:nth-child(5n) {
   font-family: var(--f-serif);
   font-style: italic;
   font-weight: 600;
 }
-.hz-freq__word:nth-child(4n + 3) {
-  font-family: var(--f-kai);
-  font-weight: 400;
-}
-.hz-freq__word:nth-child(4n) {
-  font-family: var(--f-brush);
-  font-weight: 400;
-}
 .hz-freq__word small {
-  font-family: var(--f-pixel);
+  font-family: var(--f-mono);
   font-size: 0.65rem;
   color: var(--hz-ink-3);
 }

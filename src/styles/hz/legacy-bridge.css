@@ -18,8 +18,8 @@
   --c-metal: var(--hz-hot-ink);
   --c-metal-ink: var(--hz-hot-ink);
 
-  --hero-font: var(--f-display);
-  --font-mono: var(--f-mono);
+  --hero-font: var(--f-sans);
+  --font-mono: var(--f-code);
   --type-body: var(--t-body);
   --type-sm: 0.875rem;
   --type-meta: 0.78rem;
