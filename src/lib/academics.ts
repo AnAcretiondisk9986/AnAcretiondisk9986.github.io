@@ -1,5 +1,3 @@
-import type { CollectionEntry } from 'astro:content';
-
 export type CourseStatus = 'completed' | 'active' | 'recognized' | 'planned';
 
 export interface AcademicCourse {
@@ -80,6 +78,9 @@ export interface GridPlacement {
 }
 
 export interface PackedCourse extends AcademicCourse {
+  hue: number;
+  semesterLabel: string;
+  semesterYear: string;
   desktop: GridPlacement;
   tablet: GridPlacement;
   mobile: GridPlacement;
@@ -94,11 +95,11 @@ export interface PackedSemester extends AcademicSemester {
   mobileRows: number;
 }
 
-export interface ResolvedPostRef {
-  id: string;
-  title: string;
-  pubDate: string;
-  requiresAuth: boolean;
+export interface PackedTrackWall {
+  courses: PackedCourse[];
+  desktopRows: number;
+  tabletRows: number;
+  mobileRows: number;
 }
 
 const creditWeight = (credits: number) => Math.pow(Math.max(0.5, credits), 0.78) + 0.55;
@@ -401,6 +402,9 @@ export function packAcademics(data: AcademicData): PackedSemester[] {
 
     const packed: PackedCourse[] = list.map((course) => ({
       ...course,
+      hue: sem.hue,
+      semesterLabel: sem.label,
+      semesterYear: sem.year,
       desktop: d.map.get(course.id) ?? { x: 1, y: 1, w: 24, h: 1 },
       tablet: t.map.get(course.id) ?? { x: 1, y: 1, w: 12, h: 1 },
       mobile: m.map.get(course.id) ?? { x: 1, y: 1, w: 6, h: 1 },
@@ -421,6 +425,35 @@ export function packAcademics(data: AcademicData): PackedSemester[] {
       mobileRows: m.rows,
     };
   });
+}
+
+/** 将同一轨道的多个学期在纵向上无间断拼接为单一连续网格 */
+export function packTrackWall(semesters: PackedSemester[]): PackedTrackWall {
+  const courses: PackedCourse[] = [];
+  let dOff = 0;
+  let tOff = 0;
+  let mOff = 0;
+
+  for (const sem of semesters) {
+    for (const c of sem.courses) {
+      courses.push({
+        ...c,
+        desktop: { ...c.desktop, y: c.desktop.y + dOff },
+        tablet: { ...c.tablet, y: c.tablet.y + tOff },
+        mobile: { ...c.mobile, y: c.mobile.y + mOff },
+      });
+    }
+    dOff += sem.desktopRows;
+    tOff += sem.tabletRows;
+    mOff += sem.mobileRows;
+  }
+
+  return {
+    courses,
+    desktopRows: dOff,
+    tabletRows: tOff,
+    mobileRows: mOff,
+  };
 }
 
 export function computeAcademicStats(data: AcademicData) {
@@ -459,29 +492,6 @@ export function computeAcademicStats(data: AcademicData) {
     plannedCount: planned.length,
     plannedCredits: sumCr(planned),
   };
-}
-
-export function buildPostMap(posts: CollectionEntry<'blog'>[]) {
-  const map = new Map<string, ResolvedPostRef>();
-  for (const post of posts) {
-    map.set(post.id.toLowerCase(), {
-      id: post.id,
-      title: post.data.title,
-      pubDate: post.data.pubDate.toISOString().slice(0, 10),
-      requiresAuth: post.data.access === 'authorized',
-    });
-  }
-  return map;
-}
-
-export function resolvePostRefs(slugs: string[] | undefined, postMap: Map<string, ResolvedPostRef>): ResolvedPostRef[] {
-  if (!slugs || slugs.length === 0) return [];
-  const out: ResolvedPostRef[] = [];
-  for (const slug of slugs) {
-    const found = postMap.get(slug.toLowerCase());
-    if (found) out.push(found);
-  }
-  return out;
 }
 
 export const fmtCredit = (n: number) => (Number.isInteger(n) ? `${n}.0` : String(n));

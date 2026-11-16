@@ -79,10 +79,10 @@ src/
 
 ## 3. 当前状态
 
-- **Phase 1.3（新增 `/academics/`「学业」二级页：课程拼贴墙与轨道跃迁）已完成构建与无头浏览器复检**：
+- **Phase 1.3（新增 `/academics/`「学业」二级页：纵向连续课程拼贴墙与原地翻转卡片）已完成构建与视觉复检**：
   - 在 [Hud.astro](src/components/hz/Hud.astro) 顶栏接入 `05 学业（TRAJECTORY）`，将 `额度` 顺延至 `06`；
-  - 新增结构化课程数据 [academics.json](src/data/academics.json)（99 门去重课程 + 大四「医院见习」/ 大五「医院实习」阶段块，覆盖原·信息管理与信息系统大一至临床医学五年制全周期，预留 `grade`/`gpa` 与 `note`/`posts` 字段）；
-  - 新增构建期 24/12/6 列无缝 Bento 拼版求解器 [academics.ts](src/lib/academics.ts)、[academics.astro](src/pages/academics.astro)、[academics.css](src/styles/hz/academics.css) 与客户端脚本 [academics.ts](src/scripts/hz/academics.ts)。
+  - 新增结构化课程数据 [academics.json](src/data/academics.json)（99 门去重课程 + 大四「医院见习」/ 大五「医院实习」巨型阶段方块，覆盖原·信息管理与信息系统大一至临床医学五年制全周期，预留 `grade` 字段）；
+  - 在 [academics.ts](src/lib/academics.ts)、[academics.astro](src/pages/academics.astro)、[academics.css](src/styles/hz/academics.css) 与 [academics.ts](src/scripts/hz/academics.ts) 实现两段轨道的纵向连续无缝拼接（无学期分割线，中间以 `── 转专业 ──` 细线隔开），卡片正面仅展示课程名与学分，点击卡片在原地 3D 翻转为开课部门与成绩（未录入显示 `NULL`）。
 - **Phase 1.2（字体体系收敛：Noto Sans/思源宋体 + Anthropic Fonts System + 溢出修复）已完成构建、视觉复检与推送**：
   - 中文严格限定为自托管 `Noto Sans SC`（400/700）与 `Noto Serif SC / 思源宋体`（600），已删除站酷黄油/小薇/马善政/霞鹜文楷等非 Noto 中文字体分片；
   - 英文主力全面采用站长提供的 `Anthropic Sans`、`Anthropic Serif`、`Anthropic Mono`（含全字重与斜体，沿用 `public/fonts/anthropic-*.woff2`）+ `JetBrains Mono`；`Unbounded` 收敛至品牌标、巨型页脚与序号；日文仅在 `[lang="ja"]` 徽标保留 `DotGothic16`；
@@ -102,6 +102,14 @@ src/
 ## 5. 更改日志（新的在上）
 
 <!-- 新条目追加在这里 -->
+
+### 2026-11-16 · Phase 1.3 迭代：纵向无缝拼接 + 极简「转专业」横线 + 原地翻转卡片
+
+- **纵向无缝融合与极简降噪**：
+  - [academics.ts](src/lib/academics.ts) 新增 `packTrackWall()`，将原专业（2 学期共 24 块）与临床专业（10 学期/阶段共 77 块）分别在纵向上无间断拼接成两面连续拼贴墙，去掉所有学期标题块、冗余统计卡与说明文字。
+  - [academics.astro](src/pages/academics.astro) 与 [academics.css](src/styles/hz/academics.css) 将轨道过渡简化为一条水平细线上的「转专业」三字，并在筛选按钮中内联底纹示例。
+- **原地 3D 翻转卡片**：
+  - 去除详情抽屉，卡片正面仅保留课程名称与学分（及学分互认/提前标记），点击后在原地执行 `rotateY(180deg)` 翻转展示「开课部门」与「成绩」（未录入显示 `NULL`）。
 
 ### 2026-11-16 · Phase 1.3：新增 `/academics/`「学业」二级页（Bento 课程拼贴墙）
 

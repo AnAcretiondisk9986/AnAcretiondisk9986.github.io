@@ -1,348 +1,150 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { getPublicPosts } from '../lib/posts';
-import { safeLink } from '../lib/safe-link';
 import {
-  buildPostMap,
   computeAcademicStats,
   fmtCredit,
   packAcademics,
-  resolvePostRefs,
+  packTrackWall,
   type AcademicData,
+  type PackedCourse,
 } from '../lib/academics';
 import rawData from '../data/academics.json';
 import '../styles/hz/log.css';
 import '../styles/hz/academics.css';
 
 const data = rawData as AcademicData;
-const posts = await getPublicPosts();
-const postMap = buildPostMap(posts);
 const stats = computeAcademicStats(data);
 const packedSemesters = packAcademics(data);
 
-const trackGroups = [
-  {
-    track: data.tracks.orig,
-    courseCount: stats.origCourses,
-    credits: stats.origCredits,
-    semesters: packedSemesters.filter((s) => s.track === 'orig'),
-  },
-  {
-    track: data.tracks.clin,
-    courseCount: stats.clinCourses,
-    credits: stats.clinCredits,
-    semesters: packedSemesters.filter((s) => s.track === 'clin'),
-  },
-];
-
-const clientPayload = packedSemesters.flatMap((sem) =>
-  sem.courses.map((c) => ({
-    id: c.id,
-    code: c.code,
-    name: c.name,
-    credits: c.credits,
-    kind: c.kind || 'course',
-    milestoneLabel: c.milestoneLabel || '',
-    dept: c.dept,
-    nature: c.nature,
-    semesterId: c.semesterId,
-    semesterLabel: sem.label,
-    semesterYear: sem.year,
-    track: c.track,
-    trackName: c.track === 'orig' ? data.tracks.orig.name : data.tracks.clin.name,
-    status: c.status,
-    segments: c.segments,
-    early: c.early,
-    earlyNote: c.earlyNote,
-    recognizedNote: c.recognizedNote,
-    grade: c.grade,
-    gpa: c.gpa,
-    note: c.note,
-    linkedIds: c.linkedIds,
-    posts: resolvePostRefs(c.posts, postMap),
-  })),
-);
-const serializedPayload = JSON.stringify(clientPayload).replace(/</g, '\\u003c');
+const origWall = packTrackWall(packedSemesters.filter((s) => s.track === 'orig'));
+const clinWall = packTrackWall(packedSemesters.filter((s) => s.track === 'clin'));
 
 const litTotal = stats.completedCount + stats.recognizedCount + stats.activeCount;
-const notedCount = clientPayload.filter((c) => Boolean(c.note?.trim()) || c.posts.length > 0).length;
 
-const statusShort = (status: string, early?: boolean) => {
-  if (early) return '⚡ 提前';
-  if (status === 'completed') return '已修';
-  if (status === 'active') return '在修';
-  if (status === 'recognized') return '↺ 互认';
-  return '待修';
+const walls: { id: 'orig' | 'clin'; label: string; courses: PackedCourse[] }[] = [
+  { id: 'orig', label: data.tracks.orig.name, courses: origWall.courses },
+  { id: 'clin', label: data.tracks.clin.name, courses: clinWall.courses },
+];
+
+const tileStyle = (c: PackedCourse) =>
+  `--sem-hue:${c.hue};--dc:${c.desktop.x};--dr:${c.desktop.y};--dw:${c.desktop.w};--dh:${c.desktop.h};--tc:${c.tablet.x};--tr:${c.tablet.y};--tw:${c.tablet.w};--th:${c.tablet.h};--mc:${c.mobile.x};--mr:${c.mobile.y};--mw:${c.mobile.w};--mh:${c.mobile.h}`;
+
+const badgeText = (c: PackedCourse) => {
+  if (c.kind === 'milestone') {
+    return c.milestoneSpan && c.milestoneSpan >= 4 ? '大五学年' : '大四学年';
+  }
+  return `${fmtCredit(c.credits)} CR`;
 };
 ---
 
-<BaseLayout title={data.meta.title} description={data.meta.subtitle} page="trajectory">
+<BaseLayout title="学业" description="本科课程拼贴墙。" page="trajectory">
   <div class="hz-wrap hz-acad" data-acad-root>
-    <script type="application/json" data-acad-json is:inline set:html={serializedPayload}></script>
-
     <header class="hz-acad-head">
-      <div class="hz-acad-head__top">
+      <div class="hz-acad-head__title-row">
         <div>
           <p class="hz-mono hz-acad-head__kicker">
-            ACADEMIC TRAJECTORY // 05 · <span lang="ja">履修軌道図</span>
+            TRAJECTORY // 05 · <span lang="ja">履修軌道</span>
           </p>
-          <h1 class="hz-acad-head__title">{data.meta.title}</h1>
+          <h1 class="hz-acad-head__title">学业</h1>
         </div>
-        <p class="hz-mono hz-acad-head__stamp">
-          {data.meta.activeTermLabel}<br />UPDATED {data.meta.updatedAt}
+        <p class="hz-mono hz-acad-readout" data-acad-readout>
+          {stats.totalTiles} / {stats.totalTiles}
         </p>
       </div>
-      <p class="hz-acad-head__deck">{data.meta.subtitle}</p>
-    </header>
 
-    <section class="hz-acad-tele" aria-label="学业总览统计">
-      <div class="hz-acad-stat">
-        <span class="hz-acad-stat__label">全周期课程 · TOTAL</span>
-        <span class="hz-acad-stat__val">{stats.totalCourses} 门 + {stats.milestoneCount} 阶段</span>
-        <span class="hz-acad-stat__sub">
-          原信管 {stats.origCourses} 门 ({fmtCredit(stats.origCredits)}) · 临床 {stats.clinCourses} 门 ({fmtCredit(stats.clinCredits)}) + 见习/实习
-        </span>
-      </div>
-      <div class="hz-acad-stat">
-        <span class="hz-acad-stat__label">临床已点亮 · LIT PROGRESS</span>
-        <span class="hz-acad-stat__val hz-acad-stat__val--hot">
-          {stats.clinLitCourses} / {stats.clinCourses}
-        </span>
-        <span class="hz-acad-stat__sub">
-          {fmtCredit(stats.clinLitCredits)} / {fmtCredit(stats.clinCredits)} 学分（互认 + 在修）
-        </span>
-      </div>
-      <div class="hz-acad-stat">
-        <span class="hz-acad-stat__label">跨专业互认 · RECOGNIZED</span>
-        <span class="hz-acad-stat__val">{stats.recognizedCount} 门</span>
-        <span class="hz-acad-stat__sub">共 {fmtCredit(stats.recognizedCredits)} 学分直接载入新专业</span>
-      </div>
-      <div class="hz-acad-stat">
-        <span class="hz-acad-stat__label">本学期火力 · ACTIVE NOW</span>
-        <span class="hz-acad-stat__val">{stats.activeCount} 门</span>
-        <span class="hz-acad-stat__sub">
-          {fmtCredit(stats.activeCredits)} 学分 · 含 {stats.earlyCount} 门提前修读 ({fmtCredit(stats.earlyCredits)})
-        </span>
-      </div>
-    </section>
-
-    <div class="hz-acad-bar">
-      <div class="hz-acad-legend" aria-label="拼贴方块图例说明">
-        <span class="hz-leg"><i class="hz-leg__swatch hz-leg__swatch--done" aria-hidden="true"></i>实色 = 已修读</span>
-        <span class="hz-leg"><i class="hz-leg__swatch hz-leg__swatch--active" aria-hidden="true"></i>斜纹 = 正在修读</span>
-        <span class="hz-leg"><i class="hz-leg__swatch hz-leg__swatch--rec" aria-hidden="true"></i>网格 = 学分互认</span>
-        <span class="hz-leg"><i class="hz-leg__swatch hz-leg__swatch--plan" aria-hidden="true"></i>点阵 = 待修规划</span>
-        <span class="hz-leg">颜色 = 学期光谱 · 面积 ≈ 学分 · 切角 = 原信管 / + = 临床</span>
-      </div>
-
-      <div class="hz-acad-tools" aria-label="常用学业工具">
-        {data.tools.map((t) => {
-          const href = safeLink(t.href);
-          return href ? (
-            <a class="hz-mini-btn" href={href} target="_blank" rel="noopener noreferrer" title={t.note || t.label}>
-              <span>{t.label}</span>
-              <span aria-hidden="true">↗</span>
-            </a>
-          ) : null;
-        })}
-      </div>
-    </div>
-
-    <section class="hz-acad-controls" aria-label="课程拼贴筛选与模式控制">
-      <div class="hz-acad-controls__row">
+      <div class="hz-acad-controls">
         <label class="hz-search">
           <span class="hz-mono" aria-hidden="true">SEARCH</span>
           <input
             type="search"
             data-acad-search
-            aria-label="搜索课程名、课程号或开课学院"
-            placeholder="搜索课程名、课程号、学院或备注…"
+            aria-label="搜索课程名或开课部门"
+            placeholder="搜索课程名或开课部门…"
             autocomplete="off"
           />
           <kbd aria-hidden="true">/</kbd>
         </label>
 
-        <span class="hz-acad-readout" data-acad-readout>
-          {stats.totalTiles} / {stats.totalTiles} BLOCKS
-        </span>
-
-        <div class="hz-seg" role="group" aria-label="显示模式">
-          <button type="button" data-acad-mode="inspect" aria-pressed="true">观测视图</button>
-          <button type="button" data-acad-mode="poster" aria-pressed="false">全景拼贴</button>
+        <div class="hz-tags-rail" role="group" aria-label="状态筛选">
+          <button type="button" data-acad-filter="all" aria-pressed="true">全部 ({stats.totalTiles})</button>
+          <button type="button" data-acad-filter="lit" aria-pressed="false">已点亮 ({litTotal})</button>
+          <button type="button" data-acad-filter="completed" aria-pressed="false">
+            <i class="hz-swatch hz-swatch--done" aria-hidden="true"></i>已修 ({stats.completedCount})
+          </button>
+          <button type="button" data-acad-filter="active" aria-pressed="false">
+            <i class="hz-swatch hz-swatch--active" aria-hidden="true"></i>在修 ({stats.activeCount})
+          </button>
+          <button type="button" data-acad-filter="recognized" aria-pressed="false">
+            <i class="hz-swatch hz-swatch--rec" aria-hidden="true"></i>互认 ({stats.recognizedCount})
+          </button>
+          <button type="button" data-acad-filter="early" aria-pressed="false">提前 ({stats.earlyCount})</button>
+          <button type="button" data-acad-filter="planned" aria-pressed="false">
+            <i class="hz-swatch hz-swatch--plan" aria-hidden="true"></i>待修 ({stats.plannedCount})
+          </button>
         </div>
       </div>
-
-      <div class="hz-tags-rail" role="group" aria-label="聚光灯筛选（保持拼贴结构完整）">
-        <button type="button" data-acad-filter="all" aria-pressed="true">全部 ({stats.totalTiles})</button>
-        <button type="button" data-acad-filter="lit" aria-pressed="false">已点亮 ({litTotal})</button>
-        <button type="button" data-acad-filter="active" aria-pressed="false">正在修读 ({stats.activeCount})</button>
-        <button type="button" data-acad-filter="completed" aria-pressed="false">已修读 ({stats.completedCount})</button>
-        <button type="button" data-acad-filter="recognized" aria-pressed="false">学分互认 ({stats.recognizedCount})</button>
-        <button type="button" data-acad-filter="early" aria-pressed="false">提前修读 ({stats.earlyCount})</button>
-        <button type="button" data-acad-filter="planned" aria-pressed="false">待修规划 ({stats.plannedCount})</button>
-        <button type="button" data-acad-filter="noted" aria-pressed="false">含笔记/文章 ({notedCount})</button>
-      </div>
-    </section>
+    </header>
 
     <div class="hz-acad-wall">
-      {trackGroups.map((group, groupIdx) => (
+      {walls.map((wall, idx) => (
         <>
-          <section aria-labelledby={`track-${group.track.id}`}>
-            <div class="hz-track-head">
-              <div class="hz-track-head__left">
-                <span class="hz-mono hz-track-head__code">{group.track.code}</span>
-                <h2 class="hz-track-head__name" id={`track-${group.track.id}`}>{group.track.name}</h2>
-              </div>
-              <p class="hz-track-head__meta">
-                {group.track.span} · {group.courseCount} 门 / {fmtCredit(group.credits)} 学分
-              </p>
-            </div>
-
-            {group.semesters.map((sem) => {
-              const pct = sem.totalCredits > 0 ? Math.round((sem.litCredits / sem.totalCredits) * 100) : 0;
-              const termText = sem.term === '1' || sem.term === '2' ? `${sem.year} · 第 ${sem.term} 学期` : `${sem.year} · ${sem.term}`;
-              const regularCount = sem.courses.filter((c) => c.kind !== 'milestone').length;
-              const milestoneCount = sem.courses.length - regularCount;
-              const meterLabel =
-                sem.totalCredits === 0
-                  ? '全学年实践阶段'
-                  : milestoneCount > 0
-                    ? `${milestoneCount} 阶段 + ${regularCount} 门 · ${fmtCredit(sem.litCredits)} / ${fmtCredit(sem.totalCredits)} CR`
-                    : `${regularCount} 门 · ${fmtCredit(sem.litCredits)} / ${fmtCredit(sem.totalCredits)} CR`;
+          <section class="hz-mosaic" aria-label={wall.label}>
+            {wall.courses.map((c) => {
+              const isMilestone = c.kind === 'milestone';
+              const milestoneTier = isMilestone ? (c.milestoneSpan && c.milestoneSpan >= 4 ? 'internship' : 'clerkship') : undefined;
+              const gradeText = c.grade?.trim() || 'NULL';
               return (
-                <section class="hz-sem" style={`--sem-hue:${sem.hue}`} aria-label={`${sem.year} ${sem.label}`}>
-                  <header class="hz-sem__head">
-                    <div class="hz-sem__id">
-                      <i class="hz-sem__swatch" aria-hidden="true"></i>
-                      <span class="hz-sem__year">{termText}</span>
-                      <h3 class="hz-sem__label">{sem.label}</h3>
-                      <span class="hz-sem__sub">{sem.sub}</span>
-                    </div>
-                    <div class="hz-sem__meter">
-                      <span>{meterLabel}</span>
-                      <span class="hz-sem__bar" style={`--sem-pct:${pct}%`} aria-hidden="true"><i></i></span>
-                    </div>
-                  </header>
+                <button
+                  type="button"
+                  class="hz-tile"
+                  data-acad-tile
+                  data-id={c.id}
+                  data-track={c.track}
+                  data-status={c.status}
+                  data-early={c.early ? 'true' : undefined}
+                  data-hero={c.desktop.h > 1 ? 'true' : undefined}
+                  data-milestone={isMilestone ? 'true' : undefined}
+                  data-milestone-tier={milestoneTier}
+                  data-linked={c.linkedIds?.join(',') || undefined}
+                  data-search={`${c.name} ${c.dept}`.toLowerCase()}
+                  style={tileStyle(c)}
+                  aria-pressed="false"
+                  aria-label={`${c.name}，${badgeText(c)}，开课部门：${c.dept}，成绩：${gradeText}`}
+                >
+                  <span class="hz-tile__inner">
+                    <span class="hz-tile__face hz-tile__face--front">
+                      <span class="hz-tile__name">{c.name}</span>
+                      <span class="hz-tile__cr">
+                        {c.early && <span class="hz-tile__early" aria-hidden="true">⚡</span>}
+                        <span>{badgeText(c)}</span>
+                      </span>
+                    </span>
 
-                  <div class="hz-mosaic">
-                    {sem.courses.map((c) => {
-                      const postRefs = resolvePostRefs(c.posts, postMap);
-                      const hasNote = Boolean(c.note?.trim()) || postRefs.length > 0;
-                      const hasLinks = Boolean(c.linkedIds?.length);
-                      const isMilestone = c.kind === 'milestone';
-                      const milestoneTier = isMilestone ? (c.milestoneSpan && c.milestoneSpan >= 4 ? 'internship' : 'clerkship') : undefined;
-                      return (
-                        <button
-                          type="button"
-                          class="hz-tile"
-                          data-acad-tile
-                          data-id={c.id}
-                          data-track={c.track}
-                          data-status={c.status}
-                          data-hero={c.desktop.h > 1 ? 'true' : undefined}
-                          data-milestone={isMilestone ? 'true' : undefined}
-                          data-milestone-tier={milestoneTier}
-                          data-linked={c.linkedIds?.join(',') || undefined}
-                          style={`--dc:${c.desktop.x};--dr:${c.desktop.y};--dw:${c.desktop.w};--dh:${c.desktop.h};--tc:${c.tablet.x};--tr:${c.tablet.y};--tw:${c.tablet.w};--th:${c.tablet.h};--mc:${c.mobile.x};--mr:${c.mobile.y};--mw:${c.mobile.w};--mh:${c.mobile.h}`}
-                          aria-label={isMilestone ? `${c.name}，${c.milestoneLabel || c.nature}，${statusShort(c.status, c.early)}，点击查看详情` : `${c.name}，${fmtCredit(c.credits)} 学分，${statusShort(c.status, c.early)}，点击查看详情`}
-                        >
-                          <span class="hz-tile__top">
-                            <span class="hz-tile__code">{c.code}</span>
-                            <span class="hz-tile__cr">
-                              {isMilestone ? (milestoneTier === 'internship' ? '大五学年 · INTERNSHIP' : '大四学年 · CLERKSHIP') : `${fmtCredit(c.credits)} CR`}
-                            </span>
-                          </span>
-                          <span class="hz-tile__center">
-                            <span class="hz-tile__name">{c.name}</span>
-                            {isMilestone && c.milestoneLabel && (
-                              <span class="hz-tile__sub">{c.milestoneLabel}</span>
-                            )}
-                          </span>
-                          <span class="hz-tile__foot">
-                            <span class="hz-tile__badges">
-                              {c.status === 'active' && <i class="hz-tile__pulse" aria-hidden="true"></i>}
-                              <span class:list={['hz-tile__badge', { 'hz-tile__badge--early': c.early }]}>
-                                {statusShort(c.status, c.early)}
-                              </span>
-                            </span>
-                            <span class="hz-tile__signals">
-                              {c.grade && <span>{c.grade}</span>}
-                              {hasNote && <span title="含笔记或关联博客">●</span>}
-                              {hasLinks && <span title="存在跨轨互认/关联课程">⇄</span>}
-                            </span>
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </section>
+                    <span class="hz-tile__face hz-tile__face--back" aria-hidden="true">
+                      <span class="hz-tile__meta-row">
+                        <span class="hz-tile__k">开课部门</span>
+                        <span class="hz-tile__v">{c.dept}</span>
+                      </span>
+                      <span class="hz-tile__meta-row">
+                        <span class="hz-tile__k">成绩</span>
+                        <span class="hz-tile__v hz-tile__v--grade">{gradeText}</span>
+                      </span>
+                    </span>
+                  </span>
+                </button>
               );
             })}
           </section>
 
-          {groupIdx === 0 && (
-            <aside class="hz-transfer" aria-label="转专业变轨节点">
-              <div class="hz-transfer__top">
-                <span class="hz-transfer__title">{data.transfer.title}</span>
-                <span class="hz-transfer__date">{data.transfer.date} · 轨道跃迁</span>
-              </div>
-              <p class="hz-transfer__summary">{data.transfer.summary}</p>
-            </aside>
+          {idx === 0 && (
+            <div class="hz-transfer-line" role="separator" aria-label="转专业">
+              <span>转专业</span>
+            </div>
           )}
         </>
       ))}
     </div>
   </div>
-
-  {/* 课程详情抽屉 */}
-  <div class="hz-drawer-backdrop" data-acad-backdrop hidden></div>
-  <aside
-    class="hz-drawer"
-    data-acad-drawer
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="acad-drawer-title"
-    hidden
-  >
-    <div class="hz-drawer__head">
-      <div class="hz-drawer__nav">
-        <button type="button" data-acad-prev>← 上一门</button>
-        <button type="button" data-acad-next>下一门 →</button>
-      </div>
-      <button type="button" class="hz-drawer__close" data-acad-close>关闭 ESC</button>
-    </div>
-
-    <div class="hz-drawer__body">
-      <div>
-        <p class="hz-mono hz-drawer__kicker" data-d-kicker></p>
-        <h2 class="hz-drawer__title" id="acad-drawer-title" data-d-title></h2>
-      </div>
-
-      <dl class="hz-drawer__dl">
-        <div><dt>课程号 · CODE</dt><dd data-d-code></dd></div>
-        <div><dt>学分 · CREDITS</dt><dd data-d-credits></dd></div>
-        <div><dt>状态 · STATUS</dt><dd data-d-status></dd></div>
-        <div><dt>性质 · NATURE</dt><dd data-d-nature></dd></div>
-        <div><dt>开课部门 · DEPT</dt><dd data-d-dept></dd></div>
-        <div><dt>成绩 / 绩点 · SCORE</dt><dd data-d-score></dd></div>
-      </dl>
-
-      <section class="hz-drawer__sec">
-        <h3>学习笔记与课程记录 · NOTES</h3>
-        <p class="hz-drawer__note" data-d-note></p>
-      </section>
-
-      <section class="hz-drawer__sec" data-d-links-sec hidden>
-        <h3>跨轨互认与关联课程 · ORBIT LINKS</h3>
-        <div class="hz-drawer__list" data-d-links></div>
-      </section>
-
-      <section class="hz-drawer__sec" data-d-posts-sec hidden>
-        <h3>关联博客文章 · RELATED LOGS</h3>
-        <div class="hz-drawer__list" data-d-posts></div>
-      </section>
-    </div>
-  </aside>
 </BaseLayout>
 
 <script>
