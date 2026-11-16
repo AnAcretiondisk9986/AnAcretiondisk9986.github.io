@@ -2,7 +2,6 @@
 import { render, type CollectionEntry } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import Gate from './Gate.astro';
-import { firstImageFromBody } from '../../lib/post-cover';
 import { shortIdForPath } from '../../lib/shortlink';
 import { fmtMass, fmtMinute, massOf, mjd, readingMinutes, redshift } from '../../lib/horizon';
 import '../../styles/hz/prose.css';
@@ -38,7 +37,6 @@ const mass = massOf(body);
 const minutes = readingMinutes(body);
 const mjdVal = mjd(post.data.pubDate);
 const rs = redshift(post.data.pubDate);
-const articleCover = post.data.cover?.trim() || firstImageFromBody(body);
 const isAdmin = mode === 'admin';
 const backHref = isAdmin ? '/private/' : '/blog/';
 const backLabel = isAdmin ? '返回暗房目录' : '返回文章光谱';
@@ -58,66 +56,116 @@ const pageDesc = isAdmin ? '管理员级文章。' : post.data.description;
     class="hz-entry hz-wrap"
     id="top"
     data-entry-root
+    data-rail-collapsed="false"
     data-busuanzi={isAdmin ? undefined : 'true'}
   >
+    <script is:inline>
+      (() => {
+        try {
+          if (localStorage.getItem('hz-entry-rail') === 'collapsed') {
+            const root = document.querySelector('[data-entry-root]');
+            if (root) root.setAttribute('data-rail-collapsed', 'true');
+          }
+        } catch {
+          /* ignore */
+        }
+      })();
+    </script>
+
+    <button
+      class="hz-rail-reopen hz-mono"
+      type="button"
+      data-rail-toggle
+      data-label-collapse="收起侧栏"
+      data-label-expand="展开侧栏"
+      aria-expanded="true"
+      aria-controls="hz-entry-rail"
+      title="展开或收起侧栏 (快捷键 [ )"
+    >
+      <span aria-hidden="true" data-rail-toggle-icon>⟫</span>
+      <span data-rail-toggle-text>展开侧栏</span>
+    </button>
+
     <header class="hz-entry__head">
       <div class="hz-entry__bar">
         <a class="hz-entry__back" href={backHref}>
           <span aria-hidden="true">←</span>
           <span>{backLabel}</span>
         </a>
-        <div class="hz-entry__tele hz-mono">
-          <span>FOLIO {folioCode}</span>
-          <span>MJD {mjdVal.toFixed(2)}</span>
-          <span>z={rs.z.toFixed(4)}</span>
-          <span>{fmtMass(mass)} CHARS</span>
-          <span>~{minutes} MIN</span>
-          <span lang="ja">観測記録</span>
-        </div>
-      </div>
-
-      <h1 class="hz-entry__title">{post.data.title}</h1>
-      {post.data.description && <p class="hz-entry__deck">{post.data.description}</p>}
-
-      <div class="hz-entry__sub">
-        <div class="hz-entry__dates hz-mono">
-          <time datetime={post.data.pubDate.toISOString()}>
-            PUBLISHED {fmtMinute(post.data.pubDate)}
-          </time>
-          {post.data.updatedDate && (
-            <time datetime={post.data.updatedDate.toISOString()}>
-              UPDATED {fmtMinute(post.data.updatedDate)}
-            </time>
-          )}
-          {!isAdmin && (
-            <span class="hz-entry__pv" id="busuanzi_container_page_pv" hidden>
-              <span id="busuanzi_value_page_pv">—</span> VIEWS
-            </span>
-          )}
-        </div>
-
-        {(post.data.tags.length > 0 || mode !== 'public') && (
-          <div class="hz-entry__tags">
-            {mode === 'admin' && <span class="hz-tag hz-tag--hot">DARKROOM</span>}
-            {mode === 'authorized' && <span class="hz-tag hz-tag--hot">AUTHORIZED</span>}
-            {post.data.tags.map((tag) => <span class="hz-tag">{tag}</span>)}
+        <div class="hz-entry__bar-right">
+          <div class="hz-entry__tele hz-mono">
+            <span>FOLIO {folioCode}</span>
+            <span>MJD {mjdVal.toFixed(2)}</span>
+            <span>z={rs.z.toFixed(4)}</span>
+            <span>{fmtMass(mass)} CHARS</span>
+            <span>~{minutes} MIN</span>
+            <span lang="ja">観測記録</span>
           </div>
-        )}
+          <button
+            class="hz-entry__rail-bar-btn hz-mono"
+            type="button"
+            data-rail-toggle
+            data-label-collapse="收起侧栏"
+            data-label-expand="展开侧栏"
+            aria-expanded="true"
+            aria-controls="hz-entry-rail"
+          >
+            <span data-rail-toggle-text>收起侧栏</span>
+            <span aria-hidden="true" data-rail-toggle-icon>⟪</span>
+          </button>
+        </div>
       </div>
 
-      {articleCover && (
-        <figure class="hz-entry__cover">
-          <img src={articleCover} alt="" loading="eager" decoding="async" fetchpriority="high" />
-          <figcaption class="hz-mono">
-            <span>PLATE // {folioCode}</span>
-            <span>OPTICAL OBSERVATION</span>
-          </figcaption>
-        </figure>
-      )}
+      <div class="hz-entry__head-main">
+        <h1 class="hz-entry__title">{post.data.title}</h1>
+        {post.data.description && <p class="hz-entry__deck">{post.data.description}</p>}
+
+        <div class="hz-entry__sub">
+          <div class="hz-entry__dates hz-mono">
+            <time datetime={post.data.pubDate.toISOString()}>
+              PUBLISHED {fmtMinute(post.data.pubDate)}
+            </time>
+            {post.data.updatedDate && (
+              <time datetime={post.data.updatedDate.toISOString()}>
+                UPDATED {fmtMinute(post.data.updatedDate)}
+              </time>
+            )}
+            {!isAdmin && (
+              <span class="hz-entry__pv" id="busuanzi_container_page_pv" hidden>
+                <span id="busuanzi_value_page_pv">—</span> VIEWS
+              </span>
+            )}
+          </div>
+
+          {(post.data.tags.length > 0 || mode !== 'public') && (
+            <div class="hz-entry__tags">
+              {mode === 'admin' && <span class="hz-tag hz-tag--hot">DARKROOM</span>}
+              {mode === 'authorized' && <span class="hz-tag hz-tag--hot">AUTHORIZED</span>}
+              {post.data.tags.map((tag) => <span class="hz-tag">{tag}</span>)}
+            </div>
+          )}
+        </div>
+      </div>
     </header>
 
     <div class="hz-entry__grid">
-      <aside class="hz-entry__rail" aria-label="记录仪器面板">
+      <aside class="hz-entry__rail" id="hz-entry-rail" aria-label="记录仪器面板">
+        <div class="hz-rail__head">
+          <span class="hz-mono hz-rail__label">INDEX // 侧栏</span>
+          <button
+            class="hz-rail__collapse hz-mono"
+            type="button"
+            data-rail-toggle
+            data-label-collapse="收起"
+            data-label-expand="展开"
+            aria-expanded="true"
+            aria-controls="hz-entry-rail"
+            title="收起或展开侧栏 (快捷键 [ )"
+          >
+            <span data-rail-toggle-text>收起</span>
+            <span aria-hidden="true" data-rail-toggle-icon>⟪</span>
+          </button>
+        </div>
         <div class="hz-entry__rail-inner">
           <div class="hz-entry__actions">
             <button class="hz-rail-btn" type="button" data-print-btn>

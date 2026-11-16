@@ -236,8 +236,59 @@ function initBusuanzi() {
   document.head.append(s);
 }
 
+function initRailCollapse() {
+  const root = document.querySelector<HTMLElement>('[data-entry-root]');
+  if (!root) return;
+  const toggles = [...document.querySelectorAll<HTMLButtonElement>('[data-rail-toggle]')];
+  if (toggles.length === 0) return;
+
+  const STORAGE_KEY = 'hz-entry-rail';
+
+  const applyState = (collapsed: boolean, persist: boolean) => {
+    root.dataset.railCollapsed = collapsed ? 'true' : 'false';
+    toggles.forEach((btn) => {
+      btn.setAttribute('aria-expanded', String(!collapsed));
+      const label = btn.querySelector<HTMLElement>('[data-rail-toggle-text]');
+      const icon = btn.querySelector<HTMLElement>('[data-rail-toggle-icon]');
+      if (label) label.textContent = collapsed ? (btn.dataset.labelExpand || '展开侧栏') : (btn.dataset.labelCollapse || '收起侧栏');
+      if (icon) icon.textContent = collapsed ? '⟫' : '⟪';
+    });
+    if (persist) {
+      try {
+        localStorage.setItem(STORAGE_KEY, collapsed ? 'collapsed' : 'open');
+      } catch {
+        /* 隐私模式下允许失败 */
+      }
+    }
+  };
+
+  let initCollapsed = root.dataset.railCollapsed === 'true';
+  try {
+    initCollapsed = localStorage.getItem(STORAGE_KEY) === 'collapsed';
+  } catch {
+    /* ignore */
+  }
+  applyState(initCollapsed, false);
+
+  toggles.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const nowCollapsed = root.dataset.railCollapsed === 'true';
+      applyState(!nowCollapsed, true);
+    });
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== '[' || e.metaKey || e.ctrlKey || e.altKey) return;
+    const t = e.target as HTMLElement | null;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+    const nowCollapsed = root.dataset.railCollapsed === 'true';
+    applyState(!nowCollapsed, true);
+  });
+}
+
 enhanceProse();
 initProgress();
+initRailCollapse();
 initRailTools();
 initBusuanzi();
 document.addEventListener('hz:gate-unlocked', enhanceProse);

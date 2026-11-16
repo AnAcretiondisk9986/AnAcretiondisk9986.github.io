@@ -79,7 +79,11 @@ src/
 
 ## 3. 当前状态
 
-- **Phase 1.5（纯净黑洞天球 + 学业中英文/罗马数字/字重重塑 + 图像场滚轮双指缩放与去编号 + 首页随机图版 + 全站 Dela Gothic One 日语体系）已完成**：
+- **Phase 1.6（文章内页全比例居中 + 可收起/展开侧栏 + 移除文内封面展示）已完成**：
+  - [entry.css](src/styles/hz/entry.css) 与 [EntryView.astro](src/components/hz/EntryView.astro) 将 `.hz-entry__grid` 改为对称三栏布局（`minmax(196px, 1fr) minmax(0, var(--measure)) minmax(196px, 1fr)`）并居中 `.hz-entry__head-main`，解决超宽屏下文章整体右偏问题；
+  - 新增标准可收起/展开侧栏交互（[EntryView.astro](src/components/hz/EntryView.astro)、[entry.ts](src/scripts/hz/entry.ts)）：支持侧栏顶部按钮、页头工具条按钮、收起后桌面左侧悬浮 `展开侧栏` 入口及快捷键 `[`，`localStorage` 持久化折叠状态并防闪烁初始化，窄屏端折叠保留手风琴开关；
+  - 移除文章阅读页内部 `.hz-entry__cover` 封面图块（列表页悬浮透镜与移动端左侧封面保持不变）。
+- **Phase 1.5（纯净黑洞天球 + 学业中英文/罗马数字/字重重塑 + 图像场滚轮双指缩放与去编号 + 首页随机图版 + 全站 Dela Gothic One 日语体系）已提交推送（`da44d26`）**：
   - **首页黑洞 & 透镜图版**（[index.astro](src/pages/index.astro)、[disk.ts](src/scripts/hz/disk.ts)、[home.css](src/styles/hz/home.css)）：移除首页前景图引力透镜折射映射，改为纯净深空暗底 + 双层锐利星场；Section 02 图版条取消标题与 `PL.XX` 编号，嵌入 99 图静态池并在前端挂载时随机抽取 4 张展示。
   - **学业板块**（[academics.json](src/data/academics.json)、[academics.ts](src/lib/academics.ts)、[academics.astro](src/pages/academics.astro)、[academics.css](src/styles/hz/academics.css)、[fonts.css](src/styles/hz/fonts.css)）：新增 `formatCourseTitle()`，统一将课程括号数字及尾随编号替换为真 Unicode 罗马数字（`Ⅰ`/`Ⅱ`/`Ⅲ`/`Ⅳ`），将 `（实践）`/`（理论）`/`（D）`/`（体能素质）`/`（毕业考）` 等括号说明脱壳为小字号浅色轻字重附属标签；转专业后（`clin`）77 门课程全部补充英文译名并用自托管 `Google Sans Italic` 变体渲染，中文标题使用从本地提取的 `Noto Serif SC Black`（900），转专业前（`orig`）采用粗斜体，`clin` 网格适当拔高行高避免裁切。
   - **图像页透镜场**（[gallery.astro](src/pages/gallery.astro)、[gallery-field.ts](src/scripts/hz/gallery-field.ts)、[gallery.css](src/styles/hz/gallery.css)）：移除 `.hz-field-lock` 左下角浮框及所有图版标题/`PL.` 编号系统；新增以光标/捏合中点为锚的鼠标滚轮与双指捏合 `ZOOM 20%–240%` 视场缩放以调节画框内可见图片数量。
@@ -110,6 +114,12 @@ src/
 ## 5. 更改日志（新的在上）
 
 <!-- 新条目追加在这里 -->
+
+### 2026-11-16 · Phase 1.6：文章内页全比例居中、可收起侧栏与移除文内封面
+
+- **文章居中重构**（[entry.css](src/styles/hz/entry.css)、[EntryView.astro](src/components/hz/EntryView.astro)）：将 `.hz-entry__grid` 由原先受 `justify-content: space-between` 推向右缘的双栏结构重构为对称三栏（`minmax(196px, 1fr) minmax(0, var(--measure)) minmax(196px, 1fr)`）并加入 `.hz-entry__head-main` 居中包裹，使标题与正文在 16:9、21:9、32:9 等超宽比例下始终水平居于视口中央；中等桌面端（`1021–1219px`）与收起态均保持安全居中。
+- **可收起 / 展开侧栏**（[EntryView.astro](src/components/hz/EntryView.astro)、[entry.ts](src/scripts/hz/entry.ts)）：遵照通用文档阅读习惯，在侧栏顶部、文章工具栏及桌面收起后的左上角分别提供收起/展开开关，并支持 `[` 快捷键与 `localStorage`（`hz-entry-rail`）无闪烁状态记忆；移动端/平板端（`<= 1020px`）收起时保留手风琴开关条；打印模式强制忽略折叠以输出完整元信息。
+- **取消文章内封面展示**（[EntryView.astro](src/components/hz/EntryView.astro)、[entry.css](src/styles/hz/entry.css)）：移除文章头部的 `.hz-entry__cover` 大图区块及无用封面解析依赖，文章列表页的桌面悬浮预览与移动端左侧封面不受影响。
 
 ### 2026-11-16 · Phase 1.5：纯净黑洞天球、学业字体/罗马数字/译名重塑、图像场缩放与全站 Dela Gothic One 日语体系
 
