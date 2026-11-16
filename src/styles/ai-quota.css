@@ -220,7 +220,8 @@
   .aq-card[data-state='ok'] .aq-chip__dot {
     background: var(--c-accent);
   }
-  .aq-card[data-state='loading'] .aq-chip__dot {
+  .aq-card[data-state='loading'] .aq-chip__dot,
+  .aq-card[data-state='readonly'] .aq-chip__dot {
     background: var(--c-metal);
   }
   .aq-card[data-state='missing-key'] .aq-chip__dot,
@@ -472,6 +473,38 @@
     display: none;
   }
 
+  /* 只读说明卡（Google AI Pro 等无公开 API 的订阅）：桌面端跨整行收紧为一条横卡，保住一屏版式 */
+  .aq-card--readonly {
+    grid-column: 1 / -1;
+    padding-block: var(--p-sp-3);
+  }
+  .aq-readonly__body {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: baseline;
+    gap: var(--p-sp-4);
+    margin-top: var(--p-sp-2);
+  }
+  .aq-readonly__main {
+    margin-top: 0;
+  }
+  .aq-readonly__note {
+    margin: 0;
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--c-ink-2);
+  }
+  .aq-readonly__links {
+    display: flex;
+    align-items: center;
+    gap: var(--p-sp-3);
+    flex-wrap: wrap;
+  }
+  .aq-card--readonly .aq-card__foot {
+    margin-top: var(--p-sp-2);
+    padding-top: 2px;
+  }
+
   /* 骨架与状态面板 */
   .aq-skeleton {
     display: grid;
@@ -657,6 +690,13 @@
     }
     .aq-chart__svg {
       height: 44px;
+    }
+    .aq-readonly__body {
+      grid-template-columns: minmax(0, 1fr);
+      gap: var(--p-sp-2);
+    }
+    .aq-card--readonly .aq-card__foot {
+      flex-wrap: wrap;
     }
   }
 

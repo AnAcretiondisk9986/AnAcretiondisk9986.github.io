@@ -34,6 +34,25 @@
       "label": "智谱 GLM",
       "home": "https://open.bigmodel.cn",
       "note": "中国站账户：余额与资源包、今日消费分别来自不同接口。"
+    },
+    "google-ai-pro": {
+      "label": "Google AI Pro",
+      "home": "https://aistudio.google.com",
+      "note": "含 Antigravity（5h / 周额度，CLI 可用 /usage）、Gemini 网页端与 AI Studio；官方未开放可供服务端免登录轮询的公开额度 API，仅作只读登记，不显示占位假数字。",
+      "links": [
+        {
+          "label": "AI Studio",
+          "href": "https://aistudio.google.com"
+        },
+        {
+          "label": "Gemini",
+          "href": "https://gemini.google.com"
+        },
+        {
+          "label": "Cloud 配额",
+          "href": "https://console.cloud.google.com/iam-admin/quotas"
+        }
+      ]
     }
   },
   "reads": {
@@ -97,6 +116,15 @@
           "按账号返回",
           "资源包剩余",
           "计划窗口"
+        ]
+      },
+      {
+        "id": "google-ai-pro",
+        "cells": [
+          "只读说明（无公开 API）",
+          "—",
+          "—",
+          "见 Antigravity / AI Studio"
         ]
       }
     ]

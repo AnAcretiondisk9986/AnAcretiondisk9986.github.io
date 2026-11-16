@@ -21,10 +21,16 @@ import Icon from '../components/Icon.astro';
 import quota from '../data/ai-quota.json';
 import '../styles/ai-quota.css';
 
+interface ProviderLink {
+  label: string;
+  href: string;
+}
+
 interface ProviderMeta {
   label?: string;
   home?: string;
   note?: string;
+  links?: ProviderLink[];
 }
 
 const metaMap = (quota.providers || {}) as Record<string, ProviderMeta>;
@@ -83,6 +89,8 @@ const hostOf = (url: string) => {
   }
 };
 const totalProviders = flatCards.length;
+const readonlyProviderId = 'google-ai-pro';
+const readonlyLinks = metaMap[readonlyProviderId]?.links || [];
 const amountLabel = (group: string) =>
   group === 'subscription' ? '总额度' : group === 'platform' ? '可用余额' : '余额';
 ---
@@ -106,7 +114,7 @@ const amountLabel = (group: string) =>
         <p class="aq-top__deck">
           {quota.subtitle}
           <span class="aq-top__sep" aria-hidden="true">/</span>
-          {totalProviders} 个服务 · 每 {pollSeconds} 秒刷新 · 服务端取数，页面无密钥
+          {totalProviders} 个自动取数 · 1 项只读 · 每 {pollSeconds} 秒刷新 · 服务端取数，页面无密钥
         </p>
       </div>
       <div class="aq-top__ctrl">
@@ -243,6 +251,45 @@ const amountLabel = (group: string) =>
           </article>
         ))
       }
+
+      {/* 只读说明卡：不挂 data-aq-card，避免被前端轮询脚本误判成 absent / offline */}
+      <article
+        class="aq-card aq-card--subscription aq-card--readonly"
+        data-provider={readonlyProviderId}
+        data-group="subscription"
+        data-state="readonly"
+      >
+        <header class="aq-card__head">
+          <h2 class="aq-card__label">
+            {labelOf(readonlyProviderId)}
+            <span class="aq-card__group">{shortOf('subscription')}</span>
+          </h2>
+          <span class="aq-card__chip">
+            <i class="aq-chip__dot" aria-hidden="true" />
+            <span>只读 · 无公开 API</span>
+          </span>
+        </header>
+
+        <div class="aq-readonly__body">
+          <div class="aq-card__main aq-readonly__main">
+            <span class="aq-card__amount-label">订阅状态</span>
+            <p class="aq-card__amount is-unlimited">已订阅 · 仅官方客户端可查</p>
+          </div>
+          <p class="aq-readonly__note">{noteOf(readonlyProviderId)}</p>
+        </div>
+
+        <footer class="aq-card__foot">
+          <div class="aq-readonly__links">
+            {readonlyLinks.map((link) => (
+              <a class="aq-card__home" href={link.href} target="_blank" rel="noopener noreferrer">
+                {link.label}
+                <Icon name="arrow-up-right" />
+              </a>
+            ))}
+          </div>
+          <span class="aq-card__time">不参与自动轮询</span>
+        </footer>
+      </article>
     </div>
 
     {/* 可读口径：一屏优先，默认收起；要看细节再展开 */}
