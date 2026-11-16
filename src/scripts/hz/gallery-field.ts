@@ -141,6 +141,32 @@ export function initGallery() {
 
   const MAX_THUMB_INFLIGHT = 4;
   const MAX_FULL_INFLIGHT = 2;
+  const FOCUS_ZOOM_THRESHOLD = 0.85;
+  const FOCUS_TARGET_ZOOM = 1.05;
+  const FOCUS_CENTER_TOLERANCE = 85;
+
+  interface GlideAnim {
+    startTime: number;
+    duration: number;
+    fromX: number;
+    fromY: number;
+    toX: number;
+    toY: number;
+    fromZoom: number;
+    toZoom: number;
+  }
+  let glideAnim: GlideAnim | null = null;
+
+  const easeInOutCubic = (t: number) =>
+    t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
+  const cancelGlide = () => {
+    if (!glideAnim) return;
+    glideAnim = null;
+    targetX = camX;
+    targetY = camY;
+    targetZoom = fieldZoom;
+  };
 
   const getRawPool = (): GalleryItem[] => {
     if (activeTab === 'plates') return platesPool;
@@ -296,6 +322,7 @@ export function initGallery() {
   const renderField = () => {
     if (!canvasEl || !stage) return;
 
+    glideAnim = null;
     fieldGen += 1;
     thumbInflight = 0;
     fullInflight = 0;
@@ -339,6 +366,18 @@ export function initGallery() {
       card.append(frame);
       card.addEventListener('click', () => {
         if (movedPx > 7) return;
+        const node = fieldNodes[i];
+        if (!node) return;
+        const distFromCenter = Math.hypot(node.sx, node.sy);
+        const needsFocus = fieldZoom < FOCUS_ZOOM_THRESHOLD
+          || distFromCenter > FOCUS_CENTER_TOLERANCE
+          || node !== currentNearest;
+        if (needsFocus) {
+          startThumbLoad(node, fieldGen);
+          const focusZoom = clamp(Math.max(fieldZoom, FOCUS_TARGET_ZOOM), MIN_FIELD_ZOOM, MAX_FIELD_ZOOM);
+          glideTo(node.bx, node.by, focusZoom);
+          return;
+        }
         openViewer(i);
       });
 
@@ -436,9 +475,36 @@ export function initGallery() {
     }
   };
 
-  const stepField = () => {
+  const stepField = (now = performance.now()) => {
     fieldRaf = 0;
     if (activeMode !== 'field') return;
+
+    if (glideAnim) {
+      const elapsed = Math.max(0, now - glideAnim.startTime);
+      const u = clamp(elapsed / glideAnim.duration, 0, 1);
+      const easePos = easeInOutCubic(u);
+      const easeZoom = easeInOutCubic(clamp((u - 0.06) / 0.94, 0, 1));
+      camX = glideAnim.fromX + (glideAnim.toX - glideAnim.fromX) * easePos;
+      camY = glideAnim.fromY + (glideAnim.toY - glideAnim.fromY) * easePos;
+      fieldZoom = glideAnim.fromZoom * Math.pow(glideAnim.toZoom / glideAnim.fromZoom, easeZoom);
+      targetX = camX;
+      targetY = camY;
+      targetZoom = fieldZoom;
+      layoutField();
+      if (u < 1) {
+        fieldRaf = requestAnimationFrame(stepField);
+      } else {
+        camX = glideAnim.toX;
+        camY = glideAnim.toY;
+        fieldZoom = glideAnim.toZoom;
+        targetX = camX;
+        targetY = camY;
+        targetZoom = fieldZoom;
+        glideAnim = null;
+        layoutField();
+      }
+      return;
+    }
 
     if (!dragging && activePointers.size === 0) {
       targetX += vx;
@@ -473,8 +539,43 @@ export function initGallery() {
     }
   };
 
+  const glideTo = (toX: number, toY: number, toZoomRaw = fieldZoom) => {
+    const toZoom = clamp(toZoomRaw, MIN_FIELD_ZOOM, MAX_FIELD_ZOOM);
+    vx = 0;
+    vy = 0;
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      glideAnim = null;
+      camX = toX;
+      camY = toY;
+      fieldZoom = toZoom;
+      targetX = toX;
+      targetY = toY;
+      targetZoom = toZoom;
+      layoutField();
+      return;
+    }
+    const screenDist = Math.hypot((toX - camX) * fieldZoom, (toY - camY) * fieldZoom);
+    const zoomDelta = Math.abs(Math.log(toZoom / Math.max(fieldZoom, 0.05)));
+    const duration = clamp(520 + screenDist * 0.42 + zoomDelta * 220, 540, 1050);
+    glideAnim = {
+      startTime: performance.now(),
+      duration,
+      fromX: camX,
+      fromY: camY,
+      toX,
+      toY,
+      fromZoom: Math.max(fieldZoom, 0.05),
+      toZoom,
+    };
+    targetX = toX;
+    targetY = toY;
+    targetZoom = toZoom;
+    kickField();
+  };
+
   const zoomAt = (nextZoomRaw: number, clientX?: number, clientY?: number) => {
     if (!stage) return;
+    cancelGlide();
     const prevTarget = targetZoom;
     const nextZoom = clamp(nextZoomRaw, MIN_FIELD_ZOOM, MAX_FIELD_ZOOM);
     if (Math.abs(nextZoom - prevTarget) < 1e-4) return;
@@ -731,6 +832,7 @@ export function initGallery() {
     activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
     if (activePointers.size === 2) {
+      cancelGlide();
       const [p1, p2] = [...activePointers.values()];
       const dist = Math.hypot(p2.x - p1.x, p2.y - p1.y);
       const midX = (p1.x + p2.x) * 0.5;
@@ -757,6 +859,7 @@ export function initGallery() {
     lastX = e.clientX;
     lastY = e.clientY;
     movedPx = Math.max(movedPx, Math.hypot(e.clientX - downX, e.clientY - downY));
+    if (movedPx > 4) cancelGlide();
     const invZ = 1 / Math.max(fieldZoom, MIN_FIELD_ZOOM);
     targetX -= dx * invZ;
     targetY -= dy * invZ;
@@ -801,18 +904,22 @@ export function initGallery() {
     const step = 140 / Math.max(fieldZoom, MIN_FIELD_ZOOM);
     if (e.key === 'ArrowLeft') {
       e.preventDefault();
+      cancelGlide();
       targetX -= step;
       kickField();
     } else if (e.key === 'ArrowRight') {
       e.preventDefault();
+      cancelGlide();
       targetX += step;
       kickField();
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
+      cancelGlide();
       targetY -= step;
       kickField();
     } else if (e.key === 'ArrowDown') {
       e.preventDefault();
+      cancelGlide();
       targetY += step;
       kickField();
     } else if (e.key === '+' || e.key === '=') {
@@ -828,14 +935,10 @@ export function initGallery() {
   });
 
   resetBtn?.addEventListener('click', () => {
-    targetX = 0;
-    targetY = 0;
-    targetZoom = 1;
-    vx = 0;
-    vy = 0;
-    kickField();
+    glideTo(0, 0, 1);
   });
   orbitBtn?.addEventListener('click', () => {
+    glideAnim = null;
     orbitSeed += 1;
     targetX = 0;
     targetY = 0;
@@ -851,17 +954,8 @@ export function initGallery() {
     }
     const chosen = fieldNodes[idx];
     startThumbLoad(chosen, fieldGen);
-    targetX = chosen.bx;
-    targetY = chosen.by;
-    vx = 0;
-    vy = 0;
-    if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      camX = targetX;
-      camY = targetY;
-      layoutField();
-    } else {
-      kickField();
-    }
+    const focusZoom = clamp(Math.max(fieldZoom, FOCUS_TARGET_ZOOM), MIN_FIELD_ZOOM, MAX_FIELD_ZOOM);
+    glideTo(chosen.bx, chosen.by, focusZoom);
   });
 
   // 事件绑定
@@ -883,6 +977,7 @@ export function initGallery() {
     b.addEventListener('click', () => {
       const next = b.dataset.galMode as 'field' | 'index';
       if (!next || next === activeMode) return;
+      cancelGlide();
       activeMode = next;
       syncAll();
     });
