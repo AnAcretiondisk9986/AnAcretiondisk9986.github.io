@@ -102,7 +102,7 @@
 
 .hz-nav {
   display: flex;
-  gap: clamp(14px, 2.2vw, 34px);
+  gap: clamp(12px, 1.8vw, 30px);
 }
 .hz-nav a {
   position: relative;
@@ -114,6 +114,7 @@
   font-size: 0.9rem;
   font-weight: 600;
   letter-spacing: 0.06em;
+  white-space: nowrap;
 }
 .hz-nav__no {
   font-family: var(--f-mono);

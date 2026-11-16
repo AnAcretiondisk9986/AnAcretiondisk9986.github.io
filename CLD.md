@@ -79,6 +79,10 @@ src/
 
 ## 3. 当前状态
 
+- **Phase 1.3（新增 `/academics/`「学业」二级页：课程拼贴墙与轨道跃迁）已完成构建与无头浏览器复检**：
+  - 在 [Hud.astro](src/components/hz/Hud.astro) 顶栏接入 `05 学业（TRAJECTORY）`，将 `额度` 顺延至 `06`；
+  - 新增结构化课程数据 [academics.json](src/data/academics.json)（99 门去重课程 + 大四「医院见习」/ 大五「医院实习」阶段块，覆盖原·信息管理与信息系统大一至临床医学五年制全周期，预留 `grade`/`gpa` 与 `note`/`posts` 字段）；
+  - 新增构建期 24/12/6 列无缝 Bento 拼版求解器 [academics.ts](src/lib/academics.ts)、[academics.astro](src/pages/academics.astro)、[academics.css](src/styles/hz/academics.css) 与客户端脚本 [academics.ts](src/scripts/hz/academics.ts)。
 - **Phase 1.2（字体体系收敛：Noto Sans/思源宋体 + Anthropic Fonts System + 溢出修复）已完成构建、视觉复检与推送**：
   - 中文严格限定为自托管 `Noto Sans SC`（400/700）与 `Noto Serif SC / 思源宋体`（600），已删除站酷黄油/小薇/马善政/霞鹜文楷等非 Noto 中文字体分片；
   - 英文主力全面采用站长提供的 `Anthropic Sans`、`Anthropic Serif`、`Anthropic Mono`（含全字重与斜体，沿用 `public/fonts/anthropic-*.woff2`）+ `JetBrains Mono`；`Unbounded` 收敛至品牌标、巨型页脚与序号；日文仅在 `[lang="ja"]` 徽标保留 `DotGothic16`；
@@ -98,6 +102,17 @@ src/
 ## 5. 更改日志（新的在上）
 
 <!-- 新条目追加在这里 -->
+
+### 2026-11-16 · Phase 1.3：新增 `/academics/`「学业」二级页（Bento 课程拼贴墙）
+
+- **结构与数据**：
+  - 清洗并归档 99 门本科课程至 [academics.json](src/data/academics.json)（区分 `orig` 原·信管大一 24 门 / 55.5 学分与 `clin` 现·临床医学五年制 75 门 / 169.5 学分，覆盖 `completed` / `active` / `recognized` / `planned` 与 6 门 `2026-2027 提前修读`，新增大四「医院见习」与大五「医院实习」阶段方块，预留 `grade`/`gpa` 字段）。
+  - 更新 [Hud.astro](src/components/hz/Hud.astro) 与 [shell.css](src/styles/hz/shell.css) 在「关于」与「额度」之间新增 `05 学业` 导航通道并防止窄桌面端换行。
+- **排布与视觉语义**：
+  - 在 [academics.ts](src/lib/academics.ts) 实现 24 列（桌面）/ 12 列（平板）/ 6 列（手机）满幅 Bento 拼版算法，优先保障各学期无空隙、无重叠对齐，同时依据学分权重突出核心大课并保证中文课程名横向易读；为大四「医院见习」（2 行满宽）与大五「医院实习」（4 行满宽，尺寸显著大于见习）分配纪念碑式阶段方块；支持大小写无关地关联公开/门禁博客文章。
+  - 在 [academics.css](src/styles/hz/academics.css) 为 12 个学期/阶段区块分配光谱色相，以 4 种底纹区分修读状态（实色已修 / 45° 斜纹在修 / 交叉网格互认 / 点阵虚框待修），以右下切角与 `//` 前缀区分原信管轨道、以 `+` 刻度标记临床轨道，并于两段轨道间设立纯文本「2026.09 转专业变轨」分隔带（不挂转专业文章直链）。
+- **交互**：
+  - 在 [academics.ts](src/scripts/hz/academics.ts) 实现 `/` 搜索、聚光灯筛选（压暗非匹配块而不撕裂拼贴）、`观测视图 / 全景拼贴` 切换、跨轨互认课程悬停同步高亮，以及可前后翻阅课程、跳转关联课程与文章的详情抽屉。
 
 ### 2026-11-16 · Phase 1.2：收敛至 Noto Sans/思源宋体 + Anthropic Fonts System，修复长英文标题溢出
 
