@@ -31,6 +31,8 @@ const collegeTone = (college: string): string => {
   if (college.includes('马克思主义')) return 'marx';
   if (college.includes('药学院')) return 'pharm';
   if (college.includes('眼视光') || college.includes('生物医学')) return 'optom';
+  if (college.includes('外国语')) return 'lang';
+  if (college.includes('CET') || college.includes('统考')) return 'cet';
   return 'default';
 };
 
@@ -57,7 +59,7 @@ for (const e of exams) {
 
 const stripDays: {
   date: string;
-  dayNum: number;
+  dayLabel: string;
   wd: string;
   count: number;
   title: string;
@@ -68,9 +70,10 @@ for (let i = 0; i < spanDays && i < 120; i++) {
   const key = fmtDate(cur);
   const list = byDate.get(key) || [];
   const wd = WEEKDAYS[cur.getDay()] || '';
+  const dayLabel = i === 0 || cur.getDate() === 1 ? `${cur.getMonth() + 1}/${cur.getDate()}` : String(cur.getDate());
   stripDays.push({
     date: key,
-    dayNum: cur.getDate(),
+    dayLabel,
     wd,
     count: list.length,
     title: list.length
@@ -141,7 +144,10 @@ const safeJson = JSON.stringify(rawExams).replace(/</g, '\\u003c');
         <div class="hz-exam-cd__top">
           <div style="min-width:0">
             <p class="hz-mono hz-exam-cd__kicker">NEXT TARGET // T-MINUS · <span lang="ja">次回試験</span></p>
-            <h2 class="hz-exam-cd__course" id="hzExamCdCourse">{exams[0]?.course || '—'}</h2>
+            <div class="hz-exam-cd__title-row">
+              <h2 class="hz-exam-cd__course" id="hzExamCdCourse">{exams[0]?.course || '—'}</h2>
+              <span class="hz-exam-kind" id="hzExamCdKind" hidden>实验考核</span>
+            </div>
             <div class="hz-exam-cd__meta">
               <span id="hzExamCdDate">{firstDateStr}</span>
               <span id="hzExamCdTime">{exams[0] ? `${exams[0].start} – ${exams[0].end}` : '—'}</span>
@@ -213,7 +219,7 @@ const safeJson = JSON.stringify(rawExams).replace(/</g, '\\u003c');
       <div class="hz-exam-panel">
         <div class="hz-exam-panel__head">
           <h2>考期日期矩阵</h2>
-          <span class="hz-mono">22-DAY TIMELINE MAP · CLICK TO FILTER</span>
+          <span class="hz-mono">{spanDays}-DAY TIMELINE MAP · CLICK TO FILTER</span>
         </div>
         <div class="hz-exam-strip" role="group" aria-label="按考试日期筛选">
           {stripDays.map((d) =>
@@ -224,12 +230,12 @@ const safeJson = JSON.stringify(rawExams).replace(/</g, '\\u003c');
                 data-exam-day={d.date}
                 title={d.title}
               >
-                <b>{d.dayNum}</b>
+                <b>{d.dayLabel}</b>
                 <i>{d.count}场</i>
               </button>
             ) : (
               <div class="hz-exam-day" title={d.title} aria-label={d.title}>
-                <b>{d.dayNum}</b>
+                <b>{d.dayLabel}</b>
                 <i>·</i>
               </div>
             ),
@@ -339,6 +345,7 @@ const safeJson = JSON.stringify(rawExams).replace(/</g, '\\u003c');
     <div class="hz-drawer__head">
       <span class="hz-mono hz-drawer__kicker">EXAM TELEMETRY // DETAILS</span>
       <div class="hz-drawer__tools">
+        <span class="hz-exam-kind" id="hzExamDrawerKind" hidden>实验考核</span>
         <span class="hz-exam-badge" id="hzExamDrawerBadge">—</span>
         <button class="hz-mini-btn" id="hzExamDrawerClose" type="button" aria-label="关闭">关闭 ✕</button>
       </div>

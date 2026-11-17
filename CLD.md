@@ -117,7 +117,7 @@ src/
 
 ### 2026-11-17 · 新增 06 日程三级页 `/schedule/exams/`（重构原独立仓库 `/et/` 期末考试安排）
 
-- **全量重构接入**：将原独立仓库 `AnAcretiondisk9986/et` 的 2026–2027 学年第一学期期末考试安排数据归档至 [exams.json](src/data/exams.json)，抛弃原有玻璃拟态圆角渐变风格，依据 HORIZON 视界双主题（VOID / PLATE）设计规范重写为 [exams.astro](src/pages/schedule/exams.astro)、[exams.css](src/styles/hz/exams.css) 与 [exams.ts](src/scripts/hz/exams.ts)（含实时倒计时、22 天日期矩阵筛选、开课学院分布、时间轴/卡片/表格三视图、右侧详情抽屉、信息复制、`.ics` 日历导出与打印样式）。
+- **全量重构接入**：将原独立仓库 `AnAcretiondisk9986/et` 的 2026–2027 学年第一学期期末考试安排（含 12-12 `六级笔试（CET6）`、01-10 `英语（3）` 共 10 场）归档至 [exams.json](src/data/exams.json)，抛弃原有玻璃拟态圆角渐变风格，依据 HORIZON 视界双主题（VOID / PLATE）设计规范重写为 [exams.astro](src/pages/schedule/exams.astro)、[exams.css](src/styles/hz/exams.css) 与 [exams.ts](src/scripts/hz/exams.ts)（含实时倒计时、33 天日期矩阵筛选、同课多考短时自动标注「实验考核」徽标、开课学院分布、时间轴/卡片/表格三视图、右侧详情抽屉、信息复制、`.ics` 日历导出与打印样式）。
 - **双向导航与旧链兼容**：在 `06 日程`（[schedule.astro](src/pages/schedule.astro)、[schedule.css](src/styles/hz/schedule.css)）页头新增高对比等离子橙「本学期考试安排」入口按钮，在三级页顶部增设「返回 06 日程」按钮；同时新增 [et.astro](src/pages/et.astro) 将 `/et/` 重定向至 `/schedule/exams/`，并同步更新 [about.json](src/data/about.json) 与 [academics.json](src/data/academics.json) 中的链接。
 
 ### 2026-11-16 · Phase 1.6：文章内页全比例居中、可收起侧栏与移除文内封面

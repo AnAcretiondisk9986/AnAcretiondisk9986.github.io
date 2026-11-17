@@ -23,6 +23,14 @@
 .hz-exam-drawer[data-tone='optom'] {
   --exam-c: #b794ff;
 }
+.hz-exam [data-tone='lang'],
+.hz-exam-drawer[data-tone='lang'] {
+  --exam-c: #deba85;
+}
+.hz-exam [data-tone='cet'],
+.hz-exam-drawer[data-tone='cet'] {
+  --exam-c: #eb6878;
+}
 .hz-exam [data-tone='default'],
 .hz-exam-drawer[data-tone='default'] {
   --exam-c: var(--hz-hot-2);
@@ -43,6 +51,14 @@
 :root[data-theme='light'] .hz-exam [data-tone='optom'],
 :root[data-theme='light'] .hz-exam-drawer[data-tone='optom'] {
   --exam-c: #6c4ca8;
+}
+:root[data-theme='light'] .hz-exam [data-tone='lang'],
+:root[data-theme='light'] .hz-exam-drawer[data-tone='lang'] {
+  --exam-c: #9c7235;
+}
+:root[data-theme='light'] .hz-exam [data-tone='cet'],
+:root[data-theme='light'] .hz-exam-drawer[data-tone='cet'] {
+  --exam-c: #a71f3c;
 }
 
 /* —— 顶部返回条与页头 —— */
@@ -348,6 +364,43 @@
 :root[data-theme='light'] .hz-exam-badge.is-soon {
   color: #9c5206;
   border-color: rgb(156 82 6 / 0.45);
+}
+
+/* —— 实验考核 / 考核类型小标签 —— */
+.hz-exam-kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 7px;
+  border: 1px solid color-mix(in oklab, var(--hz-hot-2) 60%, var(--hz-line-2));
+  background: color-mix(in oklab, var(--hz-hot-2) 12%, var(--hz-bg));
+  color: var(--hz-hot-2);
+  font-family: var(--f-mono), var(--f-sans);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1.25;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.hz-exam-kind::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  background: currentColor;
+  flex: none;
+}
+:root[data-theme='light'] .hz-exam-kind {
+  border-color: rgb(180 80 14 / 0.5);
+  background: rgb(180 80 14 / 0.1);
+  color: #9c4308;
+}
+.hz-exam-cd__title-row,
+.hz-exam-card__title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
 }
 
 /* —— 22 天日期矩阵 + 学院分布 —— */

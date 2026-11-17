@@ -9,6 +9,7 @@ interface RawExam {
   campus: string;
   college: string;
   dept: string;
+  tag?: string;
 }
 
 interface ExamPayload {
@@ -23,6 +24,7 @@ interface ExamPayload {
 interface ExamItem extends RawExam {
   id: string;
   tone: string;
+  tag: string;
   rawStart: Date;
   rawEnd: Date;
   mins: number;
@@ -50,6 +52,8 @@ const collegeTone = (college: string): string => {
   if (college.includes('马克思主义')) return 'marx';
   if (college.includes('药学院')) return 'pharm';
   if (college.includes('眼视光') || college.includes('生物医学')) return 'optom';
+  if (college.includes('外国语')) return 'lang';
+  if (college.includes('CET') || college.includes('统考')) return 'cet';
   return 'default';
 };
 
@@ -114,19 +118,38 @@ function initExamPage() {
     return;
   }
 
-  const exams: ExamItem[] = (payload.exams || [])
-    .map((raw, idx) => {
-      const rawStart = parseLocalDateTime(raw.date, raw.start);
-      const rawEnd = parseLocalDateTime(raw.date, raw.end);
-      return {
-        ...raw,
-        id: `exam-${idx}`,
-        tone: collegeTone(raw.college),
-        rawStart,
-        rawEnd,
-        mins: Math.max(0, Math.round((rawEnd.getTime() - rawStart.getTime()) / 60_000)),
-        wd: WEEKDAYS[parseLocalDate(raw.date).getDay()] || '',
-      };
+  const rawList = (payload.exams || []).map((raw, idx) => {
+    const rawStart = parseLocalDateTime(raw.date, raw.start);
+    const rawEnd = parseLocalDateTime(raw.date, raw.end);
+    const mins = Math.max(0, Math.round((rawEnd.getTime() - rawStart.getTime()) / 60_000));
+    return {
+      ...raw,
+      id: `exam-${idx}`,
+      tone: collegeTone(raw.college),
+      tag: String(raw.tag || '').trim(),
+      rawStart,
+      rawEnd,
+      mins,
+      wd: WEEKDAYS[parseLocalDate(raw.date).getDay()] || '',
+    };
+  });
+
+  // 同一门课考两次时，时间较短的自动标注「实验考核」
+  const courseMins = new Map<string, number[]>();
+  for (const item of rawList) {
+    const arr = courseMins.get(item.course);
+    if (arr) arr.push(item.mins);
+    else courseMins.set(item.course, [item.mins]);
+  }
+  const exams: ExamItem[] = rawList
+    .map((item) => {
+      if (item.tag) return item;
+      const durations = courseMins.get(item.course) || [];
+      const maxMins = durations.length > 1 ? Math.max(...durations) : item.mins;
+      if (durations.length > 1 && item.mins < maxMins) {
+        return { ...item, tag: '实验考核' };
+      }
+      return item;
     })
     .sort((a, b) => a.rawStart.getTime() - b.rawStart.getTime());
 
@@ -193,7 +216,7 @@ function initExamPage() {
   };
 
   const examClipboardText = (e: ExamItem) =>
-    `${e.course}\n` +
+    `${e.course}${e.tag ? `（${e.tag}）` : ''}\n` +
     `考试时间：${e.date} ${e.wd} ${e.start}–${e.end}（${e.mins} 分钟）\n` +
     `考试地点：${e.campus} ${e.room}\n` +
     `开课学院：${e.college}（${e.dept}）`;
@@ -220,10 +243,10 @@ function initExamPage() {
       lines.push(`DTSTAMP:${nowStamp}`);
       lines.push(`DTSTART:${icsStamp(e.rawStart)}`);
       lines.push(`DTEND:${icsStamp(e.rawEnd)}`);
-      lines.push(`SUMMARY:${icsEscape(`【考试】${e.course}`)}`);
+      lines.push(`SUMMARY:${icsEscape(`【考试】${e.course}${e.tag ? `（${e.tag}）` : ''}`)}`);
       lines.push(`LOCATION:${icsEscape(`${e.campus} ${e.room}`)}`);
       lines.push(
-        `DESCRIPTION:${icsEscape(`开课学院：${e.college}；教研室：${e.dept}；时长 ${e.mins} 分钟`)}`,
+        `DESCRIPTION:${icsEscape(`${e.tag ? `考核类型：${e.tag}；` : ''}开课学院：${e.college}；教研室：${e.dept}；时长 ${e.mins} 分钟`)}`,
       );
       lines.push('BEGIN:VALARM', 'TRIGGER:-PT12H', 'ACTION:DISPLAY', `DESCRIPTION:${icsEscape(`${e.course} 明天开考`)}`, 'END:VALARM');
       lines.push('END:VEVENT');
@@ -282,6 +305,7 @@ function initExamPage() {
     const timeEl = byId('hzExamCdTime');
     const roomEl = byId('hzExamCdRoom');
     const collegeEl = byId('hzExamCdCollege');
+    const kindEl = byId('hzExamCdKind');
     const detailBtn = byId<HTMLButtonElement>('hzExamCdDetail');
     const fromEl = byId('hzExamFrom');
     const toEl = byId('hzExamTo');
@@ -295,6 +319,7 @@ function initExamPage() {
       if (timeEl) timeEl.textContent = `共 ${exams.length} 场`;
       if (roomEl) roomEl.textContent = payload.campus;
       if (collegeEl) collegeEl.textContent = 'ALL CLEARED';
+      if (kindEl) kindEl.hidden = true;
       if (detailBtn) detailBtn.hidden = true;
       return;
     }
@@ -305,6 +330,10 @@ function initExamPage() {
     if (timeEl) timeEl.textContent = `${nextExam.start} – ${nextExam.end} (${nextExam.mins} MIN)`;
     if (roomEl) roomEl.textContent = `${nextExam.campus} · ${nextExam.room}`;
     if (collegeEl) collegeEl.textContent = nextExam.college;
+    if (kindEl) {
+      kindEl.hidden = !nextExam.tag;
+      if (nextExam.tag) kindEl.textContent = nextExam.tag;
+    }
     if (detailBtn) detailBtn.hidden = false;
   };
 
@@ -409,7 +438,7 @@ function initExamPage() {
       if (state.college !== 'all' && e.college !== state.college) return false;
       if (state.dateFilter && e.date !== state.dateFilter) return false;
       if (!q) return true;
-      const hay = [e.course, e.room, e.college, e.dept, e.campus, e.date, e.start, e.end, e.wd]
+      const hay = [e.course, e.tag, e.room, e.college, e.dept, e.campus, e.date, e.start, e.end, e.wd]
         .join(' ')
         .toLowerCase();
       return hay.includes(q);
@@ -441,7 +470,10 @@ function initExamPage() {
           <span class="hz-exam-card__college"><i></i><span>${esc(e.college)}</span></span>
           <span class="hz-exam-badge ${st.cls}">${esc(st.text)}</span>
         </div>
-        <h3 class="hz-exam-card__title">${esc(e.course)}</h3>
+        <div class="hz-exam-card__title-row">
+          <h3 class="hz-exam-card__title">${esc(e.course)}</h3>
+          ${e.tag ? `<span class="hz-exam-kind">${esc(e.tag)}</span>` : ''}
+        </div>
         <div class="hz-exam-card__rows">
           <div class="hz-exam-card__row">
             <strong>${esc(e.date)}</strong>
@@ -527,7 +559,7 @@ function initExamPage() {
                 <tr class="${done ? 'is-done' : ''}" data-exam-id="${e.id}" data-tone="${e.tone}" tabindex="0" role="button">
                   <td class="hz-exam-table__mono">${esc(e.date)}</td>
                   <td>${esc(e.wd)}</td>
-                  <td class="hz-exam-table__course">${esc(e.course)}</td>
+                  <td class="hz-exam-table__course">${esc(e.course)}${e.tag ? ` <span class="hz-exam-kind">${esc(e.tag)}</span>` : ''}</td>
                   <td class="hz-exam-table__mono">${esc(e.start)} – ${esc(e.end)}</td>
                   <td class="hz-exam-table__mono">${e.mins}m</td>
                   <td class="hz-exam-table__mono">${esc(e.room)}</td>
@@ -604,11 +636,16 @@ function initExamPage() {
 
     const titleEl = byId('hzExamDrawerTitle');
     const subEl = byId('hzExamDrawerSub');
+    const kindEl = byId('hzExamDrawerKind');
     const badgeEl = byId('hzExamDrawerBadge');
     const listEl = byId('hzExamDrawerList');
 
     if (titleEl) titleEl.textContent = e.course;
     if (subEl) subEl.textContent = `${e.year} 学年 · 第 ${e.term} 学期 · ${e.campus}`;
+    if (kindEl) {
+      kindEl.hidden = !e.tag;
+      if (e.tag) kindEl.textContent = e.tag;
+    }
     if (badgeEl) {
       badgeEl.textContent = st.text;
       badgeEl.className = `hz-exam-badge ${st.cls}`.trim();
@@ -618,6 +655,7 @@ function initExamPage() {
         ['考试日期', `${e.date} ${e.wd}`],
         ['考试时间', `${e.start} – ${e.end}（${e.mins} 分钟）`],
         ['考试地点', `${e.campus} · ${e.room}`],
+        ...(e.tag ? ([['考核性质', e.tag]] as [string, string][]) : []),
         ['开课学院', e.college],
         ['教研室', e.dept],
         ['距考天数', dayRel],
