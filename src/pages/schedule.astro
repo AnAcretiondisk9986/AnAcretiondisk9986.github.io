@@ -2,8 +2,11 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { normalizeSchedulePayload } from '../lib/schedule-core.mjs';
 import rawSchedule from '../data/schedule.json';
+import rawExams from '../data/exams.json';
 import '../styles/hz/log.css';
 import '../styles/hz/schedule.css';
+
+const examCount = Array.isArray(rawExams?.exams) ? rawExams.exams.length : 0;
 
 const schedule = normalizeSchedulePayload(rawSchedule) ?? {
   version: 2 as const,
@@ -41,6 +44,14 @@ const safeJson = JSON.stringify(schedule).replace(/</g, '\\u003c');
             <i class="hz-sched-pulse-dot" aria-hidden="true"></i>
             <span id="hzSchedTodayReadout">--</span>
           </p>
+          <a class="hz-btn hz-btn--hot hz-sched-exam-cta" href="/schedule/exams/">
+            <span class="hz-sched-exam-cta__dot" aria-hidden="true"></span>
+            <span>本学期考试安排</span>
+            {examCount > 0 && (
+              <span class="hz-sched-exam-cta__count">{String(examCount).padStart(2, '0')} 场</span>
+            )}
+            <span aria-hidden="true">→</span>
+          </a>
         </div>
       </div>
     </header>

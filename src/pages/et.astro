@@ -1,0 +1,69 @@
+---
+/**
+ * 兼容重定向页：原独立仓库 /et/ 已合并重构为 06 日程三级页 /schedule/exams/。
+ * 打开 /et/ 时立即跳转到 /schedule/exams/（meta refresh + JS location.replace）。
+ */
+const target = '/schedule/exams/';
+const canonical = new URL(target, Astro.site ?? 'https://blog.acretiondisk.top').href;
+---
+
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <link rel="canonical" href={canonical} />
+    <meta http-equiv="refresh" content={`0; url=${target}`} />
+    <title>正在跳转 · 本学期考试安排</title>
+    <style>
+      :root { color-scheme: dark light; }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100svh;
+        display: grid;
+        place-items: center;
+        font-family: ui-monospace, 'Cascadia Code', Consolas, system-ui, sans-serif;
+        background: #08080b;
+        color: #ece7dc;
+      }
+      @media (prefers-color-scheme: light) {
+        body { background: #eae8e2; color: #0d0d10; }
+      }
+      main {
+        padding: 32px;
+        max-width: 560px;
+        border: 1px solid currentColor;
+      }
+      p.kicker {
+        margin: 0 0 12px;
+        font-size: 0.72rem;
+        letter-spacing: 0.14em;
+        color: #ff5a1a;
+      }
+      h1 {
+        margin: 0 0 14px;
+        font-size: 1.05rem;
+        font-weight: 700;
+      }
+      p.note {
+        margin: 0;
+        font-size: 0.82rem;
+        line-height: 1.7;
+        opacity: 0.78;
+      }
+      a { color: #ff5a1a; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p class="kicker">HORIZON // EPHEMERIS RELAY</p>
+      <h1>考试安排已迁入 06 日程三级页…</h1>
+      <p class="note"><a href={target}>如果未自动跳转，请点击前往 /schedule/exams/ →</a></p>
+    </main>
+    <script is:inline define:vars={{ target }}>
+      location.replace(target);
+    </script>
+  </body>
+</html>

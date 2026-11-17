@@ -1,0 +1,369 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import rawExams from '../../data/exams.json';
+import '../../styles/hz/log.css';
+import '../../styles/hz/schedule.css';
+import '../../styles/hz/exams.css';
+
+interface RawExam {
+  year: string;
+  term: number;
+  course: string;
+  date: string;
+  start: string;
+  end: string;
+  room: string;
+  campus: string;
+  college: string;
+  dept: string;
+}
+
+const WEEKDAYS = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'] as const;
+const pad2 = (n: number) => String(n).padStart(2, '0');
+const parseDate = (s: string) => {
+  const [y, m, d] = s.split('-').map(Number);
+  return new Date(y, (m || 1) - 1, d || 1, 0, 0, 0, 0);
+};
+const fmtDate = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+
+const collegeTone = (college: string): string => {
+  if (college.includes('基础医学')) return 'med';
+  if (college.includes('马克思主义')) return 'marx';
+  if (college.includes('药学院')) return 'pharm';
+  if (college.includes('眼视光') || college.includes('生物医学')) return 'optom';
+  return 'default';
+};
+
+const exams = [...(rawExams.exams as RawExam[])].sort((a, b) =>
+  `${a.date} ${a.start}`.localeCompare(`${b.date} ${b.start}`),
+);
+
+const totalCount = exams.length;
+const uniqueCourses = new Set(exams.map((e) => e.course)).size;
+const uniqueRooms = new Set(exams.map((e) => e.room)).size;
+
+const firstDateStr = exams[0]?.date || '2026-12-23';
+const lastDateStr = exams[exams.length - 1]?.date || firstDateStr;
+const firstDate = parseDate(firstDateStr);
+const lastDate = parseDate(lastDateStr);
+const spanDays = Math.max(1, Math.round((lastDate.getTime() - firstDate.getTime()) / 86_400_000) + 1);
+
+const byDate = new Map<string, RawExam[]>();
+for (const e of exams) {
+  const arr = byDate.get(e.date);
+  if (arr) arr.push(e);
+  else byDate.set(e.date, [e]);
+}
+
+const stripDays: {
+  date: string;
+  dayNum: number;
+  wd: string;
+  count: number;
+  title: string;
+}[] = [];
+
+for (let i = 0; i < spanDays && i < 120; i++) {
+  const cur = new Date(firstDate.getFullYear(), firstDate.getMonth(), firstDate.getDate() + i);
+  const key = fmtDate(cur);
+  const list = byDate.get(key) || [];
+  const wd = WEEKDAYS[cur.getDay()] || '';
+  stripDays.push({
+    date: key,
+    dayNum: cur.getDate(),
+    wd,
+    count: list.length,
+    title: list.length
+      ? `${key} ${wd}\n${list.map((x) => `${x.start} ${x.course} @${x.room}`).join('\n')}`
+      : `${key} ${wd} · 无考试`,
+  });
+}
+
+const collegeMap = new Map<string, number>();
+for (const e of exams) {
+  collegeMap.set(e.college, (collegeMap.get(e.college) || 0) + 1);
+}
+const colleges = [...collegeMap.entries()]
+  .sort((a, b) => b[1] - a[1])
+  .map(([name, count]) => ({
+    name,
+    count,
+    tone: collegeTone(name),
+    pct: totalCount > 0 ? Math.round((count / totalCount) * 100) : 0,
+    barPct: count > 0 ? Math.round((count / Math.max(1, [...collegeMap.values()].sort((a, b) => b - a)[0])) * 100) : 0,
+  }));
+
+const safeJson = JSON.stringify(rawExams).replace(/</g, '\\u003c');
+---
+
+<BaseLayout
+  title="本学期考试安排"
+  description={`${rawExams.termLabel}期末考试时间表 · ${rawExams.campus}`}
+  page="ephemeris"
+>
+  <div class="hz-wrap hz-exam" data-exam-root>
+    <script type="application/json" data-exam-data is:inline set:html={safeJson}></script>
+
+    <nav class="hz-exam-navline" aria-label="三级页面导航">
+      <a class="hz-btn hz-exam-back" href="/schedule/">
+        <span aria-hidden="true">←</span>
+        <span>返回 06 日程 · EPHEMERIS</span>
+      </a>
+      <div class="hz-exam-navline__tools">
+        <button class="hz-mini-btn" id="hzExamExportAll" type="button">导出全部日历 (.ics)</button>
+        <button class="hz-mini-btn" id="hzExamPrint" type="button">打印 / 导出 PDF</button>
+      </div>
+    </nav>
+
+    <header class="hz-exam-head">
+      <div class="hz-exam-head__top">
+        <div>
+          <p class="hz-mono hz-exam-head__kicker">
+            EPHEMERIS // 06.1 · EXAM WINDOW · <span lang="ja">試験日程軌道</span>
+          </p>
+          <div class="hz-exam-head__title-wrap">
+            <h1 class="hz-exam-head__title">本学期考试安排</h1>
+            <span class="hz-exam-head__meta-sub">
+              {rawExams.termLabel} · {rawExams.campus} · {firstDateStr.replace(/-/g, '.')} → {lastDateStr.replace(/-/g, '.')}
+            </span>
+          </div>
+        </div>
+
+        <p class="hz-mono hz-exam-head__status" id="hzExamStatusBox" aria-live="polite">
+          <i class="hz-exam-pulse" aria-hidden="true"></i>
+          <span id="hzExamLiveState">COMPUTING ORBITAL T-MINUS…</span>
+        </p>
+      </div>
+    </header>
+
+    <section class="hz-exam-deck" aria-label="下一场考试倒计时与考期概览">
+      <div class="hz-exam-cd" id="hzExamCdCard" data-tone="default">
+        <div class="hz-exam-cd__top">
+          <div style="min-width:0">
+            <p class="hz-mono hz-exam-cd__kicker">NEXT TARGET // T-MINUS · <span lang="ja">次回試験</span></p>
+            <h2 class="hz-exam-cd__course" id="hzExamCdCourse">{exams[0]?.course || '—'}</h2>
+            <div class="hz-exam-cd__meta">
+              <span id="hzExamCdDate">{firstDateStr}</span>
+              <span id="hzExamCdTime">{exams[0] ? `${exams[0].start} – ${exams[0].end}` : '—'}</span>
+              <span class="hz-exam-cd__room" id="hzExamCdRoom">{exams[0] ? `${exams[0].campus} · ${exams[0].room}` : '—'}</span>
+              <span id="hzExamCdCollege">{exams[0]?.college || '—'}</span>
+            </div>
+          </div>
+          <span class="hz-exam-badge" id="hzExamCdPill">计算中</span>
+        </div>
+
+        <div class="hz-exam-clock" aria-label="实时倒计时">
+          <div class="hz-exam-unit"><b id="hzExamD">--</b><span>Days</span></div>
+          <div class="hz-exam-unit"><b id="hzExamH">--</b><span>Hours</span></div>
+          <div class="hz-exam-unit"><b id="hzExamM">--</b><span>Minutes</span></div>
+          <div class="hz-exam-unit"><b id="hzExamS">--</b><span>Seconds</span></div>
+        </div>
+
+        <div class="hz-exam-track">
+          <div class="hz-exam-track__bar"><i id="hzExamBar"></i></div>
+          <div class="hz-exam-track__foot">
+            <span id="hzExamFrom">首场 {firstDateStr}</span>
+            <span id="hzExamTo">末场 {lastDateStr}</span>
+          </div>
+        </div>
+
+        <div class="hz-exam-cd__foot">
+          <span class="hz-mono" style="color:var(--hz-ink-3)">REAL-TIME LOCAL CHRONOMETER</span>
+          <button class="hz-mini-btn" id="hzExamCdDetail" type="button">查看场次详情 / 导出日历 →</button>
+        </div>
+      </div>
+
+      <div class="hz-exam-kpis" aria-label="考期统计">
+        <div class="hz-exam-kpi">
+          <div class="hz-mono hz-exam-kpi__label">
+            <span>EXAM SESSIONS</span>
+            <span>01</span>
+          </div>
+          <div class="hz-exam-kpi__val">{totalCount}<small>场</small></div>
+          <div class="hz-exam-kpi__sub" id="hzExamRemainSub">待考 {totalCount} 场</div>
+        </div>
+        <div class="hz-exam-kpi">
+          <div class="hz-mono hz-exam-kpi__label">
+            <span>COURSES</span>
+            <span>02</span>
+          </div>
+          <div class="hz-exam-kpi__val">{uniqueCourses}<small>门</small></div>
+          <div class="hz-exam-kpi__sub">涵盖理论与机考/分场</div>
+        </div>
+        <div class="hz-exam-kpi">
+          <div class="hz-mono hz-exam-kpi__label">
+            <span>EXAM ROOMS</span>
+            <span>03</span>
+          </div>
+          <div class="hz-exam-kpi__val">{uniqueRooms}<small>处</small></div>
+          <div class="hz-exam-kpi__sub">{rawExams.campus}</div>
+        </div>
+        <div class="hz-exam-kpi">
+          <div class="hz-mono hz-exam-kpi__label">
+            <span>WINDOW SPAN</span>
+            <span>04</span>
+          </div>
+          <div class="hz-exam-kpi__val">{spanDays}<small>天</small></div>
+          <div class="hz-exam-kpi__sub">{firstDateStr.slice(5).replace('-', '.')} → {lastDateStr.slice(5).replace('-', '.')}</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="hz-exam-vis" aria-label="考期日期分布与开课学院占比">
+      <div class="hz-exam-panel">
+        <div class="hz-exam-panel__head">
+          <h2>考期日期矩阵</h2>
+          <span class="hz-mono">22-DAY TIMELINE MAP · CLICK TO FILTER</span>
+        </div>
+        <div class="hz-exam-strip" role="group" aria-label="按考试日期筛选">
+          {stripDays.map((d) =>
+            d.count > 0 ? (
+              <button
+                type="button"
+                class:list={['hz-exam-day', 'has-exam', { 'has-multi': d.count > 1 }]}
+                data-exam-day={d.date}
+                title={d.title}
+              >
+                <b>{d.dayNum}</b>
+                <i>{d.count}场</i>
+              </button>
+            ) : (
+              <div class="hz-exam-day" title={d.title} aria-label={d.title}>
+                <b>{d.dayNum}</b>
+                <i>·</i>
+              </div>
+            ),
+          )}
+        </div>
+        <div class="hz-exam-legend">
+          <div class="hz-exam-legend__items">
+            <span><i style="background:color-mix(in oklab, var(--hz-blue) 45%, var(--hz-bg));border-color:var(--hz-blue)"></i>有考试</span>
+            <span><i style="background:color-mix(in oklab, var(--hz-hot) 45%, var(--hz-bg));border-color:var(--hz-hot)"></i>一天多场</span>
+            <span><i style="background:var(--hz-bg)"></i>无考试</span>
+          </div>
+          <button type="button" class="hz-exam-legend__clear" id="hzExamClearDate" hidden>清除日期筛选</button>
+        </div>
+      </div>
+
+      <div class="hz-exam-panel">
+        <div class="hz-exam-panel__head">
+          <h2>开课学院分布</h2>
+          <span class="hz-mono">BY COLLEGE</span>
+        </div>
+        <div class="hz-exam-dists">
+          {colleges.map((c) => (
+            <div class="hz-exam-dist" data-tone={c.tone}>
+              <div class="hz-exam-dist__row">
+                <span class="hz-exam-dist__name">
+                  <i aria-hidden="true"></i>
+                  <span>{c.name}</span>
+                </span>
+                <span class="hz-exam-dist__num">{c.count} 场 · {c.pct}%</span>
+              </div>
+              <div class="hz-exam-dist__bar">
+                <i style={`width:${c.barPct}%`}></i>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <section class="hz-exam-controls" aria-label="考试筛选与视图切换">
+      <div class="hz-exam-controls__top">
+        <label class="hz-search">
+          <span class="hz-mono" aria-hidden="true">SEARCH</span>
+          <input
+            id="hzExamSearch"
+            type="search"
+            aria-label="搜索课程、考场、学院或日期"
+            placeholder="搜索课程、考场、学院或日期…"
+            autocomplete="off"
+          />
+          <kbd aria-hidden="true">/</kbd>
+        </label>
+
+        <div class="hz-seg" role="group" aria-label="视图切换">
+          <button type="button" data-exam-view="timeline" aria-pressed="true">时间轴</button>
+          <button type="button" data-exam-view="grid" aria-pressed="false">卡片</button>
+          <button type="button" data-exam-view="table" aria-pressed="false">表格</button>
+        </div>
+
+        <label class="sr-only" for="hzExamSort">排序方式</label>
+        <select class="hz-exam-select" id="hzExamSort" aria-label="排序方式">
+          <option value="time">按考试时间</option>
+          <option value="course">按课程名称</option>
+          <option value="room">按考场编号</option>
+          <option value="college">按开课学院</option>
+        </select>
+      </div>
+
+      <div class="hz-tags-rail hz-exam-chips" role="group" aria-label="按开课学院筛选">
+        <button type="button" data-exam-college="all" aria-pressed="true">
+          <i aria-hidden="true"></i>
+          <span>全部 ({totalCount})</span>
+        </button>
+        {colleges.map((c) => (
+          <button type="button" data-exam-college={c.name} data-tone={c.tone} aria-pressed="false">
+            <i aria-hidden="true"></i>
+            <span>{c.name} ({c.count})</span>
+          </button>
+        ))}
+      </div>
+
+      <div class="hz-exam-results hz-mono">
+        <span>显示 <b id="hzExamShown">{totalCount}</b> / {totalCount} 场考试</span>
+        <span class="hz-exam-results__hint">
+          快捷键 <kbd>/</kbd> 搜索 · <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> 切视图 · 点击场次查看详情
+        </span>
+      </div>
+    </section>
+
+    <section id="hzExamView" aria-live="polite"></section>
+
+    <div class="hz-empty" id="hzExamEmpty" hidden>
+      <p class="hz-mono">NO EXAM RECORD MATCHES CURRENT FILTER</p>
+      <p>没有匹配的考试场次，试试清除搜索词、日期或学院筛选。</p>
+      <button type="button" class="hz-btn" id="hzExamReset">重置全部筛选</button>
+    </div>
+  </div>
+
+  <div class="hz-drawer-backdrop" id="hzExamDrawerBackdrop"></div>
+  <aside
+    class="hz-drawer hz-exam-drawer"
+    id="hzExamDrawer"
+    aria-label="考试场次详情"
+    aria-hidden="true"
+    data-tone="default"
+  >
+    <div class="hz-drawer__head">
+      <span class="hz-mono hz-drawer__kicker">EXAM TELEMETRY // DETAILS</span>
+      <div class="hz-drawer__tools">
+        <span class="hz-exam-badge" id="hzExamDrawerBadge">—</span>
+        <button class="hz-mini-btn" id="hzExamDrawerClose" type="button" aria-label="关闭">关闭 ✕</button>
+      </div>
+    </div>
+
+    <h2 class="hz-drawer__title" id="hzExamDrawerTitle">--</h2>
+    <p class="hz-drawer__sub" id="hzExamDrawerSub">--</p>
+
+    <div class="hz-exam-drawer__cd" id="hzExamDrawerCd">--</div>
+
+    <dl class="hz-drawer__list" id="hzExamDrawerList"></dl>
+
+    <div class="hz-exam-drawer__acts">
+      <button class="hz-btn hz-btn--hot" id="hzExamDrawerCopy" type="button">复制考试信息</button>
+      <button class="hz-btn" id="hzExamDrawerIcs" type="button">下载日历 (.ics)</button>
+    </div>
+
+    <p class="hz-drawer__note">
+      数据来源：{rawExams.sourceLabel}（{rawExams.termLabel}）。导出的 .ics 日历文件含开考前 12 小时提醒。
+    </p>
+  </aside>
+
+  <div class="hz-exam-toast" id="hzExamToast" role="status" aria-live="polite"></div>
+</BaseLayout>
+
+<script>
+  import '../../scripts/hz/exams';
+</script>
