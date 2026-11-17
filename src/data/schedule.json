@@ -1,9 +1,1278 @@
 {
   "version": 2,
-  "timetables": [],
-  "activeId": null,
+  "timetables": [
+    {
+      "id": "1790126216069-865xve",
+      "name": "2026-2027-1（3）",
+      "semester": "2026-2027-1",
+      "student": {
+        "name": "黄映焜",
+        "id": ""
+      },
+      "termStartDate": "2026-09-07",
+      "termStartConfirmed": true,
+      "events": [
+        {
+          "day": 1,
+          "start": 1,
+          "end": 2,
+          "title": "组织胚胎学",
+          "type": "lecture",
+          "label": "讲课",
+          "room": "1201",
+          "campus": "滨海校区",
+          "teacher": "刘芬",
+          "weeks": [
+            {
+              "start": 4,
+              "end": 6,
+              "parity": "even"
+            },
+            {
+              "start": 7,
+              "end": 8,
+              "parity": "all"
+            },
+            {
+              "start": 10,
+              "end": 14,
+              "parity": "all"
+            }
+          ],
+          "credit": "3.5",
+          "courseCode": "",
+          "className": "(2026-2027-1)-NN101988-0000-1",
+          "classComposition": "仁26临床1（1）;仁26临床1（2）;仁26临床1（3）;仁26临床1（4）;仁26临床1（5）",
+          "assessment": "考试",
+          "note": "",
+          "courseHours": "讲课:36,实验:32,在线:4",
+          "weeklyHours": 3.5,
+          "totalHours": 59.5,
+          "cardColor": "",
+          "hidden": false
+        },
+        {
+          "day": 1,
+          "start": 1,
+          "end": 2,
+          "title": "组织胚胎学",
+          "type": "online",
+          "label": "在线",
+          "room": "未排地点",
+          "campus": "滨海校区",
+          "teacher": "刘芬",
+          "weeks": [
+            {
+              "start": 9,
+              "end": 9,
+              "parity": "all"
+            }
+          ],
+          "credit": "3.5",
+          "courseCode": "",
+          "className": "(2026-2027-1)-NN101988-0000-1-混合-F",
+          "classComposition": "仁26临床1（1）;仁26临床1（2）;仁26临床1（3）;仁26临床1（4）;仁26临床1（5）",
+          "assessment": "未安排",
+          "note": "",
+          "courseHours": "讲课:36,实验:32,在线:4",
+          "weeklyHours": 3,
+          "totalHours": 51,
+          "cardColor": "",
+          "hidden": false
+        },
+        {
+          "day": 1,
+          "start": 3,
+          "end": 4,
+          "title": "英语（3）",
+          "type": "lecture",
+          "label": "讲课",
+          "room": "2406",
+          "campus": "滨海校区",
+          "teacher": "林甜甜",
+          "weeks": [
+            {
+              "start": 1,
+              "end": 17,
+              "parity": "all"
+            }
+          ],
+          "credit": "2",
+          "courseCode": "",
+          "className": "英语（3）- 仁临床1（1）-（2）班",
+          "classComposition": "2025",
+          "assessment": "未安排",
+          "note": "",
+          "courseHours": "讲课:32",
+          "weeklyHours": 2,
+          "totalHours": 34,
+          "cardColor": "",
+          "hidden": false
+        },
+        {
+          "day": 1,
+          "start": 8,
+          "end": 10,
+          "title": "医用物理学",
+          "type": "lab",
+          "label": "实验",
+          "room": "6-210",
+          "campus": "滨海校区",
+          "teacher": "龚佳星",
+          "weeks": [
+            {
+              "start": 4,
+              "end": 6,
+              "parity": "even"
+            }
+          ],
+          "credit": "2.5",
+          "courseCode": "NN101860-110770-18",
+          "className": "(2026-2027-1)-NN101860-110770-18-仁26临床1（2）-B",
+          "classComposition": "仁26临床1（2）",
+          "assessment": "未安排",
+          "note": "",
+          "courseHours": "讲课:33,实验:18",
+          "weeklyHours": 1,
+          "totalHours": 17,
+          "cardColor": "",
+          "hidden": false
+        },
+        {
+          "day": 1,
+          "start": 8,
+          "end": 10,
+          "title": "医用物理学",
+          "type": "lab",
+          "label": "实验",
+          "room": "6206医学物理实验室（1）",
+          "campus": "滨海校区",
+          "teacher": "龚佳星",
+          "weeks": [
+            {
+              "start": 8,
+              "end": 10,
+              "parity": "even"
+            }
+          ],
+          "credit": "2.5",
+          "courseCode": "NN101860-110770-18",
+          "className": "(2026-2027-1)-NN101860-110770-18-仁26临床1（2）-B",
+          "classComposition": "仁26临床1（2）",
+          "assessment": "未安排",
+          "note": "",
+          "courseHours": "讲课:33,实验:18",
+          "weeklyHours": 1,
+          "totalHours": 17,
+          "cardColor": "",
+          "hidden": false
+        },
+        {
+          "day": 1,
+          "start": 8,
+          "end": 10,
+          "title": "医用物理学",
+          "type": "lab",
+          "label": "实验",
+          "room": "6-208",
+          "campus": "滨海校区",
+          "teacher": "龚佳星",
+          "weeks": [
+            {
+              "start": 12,
+              "end": 14,
+              "parity": "even"
+            }
+          ],
+          "credit": "2.5",
+          "courseCode": "NN101860-110770-18",
+          "className": "(2026-2027-1)-NN101860-110770-18-仁26临床1（2）-B",
+          "classComposition": "仁26临床1（2）",
+          "assessment": "未安排",
+          "note": "",
+          "courseHours": "讲课:33,实验:18",
+          "weeklyHours": 1,
+          "totalHours": 17,
+          "cardColor": "",
+          "hidden": false
+        },
+        {
+          "day": 2,
+          "start": 3,
+          "end": 5,
+          "title": "系统解剖学",
+          "type": "lab",
+          "label": "实验",
+          "room": "4111解剖实验室（3）",
+          "campus": "滨海校区",
+          "teacher": "金建华",
+          "weeks": [
+            {
+              "start": 7,
+              "end": 7,
+              "parity": "all"
+            },
+            {
+              "start": 17,
+              "end": 17,
+              "parity": "all"
+            }
+          ],
+          "credit": "5",
+          "courseCode": "",
+          "className": "(2026-2027-1)-NN101725-0000-1-仁26临床1（2）-B",
+          "classComposition": "仁26临床1（2）",
+          "assessment": "未安排",
+          "note": "",
+          "courseHours": "讲课:65,实验:30",
+          "weeklyHours": 4,
+          "totalHours": 68,
+          "cardColor": "",
+          "hidden": false
+        },
+        {
+          "day": 2,
+          "start": 3,
+          "end": 5,
+          "title": "系统解剖学",
+          "type": "lecture",
+          "label": "讲课",
+          "room": "1104",
+          "campus": "滨海校区",
+          "teacher": "金建华",
+          "weeks": [
+            {
+              "start": 9,
+              "end": 10,
+              "parity": "all"
+            },
+            {
+              "start": 12,
+              "end": 14,
+              "parity": "even"
+            },
+            {
+              "start": 15,
+              "end": 15,
+              "parity": "all"
+            }
+          ],
+          "credit": "5",
+          "courseCode": "",
+          "className": "(2026-2027-1)-NN101725-0000-1",
+          "classComposition": "仁26临床1（1）;仁26临床1（2）;仁26临床1（3）;仁26临床1（4）;仁26临床1（5）",
+          "assessment": "考试",
+          "note": "",
+          "courseHours": "讲课:65,实验:30",
+          "weeklyHours": 4,
+          "totalHours": 68,
+          "cardColor": "",
+          "hidden": false
+        },
+        {
+          "day": 2,
+          "start": 3,
+          "end": 6,
+          "title": "系统解剖学",
+          "type": "lab",
+          "label": "实验",
+          "room": "4111解剖实验室（3）",
+          "campus": "滨海校区",
+          "teacher": "金建华",
+          "weeks": [
+            {
+              "start": 4,
+              "end": 8,
+              "parity": "even"
+            },
+            {
+              "start": 11,
+              "end": 13,
+              "parity": "odd"
+            },
+            {
+              "start": 16,
+              "end": 16,
+              "parity": "all"
+            }
+          ],
+          "credit": "5",
+          "courseCode": "",
+          "className": "(2026-2027-1)-NN101725-0000-1-仁26临床1（2）-B",
+          "classComposition": "仁26临床1（2）",
+          "assessment": "未安排",
+          "note": "",
+          "courseHours": "讲课:65,实验:30",
+          "weeklyHours": 4,
+          "totalHours": 68,
+          "cardColor": "",
+          "hidden": false
+        },
+        {
+          "day": 2,
+          "start": 8,
+          "end": 10,
+          "title": "毛泽东思想和中国特色社会主义理论体系概论",
+          "type": "lecture",
+          "label": "讲课",
+          "room": "2203",
+          "campus": "滨海校区",
+          "teacher": "纪欣农",
+          "weeks": [
+            {
+              "start": 1,
+              "end": 4,
+              "parity": "all"
+            },
+            {
+              "start": 6,
+              "end": 12,
+              "parity": "all"
+            }
+          ],
+          "credit": "3",
+          "courseCode": "",
+          "className": "仁济25级信管、营销、法医",
+          "classComposition": "仁25法医;仁25信管;仁25营销",
+          "assessment": "考试",
+          "note": "",
+          "courseHours": "讲课:24,讨论:9,在线:15",
+          "weeklyHours": 3,
+          "totalHours": 33,
+          "cardColor": "",
+          "hidden": false
+        },
+        {
+          "day": 2,
+          "start": 8,
+          "end": 10,
+          "title": "毛泽东思想和中国特色社会主义理论体系概论",
+          "type": "online",
+          "label": "在线",
+          "room": "未排地点",
+          "campus": "滨海校区",
+          "teacher": "纪欣农",
+          "weeks": [
+            {
+              "start": 13,
+              "end": 17,
+              "parity": "all"
+            }
+          ],
+          "credit": "3",
+          "courseCode": "",
+          "className": "仁济25级信管、营销、法医-混合-A",
+          "classComposition": "仁25法医;仁25信管;仁25营销",
+          "assessment": "未安排",
+          "note": "",
+          "courseHours": "讲课:24,讨论:9,在线:15",
+          "weeklyHours": 3,
+          "totalHours": 15,
+          "cardColor": "",
+          "hidden": false
+        },
+        {
+          "day": 3,
+          "start": 1,
+          "end": 2,
+          "title": "组织胚胎学",
+          "type": "lecture",
+          "label": "讲课",
+          "room": "1201",
+          "campus": "滨海校区",
+          "teacher": "刘芬",
+          "weeks": [
+            {
+              "start": 4,
+              "end": 6,
+              "parity": "even"
+            },
+            {
+              "start": 7,
+              "end": 8,
+              "parity": "all"
+            },
+            {
+              "start": 10,
+              "end": 14,
+              "parity": "all"
+            }
+          ],
+          "credit": "3.5",
+          "courseCode": "",
+          "className": "(2026-2027-1)-NN101988-0000-1",
+          "classComposition": "仁26临床1（1）;仁26临床1（2）;仁26临床1（3）;仁26临床1（4）;仁26临床1（5）",
+          "assessment": "考试",
+          "note": "",
+          "courseHours": "讲课:36,实验:32,在线:4",
+          "weeklyHours": 3.5,
+          "totalHours": 59.5,
+          "cardColor": "",
+          "hidden": false
+        },
+        {
+          "day": 3,
+          "start": 1,
+          "end": 2,
+          "title": "组织胚胎学",
+          "type": "online",
+          "label": "在线",
+          "room": "未排地点",
+          "campus": "滨海校区",
+          "teacher": "刘芬",
+          "weeks": [
+            {
+              "start": 9,
+              "end": 9,
+              "parity": "all"
+            }
+          ],
+          "credit": "3.5",
+          "courseCode": "",
+          "className": "(2026-2027-1)-NN101988-0000-1-混合-F",
+          "classComposition": "仁26临床1（1）;仁26临床1（2）;仁26临床1（3）;仁26临床1（4）;仁26临床1（5）",
+          "assessment": "未安排",
+          "note": "",
+          "courseHours": "讲课:36,实验:32,在线:4",
+          "weeklyHours": 3,
+          "totalHours": 51,
+          "cardColor": "",
+          "hidden": false
+        },
+        {
+          "day": 3,
+          "start": 8,
+          "end": 9,
+          "title": "系统解剖学",
+          "type": "lecture",
+          "label": "讲课",
+          "room": "1104",
+          "campus": "滨海校区",
+          "teacher": "金建华",
+          "weeks": [
+            {
+              "start": 3,
+              "end": 4,
+              "parity": "all"
+            },
+            {
+              "start": 8,
+              "end": 10,
+              "parity": "even"
+            },
+            {
+              "start": 11,
+              "end": 11,
+              "parity": "all"
+            }
+          ],
+          "credit": "5",
+          "courseCode": "",
+          "className": "(2026-2027-1)-NN101725-0000-1",
+          "classComposition": "仁26临床1（1）;仁26临床1（2）;仁26临床1（3）;仁26临床1（4）;仁26临床1（5）",
+          "assessment": "考试",
+          "note": "",
+          "courseHours": "讲课:65,实验:30",
+          "weeklyHours": 4,
+          "totalHours": 68,
+          "cardColor": "",
+          "hidden": false
+        },
+        {
+          "day": 3,
+          "start": 8,
+          "end": 10,
+          "title": "系统解剖学",
+          "type": "lecture",
+          "label": "讲课",
+          "room": "1104",
+          "campus": "滨海校区",
+          "teacher": "金建华",
+          "weeks": [
+            {
+              "start": 6,
+              "end": 7,
+              "parity": "all"
+            },
+            {
+              "start": 9,
+              "end": 9,
+              "parity": "all"
+            },
+            {
+              "start": 12,
+              "end": 16,
+              "parity": "all"
+            }
+          ],
+          "credit": "5",
+          "courseCode": "",
+          "className": "(2026-2027-1)-NN101725-0000-1",
+          "classComposition": "仁26临床1（1）;仁26临床1（2）;仁26临床1（3）;仁26临床1（4）;仁26临床1（5）",
+          "assessment": "考试",
+          "note": "",
+          "courseHours": "讲课:65,实验:30",
+          "weeklyHours": 4,
+          "totalHours": 68,
+          "cardColor": "",
+          "hidden": false
+        },
+        {
+          "day": 3,
+          "start": 14,
+          "end": 15,
+          "title": "法医学",
+          "type": "lecture",
+          "label": "讲课",
+          "room": "2115",
+          "campus": "滨海校区",
+          "teacher": "陈刚",
+          "weeks": [
+            {
+              "start": 14,
+              "end": 14,
+              "parity": "all"
+            }
+          ],
+          "credit": "2",
+          "courseCode": "",
+          "className": "(2026-2027-1)-ra00047C-113989-2",
+          "classComposition": "无",
+          "assessment": "未安排",
+          "note": "",
+          "courseHours": "讲课:32",
+          "weeklyHours": 3,
+          "totalHours": 39,
+          "cardColor": "",
+          "hidden": false
+        },
+        {
+          "day": 3,
+          "start": 14,
+          "end": 16,
+          "title": "法医学",
+          "type": "lecture",
+          "label": "讲课",
+          "room": "2115",
+          "campus": "滨海校区",
+          "teacher": "陈刚",
+          "weeks": [
+            {
+              "start": 3,
+              "end": 4,
+              "parity": "all"
+            },
+            {
+              "start": 6,
+              "end": 13,
+              "parity": "all"
+            }
+          ],
+          "credit": "2",
+          "courseCode": "",
+          "className": "(2026-2027-1)-ra00047C-113989-2",
+          "classComposition": "无",
+          "assessment": "未安排",
+          "note": "",
+          "courseHours": "讲课:32",
+          "weeklyHours": 3,
+          "totalHours": 39,
+          "cardColor": "",
+          "hidden": false
+        },
+        {
+          "day": 4,
+          "start": 1,
+          "end": 2,
+          "title": "系统解剖学",
+          "type": "lecture",
+          "label": "讲课",
+          "room": "1104",
+          "campus": "滨海校区",
+          "teacher": "金建华",
+          "weeks": [
+            {
+              "start": 6,
+              "end": 8,
+              "parity": "all"
+            },
+            {
+              "start": 12,
+              "end": 16,
+              "parity": "all"
+            }
+          ],
+          "credit": "5",
+          "courseCode": "",
+          "className": "(2026-2027-1)-NN101725-0000-1",
+          "classComposition": "仁26临床1（1）;仁26临床1（2）;仁26临床1（3）;仁26临床1（4）;仁26临床1（5）",
+          "assessment": "考试",
+          "note": "",
+          "courseHours": "讲课:65,实验:30",
+          "weeklyHours": 4,
+          "totalHours": 68,
+          "cardColor": "",
+          "hidden": false
+        },
+        {
+          "day": 4,
+          "start": 3,
+          "end": 6,
+          "title": "组织胚胎学",
+          "type": "lab",
+          "label": "实验",
+          "room": "5326形态学实验室（1）",
+          "campus": "滨海校区",
+          "teacher": "陈伟光",
+          "weeks": [
+            {
+              "start": 7,
+              "end": 8,
+              "parity": "all"
+            },
+            {
+              "start": 10,
+              "end": 15,
+              "parity": "all"
+            }
+          ],
+          "credit": "3.5",
+          "courseCode": "",
+          "className": "(2026-2027-1)-NN101988-0000-1-仁26临床1（2）-B",
+          "classComposition": "仁26临床1（2）",
+          "assessment": "未安排",
+          "note": "",
+          "courseHours": "讲课:36,实验:32,在线:4",
+          "weeklyHours": 4,
+          "totalHours": 68,
+          "cardColor": "",
+          "hidden": false
+        },
+        {
+          "day": 4,
+          "start": 8,
+          "end": 9,
+          "title": "医用基础化学",
+          "type": "lecture",
+          "label": "讲课",
+          "room": "1101",
+          "campus": "滨海校区",
+          "teacher": "孙东",
+          "weeks": [
+            {
+              "start": 16,
+              "end": 16,
+              "parity": "all"
+            }
+          ],
+          "credit": "2",
+          "courseCode": "NN102428-110294-2",
+          "className": "(2026-2027-1)-NN102428-110294-2",
+          "classComposition": "仁26临床1（1）;仁26临床1（2）;仁26临床1（3）;仁26临床1（4）;仁26临床1（5）",
+          "assessment": "考试",
+          "note": "",
+          "courseHours": "讲课:22,在线:10",
+          "weeklyHours": 3,
+          "totalHours": 51,
+          "cardColor": "",
+          "hidden": false
+        },
+        {
+          "day": 4,
+          "start": 8,
+          "end": 10,
+          "title": "医用基础化学",
+          "type": "lecture",
+          "label": "讲课",
+          "room": "1101",
+          "campus": "滨海校区",
+          "teacher": "孙东",
+          "weeks": [
+            {
+              "start": 5,
+              "end": 8,
+              "parity": "all"
+            },
+            {
+              "start": 10,
+              "end": 15,
+              "parity": "all"
+            }
+          ],
+          "credit": "2",
+          "courseCode": "NN102428-110294-2",
+          "className": "(2026-2027-1)-NN102428-110294-2",
+          "classComposition": "仁26临床1（1）;仁26临床1（2）;仁26临床1（3）;仁26临床1（4）;仁26临床1（5）",
+          "assessment": "考试",
+          "note": "",
+          "courseHours": "讲课:22,在线:10",
+          "weeklyHours": 3,
+          "totalHours": 51,
+          "cardColor": "",
+          "hidden": false
+        },
+        {
+          "day": 5,
+          "start": 3,
+          "end": 5,
+          "title": "医用物理学",
+          "type": "lecture",
+          "label": "讲课",
+          "room": "2107",
+          "campus": "滨海校区",
+          "teacher": "邵和鸿",
+          "weeks": [
+            {
+              "start": 5,
+              "end": 16,
+              "parity": "all"
+            }
+          ],
+          "credit": "2.5",
+          "courseCode": "NN101860-110770-18",
+          "className": "(2026-2027-1)-NN101860-110770-18",
+          "classComposition": "仁26临床1（1）;仁26临床1（2）;仁26临床1（6）;仁26临床1（7）",
+          "assessment": "考试",
+          "note": "",
+          "courseHours": "讲课:33,实验:18",
+          "weeklyHours": 3,
+          "totalHours": 51,
+          "cardColor": "",
+          "hidden": false
+        },
+        {
+          "day": 5,
+          "start": 8,
+          "end": 9,
+          "title": "健美操",
+          "type": "lecture",
+          "label": "讲课",
+          "room": "体育馆1楼体操房",
+          "campus": "滨海校区",
+          "teacher": "曾琳叶",
+          "weeks": [
+            {
+              "start": 2,
+              "end": 16,
+              "parity": "all"
+            }
+          ],
+          "credit": "1",
+          "courseCode": "",
+          "className": "(2026-2027-1)-1204-111100-2",
+          "classComposition": "2025",
+          "assessment": "未安排",
+          "note": "",
+          "courseHours": "讲课:32",
+          "weeklyHours": 2,
+          "totalHours": 30,
+          "cardColor": "",
+          "hidden": false
+        },
+        {
+          "day": 6,
+          "start": 8,
+          "end": 10,
+          "title": "习近平新时代中国特色社会主义思想概论",
+          "type": "lecture",
+          "label": "讲课",
+          "room": "1303",
+          "campus": "滨海校区",
+          "teacher": "张青",
+          "weeks": [
+            {
+              "start": 1,
+              "end": 1,
+              "parity": "all"
+            }
+          ],
+          "credit": "3",
+          "courseCode": "",
+          "className": "仁济12班",
+          "classComposition": "仁25生工1;仁25生工2;仁25信管;仁25药学",
+          "assessment": "考试",
+          "note": "",
+          "courseHours": "讲课:48",
+          "weeklyHours": 3,
+          "totalHours": 48,
+          "cardColor": "",
+          "hidden": false
+        },
+        {
+          "day": 6,
+          "start": 8,
+          "end": 10,
+          "title": "习近平新时代中国特色社会主义思想概论",
+          "type": "lecture",
+          "label": "讲课",
+          "room": "1303",
+          "campus": "滨海校区",
+          "teacher": "于丽娜",
+          "weeks": [
+            {
+              "start": 2,
+              "end": 2,
+              "parity": "all"
+            }
+          ],
+          "credit": "3",
+          "courseCode": "",
+          "className": "仁济12班",
+          "classComposition": "仁25生工1;仁25生工2;仁25信管;仁25药学",
+          "assessment": "考试",
+          "note": "",
+          "courseHours": "讲课:48",
+          "weeklyHours": 3,
+          "totalHours": 48,
+          "cardColor": "",
+          "hidden": false
+        },
+        {
+          "day": 6,
+          "start": 8,
+          "end": 10,
+          "title": "习近平新时代中国特色社会主义思想概论",
+          "type": "lecture",
+          "label": "讲课",
+          "room": "1303",
+          "campus": "滨海校区",
+          "teacher": "刘小卫",
+          "weeks": [
+            {
+              "start": 6,
+              "end": 8,
+              "parity": "even"
+            }
+          ],
+          "credit": "3",
+          "courseCode": "",
+          "className": "仁济12班",
+          "classComposition": "仁25生工1;仁25生工2;仁25信管;仁25药学",
+          "assessment": "考试",
+          "note": "",
+          "courseHours": "讲课:48",
+          "weeklyHours": 3,
+          "totalHours": 48,
+          "cardColor": "",
+          "hidden": false
+        },
+        {
+          "day": 6,
+          "start": 8,
+          "end": 10,
+          "title": "习近平新时代中国特色社会主义思想概论",
+          "type": "lecture",
+          "label": "讲课",
+          "room": "1303",
+          "campus": "滨海校区",
+          "teacher": "李翩翩",
+          "weeks": [
+            {
+              "start": 7,
+              "end": 7,
+              "parity": "all"
+            }
+          ],
+          "credit": "3",
+          "courseCode": "",
+          "className": "仁济12班",
+          "classComposition": "仁25生工1;仁25生工2;仁25信管;仁25药学",
+          "assessment": "考试",
+          "note": "",
+          "courseHours": "讲课:48",
+          "weeklyHours": 3,
+          "totalHours": 48,
+          "cardColor": "",
+          "hidden": false
+        },
+        {
+          "day": 6,
+          "start": 8,
+          "end": 10,
+          "title": "习近平新时代中国特色社会主义思想概论",
+          "type": "lecture",
+          "label": "讲课",
+          "room": "1303",
+          "campus": "滨海校区",
+          "teacher": "杨根东",
+          "weeks": [
+            {
+              "start": 10,
+              "end": 10,
+              "parity": "all"
+            }
+          ],
+          "credit": "3",
+          "courseCode": "",
+          "className": "仁济12班",
+          "classComposition": "仁25生工1;仁25生工2;仁25信管;仁25药学",
+          "assessment": "考试",
+          "note": "",
+          "courseHours": "讲课:48",
+          "weeklyHours": 3,
+          "totalHours": 48,
+          "cardColor": "",
+          "hidden": false
+        },
+        {
+          "day": 6,
+          "start": 8,
+          "end": 10,
+          "title": "习近平新时代中国特色社会主义思想概论",
+          "type": "lecture",
+          "label": "讲课",
+          "room": "在线学习（滨海）",
+          "campus": "滨海校区",
+          "teacher": "李超1",
+          "weeks": [
+            {
+              "start": 11,
+              "end": 11,
+              "parity": "all"
+            }
+          ],
+          "credit": "3",
+          "courseCode": "",
+          "className": "仁济12班",
+          "classComposition": "仁25生工1;仁25生工2;仁25信管;仁25药学",
+          "assessment": "考试",
+          "note": "",
+          "courseHours": "讲课:48",
+          "weeklyHours": 3,
+          "totalHours": 48,
+          "cardColor": "",
+          "hidden": false
+        },
+        {
+          "day": 6,
+          "start": 8,
+          "end": 10,
+          "title": "习近平新时代中国特色社会主义思想概论",
+          "type": "lecture",
+          "label": "讲课",
+          "room": "在线学习（滨海）",
+          "campus": "滨海校区",
+          "teacher": "李翩翩",
+          "weeks": [
+            {
+              "start": 12,
+              "end": 12,
+              "parity": "all"
+            }
+          ],
+          "credit": "3",
+          "courseCode": "",
+          "className": "仁济12班",
+          "classComposition": "仁25生工1;仁25生工2;仁25信管;仁25药学",
+          "assessment": "考试",
+          "note": "",
+          "courseHours": "讲课:48",
+          "weeklyHours": 3,
+          "totalHours": 48,
+          "cardColor": "",
+          "hidden": false
+        },
+        {
+          "day": 6,
+          "start": 8,
+          "end": 10,
+          "title": "习近平新时代中国特色社会主义思想概论",
+          "type": "lecture",
+          "label": "讲课",
+          "room": "1303",
+          "campus": "滨海校区",
+          "teacher": "唐亚萍",
+          "weeks": [
+            {
+              "start": 13,
+              "end": 13,
+              "parity": "all"
+            }
+          ],
+          "credit": "3",
+          "courseCode": "",
+          "className": "仁济12班",
+          "classComposition": "仁25生工1;仁25生工2;仁25信管;仁25药学",
+          "assessment": "考试",
+          "note": "",
+          "courseHours": "讲课:48",
+          "weeklyHours": 3,
+          "totalHours": 48,
+          "cardColor": "",
+          "hidden": false
+        },
+        {
+          "day": 6,
+          "start": 8,
+          "end": 10,
+          "title": "习近平新时代中国特色社会主义思想概论",
+          "type": "lecture",
+          "label": "讲课",
+          "room": "在线学习（滨海）",
+          "campus": "滨海校区",
+          "teacher": "王雨",
+          "weeks": [
+            {
+              "start": 14,
+              "end": 14,
+              "parity": "all"
+            }
+          ],
+          "credit": "3",
+          "courseCode": "",
+          "className": "仁济12班",
+          "classComposition": "仁25生工1;仁25生工2;仁25信管;仁25药学",
+          "assessment": "考试",
+          "note": "",
+          "courseHours": "讲课:48",
+          "weeklyHours": 3,
+          "totalHours": 48,
+          "cardColor": "",
+          "hidden": false
+        },
+        {
+          "day": 7,
+          "start": 2,
+          "end": 5,
+          "title": "形势与政策",
+          "type": "lecture",
+          "label": "讲课",
+          "room": "1102",
+          "campus": "滨海校区",
+          "teacher": "陈赛虎",
+          "weeks": [
+            {
+              "start": 7,
+              "end": 7,
+              "parity": "all"
+            }
+          ],
+          "credit": "2",
+          "courseCode": "",
+          "className": "仁济25级中药、药学、生工1-2、信管",
+          "classComposition": "仁25生工1;仁25生工2;仁25信管;仁25药学;仁25中药",
+          "assessment": "未安排",
+          "note": "",
+          "courseHours": "讲课:32",
+          "weeklyHours": 4,
+          "totalHours": 8,
+          "cardColor": "",
+          "hidden": false
+        },
+        {
+          "day": 7,
+          "start": 2,
+          "end": 5,
+          "title": "形势与政策",
+          "type": "lecture",
+          "label": "讲课",
+          "room": "超星学习通",
+          "campus": "滨海校区",
+          "teacher": "陈赛虎",
+          "weeks": [
+            {
+              "start": 8,
+              "end": 8,
+              "parity": "all"
+            }
+          ],
+          "credit": "2",
+          "courseCode": "",
+          "className": "仁济25级中药、药学、生工1-2、信管",
+          "classComposition": "仁25生工1;仁25生工2;仁25信管;仁25药学;仁25中药",
+          "assessment": "未安排",
+          "note": "",
+          "courseHours": "讲课:32",
+          "weeklyHours": 4,
+          "totalHours": 8,
+          "cardColor": "",
+          "hidden": false
+        },
+        {
+          "day": 7,
+          "start": 8,
+          "end": 10,
+          "title": "习近平新时代中国特色社会主义思想概论",
+          "type": "lecture",
+          "label": "讲课",
+          "room": "在线学习（滨海）",
+          "campus": "滨海校区",
+          "teacher": "陈瑞洋",
+          "weeks": [
+            {
+              "start": 1,
+              "end": 1,
+              "parity": "all"
+            },
+            {
+              "start": 6,
+              "end": 6,
+              "parity": "all"
+            }
+          ],
+          "credit": "3",
+          "courseCode": "",
+          "className": "仁济12班",
+          "classComposition": "仁25生工1;仁25生工2;仁25信管;仁25药学",
+          "assessment": "考试",
+          "note": "",
+          "courseHours": "讲课:48",
+          "weeklyHours": 3,
+          "totalHours": 48,
+          "cardColor": "",
+          "hidden": false
+        },
+        {
+          "day": 7,
+          "start": 8,
+          "end": 10,
+          "title": "习近平新时代中国特色社会主义思想概论",
+          "type": "lecture",
+          "label": "讲课",
+          "room": "在线学习OnlineMOOC",
+          "campus": "滨海校区",
+          "teacher": "魏雪",
+          "weeks": [
+            {
+              "start": 5,
+              "end": 5,
+              "parity": "all"
+            }
+          ],
+          "credit": "3",
+          "courseCode": "",
+          "className": "仁济12班",
+          "classComposition": "仁25生工1;仁25生工2;仁25信管;仁25药学",
+          "assessment": "考试",
+          "note": "",
+          "courseHours": "讲课:48",
+          "weeklyHours": 3,
+          "totalHours": 48,
+          "cardColor": "",
+          "hidden": false
+        },
+        {
+          "day": 7,
+          "start": 8,
+          "end": 10,
+          "title": "习近平新时代中国特色社会主义思想概论",
+          "type": "lecture",
+          "label": "讲课",
+          "room": "在线学习（滨海）",
+          "campus": "滨海校区",
+          "teacher": "刘小卫",
+          "weeks": [
+            {
+              "start": 7,
+              "end": 7,
+              "parity": "all"
+            }
+          ],
+          "credit": "3",
+          "courseCode": "",
+          "className": "仁济12班",
+          "classComposition": "仁25生工1;仁25生工2;仁25信管;仁25药学",
+          "assessment": "考试",
+          "note": "",
+          "courseHours": "讲课:48",
+          "weeklyHours": 3,
+          "totalHours": 48,
+          "cardColor": "",
+          "hidden": false
+        },
+        {
+          "day": 7,
+          "start": 8,
+          "end": 10,
+          "title": "习近平新时代中国特色社会主义思想概论",
+          "type": "lecture",
+          "label": "讲课",
+          "room": "在线学习OnlineMOOC",
+          "campus": "滨海校区",
+          "teacher": "谢海霞",
+          "weeks": [
+            {
+              "start": 8,
+              "end": 8,
+              "parity": "all"
+            }
+          ],
+          "credit": "3",
+          "courseCode": "",
+          "className": "仁济12班",
+          "classComposition": "仁25生工1;仁25生工2;仁25信管;仁25药学",
+          "assessment": "考试",
+          "note": "",
+          "courseHours": "讲课:48",
+          "weeklyHours": 3,
+          "totalHours": 48,
+          "cardColor": "",
+          "hidden": false
+        },
+        {
+          "day": 7,
+          "start": 8,
+          "end": 10,
+          "title": "习近平新时代中国特色社会主义思想概论",
+          "type": "lecture",
+          "label": "讲课",
+          "room": "1303",
+          "campus": "滨海校区",
+          "teacher": "蔡豫",
+          "weeks": [
+            {
+              "start": 11,
+              "end": 11,
+              "parity": "all"
+            }
+          ],
+          "credit": "3",
+          "courseCode": "",
+          "className": "仁济12班",
+          "classComposition": "仁25生工1;仁25生工2;仁25信管;仁25药学",
+          "assessment": "考试",
+          "note": "",
+          "courseHours": "讲课:48",
+          "weeklyHours": 3,
+          "totalHours": 48,
+          "cardColor": "",
+          "hidden": false
+        }
+      ],
+      "customEvents": [
+        {
+          "id": "custom-1791901182020-zxsx4",
+          "kind": "custom",
+          "title": "组织学与胚胎学实验考",
+          "description": "",
+          "room": "2203",
+          "week": 12,
+          "day": 1,
+          "startTime": "12:30",
+          "endTime": "13:00",
+          "color": "gold",
+          "type": "custom",
+          "label": "自定义",
+          "campus": "",
+          "teacher": "",
+          "credit": "—",
+          "hidden": false,
+          "weeks": [
+            {
+              "start": 12,
+              "end": 12,
+              "parity": "all"
+            }
+          ]
+        }
+      ],
+      "courseAliases": [],
+      "updatedAt": 1790126216069
+    }
+  ],
+  "activeId": "1790126216069-865xve",
   "favorites": [],
-  "slotHeight": 72,
+  "slotHeight": 60,
   "hideEmptyWeekends": false,
-  "updatedAt": 0
+  "updatedAt": 1794874748045
 }
