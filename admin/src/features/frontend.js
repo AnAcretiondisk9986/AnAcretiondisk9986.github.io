@@ -35,6 +35,7 @@ const QUICK_ROUTES = [
   ['/gallery/', '图像档案'],
   ['/about/', '关于档案'],
   ['/academics/', '学业轨迹'],
+  ['/schedule/', '日程课表'],
   ['/ai-quota/', '算力额度'],
 ];
 

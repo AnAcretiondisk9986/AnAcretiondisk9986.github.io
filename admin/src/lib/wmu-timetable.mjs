@@ -1,0 +1,531 @@
+const ACTIVITY_TYPES = Object.freeze({
+  "□": "independent",
+  "▲": "online",
+  "◆": "lecture",
+  "◇": "lab",
+  "●": "discussion",
+  "#": "practice"
+});
+
+const ACTIVITY_LABELS = Object.freeze({
+  independent: "自主学习",
+  online: "在线",
+  lecture: "讲课",
+  lab: "实验",
+  discussion: "讨论",
+  practice: "实践"
+});
+
+const DAY_CHARS = Object.freeze(["一", "二", "三", "四", "五", "六", "日"]);
+// This list only gates cross-campus warnings where bell schedules are known; parsed campus text is free-form.
+const PHYSICAL_CAMPUSES = Object.freeze(["茶山校区", "学院路校区", "滨海校区"]);
+const SHARED_AFTERNOON_PERIODS = Object.freeze([
+  ["13:30", "14:10"], ["14:15", "14:55"], ["15:00", "15:40"],
+  ["15:45", "16:25"], ["16:30", "17:10"], ["17:15", "17:55"],
+  ["18:20", "19:00"], ["19:05", "19:45"], ["19:50", "20:30"],
+  ["20:35", "21:15"], ["21:20", "22:00"], ["22:05", "22:45"],
+  // WMU 课表可能使用 20–22 节；导出文件未提供单独作息表，按晚间连续时段兜底。
+  ["22:50", "23:30"], ["23:35", "00:15"], ["00:20", "01:00"]
+]);
+const CHASHAN_PERIODS = Object.freeze([
+  ["08:00", "08:40"], ["08:45", "09:25"], ["09:40", "10:20"],
+  ["10:25", "11:05"], ["11:10", "11:50"], ["11:55", "12:35"],
+  ["12:40", "13:20"], ...SHARED_AFTERNOON_PERIODS
+]);
+const BINHAI_PERIODS = Object.freeze([
+  ["08:30", "09:10"], ["09:15", "09:55"], ["10:10", "10:50"],
+  ["10:55", "11:35"], ["11:40", "12:20"], ["12:25", "13:05"],
+  ["13:05", "13:20"], ...SHARED_AFTERNOON_PERIODS
+]);
+const CAMPUS_PERIODS = Object.freeze({
+  "茶山校区": CHASHAN_PERIODS,
+  "学院路校区": CHASHAN_PERIODS,
+  "滨海校区": BINHAI_PERIODS
+});
+const FIELD_NAMES = Object.freeze([
+  "校区",
+  "场地",
+  "教师",
+  "教学班",
+  "教学班组成",
+  "考核方式",
+  "选课备注",
+  "课程学时组成",
+  "周学时",
+  "总学时",
+  "学分"
+]);
+
+function asText(value) {
+  return String(value ?? "")
+    .replace(/\u00a0/g, " ")
+    .replace(/\r\n?/g, "\n");
+}
+
+function compact(value) {
+  return asText(value)
+    .replace(/[\u3000\t ]+/g, " ")
+    .replace(/\s*\n\s*/g, "")
+    .trim();
+}
+
+function unique(values) {
+  return [...new Set(values.filter(Boolean))];
+}
+
+function toFiniteNumber(value) {
+  if (value === "" || value == null) return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+export function parseWeekRanges(value) {
+  const ranges = [];
+  const source = compact(value)
+    .replace(/[，；;]/g, ",")
+    .replace(/[（]/g, "(")
+    .replace(/[）]/g, ")")
+    .replace(/\((单|双)周\)/g, "($1)")
+    .replace(/单周/g, "(单)")
+    .replace(/双周/g, "(双)")
+    .replace(/[～~—－至]/g, "-");
+  const pattern = /(\d{1,2})(?:\s*-\s*(\d{1,2}))?周(?:\((单|双)\))?/g;
+
+  for (const match of source.matchAll(pattern)) {
+    ranges.push({
+      start: Number(match[1]),
+      end: Number(match[2] ?? match[1]),
+      parity: match[3] === "单" ? "odd" : match[3] === "双" ? "even" : "all"
+    });
+  }
+
+  return ranges;
+}
+
+function parseFields(value) {
+  const source = compact(value);
+  const fields = {};
+  const labelPattern = FIELD_NAMES.map(name => name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
+  const pattern = new RegExp(`(?:^|/)(${labelPattern})\\s*[:：]`, "g");
+  const matches = [...source.matchAll(pattern)];
+
+  matches.forEach((match, index) => {
+    const start = match.index + match[0].length;
+    const end = index + 1 < matches.length ? matches[index + 1].index : source.length;
+    fields[match[1]] = source.slice(start, end).replace(/^\/+|\/+$/g, "").trim();
+  });
+
+  return fields;
+}
+
+function courseCodeFromClassName(className) {
+  const match = /\b(NN\d{6}-\d{6}-\d+)\b/i.exec(className ?? "");
+  return match ? match[1].toUpperCase() : "";
+}
+
+function cleanCourseName(value) {
+  return compact(value)
+    // PDF 页眉可能落在某个星期列中，和该列第一页的第一门课连成一段文本。
+    // 课程名本身不会以“星期X”作为页眉边界，因此从最后一个星期标记后开始取名。
+    .replace(/^.*星期[一二三四五六日天]/, "")
+    .replace(/^星期[一二三四五六日天]/, "")
+    .replace(/^(?:上午|中午|下午|晚上)/, "")
+    .replace(/^\d{1,2}/, "")
+    .trim();
+}
+
+function scheduleMatchAfter(source, markerEnd) {
+  const tail = source.slice(markerEnd);
+  return /^\s*(?:第\s*)?[（(]\s*(\d{1,2})(?:\s*[-–—~～至]\s*(\d{1,2}))?\s*节\s*[）)]\s*([^/]*)/.exec(tail);
+}
+
+function parseColumn(source, weekday, warnings) {
+  const text = asText(source);
+  const markers = [...text.matchAll(/[□▲◆◇●#]/g)];
+  const events = [];
+  let previousEventEnd = 0;
+
+  for (let index = 0; index < markers.length; index += 1) {
+    const marker = markers[index];
+    const schedule = scheduleMatchAfter(text, marker.index + marker[0].length);
+    if (!schedule) continue;
+
+    const nextMarkerIndex = index + 1 < markers.length ? markers[index + 1].index : text.length;
+    const markerEnd = marker.index + marker[0].length;
+    const block = text.slice(markerEnd, nextMarkerIndex);
+    const credit = /\/学\s*分\s*[:：]\s*(\d+(?:\.\d+)?)/.exec(block);
+    const creditEnd = credit ? markerEnd + credit.index + credit[0].length : null;
+    let eventEnd = creditEnd;
+    if (index + 1 >= markers.length) {
+      eventEnd = nextMarkerIndex;
+    } else {
+      let offset = markerEnd;
+      let lastNonEmptyStart = null;
+      for (const line of block.split("\n")) {
+        if (line.trim()) lastNonEmptyStart = offset;
+        offset += line.length + 1;
+      }
+      if (lastNonEmptyStart != null && lastNonEmptyStart > (creditEnd ?? markerEnd)) {
+        eventEnd = lastNonEmptyStart;
+      } else if (eventEnd == null) {
+        eventEnd = nextMarkerIndex;
+      }
+    }
+    const title = cleanCourseName(text.slice(previousEventEnd, marker.index));
+
+    if (!title) {
+      warnings.push(`第${weekday}列有课程块缺少标题，已跳过`);
+      previousEventEnd = eventEnd;
+      continue;
+    }
+
+    const raw = compact(text.slice(markerEnd, eventEnd));
+    const fields = parseFields(raw);
+    const activity = ACTIVITY_TYPES[marker[0]];
+    const startPeriod = Number(schedule[1]);
+    const endPeriod = Number(schedule[2] ?? schedule[1]);
+    if (!Number.isInteger(startPeriod) || !Number.isInteger(endPeriod) || startPeriod < 1 || endPeriod > 22 || endPeriod < startPeriod) {
+      warnings.push(`「${title}」节次无效（${schedule[1]}${schedule[2] ? `-${schedule[2]}` : ''}），已跳过`);
+      previousEventEnd = eventEnd;
+      continue;
+    }
+    const weekRanges = parseWeekRanges(schedule[3]).filter((range) => range.start >= 1 && range.end <= 30 && range.end >= range.start);
+
+    if (weekRanges.length === 0) {
+      warnings.push(`「${title}」未识别到有效周次`);
+    }
+
+    events.push({
+      courseName: title,
+      weekday,
+      activity,
+      activityLabel: ACTIVITY_LABELS[activity],
+      periods: {
+        start: startPeriod,
+        end: endPeriod
+      },
+      weeks: weekRanges,
+      campus: fields["校区"] ?? "", // Preserve arbitrary values such as hospital placements; do not whitelist campus names.
+      room: fields["场地"] ?? "",
+      teacher: fields["教师"] ?? "",
+      className: fields["教学班"] ?? "",
+      classComposition: fields["教学班组成"] ?? "",
+      assessment: fields["考核方式"] ?? "",
+      note: fields["选课备注"] ?? "",
+      courseHours: fields["课程学时组成"] ?? "",
+      weeklyHours: toFiniteNumber(fields["周学时"]),
+      totalHours: toFiniteNumber(fields["总学时"]),
+      credit: toFiniteNumber(fields["学分"]),
+      courseCode: courseCodeFromClassName(fields["教学班"]),
+      raw
+    });
+
+    previousEventEnd = eventEnd;
+  }
+
+  return events;
+}
+
+function itemPosition(item) {
+  const transform = item?.transform;
+  return {
+    x: Number(transform?.[4] ?? item?.x ?? 0),
+    y: Number(transform?.[5] ?? item?.y ?? 0)
+  };
+}
+
+function pageWidth(page) {
+  return Number(page?.width ?? page?.viewport?.width ?? 842);
+}
+
+function pageHeight(page) {
+  return Number(page?.height ?? page?.viewport?.height ?? 595);
+}
+
+function findColumnAnchors(pages) {
+  const found = new Map();
+
+  for (const page of pages) {
+    for (const item of page.items ?? []) {
+      const text = compact(item.str ?? item.text);
+      const match = /^星期([一二三四五六日天])$/.exec(text);
+      if (!match) continue;
+      const weekday = match[1] === "天" ? 7 : DAY_CHARS.indexOf(match[1]) + 1;
+      if (!found.has(weekday)) found.set(weekday, itemPosition(item));
+    }
+  }
+
+  if (found.size === 7) {
+    const positions = [...found.values()];
+    const xSpread = Math.max(...positions.map(position => position.x)) - Math.min(...positions.map(position => position.x));
+    const ySpread = Math.max(...positions.map(position => position.y)) - Math.min(...positions.map(position => position.y));
+    const axis = ySpread > xSpread ? "y" : "x";
+    return { axis, values: DAY_CHARS.map((_, index) => found.get(index + 1)[axis]) };
+  }
+
+  const rotated = pageHeight(pages[0]) > pageWidth(pages[0]);
+  const dimension = rotated ? pageHeight(pages[0]) : pageWidth(pages[0]);
+  return {
+    axis: rotated ? "y" : "x",
+    values: [0.1236, 0.2469, 0.3703, 0.4936, 0.617, 0.7403, 0.8637]
+      .map(ratio => ratio * dimension)
+  };
+}
+
+function weekdayForPosition(position, anchors) {
+  const values = anchors.values;
+  const value = position[anchors.axis];
+  const gap = values.length > 1 ? values[1] - values[0] : 100;
+  for (let index = 0; index < values.length; index += 1) {
+    const start = index === 0 ? values[index] - gap / 2 : (values[index - 1] + values[index]) / 2;
+    const end = index + 1 < values.length ? (values[index] + values[index + 1]) / 2 : values[index] + gap / 2;
+    if (value >= start && value < end) return index + 1;
+  }
+  return null;
+}
+
+function columnTextForPage(page, weekday, anchors) {
+  const rows = [];
+  const items = (page.items ?? [])
+    .map(item => ({ item, ...itemPosition(item) }))
+    .filter(entry => compact(entry.item.str ?? entry.item.text))
+    .filter(entry => weekdayForPosition(entry, anchors));
+
+  if (anchors.axis === "y") {
+    return items
+      .filter(entry => weekdayForPosition(entry, anchors) === weekday)
+      .sort((a, b) => a.x - b.x || a.y - b.y)
+      .map(entry => entry.item.str ?? entry.item.text)
+      .join("\n");
+  }
+
+  const orderedItems = items
+    .filter(entry => weekdayForPosition(entry, anchors) === weekday)
+    .sort((a, b) => b.y - a.y || a.x - b.x);
+
+  for (const entry of orderedItems) {
+    let row = rows.find(candidate => Math.abs(candidate.y - entry.y) <= 2);
+    if (!row) {
+      row = { y: entry.y, items: [] };
+      rows.push(row);
+    }
+    row.items.push(entry);
+  }
+
+  return rows
+    .sort((a, b) => b.y - a.y)
+    .map(row => row.items.sort((a, b) => a.x - b.x).map(entry => entry.item.str ?? entry.item.text).join(""))
+    .join("\n");
+}
+
+function parseDocumentIdentity(pages) {
+  const text = pages.flatMap(page => page.items ?? []).map(item => item.str ?? item.text ?? "").join("\n");
+  const semester = /(\d{4})\s*-\s*(\d{4})\s*学年\s*第?\s*([12])\s*学期/.exec(text);
+  const studentId = /学号\s*[:：]\s*([A-Za-z0-9-]+)/.exec(text);
+  const studentName = /([^\s]{2,12})课表/.exec(text);
+
+  return {
+    semester: semester ? `${semester[1]}-${semester[2]}-${semester[3]}` : "",
+    student: {
+      name: studentName?.[1] ?? "",
+      id: studentId?.[1] ?? ""
+    }
+  };
+}
+
+function mergeCourses(events) {
+  const courses = new Map();
+
+  for (const event of events) {
+    // 同名课程可能属于不同教学班；课程编号和教学班比名称更稳定。
+    const identity = event.courseCode || event.className || event.courseName;
+    const key = compact(identity).toLowerCase();
+    let course = courses.get(key);
+    if (!course) {
+      course = {
+        name: event.courseName,
+        credit: event.credit,
+        score: "",
+        scale: "percent",
+        type: "",
+        courseCode: event.courseCode,
+        teachers: [],
+        campuses: [],
+        assessments: [],
+        events: []
+      };
+      courses.set(key, course);
+    }
+
+    if (course.credit == null && event.credit != null) course.credit = event.credit;
+    if (!course.courseCode && event.courseCode) course.courseCode = event.courseCode;
+    course.teachers = unique([...course.teachers, event.teacher]);
+    course.campuses = unique([...course.campuses, event.campus]);
+    course.assessments = unique([...course.assessments, event.assessment]);
+    course.events.push(event);
+  }
+
+  return [...courses.values()];
+}
+
+function rangeHasWeek(range, week) {
+  if (week < range.start || week > range.end) return false;
+  return range.parity === "all"
+    || (range.parity === "odd" && week % 2 === 1)
+    || (range.parity === "even" && week % 2 === 0);
+}
+
+function weeksOverlap(first, second) {
+  if (!first?.length || !second?.length) return false;
+  const start = Math.min(...first.map(range => range.start), ...second.map(range => range.start));
+  const end = Math.max(...first.map(range => range.end), ...second.map(range => range.end));
+  for (let week = start; week <= end; week += 1) {
+    if (first.some(range => rangeHasWeek(range, week)) && second.some(range => rangeHasWeek(range, week))) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function clockToMinutes(value) {
+  const [hours, minutes] = String(value).split(":").map(Number);
+  return hours * 60 + minutes;
+}
+
+function periodMinutes(periods, index, edge) {
+  const value = periods[index]?.[edge];
+  if (!value) return null;
+  let minutes = clockToMinutes(value);
+  if (index >= 20 && minutes < 8 * 60) minutes += 1440;
+  return minutes;
+}
+
+function eventClockRange(event) {
+  const periods = CAMPUS_PERIODS[event.campus];
+  if (!periods || !event.periods) return null;
+  const start = periodMinutes(periods, event.periods.start - 1, 0);
+  let end = periodMinutes(periods, event.periods.end - 1, 1);
+  if (start == null || end == null) return null;
+  if (end < start) end += 1440;
+  return { start, end };
+}
+
+export function detectCampusConflicts(events) {
+  const conflicts = [];
+
+  for (let firstIndex = 0; firstIndex < events.length; firstIndex += 1) {
+    const first = events[firstIndex];
+    if (!PHYSICAL_CAMPUSES.includes(first.campus)) continue;
+    const firstClock = eventClockRange(first);
+    if (!firstClock) continue;
+
+    for (let secondIndex = firstIndex + 1; secondIndex < events.length; secondIndex += 1) {
+      const second = events[secondIndex];
+      if (!PHYSICAL_CAMPUSES.includes(second.campus) || first.campus === second.campus) continue;
+      if (first.weekday !== second.weekday || !weeksOverlap(first.weeks, second.weeks)) continue;
+
+      const secondClock = eventClockRange(second);
+      if (!secondClock || firstClock.start >= secondClock.end || secondClock.start >= firstClock.end) continue;
+
+      conflicts.push({
+        firstIndex,
+        secondIndex,
+        weekday: first.weekday,
+        campuses: [first.campus, second.campus],
+        periods: [first.periods, second.periods],
+        weeks: [first.weeks, second.weeks],
+        message: `周${DAY_CHARS[first.weekday - 1]}第 ${first.periods.start}-${first.periods.end} 节「${first.courseName}」（${first.campus}）与第 ${second.periods.start}-${second.periods.end} 节「${second.courseName}」（${second.campus}）存在跨校区时间冲突`
+      });
+    }
+  }
+
+  return conflicts;
+}
+
+export function parseTimetablePages(pages) {
+  if (!Array.isArray(pages) || pages.length === 0) {
+    throw new TypeError("pages 必须是非空的 PDF.js 页面文本数组");
+  }
+
+  const warnings = [];
+  const anchors = findColumnAnchors(pages);
+  const events = [];
+
+  for (let weekday = 1; weekday <= 7; weekday += 1) {
+    const columnText = pages.map(page => columnTextForPage(page, weekday, anchors)).join("\n");
+    events.push(...parseColumn(columnText, weekday, warnings));
+  }
+
+  if (events.length === 0) {
+    throw new Error("未在 PDF 页面中识别到课程记录");
+  }
+
+  const identity = parseDocumentIdentity(pages);
+  const conflicts = detectCampusConflicts(events);
+  return {
+    ...identity,
+    courses: mergeCourses(events),
+    events,
+    warnings,
+    conflicts
+  };
+}
+
+export async function extractPdfPages(fileOrData, pdfjsLib, pdfOptions = {}) {
+  if (!pdfjsLib || typeof pdfjsLib.getDocument !== "function") {
+    throw new TypeError("需要传入 PDF.js 模块");
+  }
+
+  let data;
+  if (fileOrData instanceof Uint8Array) data = fileOrData;
+  else if (fileOrData instanceof ArrayBuffer) data = new Uint8Array(fileOrData);
+  else if (fileOrData && typeof fileOrData.arrayBuffer === "function") {
+    data = new Uint8Array(await fileOrData.arrayBuffer());
+  } else {
+    throw new TypeError("fileOrData 必须是 File、ArrayBuffer 或 Uint8Array");
+  }
+
+  const loadingTask = pdfjsLib.getDocument({ ...pdfOptions, data });
+  const pdf = await loadingTask.promise;
+  const pages = [];
+
+  try {
+    const maxPages = 50;
+    if (pdf.numPages > maxPages) {
+      throw new Error(`PDF 页数过多（${pdf.numPages} 页），最多支持 ${maxPages} 页`);
+    }
+
+    for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+      const page = await pdf.getPage(pageNumber);
+      try {
+        const viewport = page.getViewport({ scale: 1 });
+        const content = await page.getTextContent();
+        pages.push({
+          pageNumber,
+          width: viewport.width,
+          height: viewport.height,
+          items: content.items.map(item => ({
+            str: item.str ?? "",
+            transform: item.transform,
+            width: item.width,
+            height: item.height,
+            hasEOL: item.hasEOL
+          }))
+        });
+      } finally {
+        page.cleanup?.();
+      }
+    }
+  } finally {
+    await pdf.destroy?.();
+  }
+
+  return pages;
+}
+
+export async function parseTimetablePdf(fileOrData, pdfjsLib, pdfOptions = {}) {
+  return parseTimetablePages(await extractPdfPages(fileOrData, pdfjsLib, pdfOptions));
+}
+
+export const activityTypes = ACTIVITY_TYPES;
+export const physicalCampuses = PHYSICAL_CAMPUSES;

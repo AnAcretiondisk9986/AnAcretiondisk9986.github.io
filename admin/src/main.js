@@ -10,6 +10,7 @@
     import { initSyncCenter, closeSyncModal, isSyncModalOpen, refreshSyncStatus } from './features/sync-center.js';
     import { initAbout, renderAboutList, loadAbout, saveAbout, refreshAvatarPreview, isAboutDirty, clearAboutDirty, syncAboutDirty } from './features/about.js';
     import { initFrontend, renderFrontendList, loadFrontend, saveFrontend, syncFrontendPreview, isFrontendDirty, clearFrontendDirty, syncFrontendDirty } from './features/frontend.js';
+    import { initSchedule, renderScheduleSidebar, loadSchedule, saveSchedule, isScheduleDirty, clearScheduleDirty } from './features/schedule.js';
     import { initPosts, updateBatchBar, setupBatchControls, showRevisionHistory, previewPostBySlug, copyPostLink, duplicatePost, quickToggleDraft, toggleArchive, closePostPreview, putPostFields, restoreRevision, renderLineDiff } from './features/posts.js';
     import { initGallery, loadGallery, newGalleryItem, saveGalleryItem, deleteGalleryItem, getCurrentGalleryId, resetGallerySelection, isGalleryDirty, clearGalleryDirty, syncGalleryDirty, openGalleryBatchUploader, isGalleryBatchBusy } from './features/gallery.js';
     import { initMedia, loadMedia, renderMediaSidebar, triggerMediaUpload, openMediaPicker, closeMediaPicker, setupMediaPicker, setupCoverMediaButton, setupMediaInsertButton, setupGalleryMediaButton } from './features/media.js';
@@ -1986,6 +1987,7 @@
       if (currentMode === 'gallery') return isGalleryDirty();
       if (currentMode === 'about') return isAboutDirty();
       if (currentMode === 'frontend') return isFrontendDirty();
+      if (currentMode === 'schedule') return isScheduleDirty();
       return false;
     }
 
@@ -2127,6 +2129,7 @@
         if(currentMode==='gallery') saveGalleryItem();
         else if(currentMode==='about') saveAbout();
         else if(currentMode==='frontend') saveFrontend();
+        else if(currentMode==='schedule') saveSchedule();
         else if(currentMode==='access') savePrivateAccess();
         else if(currentMode==='posts') savePost();
       }
@@ -2175,6 +2178,9 @@
     initFrontend({
       onDirtyChange: updateSubModuleDirtyStatus,
     });
+    initSchedule({
+      onDirtyChange: updateSubModuleDirtyStatus,
+    });
     initPosts({
       getPosts: () => posts,
       getSelection: () => selectedSlugs,
@@ -2201,6 +2207,7 @@
       if (currentMode === 'gallery' && isGalleryDirty()) return confirm('当前画廊项目有未保存修改，确定离开？');
       if (currentMode === 'about' && isAboutDirty()) return confirm('当前关于页面有未保存修改，确定离开？');
       if (currentMode === 'frontend' && isFrontendDirty()) return confirm('当前外观配置有未保存修改，确定离开？');
+      if (currentMode === 'schedule' && isScheduleDirty()) return confirm('当前日程课表有未保存修改，确定离开？');
       return true;
     }
 
@@ -2210,6 +2217,7 @@
       if (mode !== 'gallery') clearGalleryDirty();
       if (mode !== 'about') clearAboutDirty();
       if (mode !== 'frontend') clearFrontendDirty();
+      if (mode !== 'schedule') clearScheduleDirty();
       setPostEditorStatus('');
       currentMode = mode;
       store.set({ mode });
@@ -2265,6 +2273,17 @@
         $('#editorContainer').innerHTML = '<div class="empty-state">加载前端配置…</div>';
         renderFrontendList();
         loadFrontend();
+      } else if (mode === 'schedule') {
+        currentSlug = null;
+        resetGallerySelection();
+        $('#editorTitle').textContent = '日程与课表管理';
+        $('#btnNew').style.display = 'none';
+        $('#btnDelete').style.display = 'none';
+        $('#btnSave').style.display = '';
+        $('#btnSave').disabled = true;
+        $('#editorContainer').innerHTML = '<div class="empty-state">加载课表数据…</div>';
+        renderScheduleSidebar();
+        loadSchedule();
       } else if (mode === 'access') {
         currentSlug = null; resetGallerySelection();
         $('#editorTitle').textContent = '访问控制'; $('#btnNew').style.display = 'none'; $('#btnDelete').style.display = 'none'; $('#btnSave').style.display = 'none';
@@ -2284,8 +2303,8 @@
 
     // ── 按钮分发 ──
     $('#btnNew').onclick = () => currentMode === 'media' ? triggerMediaUpload() : currentMode === 'gallery' ? newGalleryItem() : newPost();
-    $('#btnRefresh').onclick = () => currentMode === 'gallery' ? loadGallery() : currentMode === 'media' ? loadMedia() : currentMode === 'about' ? loadAbout() : currentMode === 'frontend' ? loadFrontend() : currentMode === 'access' ? renderPrivateAccess() : loadPosts();
-    $('#btnSave').onclick = () => currentMode === 'gallery' ? saveGalleryItem() : currentMode === 'about' ? saveAbout() : currentMode === 'frontend' ? saveFrontend() : savePost();
+    $('#btnRefresh').onclick = () => currentMode === 'gallery' ? loadGallery() : currentMode === 'media' ? loadMedia() : currentMode === 'about' ? loadAbout() : currentMode === 'frontend' ? loadFrontend() : currentMode === 'schedule' ? loadSchedule() : currentMode === 'access' ? renderPrivateAccess() : loadPosts();
+    $('#btnSave').onclick = () => currentMode === 'gallery' ? saveGalleryItem() : currentMode === 'about' ? saveAbout() : currentMode === 'frontend' ? saveFrontend() : currentMode === 'schedule' ? saveSchedule() : savePost();
     $('#btnPreflight').onclick = showPreflight;
     $('#btnDelete').onclick = () => currentMode === 'gallery' ? (getCurrentGalleryId() && deleteGalleryItem(getCurrentGalleryId())) : (currentSlug && deletePost(currentSlug));
     $('#previewClose').onclick = closePostPreview;

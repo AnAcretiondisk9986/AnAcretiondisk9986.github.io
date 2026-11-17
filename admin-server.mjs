@@ -24,6 +24,7 @@ import { createGitService, GitCommandError, redactSecrets } from './admin/git-se
 import { createJsonStore, InvalidDataError, parseExpectedHash, VersionConflictError } from './admin/json-store.mjs';
 import { parseFile as parseAudioMeta } from 'music-metadata';
 import { createQuotaService } from './scripts/ai-quota-proxy.mjs';
+import { normalizeSchedulePayload } from './src/lib/schedule-core.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // 内容 / 数据目录支持环境变量覆盖（自动化测试使用隔离目录，不触碰真实数据）
@@ -41,6 +42,7 @@ const AUDIO_BASE_URL = 'https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-imag
 const GALLERY_JSON = resolve(DATA_DIR, 'gallery.json');
 const ABOUT_JSON = resolve(DATA_DIR, 'about.json');
 const FRONTEND_JSON = resolve(DATA_DIR, 'frontend.json');
+const SCHEDULE_JSON = resolve(DATA_DIR, 'schedule.json');
 const PORT = parseInt(process.env.PORT, 10) || 4322;
 const SERVER_STARTED_AT = new Date().toISOString();
 const TOKEN_FILE = resolve(__dirname, '.admin-token');
@@ -80,9 +82,26 @@ function validatePrivateAccessData(value) {
   return value;
 }
 
+const SCHEDULE_DEFAULT = {
+  version: 2,
+  timetables: [],
+  activeId: null,
+  favorites: [],
+  slotHeight: 72,
+  hideEmptyWeekends: false,
+  updatedAt: 0,
+};
+
+function validateScheduleData(value) {
+  const normalized = normalizeSchedulePayload(value);
+  if (!normalized) throw new InvalidDataError('课表数据格式不正确');
+  return normalized;
+}
+
 const galleryStore = createJsonStore({ filePath: GALLERY_JSON, label: 'gallery', readDefault: () => [], validate: validateGalleryData, backupDir: BACKUP_DIR });
 const aboutStore = createJsonStore({ filePath: ABOUT_JSON, label: 'about', readDefault: () => ({}), validate: (value) => requirePlainObject(value, '关于页数据'), backupDir: BACKUP_DIR });
 const frontendStore = createJsonStore({ filePath: FRONTEND_JSON, label: 'frontend', readDefault: () => ({}), validate: (value) => requirePlainObject(value, '前端定制数据'), backupDir: BACKUP_DIR });
+const scheduleStore = createJsonStore({ filePath: SCHEDULE_JSON, label: 'schedule', readDefault: () => ({ ...SCHEDULE_DEFAULT }), validate: validateScheduleData, backupDir: BACKUP_DIR });
 const privateAccessStore = createJsonStore({ filePath: PRIVATE_ACCESS_FILE, label: 'private-access', readDefault: () => ({}), validate: validatePrivateAccessData, backupDir: BACKUP_DIR });
 
 /** 校验请求携带的 expectedHash，返回 null 表示通过（无冲突需要传递的值在 eh 中）*/
@@ -119,8 +138,8 @@ const REPO_ROOT = process.env.ADMIN_REPO_ROOT ? resolve(process.env.ADMIN_REPO_R
 const blogGit = createGitService({ cwd: REPO_ROOT });
 // 图片仓库（上传时提交并推送；批量上传大文件夹时适当放宽超时）
 const imageGit = createGitService({ cwd: IMG_REPO_DIR, timeout: 600_000 });
-// 内容推送范围：仅文章 / 画廊 / 关于 / 前端定制数据
-const CONTENT_PUSH_PATHS = ['src/content/blog/', 'src/data/gallery.json', 'src/data/about.json', 'src/data/frontend.json'];
+// 内容推送范围：仅文章 / 画廊 / 关于 / 前端定制 / 日程课表数据
+const CONTENT_PUSH_PATHS = ['src/content/blog/', 'src/data/gallery.json', 'src/data/about.json', 'src/data/frontend.json', 'src/data/schedule.json'];
 // 全量推送范围：除 reasonix.toml（本机配置，不提交）外的全部改动
 const FULL_PUSH_PATHS = ['.', ':(exclude)reasonix.toml'];
 
@@ -2178,6 +2197,35 @@ app.route('/api/frontend')
     }
   });
 
+// ── Schedule / WMU Timetable API（由后台维护 src/data/schedule.json）──
+app.route('/api/schedule')
+  .get(async (_req, res) => {
+    try {
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      const doc = await scheduleStore.read();
+      const normalized = normalizeSchedulePayload(doc.data) || { ...SCHEDULE_DEFAULT };
+      res.json({ ...normalized, contentHash: doc.contentHash || '' });
+    } catch (err) {
+      respondStoreError(res, err, 'Schedule API');
+    }
+  })
+  .put(express.json({ limit: '4mb' }), async (req, res) => {
+    try {
+      const body = req.body || {};
+      const hashCheck = readExpectedHash(res, body.expectedHash);
+      if (!hashCheck.ok) return;
+      const { expectedHash: _ignored, contentHash: _ignored2, ...candidate } = body;
+      const normalized = normalizeSchedulePayload(candidate);
+      if (!normalized) return res.status(400).json({ error: '课表数据格式不正确' });
+      normalized.updatedAt = Date.now();
+      const written = await scheduleStore.write(normalized, { expectedHash: hashCheck.hash });
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.json({ success: true, schedule: written.data, contentHash: written.contentHash });
+    } catch (err) {
+      respondStoreError(res, err, 'Schedule API');
+    }
+  });
+
 // ── 集中配置：上传 / 请求 / 远程 / 超时 / 并发限制（发布中心与媒体库在 UI 中展示）──
 
 // ── Media library API ──
@@ -2603,6 +2651,11 @@ function setAdminStaticCacheHeaders(res, filePath) {
     res.setHeader('Cache-Control', isVendor ? VENDOR_CACHE_CONTROL : 'no-cache');
   }
 }
+app.get('/admin/shared/schedule-core.mjs', (_req, res) => {
+  res.set('Cache-Control', 'no-cache');
+  res.type('application/javascript; charset=utf-8');
+  res.sendFile(resolve(__dirname, 'src', 'lib', 'schedule-core.mjs'));
+});
 app.use('/admin', express.static(join(__dirname, 'admin'), { setHeaders: setAdminStaticCacheHeaders }));
 
 app.listen(PORT, '127.0.0.1', () => {

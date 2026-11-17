@@ -1,0 +1,170 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { normalizeSchedulePayload } from '../lib/schedule-core.mjs';
+import rawSchedule from '../data/schedule.json';
+import '../styles/hz/log.css';
+import '../styles/hz/schedule.css';
+
+const schedule = normalizeSchedulePayload(rawSchedule) ?? {
+  version: 2 as const,
+  timetables: [],
+  activeId: null,
+  favorites: [],
+  slotHeight: 72,
+  hideEmptyWeekends: false,
+  updatedAt: 0,
+};
+
+const safeJson = JSON.stringify(schedule).replace(/</g, '\\u003c');
+---
+
+<BaseLayout title="日程" description="温州医科大学课程表与个人日程。" page="ephemeris">
+  <div class="hz-wrap hz-sched" data-sched-root>
+    <script type="application/json" data-sched-data is:inline set:html={safeJson}></script>
+
+    <header class="hz-sched-head">
+      <div class="hz-sched-head__top">
+        <div>
+          <p class="hz-mono hz-sched-head__kicker">
+            EPHEMERIS // 06 · <span lang="ja">時間割軌道</span>
+          </p>
+          <div class="hz-sched-head__title-wrap">
+            <h1 class="hz-sched-head__title">日程</h1>
+            <span class="hz-sched-head__semester" id="hzSchedSemester">--</span>
+          </div>
+        </div>
+
+        <div class="hz-sched-head__meta">
+          <label class="sr-only" for="hzSchedTimetableSelect">选择课表</label>
+          <select class="hz-sched-tt-select" id="hzSchedTimetableSelect" hidden></select>
+          <p class="hz-mono hz-sched-readout">
+            <i class="hz-sched-pulse-dot" aria-hidden="true"></i>
+            <span id="hzSchedTodayReadout">--</span>
+          </p>
+        </div>
+      </div>
+    </header>
+
+    <section class="hz-sched-tele" aria-label="日程概览">
+      <div class="hz-sched-tele__cell hz-sched-tele__cell--primary">
+        <div class="hz-mono hz-sched-tele__label">
+          <span id="hzTeleNextLabel">TODAY</span>
+          <span>01</span>
+        </div>
+        <div class="hz-sched-tele__value" id="hzTeleNextValue">--</div>
+      </div>
+      <div class="hz-sched-tele__cell">
+        <div class="hz-mono hz-sched-tele__label">
+          <span>COURSE LOAD</span>
+          <span>02</span>
+        </div>
+        <div class="hz-sched-tele__value" id="hzTeleCountValue">--</div>
+      </div>
+      <div class="hz-sched-tele__cell">
+        <div class="hz-mono hz-sched-tele__label">
+          <span>CAMPUS</span>
+          <span>03</span>
+        </div>
+        <div class="hz-sched-tele__value" id="hzTeleCampusValue">--</div>
+      </div>
+    </section>
+
+    <section class="hz-sched-controls" aria-label="日程筛选与视图切换">
+      <label class="hz-search">
+        <span class="hz-mono" aria-hidden="true">SEARCH</span>
+        <input
+          id="hzSchedSearch"
+          type="search"
+          aria-label="搜索课程、教师或教室"
+          placeholder="搜索课程、教师或教室…"
+          autocomplete="off"
+        />
+        <kbd aria-hidden="true">/</kbd>
+      </label>
+
+      <div class="hz-sched-nav" aria-label="切换周次或月份">
+        <button class="hz-sched-nav__btn" id="hzSchedPrev" type="button" aria-label="上一周期" title="上一周期">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
+        </button>
+        <span class="hz-sched-nav__val" id="hzSchedNavVal">第 01 周</span>
+        <button class="hz-sched-nav__btn" id="hzSchedNext" type="button" aria-label="下一周期" title="下一周期">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+        </button>
+      </div>
+
+      <button class="hz-mini-btn" id="hzSchedTodayBtn" type="button">回到今天</button>
+
+      <div class="hz-seg" role="group" aria-label="视图切换">
+        <button type="button" data-sched-view="schedule" aria-pressed="true">周视图</button>
+        <button type="button" data-sched-view="month" aria-pressed="false">月视图</button>
+        <button type="button" data-sched-view="list" aria-pressed="false">列表</button>
+        <button type="button" data-sched-view="favorites" aria-pressed="false">收藏</button>
+      </div>
+
+      <button class="hz-mini-btn" id="hzSchedWeekendBtn" type="button" aria-pressed="false" title="隐藏无课的周六、周日列">
+        隐藏无课周末
+      </button>
+    </section>
+
+    <div class="hz-sched-bar-meta">
+      <span class="hz-sched-bar-meta__title" id="hzSchedBarTitle">周视图 · WEEKLY GRID</span>
+      <span class="hz-mono hz-sched-bar-meta__range" id="hzSchedBarRange">--</span>
+    </div>
+
+    <div class="hz-sched-empty" id="hzSchedEmptyRoot" hidden>
+      <p class="hz-mono hz-sched-empty__kicker">NO EPHEMERIS RECORD // 06</p>
+      <h2 class="hz-sched-empty__title">尚未配置课表与日程</h2>
+      <p class="hz-sched-empty__note">
+        课程表由站点后台统一维护。请在管理后台「07 日程」导入或录入课程安排后保存并发布，此处将自动呈现本周课表、月历视图与自定义日程。
+      </p>
+    </div>
+
+    <div class="hz-swipe-viewport" id="hzSwipeViewport">
+      <div class="hz-swipe-surface" id="hzSwipeSurface">
+        <div class="hz-swipe-page hz-swipe-preview" id="hzPrevPreview" aria-hidden="true"></div>
+        <div class="hz-swipe-page" id="hzCurrentPage">
+          <section class="hz-sched-shell" id="hzSchedShell">
+            <div class="hz-sched-grid" id="hzSchedGrid"></div>
+            <div class="hz-empty" id="hzSchedWeekEmpty" hidden></div>
+          </section>
+          <section class="hz-agenda" id="hzSchedAgenda" aria-label="课程列表" hidden></section>
+          <section class="hz-month" id="hzSchedMonth" aria-label="月视图" hidden></section>
+        </div>
+        <div class="hz-swipe-page hz-swipe-preview" id="hzNextPreview" aria-hidden="true"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="hz-drawer-backdrop" id="hzDrawerBackdrop"></div>
+  <aside class="hz-drawer" id="hzDrawer" aria-label="课程详情" aria-hidden="true">
+    <div class="hz-drawer__head">
+      <span class="hz-mono hz-drawer__kicker" id="hzDrawerKicker">DETAILS</span>
+      <div class="hz-drawer__tools">
+        <button class="hz-mini-btn" id="hzDrawerFav" type="button" aria-pressed="false">☆ 收藏</button>
+        <button class="hz-mini-btn" id="hzDrawerClose" type="button" aria-label="关闭">关闭 ✕</button>
+      </div>
+    </div>
+    <h2 class="hz-drawer__title" id="hzDrawerTitle">--</h2>
+    <p class="hz-drawer__origin" id="hzDrawerOrigin" hidden></p>
+    <p class="hz-drawer__sub" id="hzDrawerSub">--</p>
+    <dl class="hz-drawer__list">
+      <div class="hz-drawer__row" id="hzRowTime"><dt>上课时间</dt><dd id="hzDetailTime">--</dd></div>
+      <div class="hz-drawer__row" id="hzRowRoom"><dt>上课地点</dt><dd id="hzDetailRoom">--</dd></div>
+      <div class="hz-drawer__row" id="hzRowDesc" hidden><dt>简介</dt><dd id="hzDetailDesc">--</dd></div>
+      <div class="hz-drawer__row" id="hzRowTeacher"><dt>任课教师</dt><dd id="hzDetailTeacher">--</dd></div>
+      <div class="hz-drawer__row" id="hzRowWeeks"><dt>周次</dt><dd id="hzDetailWeeks">--</dd></div>
+      <div class="hz-drawer__row" id="hzRowType"><dt>类型</dt><dd id="hzDetailType">--</dd></div>
+      <div class="hz-drawer__row" id="hzRowCredit"><dt>学分</dt><dd id="hzDetailCredit">--</dd></div>
+      <div class="hz-drawer__row" id="hzRowCode" hidden><dt>课程代码</dt><dd id="hzDetailCode">--</dd></div>
+      <div class="hz-drawer__row" id="hzRowAssessment" hidden><dt>考核方式</dt><dd id="hzDetailAssessment">--</dd></div>
+      <div class="hz-drawer__row" id="hzRowNote" hidden><dt>备注</dt><dd id="hzDetailNote">--</dd></div>
+    </dl>
+    <p class="hz-drawer__note">
+      课表数据由站点后台统一维护；课程收藏状态仅保存在当前浏览器。
+    </p>
+  </aside>
+</BaseLayout>
+
+<script>
+  import '../scripts/hz/schedule';
+</script>

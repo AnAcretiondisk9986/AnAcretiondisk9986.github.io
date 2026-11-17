@@ -228,6 +228,53 @@ try {
   const feSaved = await fePut.json();
   check('前端定制保存成功', fePut.status === 200 && feSaved.frontend?.siteName === '冒烟站点');
 
+  // ── 日程课表 ──
+  const sched0 = await (await api('/api/schedule')).json();
+  check('课表 GET 返回 version:2 结构', sched0.version === 2 && Array.isArray(sched0.timetables), JSON.stringify(sched0));
+  const schedPut = await api('/api/schedule', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      version: 2,
+      activeId: 'tt-smoke',
+      timetables: [
+        {
+          id: 'tt-smoke',
+          name: '2026-2027-1',
+          semester: '2026-2027-1',
+          termStartDate: '2026-09-07',
+          events: [
+            {
+              day: 1,
+              start: 1,
+              end: 2,
+              title: '系统解剖学',
+              type: 'lecture',
+              campus: '茶山校区',
+              room: '7A101',
+              teacher: '测试教师',
+              weeks: [{ start: 1, end: 16, parity: 'all' }],
+            },
+          ],
+          customEvents: [],
+        },
+      ],
+      expectedHash: sched0.contentHash || '',
+    }),
+  });
+  const schedSaved = await schedPut.json();
+  check('课表 PUT 保存成功并返回 contentHash', schedPut.status === 200 && HASH_RE.test(schedSaved.contentHash || '') && schedSaved.schedule?.timetables?.length === 1);
+  const schedConflict = await api('/api/schedule', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ version: 2, timetables: [], expectedHash: 'f'.repeat(64) }),
+  });
+  check('课表旧 hash 保存返回 409', schedConflict.status === 409 && (await schedConflict.json()).code === 'VERSION_CONFLICT');
+  const sharedCoreRes = await fetch(`${base}/admin/shared/schedule-core.mjs`);
+  check('后台共享课表核心脚本可访问', sharedCoreRes.status === 200 && (sharedCoreRes.headers.get('content-type') || '').includes('javascript'));
+  const pdfjsRes = await fetch(`${base}/admin/vendor/pdfjs/build/pdf.min.mjs`);
+  check('后台 PDF.js 解析资源可访问', pdfjsRes.status === 200 && (pdfjsRes.headers.get('content-type') || '').includes('javascript'));
+
   // ── 媒体引用扫描覆盖 about:avatar 与 gallery ──
   const existingMedia = await (await api('/api/media')).json();
   const sampleImg = (existingMedia.images || [])[0];
