@@ -311,9 +311,15 @@ dialog.hz-viewer::backdrop {
   place-items: center;
   overflow: hidden;
   background: var(--hz-void);
+  cursor: default;
+  touch-action: none;
+  user-select: none;
+}
+.hz-viewer__media.can-pan {
   cursor: grab;
 }
-.hz-viewer__media:active {
+.hz-viewer__media.can-pan.is-dragging,
+.hz-viewer__media.can-pan:active {
   cursor: grabbing;
 }
 .hz-viewer__media img {
@@ -321,8 +327,9 @@ dialog.hz-viewer::backdrop {
   max-height: 62svh;
   object-fit: contain;
   transform-origin: center center;
-  transition: transform 80ms linear;
+  will-change: transform;
   user-select: none;
+  -webkit-user-drag: none;
 }
 .hz-viewer__tools {
   display: flex;

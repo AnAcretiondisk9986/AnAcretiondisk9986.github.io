@@ -671,23 +671,61 @@ export function initGallery() {
   };
 
   // 灯箱控制
+  const VIEWER_MIN_ZOOM = 100;
+  const VIEWER_MAX_ZOOM = 400;
   let zoomPct = 100;
   let panX = 0;
   let panY = 0;
   let imgDragging = false;
-  let imgDownX = 0;
-  let imgDownY = 0;
+  let imgLastX = 0;
+  let imgLastY = 0;
+  let vPrevPinchDist = 0;
+  let vPrevPinchMidX = 0;
+  let vPrevPinchMidY = 0;
+  const vPointers = new Map<number, { x: number; y: number }>();
+
+  const clampPan = () => {
+    if (!vMedia || !vImg || zoomPct <= 100.5) {
+      panX = 0;
+      panY = 0;
+      return;
+    }
+    const scale = zoomPct / 100;
+    const maxX = Math.max(0, (vImg.offsetWidth * scale - vMedia.clientWidth) * 0.5);
+    const maxY = Math.max(0, (vImg.offsetHeight * scale - vMedia.clientHeight) * 0.5);
+    panX = clamp(panX, -maxX, maxX);
+    panY = clamp(panY, -maxY, maxY);
+  };
 
   const applyTransform = () => {
     if (!vImg) return;
     const scale = zoomPct / 100;
-    vImg.style.transform = `translate3d(${panX}px, ${panY}px, 0) scale(${scale})`;
-    if (vZoom) vZoom.value = String(zoomPct);
-    if (vZoomVal) vZoomVal.textContent = `${zoomPct}%`;
+    vImg.style.transform = `translate3d(${panX.toFixed(1)}px, ${panY.toFixed(1)}px, 0) scale(${scale.toFixed(4)})`;
+    vMedia?.classList.toggle('can-pan', zoomPct > 100.5);
+    const pctText = `${Math.round(zoomPct)}%`;
+    if (vZoom) vZoom.value = String(Math.round(zoomPct));
+    if (vZoomVal) vZoomVal.textContent = pctText;
+  };
+
+  const setViewerZoom = (nextZoomRaw: number, clientX?: number, clientY?: number) => {
+    const prevScale = zoomPct / 100;
+    const nextZoom = clamp(nextZoomRaw, VIEWER_MIN_ZOOM, VIEWER_MAX_ZOOM);
+    const nextScale = nextZoom / 100;
+    if (vMedia && clientX !== undefined && clientY !== undefined && Math.abs(nextScale - prevScale) > 1e-4) {
+      const rect = vMedia.getBoundingClientRect();
+      const mx = clientX - (rect.left + rect.width * 0.5);
+      const my = clientY - (rect.top + rect.height * 0.5);
+      const ratio = nextScale / prevScale;
+      panX = mx - (mx - panX) * ratio;
+      panY = my - (my - panY) * ratio;
+    }
+    zoomPct = nextZoom;
+    clampPan();
+    applyTransform();
   };
 
   const resetZoom = () => {
-    zoomPct = 100;
+    zoomPct = VIEWER_MIN_ZOOM;
     panX = 0;
     panY = 0;
     applyTransform();
@@ -697,6 +735,9 @@ export function initGallery() {
     if (!viewer || !vImg || currentList.length === 0) return;
     viewerIndex = ((idx % currentList.length) + currentList.length) % currentList.length;
     const item = currentList[viewerIndex];
+    vPointers.clear();
+    imgDragging = false;
+    vMedia?.classList.remove('is-dragging');
     resetZoom();
 
     vImg.src = item.src;
@@ -732,11 +773,10 @@ export function initGallery() {
   vNext?.addEventListener('click', () => showViewerItem(viewerIndex + 1));
   vReset?.addEventListener('click', resetZoom);
   vZoom?.addEventListener('input', () => {
-    zoomPct = Number(vZoom.value) || 100;
-    if (zoomPct <= 100) {
-      panX = 0;
-      panY = 0;
-    }
+    setViewerZoom(Number(vZoom.value) || VIEWER_MIN_ZOOM);
+  });
+  vImg?.addEventListener('load', () => {
+    clampPan();
     applyTransform();
   });
   vOrigBtn?.addEventListener('click', () => {
@@ -756,21 +796,91 @@ export function initGallery() {
     loader.src = orig;
   });
 
+  vMedia?.addEventListener(
+    'wheel',
+    (e) => {
+      e.preventDefault();
+      const factor = Math.exp(-e.deltaY * (e.ctrlKey ? 0.0085 : 0.0022));
+      setViewerZoom(zoomPct * factor, e.clientX, e.clientY);
+    },
+    { passive: false },
+  );
+
   vMedia?.addEventListener('pointerdown', (e) => {
-    if (zoomPct <= 100) return;
-    imgDragging = true;
-    imgDownX = e.clientX - panX;
-    imgDownY = e.clientY - panY;
-    vMedia.setPointerCapture(e.pointerId);
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    vPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    try {
+      vMedia.setPointerCapture(e.pointerId);
+    } catch {
+      /* ignore if synthetic event */
+    }
+    if (vPointers.size === 1) {
+      imgLastX = e.clientX;
+      imgLastY = e.clientY;
+      vPrevPinchDist = 0;
+      imgDragging = zoomPct > 100.5;
+      vMedia.classList.toggle('is-dragging', imgDragging);
+    } else if (vPointers.size === 2) {
+      imgDragging = false;
+      vMedia.classList.remove('is-dragging');
+      const [p1, p2] = [...vPointers.values()];
+      vPrevPinchDist = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+      vPrevPinchMidX = (p1.x + p2.x) * 0.5;
+      vPrevPinchMidY = (p1.y + p2.y) * 0.5;
+    }
   });
   vMedia?.addEventListener('pointermove', (e) => {
-    if (!imgDragging) return;
-    panX = e.clientX - imgDownX;
-    panY = e.clientY - imgDownY;
+    if (!vPointers.has(e.pointerId)) return;
+    vPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    if (vPointers.size === 2) {
+      const [p1, p2] = [...vPointers.values()];
+      const dist = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+      const midX = (p1.x + p2.x) * 0.5;
+      const midY = (p1.y + p2.y) * 0.5;
+      if (vPrevPinchDist > 8 && dist > 8) {
+        panX += midX - vPrevPinchMidX;
+        panY += midY - vPrevPinchMidY;
+        setViewerZoom(zoomPct * (dist / vPrevPinchDist), midX, midY);
+      }
+      vPrevPinchDist = dist;
+      vPrevPinchMidX = midX;
+      vPrevPinchMidY = midY;
+      return;
+    }
+
+    if (!imgDragging || vPointers.size !== 1) return;
+    panX += e.clientX - imgLastX;
+    panY += e.clientY - imgLastY;
+    imgLastX = e.clientX;
+    imgLastY = e.clientY;
+    clampPan();
     applyTransform();
   });
-  vMedia?.addEventListener('pointerup', () => {
+  const endViewerPointer = (e: PointerEvent) => {
+    if (!vPointers.has(e.pointerId)) return;
+    vPointers.delete(e.pointerId);
+    if (vPointers.size < 2) {
+      vPrevPinchDist = 0;
+    }
+    if (vPointers.size === 1) {
+      const [rem] = [...vPointers.values()];
+      imgLastX = rem.x;
+      imgLastY = rem.y;
+      imgDragging = zoomPct > 100.5;
+      vMedia?.classList.toggle('is-dragging', imgDragging);
+    } else if (vPointers.size === 0) {
+      imgDragging = false;
+      vMedia?.classList.remove('is-dragging');
+    }
+  };
+  vMedia?.addEventListener('pointerup', endViewerPointer);
+  vMedia?.addEventListener('pointercancel', endViewerPointer);
+  viewer?.addEventListener('close', () => {
+    vPointers.clear();
     imgDragging = false;
+    vMedia?.classList.remove('is-dragging');
+    resetZoom();
   });
   viewer?.addEventListener('click', (e) => {
     if (e.target === viewer) viewer.close();
@@ -782,6 +892,15 @@ export function initGallery() {
     } else if (e.key === 'ArrowRight') {
       e.preventDefault();
       showViewerItem(viewerIndex + 1);
+    } else if (e.key === '+' || e.key === '=') {
+      e.preventDefault();
+      setViewerZoom(zoomPct * 1.2);
+    } else if (e.key === '-' || e.key === '_') {
+      e.preventDefault();
+      setViewerZoom(zoomPct / 1.2);
+    } else if (e.key === '0') {
+      e.preventDefault();
+      resetZoom();
     }
   });
 

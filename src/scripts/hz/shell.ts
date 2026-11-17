@@ -131,6 +131,55 @@ function initReadouts() {
   }
 }
 
+function initZoomLock() {
+  // 规避 iOS Safari / 移动端 WebView 忽略 viewport user-scalable=no：
+  // 禁用全站网页级双指缩放与非交互区域双击放大，同时保留组件内自定义双指手势。
+  const blockGesture = (e: Event) => {
+    e.preventDefault();
+  };
+  document.addEventListener('gesturestart', blockGesture, { passive: false });
+  document.addEventListener('gesturechange', blockGesture, { passive: false });
+  document.addEventListener('gestureend', blockGesture, { passive: false });
+
+  const blockMultiTouch = (e: TouchEvent) => {
+    if (e.touches.length > 1) {
+      e.preventDefault();
+    }
+  };
+  document.addEventListener('touchstart', blockMultiTouch, { passive: false });
+  document.addEventListener('touchmove', blockMultiTouch, { passive: false });
+
+  let lastTapTime = 0;
+  let lastTapX = 0;
+  let lastTapY = 0;
+  document.addEventListener(
+    'touchend',
+    (e) => {
+      if (e.touches.length > 0 || e.changedTouches.length !== 1) {
+        lastTapTime = 0;
+        return;
+      }
+      const target = e.target as Element | null;
+      if (target?.closest('a, button, input, select, textarea, label, [role="button"], [data-field-stage], [data-viewer-media]')) {
+        lastTapTime = 0;
+        return;
+      }
+      const touch = e.changedTouches[0];
+      const now = performance.now();
+      if (now - lastTapTime < 320 && Math.hypot(touch.clientX - lastTapX, touch.clientY - lastTapY) < 30) {
+        e.preventDefault();
+        lastTapTime = 0;
+        return;
+      }
+      lastTapTime = now;
+      lastTapX = touch.clientX;
+      lastTapY = touch.clientY;
+    },
+    { passive: false },
+  );
+}
+
 initThemeToggle();
 initMenu();
 initReadouts();
+initZoomLock();

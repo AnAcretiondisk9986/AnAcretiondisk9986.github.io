@@ -8,6 +8,10 @@
   *::before,
   *::after {
     box-sizing: border-box;
+    touch-action: pan-x pan-y;
+  }
+  input[type='range'] {
+    touch-action: pan-y;
   }
   html {
     -webkit-text-size-adjust: 100%;
