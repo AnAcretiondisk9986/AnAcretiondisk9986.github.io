@@ -364,8 +364,8 @@ export function initGallery() {
       frame.append(img);
 
       card.append(frame);
-      card.addEventListener('click', () => {
-        if (movedPx > 7) return;
+      card.addEventListener('click', (e) => {
+        if (e.detail > 0 && movedPx > 7) return;
         const node = fieldNodes[i];
         if (!node) return;
         const distFromCenter = Math.hypot(node.sx, node.sy);
@@ -786,14 +786,20 @@ export function initGallery() {
   });
 
   // 透镜场拖拽、滚轮缩放、双指捏合与键盘导航
-  stage?.addEventListener('pointerdown', (e) => {
-    if (e.pointerType === 'mouse' && e.button !== 0) return;
-    activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  const tryCapturePointer = (pointerId: number) => {
+    if (!stage) return;
     try {
-      stage.setPointerCapture(e.pointerId);
+      if (!stage.hasPointerCapture?.(pointerId)) {
+        stage.setPointerCapture(pointerId);
+      }
     } catch {
       /* ignore if synthetic event */
     }
+  };
+
+  stage?.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
     if (activePointers.size === 1) {
       dragging = true;
@@ -806,13 +812,20 @@ export function initGallery() {
       vy = 0;
       prevPinchDist = 0;
       stage.classList.add('is-dragging');
-      kickField();
+      // 仅在点击空白背景时立即捕获指针；点在卡片上时推迟到真正拖拽(>4px)后再捕获，
+      // 否则 pointerup 被重定向到 stage 会导致浏览器把鼠标 click 目标合并到 stage 而不触发卡片 click。
+      if (!(e.target as HTMLElement | null)?.closest('.hz-fplate')) {
+        tryCapturePointer(e.pointerId);
+      }
     } else if (activePointers.size === 2) {
       dragging = false;
       movedPx = 999;
       vx = 0;
       vy = 0;
       stage.classList.remove('is-dragging');
+      for (const id of activePointers.keys()) {
+        tryCapturePointer(id);
+      }
       const [p1, p2] = [...activePointers.values()];
       prevPinchDist = Math.hypot(p2.x - p1.x, p2.y - p1.y);
       prevPinchMidX = (p1.x + p2.x) * 0.5;
@@ -820,15 +833,23 @@ export function initGallery() {
     }
   });
 
-  stage?.addEventListener('pointermove', (e) => {
+  const updatePointerOffset = (e: PointerEvent) => {
+    if (!stage) return;
     const rect = stage.getBoundingClientRect();
     pointerOffX = e.clientX - rect.left - rect.width * 0.5;
     pointerOffY = e.clientY - rect.top - rect.height * 0.5;
     pointerActive = true;
-    if (!activePointers.has(e.pointerId)) {
-      scheduleLoadPump();
-      return;
-    }
+  };
+
+  stage?.addEventListener('pointermove', (e) => {
+    if (activePointers.has(e.pointerId)) return;
+    updatePointerOffset(e);
+    scheduleLoadPump();
+  });
+
+  window.addEventListener('pointermove', (e) => {
+    if (!stage || !activePointers.has(e.pointerId)) return;
+    updatePointerOffset(e);
     activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
     if (activePointers.size === 2) {
@@ -854,12 +875,14 @@ export function initGallery() {
     }
 
     if (!dragging || activePointers.size !== 1) return;
+    movedPx = Math.max(movedPx, Math.hypot(e.clientX - downX, e.clientY - downY));
+    if (movedPx <= 4) return;
+    cancelGlide();
+    tryCapturePointer(e.pointerId);
     const dx = e.clientX - lastX;
     const dy = e.clientY - lastY;
     lastX = e.clientX;
     lastY = e.clientY;
-    movedPx = Math.max(movedPx, Math.hypot(e.clientX - downX, e.clientY - downY));
-    if (movedPx > 4) cancelGlide();
     const invZ = 1 / Math.max(fieldZoom, MIN_FIELD_ZOOM);
     targetX -= dx * invZ;
     targetY -= dy * invZ;
@@ -869,6 +892,7 @@ export function initGallery() {
   });
 
   const endPointer = (e: PointerEvent) => {
+    if (!activePointers.has(e.pointerId)) return;
     activePointers.delete(e.pointerId);
     if (activePointers.size < 2) {
       prevPinchDist = 0;
@@ -882,11 +906,11 @@ export function initGallery() {
     } else if (activePointers.size === 0 && dragging) {
       dragging = false;
       stage?.classList.remove('is-dragging');
-      kickField();
+      if (movedPx > 4) kickField();
     }
   };
-  stage?.addEventListener('pointerup', endPointer);
-  stage?.addEventListener('pointercancel', endPointer);
+  window.addEventListener('pointerup', endPointer);
+  window.addEventListener('pointercancel', endPointer);
   stage?.addEventListener('pointerleave', () => { pointerActive = false; });
 
   stage?.addEventListener(
