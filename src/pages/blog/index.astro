@@ -68,7 +68,7 @@ const newestDate = posts.length > 0 ? fmtDot(posts[0].data.pubDate) : '—';
           </span>
         </div>
         <div class="hz-spec__bars">
-          {spectralBars.map((bar) => (
+          {spectralBars.map((bar, idx) => (
             <button
               type="button"
               class="hz-spec__bar"
@@ -79,7 +79,7 @@ const newestDate = posts.length > 0 ? fmtDot(posts[0].data.pubDate) : '—';
               data-mass={String(bar.mass)}
               data-z={bar.z}
               aria-label={`定位文章：${bar.title}（${bar.folio}）`}
-              style={`--bar-h:${bar.height}%;--bar-age:${bar.age}`}
+              style={`--bar-h:${bar.height}%;--bar-age:${bar.age};--bar-i:${Math.min(idx, 42)}`}
             >
               <i></i>
             </button>

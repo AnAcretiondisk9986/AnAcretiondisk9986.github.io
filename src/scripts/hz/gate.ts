@@ -23,18 +23,40 @@ function initGate(root: HTMLElement) {
   const tpl = root.querySelector<HTMLTemplateElement>('template[data-gate-body]');
   if (!box || !form || !err || !tpl) return;
 
-  const unlock = () => {
-    const frag = tpl.content.cloneNode(true);
-    box.replaceWith(frag);
-    document.dispatchEvent(new CustomEvent('hz:gate-unlocked', { detail: { mode, id } }));
-    document.dispatchEvent(new CustomEvent('acr:private-revealed'));
+  const unlock = (animate = false) => {
+    const swap = () => {
+      const frag = tpl.content.cloneNode(true) as DocumentFragment;
+      if (animate) {
+        [...frag.children].forEach((child) => {
+          if (child instanceof HTMLElement) child.classList.add('hz-view-enter');
+        });
+      }
+      box.replaceWith(frag);
+      document.dispatchEvent(new CustomEvent('hz:gate-unlocked', { detail: { mode, id } }));
+      document.dispatchEvent(new CustomEvent('acr:private-revealed'));
+    };
+
+    if (animate && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      box.classList.remove('is-error');
+      box.classList.add('is-unlocking');
+      window.setTimeout(swap, 280);
+    } else {
+      swap();
+    }
+  };
+
+  const triggerError = (msg: string) => {
+    err.textContent = msg;
+    box.classList.remove('is-error');
+    void box.offsetWidth;
+    box.classList.add('is-error');
   };
 
   if (mode === 'authorized') {
     const key = `acr-authorized:${id}`;
     try {
       if (sessionStorage.getItem(key) === '1') {
-        unlock();
+        unlock(false);
         return;
       }
     } catch {
@@ -52,16 +74,16 @@ function initGate(root: HTMLElement) {
         } catch {
           /* ignore */
         }
-        unlock();
+        unlock(true);
       } else {
-        err.textContent = 'SIGNAL REJECTED · 网名不正确，请再试一次。';
+        triggerError('SIGNAL REJECTED · 网名不正确，请再试一次。');
       }
     });
   } else {
     const key = 'acr-private-admin-unlocked';
     try {
       if (expectedHash && localStorage.getItem(key) === expectedHash) {
-        unlock();
+        unlock(false);
         return;
       }
     } catch {
@@ -80,12 +102,12 @@ function initGate(root: HTMLElement) {
           } catch {
             /* ignore */
           }
-          unlock();
+          unlock(true);
         } else {
-          err.textContent = 'ACCESS DENIED · 密码不正确。';
+          triggerError('ACCESS DENIED · 密码不正确。');
         }
       } catch {
-        err.textContent = '当前环境不支持加密摘要校验，请在 HTTPS 或 localhost 下打开。';
+        triggerError('当前环境不支持加密摘要校验，请在 HTTPS 或 localhost 下打开。');
       }
     });
   }

@@ -440,6 +440,8 @@ export function initBlackHole() {
   let visible = true;
   let raf = 0;
 
+  let firstFrame = false;
+
   const draw = (now: number) => {
     const dt = now - lastFrame;
     lastFrame = now;
@@ -468,6 +470,11 @@ export function initBlackHole() {
     gl.uniform1f(uHasTex, hasTex);
     gl.uniform1f(uTexFade, reduceMotion && hasTex ? 1 : texFade);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+    if (!firstFrame) {
+      firstFrame = true;
+      canvas.classList.add('is-ready');
+    }
   };
 
   function renderOnce() {

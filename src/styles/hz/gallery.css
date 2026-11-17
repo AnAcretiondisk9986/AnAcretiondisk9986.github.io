@@ -41,10 +41,15 @@
   border-bottom: 1px solid var(--hz-line);
 }
 .hz-gal-tabs {
+  position: relative;
   display: inline-flex;
   border: 1px solid var(--hz-line-2);
+  background: var(--hz-bg-2);
+  isolation: isolate;
 }
 .hz-gal-tabs button {
+  position: relative;
+  z-index: 1;
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -55,17 +60,28 @@
   font-size: var(--t-micro);
   letter-spacing: 0.06em;
   color: var(--hz-ink-2);
+  transition: color var(--d-2) var(--e-out), background-color var(--d-2) var(--e-out), transform var(--d-1) var(--e-spring);
 }
-.hz-gal-tabs button:last-child {
+.hz-gal-tabs button:last-of-type {
   border-right: 0;
+}
+.hz-gal-tabs button:hover:not([aria-selected='true']) {
+  color: var(--hz-ink);
+}
+.hz-gal-tabs button:active {
+  transform: scale(0.97);
 }
 .hz-gal-tabs button b {
   color: var(--hz-ink-3);
   font-weight: 500;
+  transition: color var(--d-2) var(--e-out);
 }
 .hz-gal-tabs button[aria-selected='true'] {
   background: var(--hz-ink);
   color: var(--hz-bg);
+}
+.hz-gal-tabs.has-glider button[aria-selected='true'] {
+  background: transparent;
 }
 .hz-gal-tabs button[aria-selected='true'] b {
   color: var(--hz-hot);
@@ -155,8 +171,18 @@
   transform: translate(-50%, -50%);
   border: 1px dashed rgb(255 90 26 / 0.45);
   border-radius: 50%;
+  box-shadow: 0 0 64px -18px rgb(255 90 26 / 0.3), inset 0 0 42px -18px rgb(255 90 26 / 0.2);
   pointer-events: none;
   z-index: 200;
+  animation: hz-reticle-spin 36s linear infinite;
+}
+@keyframes hz-reticle-spin {
+  from {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
 }
 .hz-field-reticle::before,
 .hz-field-reticle::after {
@@ -188,11 +214,12 @@
   background: var(--hz-bg-2);
   text-align: left;
   will-change: transform, opacity;
-  transition: border-color var(--d-1);
+  transition: border-color var(--d-2) var(--e-out), box-shadow var(--d-2) var(--e-out);
 }
 .hz-fplate:hover,
 .hz-fplate.is-locked {
   border-color: var(--hz-hot);
+  box-shadow: 0 18px 40px -18px rgb(0 0 0 / 0.72), 0 0 26px -10px rgb(255 90 26 / 0.45);
 }
 .hz-fplate__frame {
   display: block;
@@ -209,10 +236,12 @@
   max-height: min(64svh, 480px);
   object-fit: contain;
   opacity: 0;
-  transition: opacity var(--d-2);
+  transform: scale(0.95);
+  transition: opacity var(--d-2) var(--e-out), transform var(--d-3) var(--e-out);
 }
 .hz-fplate.is-ready .hz-fplate__frame img {
   opacity: 1;
+  transform: scale(1);
 }
 
 /* ==========================================================================
@@ -229,15 +258,21 @@
   border-left: 1px solid var(--hz-line);
 }
 .hz-iplate {
+  position: relative;
   display: block;
   border-right: 1px solid var(--hz-line);
   border-bottom: 1px solid var(--hz-line);
   background: var(--hz-bg-2);
   text-align: left;
-  transition: background-color var(--d-1);
+  transition: background-color var(--d-2) var(--e-out), box-shadow var(--d-2) var(--e-out);
+  animation: hz-view-in 440ms var(--e-out) calc(var(--i, 0) * 18ms) both;
 }
 .hz-iplate:hover {
   background: var(--hz-bg-3);
+  box-shadow: inset 0 0 0 1px rgb(255 90 26 / 0.55);
+}
+.hz-iplate:active .hz-iplate__frame img {
+  transform: scale(0.985);
 }
 .hz-iplate__frame {
   display: block;
@@ -251,13 +286,15 @@
   height: 100%;
   object-fit: cover;
   opacity: 0;
-  transition: transform var(--d-3) var(--e-out), opacity var(--d-2);
+  transform: scale(1.03);
+  transition: transform var(--d-3) var(--e-out), opacity var(--d-2) var(--e-out);
 }
 .hz-iplate.is-ready .hz-iplate__frame img {
   opacity: 1;
+  transform: scale(1);
 }
 .hz-iplate:hover .hz-iplate__frame img {
-  transform: scale(1.04);
+  transform: scale(1.055);
 }
 
 .hz-gal-pager {
@@ -284,10 +321,56 @@ dialog.hz-viewer {
   border: 1px solid var(--hz-line-2);
   background: var(--hz-bg);
   color: var(--hz-ink);
+  box-shadow: 0 32px 80px -24px rgb(0 0 0 / 0.85), 0 0 40px -18px rgb(255 90 26 / 0.25);
+  opacity: 0;
+  transform: scale(0.95) translateY(12px);
+  transition:
+    opacity var(--d-2) var(--e-out),
+    transform var(--d-2) var(--e-out),
+    display var(--d-2) allow-discrete,
+    overlay var(--d-2) allow-discrete;
+}
+dialog.hz-viewer[open] {
+  opacity: 1;
+  transform: none;
+}
+@starting-style {
+  dialog.hz-viewer[open] {
+    opacity: 0;
+    transform: scale(0.95) translateY(12px);
+  }
 }
 dialog.hz-viewer::backdrop {
-  background: rgb(4 4 6 / 0.9);
-  backdrop-filter: blur(4px);
+  background: rgb(4 4 6 / 0);
+  backdrop-filter: blur(0px);
+  transition:
+    background-color var(--d-2) var(--e-out),
+    backdrop-filter var(--d-2) var(--e-out),
+    display var(--d-2) allow-discrete,
+    overlay var(--d-2) allow-discrete;
+}
+dialog.hz-viewer[open]::backdrop {
+  background: rgb(4 4 6 / 0.88);
+  backdrop-filter: blur(8px);
+}
+@starting-style {
+  dialog.hz-viewer[open]::backdrop {
+    background: rgb(4 4 6 / 0);
+    backdrop-filter: blur(0px);
+  }
+}
+.hz-viewer__media img.is-swapping {
+  animation: hz-viewer-swap 320ms var(--e-out) both;
+}
+@keyframes hz-viewer-swap {
+  from {
+    opacity: 0.2;
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+  }
 }
 .hz-viewer__shell {
   display: grid;

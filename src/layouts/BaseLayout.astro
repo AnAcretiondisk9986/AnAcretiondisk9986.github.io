@@ -8,6 +8,7 @@ import '../styles/hz/fonts.css';
 import '../styles/hz/tokens.css';
 import '../styles/hz/base.css';
 import '../styles/hz/shell.css';
+import '../styles/hz/motion.css';
 import Hud from '../components/hz/Hud.astro';
 import Foot from '../components/hz/Foot.astro';
 import frontend from '../data/frontend.json';
@@ -78,6 +79,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? 'https://blog.acreti
     {!noFoot && <Foot siteName={siteName} siteTagline={siteTagline} />}
     <script>
       import '../scripts/hz/shell';
+      import '../scripts/hz/motion';
       import '../scripts/cdn-fallback';
     </script>
   </body>

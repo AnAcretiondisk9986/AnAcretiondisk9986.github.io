@@ -8,6 +8,8 @@
  *
  * 首次直载与站内跳转都走 astro:page-load；离开时不需要清理（没有定时器）。
  */
+import { captureFlipRects, playFlipRects } from './hz/motion';
+
 type SortKey = 'cache' | 'in' | 'out';
 type SortDir = 'asc' | 'desc';
 
@@ -56,7 +58,11 @@ function init(root: HTMLElement): void {
     chart.dataset.sort = key;
   };
 
-  const apply = () => {
+  const apply = (animate = false) => {
+    const rowFirst = animate ? captureFlipRects(rows) : new Map<HTMLElement, DOMRect>();
+    const stackEls = [...stackRows.values()];
+    const stackFirst = animate ? captureFlipRects(stackEls) : new Map<HTMLElement, DOMRect>();
+
     const sorted = rows.slice().sort((a, b) => {
       const delta = valueOf(a, key) - valueOf(b, key);
       if (delta !== 0) return dir === 'desc' ? -delta : delta;
@@ -70,6 +76,10 @@ function init(root: HTMLElement): void {
       stack.append(...ordered);
     }
     paint();
+    if (animate) {
+      playFlipRects(rows, rowFirst);
+      playFlipRects(stackEls, stackFirst);
+    }
   };
 
   for (const button of buttons) {
@@ -77,18 +87,18 @@ function init(root: HTMLElement): void {
       const next = button.dataset.prSort as SortKey | undefined;
       if (!next || next === key) return;
       key = next;
-      apply();
+      apply(true);
     });
   }
 
   dirButton?.addEventListener('click', () => {
     dir = dir === 'desc' ? 'asc' : 'desc';
-    apply();
+    apply(true);
   });
 
   // 服务端已按输出价倒序排好；这里只统一 aria 状态与高亮，避免首屏闪一下
   paint();
-  apply();
+  apply(false);
 }
 
 const boot = () => {

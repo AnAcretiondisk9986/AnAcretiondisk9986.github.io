@@ -179,7 +179,10 @@
   grid-row: var(--dr) / span var(--dh);
   perspective: 1100px;
   cursor: pointer;
-  transition: opacity 220ms var(--e-out), filter 220ms var(--e-out);
+  transition:
+    opacity 320ms var(--e-out),
+    filter 320ms var(--e-out),
+    transform 320ms var(--e-spring);
 }
 
 :root[data-theme='light'] .hz-tile {
@@ -196,10 +199,16 @@
   width: 100%;
   height: 100%;
   transform-style: preserve-3d;
-  transition: transform 520ms var(--e-out);
+  transition: transform 640ms var(--e-spring);
+}
+.hz-tile:hover:not(.is-flipped) .hz-tile__inner {
+  transform: translateY(-2px) scale(1.018);
 }
 .hz-tile.is-flipped .hz-tile__inner {
   transform: rotateY(180deg);
+}
+.hz-tile.is-flipped:hover .hz-tile__inner {
+  transform: rotateY(180deg) translateY(-2px) scale(1.018);
 }
 
 .hz-tile__face {
@@ -252,6 +261,15 @@
     transparent 3px 10px
   );
   box-shadow: inset 0 0 0 1px hsl(var(--sem-hue) 86% 62% / 0.24);
+  animation: hz-tile-active-glow 3.4s ease-in-out infinite;
+}
+@keyframes hz-tile-active-glow {
+  0%, 100% {
+    box-shadow: inset 0 0 0 1px hsl(var(--sem-hue) 86% 62% / 0.24), 0 0 0 0 hsl(var(--sem-hue) 86% 62% / 0);
+  }
+  50% {
+    box-shadow: inset 0 0 18px hsl(var(--sem-hue) 86% 62% / 0.22), 0 0 18px -4px hsl(var(--sem-hue) 86% 62% / 0.35);
+  }
 }
 :root[data-theme='light'] .hz-tile[data-status='active'] {
   --tile-bg: hsl(var(--sem-hue) 70% 85%);
@@ -328,10 +346,12 @@
 .hz-tile:hover .hz-tile__face,
 .hz-tile:focus-visible .hz-tile__face {
   border-color: var(--hz-hot);
+  box-shadow: 0 14px 30px -14px rgb(0 0 0 / 0.65), 0 0 22px -8px hsl(var(--sem-hue) 86% 62% / 0.45);
 }
 .hz-tile.is-dimmed {
-  opacity: 0.18;
-  filter: saturate(0.22);
+  opacity: 0.16;
+  filter: saturate(0.2);
+  transform: scale(0.965);
 }
 
 /* —— 高冲击力正面排版：课程名称尽量填满方块 —— */
@@ -464,6 +484,7 @@
 .hz-tile[data-milestone='true'] .hz-tile__face {
   border-radius: 16px;
   padding: 20px 24px;
+  box-shadow: inset 0 0 42px -20px hsl(var(--sem-hue) 86% 64% / 0.35);
 }
 .hz-tile[data-milestone-tier='internship'] .hz-tile__face {
   padding: 26px 28px;

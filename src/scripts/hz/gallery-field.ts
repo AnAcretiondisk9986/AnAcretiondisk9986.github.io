@@ -6,6 +6,8 @@
  *   - 高清灯箱查看器：缩放 100%~400%、拖拽平移、加载无损原图、上一张/下一张快捷键
  */
 
+import { replayEnter } from './motion';
+
 interface GalleryItem {
   id: string;
   src: string;
@@ -627,6 +629,7 @@ export function initGallery() {
       const card = document.createElement('button');
       card.type = 'button';
       card.className = 'hz-iplate';
+      card.style.setProperty('--i', String(Math.min(idx, 24)));
       card.setAttribute('aria-label', item.alt || '预览图像');
 
       const frame = document.createElement('span');
@@ -648,6 +651,7 @@ export function initGallery() {
       frag.append(card);
     });
     gridEl.append(frag);
+    replayEnter(gridEl);
   };
 
   const syncAll = () => {
@@ -664,9 +668,11 @@ export function initGallery() {
 
     if (activeMode === 'field') {
       renderField();
+      replayEnter(fieldWrap);
       kickField();
     } else {
       renderIndex();
+      replayEnter(indexWrap);
     }
   };
 
@@ -740,6 +746,9 @@ export function initGallery() {
     vMedia?.classList.remove('is-dragging');
     resetZoom();
 
+    vImg.classList.remove('is-swapping');
+    void vImg.offsetWidth;
+    vImg.classList.add('is-swapping');
     vImg.src = item.src;
     vImg.alt = item.alt || '';
     if (vSource) {
@@ -1087,7 +1096,10 @@ export function initGallery() {
     targetY = 0;
     camX = 0;
     camY = 0;
+    fieldZoom = 0.72;
+    targetZoom = 1;
     renderField();
+    kickField();
   });
   randomBtn?.addEventListener('click', () => {
     if (fieldNodes.length === 0) return;

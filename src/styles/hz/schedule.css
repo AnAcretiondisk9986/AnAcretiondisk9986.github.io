@@ -75,6 +75,8 @@
   width: 6px;
   height: 6px;
   background: var(--hz-hot);
+  box-shadow: var(--hz-glow);
+  animation: hz-pulse 2.2s ease-in-out infinite;
   flex: none;
 }
 .hz-sched-exam-cta {
@@ -351,6 +353,19 @@
   pointer-events: none;
   box-shadow: var(--hz-glow);
 }
+.hz-now-line::before {
+  content: '';
+  position: absolute;
+  left: -3px;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--hz-hot);
+  box-shadow: 0 0 12px var(--hz-hot);
+  transform: translateY(-50%);
+  animation: hz-pulse 2s ease-in-out infinite;
+}
 .hz-now-label {
   position: absolute;
   left: 2px;
@@ -389,7 +404,11 @@
   color: var(--c-ink);
   text-align: left;
   cursor: pointer;
-  transition: transform var(--d-1) var(--e-out), border-color var(--d-1), background-color var(--d-1);
+  transition:
+    transform var(--d-2) var(--e-spring),
+    border-color var(--d-2) var(--e-out),
+    background-color var(--d-2) var(--e-out),
+    box-shadow var(--d-2) var(--e-out);
 }
 .hz-course-content {
   display: flex;
@@ -415,12 +434,25 @@
 .hz-course:hover,
 .hz-course:focus-visible {
   z-index: 24;
-  transform: translateY(-1px);
+  transform: translateY(-2px);
   border-color: var(--hz-hot);
+  box-shadow: 0 12px 26px -14px rgb(0 0 0 / 0.72), 0 0 16px -4px color-mix(in oklab, var(--c-accent) 48%, transparent);
   outline: none;
 }
+.hz-course:active {
+  transform: translateY(0) scale(0.985);
+}
 .hz-course.ongoing {
-  box-shadow: inset 0 0 0 1px var(--hz-hot);
+  box-shadow: inset 0 0 0 1px var(--hz-hot), 0 0 18px -4px rgb(255 90 26 / 0.45);
+  animation: hz-ongoing-pulse 2.6s ease-in-out infinite;
+}
+@keyframes hz-ongoing-pulse {
+  0%, 100% {
+    box-shadow: inset 0 0 0 1px var(--hz-hot), 0 0 12px -4px rgb(255 90 26 / 0.3);
+  }
+  50% {
+    box-shadow: inset 0 0 0 1px var(--hz-hot), 0 0 22px -2px rgb(255 90 26 / 0.65);
+  }
 }
 
 /* 类型语义色（VOID 暗色） */
@@ -761,9 +793,11 @@
   color: var(--c-ink);
   text-align: left;
   cursor: pointer;
+  transition: border-color var(--d-1) var(--e-out), transform var(--d-1) var(--e-spring);
 }
 .hz-month-ev:hover {
   border-color: var(--hz-hot);
+  transform: translateX(2px);
 }
 .hz-month-ev__time {
   font-family: var(--f-mono);
@@ -831,10 +865,14 @@
   color: var(--hz-ink);
   text-align: left;
   cursor: pointer;
-  transition: background-color var(--d-1);
+  transition:
+    background-color var(--d-2) var(--e-out),
+    padding-left var(--d-2) var(--e-out),
+    border-color var(--d-2) var(--e-out);
 }
 .hz-agenda-ev:hover {
   background: var(--hz-bg-2);
+  padding-left: calc(var(--s-3) + 4px);
 }
 .hz-agenda-ev__time {
   font-family: var(--f-mono);
@@ -923,9 +961,13 @@
   inset: 0;
   z-index: 60;
   background: rgb(4 4 6 / 0.68);
+  -webkit-backdrop-filter: blur(0px);
+  backdrop-filter: blur(0px);
   opacity: 0;
   pointer-events: none;
-  transition: opacity var(--d-2) var(--e-out);
+  transition:
+    opacity var(--d-2) var(--e-out),
+    backdrop-filter var(--d-2) var(--e-out);
 }
 .hz-drawer {
   position: fixed;
@@ -938,8 +980,9 @@
   overflow-y: auto;
   background: var(--hz-bg-2);
   border-left: 1px solid var(--hz-line-2);
+  box-shadow: -24px 0 60px -24px rgb(0 0 0 / 0.65);
   transform: translate3d(100%, 0, 0);
-  transition: transform var(--d-2) var(--e-out);
+  transition: transform 420ms var(--e-out);
   touch-action: pan-y;
 }
 body.hz-drawer-open {
@@ -947,11 +990,22 @@ body.hz-drawer-open {
 }
 body.hz-drawer-open .hz-drawer-backdrop {
   opacity: 1;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
   pointer-events: auto;
 }
 body.hz-drawer-open .hz-drawer {
   transform: translate3d(0, 0, 0);
 }
+body.hz-drawer-open .hz-drawer__row {
+  animation: hz-arrive-soft 380ms var(--e-out) both;
+}
+body.hz-drawer-open .hz-drawer__row:nth-child(2) { animation-delay: 30ms; }
+body.hz-drawer-open .hz-drawer__row:nth-child(3) { animation-delay: 60ms; }
+body.hz-drawer-open .hz-drawer__row:nth-child(4) { animation-delay: 90ms; }
+body.hz-drawer-open .hz-drawer__row:nth-child(5) { animation-delay: 120ms; }
+body.hz-drawer-open .hz-drawer__row:nth-child(6) { animation-delay: 150ms; }
+body.hz-drawer-open .hz-drawer__row:nth-child(n + 7) { animation-delay: 180ms; }
 .hz-drawer__head {
   display: flex;
   align-items: center;

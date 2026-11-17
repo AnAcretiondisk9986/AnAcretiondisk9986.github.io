@@ -1,3 +1,5 @@
+import { replayEnter } from './motion';
+
 interface RawExam {
   year: string;
   term: number;
@@ -290,7 +292,12 @@ function initExamPage() {
     const s = totalSec % 60;
     const setUnit = (id: string, val: string) => {
       const el = byId(id);
-      if (el && el.textContent !== val) el.textContent = val;
+      if (el && el.textContent !== val) {
+        el.textContent = val;
+        el.classList.remove('is-ticking');
+        void el.offsetWidth;
+        el.classList.add('is-ticking');
+      }
     };
     setUnit('hzExamD', String(d));
     setUnit('hzExamH', pad2(h));
@@ -455,7 +462,7 @@ function initExamPage() {
   };
 
   /* ── 渲染视图 ───────────────────────────────────────────────────────────── */
-  const cardHTML = (e: ExamItem, now: Date) => {
+  const cardHTML = (e: ExamItem, now: Date, idx = 0) => {
     const st = examStatus(e, now);
     const done = now > e.rawEnd;
     return `
@@ -464,6 +471,7 @@ function initExamPage() {
         class="hz-exam-card${done ? ' is-done' : ''}"
         data-exam-id="${e.id}"
         data-tone="${e.tone}"
+        style="--i:${Math.min(idx, 16)}"
         aria-label="${esc(e.course)} ${e.date} ${e.start}"
       >
         <div class="hz-exam-card__top">
@@ -523,7 +531,7 @@ function initExamPage() {
                 <span class="hz-mono">${items.length} 场 · ${esc(times)} 开考</span>
                 <span class="hz-exam-badge ${st.cls}">${esc(st.text)}</span>
               </div>
-              <div class="hz-exam-tl-cards">${items.map((item) => cardHTML(item, now)).join('')}</div>
+              <div class="hz-exam-tl-cards">${items.map((item, idx) => cardHTML(item, now, idx)).join('')}</div>
             </div>
           </section>
         `;
@@ -532,7 +540,7 @@ function initExamPage() {
   };
 
   const renderGrid = (list: ExamItem[], now: Date) =>
-    `<div class="hz-exam-grid">${list.map((e) => cardHTML(e, now)).join('')}</div>`;
+    `<div class="hz-exam-grid">${list.map((e, idx) => cardHTML(e, now, idx)).join('')}</div>`;
 
   const renderTable = (list: ExamItem[], now: Date) => `
     <div class="hz-exam-table-wrap">
@@ -617,6 +625,7 @@ function initExamPage() {
         : state.view === 'table'
           ? renderTable(list, now)
           : renderTimeline(list, now);
+    replayEnter(viewEl);
   };
 
   /* ── 详情抽屉 ───────────────────────────────────────────────────────────── */

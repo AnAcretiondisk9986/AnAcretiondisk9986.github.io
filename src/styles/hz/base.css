@@ -73,6 +73,7 @@
     font-family: var(--f-body);
     font-size: 100%;
     line-height: 1.6;
+    scroll-behavior: smooth;
     scroll-padding-top: calc(var(--hud-h) + 24px);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -125,15 +126,71 @@
   }
 }
 
-/* —— 跨文档 View Transition：整页淡入 + 轻微「下坠」，HUD 不参与 —— */
+/* —— 跨文档 View Transition：视窗层次滑入 + 光学余晖（HUD/边框固定，主题切换走径向光圈） —— */
 @view-transition {
   navigation: auto;
 }
+:root:not([data-vt='theme']) .hz-main {
+  view-transition-name: hz-stage;
+}
+:root:not([data-vt='theme']) .hz-foot {
+  view-transition-name: hz-foot;
+}
+
 ::view-transition-old(root) {
-  animation: hz-vt-out 260ms var(--e-io) both;
+  animation: hz-vt-out 320ms var(--e-io) both;
 }
 ::view-transition-new(root) {
-  animation: hz-vt-in 420ms var(--e-out) both;
+  animation: hz-vt-in 540ms var(--e-out) both;
+}
+::view-transition-old(hz-stage) {
+  animation: hz-stage-out 340ms var(--e-io) both;
+}
+::view-transition-new(hz-stage) {
+  animation: hz-stage-in 580ms var(--e-out) both;
+}
+::view-transition-old(hz-foot) {
+  animation: hz-vt-out 260ms var(--e-io) both;
+}
+::view-transition-new(hz-foot) {
+  animation: hz-vt-in 520ms var(--e-out) both;
+}
+
+/* 方向性页面过渡：进入详情 / 返回列表 */
+:root[data-vt-dir='forward']::view-transition-old(hz-stage) {
+  animation: hz-stage-fwd-out 340ms var(--e-io) both;
+}
+:root[data-vt-dir='forward']::view-transition-new(hz-stage) {
+  animation: hz-stage-fwd-in 580ms var(--e-out) both;
+}
+:root[data-vt-dir='back']::view-transition-old(hz-stage) {
+  animation: hz-stage-back-out 340ms var(--e-io) both;
+}
+:root[data-vt-dir='back']::view-transition-new(hz-stage) {
+  animation: hz-stage-back-in 580ms var(--e-out) both;
+}
+
+/* VOID / PLATE 径向光圈切换 */
+:root[data-vt='theme']::view-transition-old(root),
+:root[data-vt='theme']::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+:root[data-vt='theme']::view-transition-old(root) {
+  z-index: 1;
+}
+:root[data-vt='theme']::view-transition-new(root) {
+  z-index: 2;
+  animation: hz-theme-iris 620ms var(--e-out) both;
+}
+
+@keyframes hz-theme-iris {
+  from {
+    clip-path: circle(0px at var(--vt-x, 92%) var(--vt-y, 32px));
+  }
+  to {
+    clip-path: circle(var(--vt-r, 150vmax) at var(--vt-x, 92%) var(--vt-y, 32px));
+  }
 }
 @keyframes hz-vt-out {
   to {
@@ -145,14 +202,64 @@
 @keyframes hz-vt-in {
   from {
     opacity: 0;
-    transform: scale(1.015);
+    transform: scale(1.012);
     filter: blur(6px);
   }
 }
+@keyframes hz-stage-out {
+  to {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.982);
+    filter: blur(8px) brightness(0.86);
+  }
+}
+@keyframes hz-stage-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(1.012);
+    filter: blur(8px);
+  }
+}
+@keyframes hz-stage-fwd-out {
+  to {
+    opacity: 0;
+    transform: translateX(-28px) scale(0.982);
+    filter: blur(6px) brightness(0.88);
+  }
+}
+@keyframes hz-stage-fwd-in {
+  from {
+    opacity: 0;
+    transform: translateX(34px) scale(1.008);
+    filter: blur(8px);
+  }
+}
+@keyframes hz-stage-back-out {
+  to {
+    opacity: 0;
+    transform: translateX(28px) scale(0.982);
+    filter: blur(6px) brightness(0.88);
+  }
+}
+@keyframes hz-stage-back-in {
+  from {
+    opacity: 0;
+    transform: translateX(-34px) scale(1.008);
+    filter: blur(8px);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
   ::view-transition-old(root),
-  ::view-transition-new(root) {
-    animation: none;
+  ::view-transition-new(root),
+  ::view-transition-old(hz-stage),
+  ::view-transition-new(hz-stage),
+  ::view-transition-old(hz-foot),
+  ::view-transition-new(hz-foot) {
+    animation: none !important;
   }
   *,
   *::before,
@@ -225,7 +332,7 @@ html [lang='ja'] {
   color: var(--hz-ink-3);
 }
 
-/* 按钮：直角、发丝线、悬停时橙色从左侧「注入」 */
+/* 按钮：直角、发丝线、悬停时橙色从左侧「注入」+ 镜面扫光与按压回弹 */
 .hz-btn {
   position: relative;
   display: inline-flex;
@@ -241,7 +348,11 @@ html [lang='ja'] {
   color: var(--hz-ink);
   isolation: isolate;
   overflow: hidden;
-  transition: color var(--d-2) var(--e-out), border-color var(--d-2) var(--e-out);
+  transition:
+    color var(--d-2) var(--e-out),
+    border-color var(--d-2) var(--e-out),
+    box-shadow var(--d-2) var(--e-out),
+    transform var(--d-1) var(--e-spring);
 }
 .hz-btn::before {
   content: '';
@@ -253,19 +364,48 @@ html [lang='ja'] {
   transform-origin: left;
   transition: transform var(--d-2) var(--e-out);
 }
+.hz-btn::after {
+  content: '';
+  position: absolute;
+  inset: -20% -60%;
+  z-index: 0;
+  background: linear-gradient(110deg, transparent 38%, rgb(255 255 255 / 0.24) 50%, transparent 62%);
+  transform: translateX(-75%);
+  transition: transform 620ms var(--e-out);
+  pointer-events: none;
+}
+.hz-btn > * {
+  position: relative;
+  z-index: 1;
+}
+.hz-btn > span:last-child {
+  transition: transform var(--d-2) var(--e-spring);
+}
 .hz-btn:hover,
 .hz-btn:focus-visible {
   color: #08080b;
   border-color: var(--hz-hot);
+  box-shadow: 0 0 24px rgb(255 90 26 / 0.28);
+  transform: translateY(-1px);
 }
 .hz-btn:hover::before,
 .hz-btn:focus-visible::before {
   transform: scaleX(1);
 }
+.hz-btn:hover::after {
+  transform: translateX(75%);
+}
+.hz-btn:hover > span:last-child {
+  transform: translateX(3px);
+}
+.hz-btn:active {
+  transform: translateY(1px) scale(0.98);
+}
 .hz-btn--hot {
   background: var(--hz-hot);
   border-color: var(--hz-hot);
   color: #08080b;
+  box-shadow: 0 0 20px rgb(255 90 26 / 0.26);
 }
 .hz-btn--hot::before {
   background: var(--hz-ink);
@@ -274,6 +414,7 @@ html [lang='ja'] {
 .hz-btn--hot:focus-visible {
   border-color: var(--hz-ink);
   color: var(--hz-bg);
+  box-shadow: 0 0 28px rgb(255 90 26 / 0.4);
 }
 .hz-btn svg {
   width: 1.1em;
@@ -281,6 +422,7 @@ html [lang='ja'] {
 }
 
 .hz-mini-btn {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -294,11 +436,36 @@ html [lang='ja'] {
   letter-spacing: 0.08em;
   color: var(--hz-ink-2);
   white-space: nowrap;
-  transition: border-color var(--d-1), color var(--d-1);
+  overflow: hidden;
+  isolation: isolate;
+  transition:
+    border-color var(--d-2) var(--e-out),
+    color var(--d-2) var(--e-out),
+    background-color var(--d-2) var(--e-out),
+    box-shadow var(--d-2) var(--e-out),
+    transform var(--d-1) var(--e-spring);
+}
+.hz-mini-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: color-mix(in oklab, var(--hz-hot) 12%, transparent);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform var(--d-2) var(--e-out);
 }
 .hz-mini-btn:hover:not(:disabled) {
   border-color: var(--hz-hot);
   color: var(--hz-hot-ink);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px -6px rgb(255 90 26 / 0.35);
+}
+.hz-mini-btn:hover:not(:disabled)::before {
+  transform: scaleX(1);
+}
+.hz-mini-btn:active:not(:disabled) {
+  transform: translateY(0) scale(0.97);
 }
 .hz-mini-btn:disabled {
   opacity: 0.35;
@@ -306,10 +473,15 @@ html [lang='ja'] {
 }
 
 .hz-seg {
+  position: relative;
   display: inline-flex;
   border: 1px solid var(--hz-line-2);
+  background: var(--hz-bg-2);
+  isolation: isolate;
 }
 .hz-seg button {
+  position: relative;
+  z-index: 1;
   min-height: 44px;
   padding: 0 var(--s-4);
   font-family: var(--f-mono);
@@ -318,14 +490,27 @@ html [lang='ja'] {
   color: var(--hz-ink-2);
   border-right: 1px solid var(--hz-line);
   white-space: nowrap;
-  transition: background-color var(--d-1), color var(--d-1);
+  transition:
+    background-color var(--d-2) var(--e-out),
+    color var(--d-2) var(--e-out),
+    transform var(--d-1) var(--e-spring);
 }
-.hz-seg button:last-child {
+.hz-seg button:last-of-type {
   border-right: 0;
+}
+.hz-seg button:hover:not([aria-pressed='true']) {
+  color: var(--hz-ink);
+  background: color-mix(in oklab, var(--hz-ink) 5%, transparent);
+}
+.hz-seg button:active {
+  transform: scale(0.97);
 }
 .hz-seg button[aria-pressed='true'] {
   background: var(--hz-ink);
   color: var(--hz-bg);
+}
+.hz-seg.has-glider button[aria-pressed='true'] {
+  background: transparent;
 }
 
 /* 区块标题：编号 + 名称 + 一条延伸到右侧的发丝线 */

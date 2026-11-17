@@ -14,7 +14,10 @@
   gap: var(--s-5);
   padding: var(--s-5) var(--s-3) var(--s-5) 0;
   border-bottom: 1px solid var(--hz-line);
-  transition: background-color var(--d-1) var(--e-out), border-color var(--d-1) var(--e-out);
+  transition:
+    background-color var(--d-2) var(--e-out),
+    border-color var(--d-2) var(--e-out),
+    transform var(--d-2) var(--e-out);
 }
 .hz-row:hover,
 .hz-row.is-linked {
@@ -32,12 +35,16 @@
     var(--hz-hot) calc((1 - var(--hz-age, 0)) * 75% + 25%),
     var(--hz-red) calc(var(--hz-age, 0) * 100%)
   );
-  transition: transform var(--d-2) var(--e-out), background-color var(--d-2);
+  transition:
+    transform var(--d-2) var(--e-spring),
+    background-color var(--d-2),
+    box-shadow var(--d-2);
 }
 .hz-row:hover .hz-row__tick,
 .hz-row.is-linked .hz-row__tick {
-  transform: scaleY(1.45);
+  transform: scaleY(1.6);
   background: var(--hz-hot);
+  box-shadow: 0 0 12px rgb(255 90 26 / 0.65);
 }
 
 .hz-row__tele {
@@ -73,6 +80,12 @@
   letter-spacing: -0.01em;
   color: color-mix(in oklab, var(--hz-ink) 80%, var(--hz-red) calc(var(--hz-age, 0) * 20%));
   overflow-wrap: anywhere;
+  transition: transform var(--d-2) var(--e-out), color var(--d-2) var(--e-out);
+}
+.hz-row:hover .hz-row__title,
+.hz-row.is-linked .hz-row__title {
+  color: var(--hz-ink);
+  transform: translateX(4px);
 }
 .hz-row__link {
   outline: none;
@@ -86,10 +99,6 @@
 .hz-row:has(.hz-row__link:focus-visible) {
   outline: 2px solid var(--hz-hot);
   outline-offset: -2px;
-}
-.hz-row:hover .hz-row__title,
-.hz-row.is-linked .hz-row__title {
-  color: var(--hz-ink);
 }
 .hz-row__desc {
   font-size: var(--t-small);
@@ -161,10 +170,16 @@
   overflow: hidden;
   pointer-events: none;
   opacity: 0;
-  scale: 0.86;
-  transition: opacity var(--d-2) var(--e-out), scale var(--d-2) var(--e-out);
-  will-change: transform, opacity;
-  box-shadow: 0 10px 26px -10px rgb(0 0 0 / 0.65), 0 0 0 4px rgb(255 90 26 / 0.08);
+  scale: 0.84;
+  transition:
+    opacity var(--d-2) var(--e-out),
+    scale var(--d-2) var(--e-spring),
+    box-shadow var(--d-2) var(--e-out);
+  will-change: transform, opacity, scale;
+  box-shadow:
+    0 16px 34px -12px rgb(0 0 0 / 0.72),
+    0 0 22px -6px rgb(255 90 26 / 0.35),
+    0 0 0 4px rgb(255 90 26 / 0.08);
 }
 .hz-lens.is-visible {
   opacity: 1;
@@ -174,6 +189,17 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+  animation: hz-lens-swap 280ms var(--e-out) both;
+}
+@keyframes hz-lens-swap {
+  from {
+    opacity: 0.4;
+    transform: scale(1.06);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 .hz-lens__ring {
   position: absolute;
@@ -236,6 +262,10 @@
   background: var(--hz-bg-2);
   padding: var(--s-4);
   margin-bottom: var(--s-5);
+  transition: border-color var(--d-2) var(--e-out), box-shadow var(--d-2) var(--e-out);
+}
+.hz-spec:hover {
+  border-color: var(--hz-line-2);
 }
 .hz-spec__head {
   display: flex;
@@ -253,8 +283,10 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   max-width: 100%;
+  transition: opacity var(--d-1) var(--e-out);
 }
 .hz-spec__bars {
+  position: relative;
   display: flex;
   align-items: flex-end;
   gap: 2px;
@@ -280,17 +312,42 @@
     var(--hz-hot-2) calc((1 - var(--bar-age, 0)) * 85%),
     var(--hz-red) calc(var(--bar-age, 0) * 100%)
   );
-  transition: transform var(--d-1) var(--e-out), opacity var(--d-1), background-color var(--d-1);
+  transition:
+    transform var(--d-2) var(--e-spring),
+    opacity var(--d-2) var(--e-out),
+    background-color var(--d-1),
+    box-shadow var(--d-2) var(--e-out);
   transform-origin: bottom;
+  animation: hz-bar-rise 680ms var(--e-out) calc(var(--bar-i, 0) * 14ms) both;
+}
+@keyframes hz-bar-rise {
+  from {
+    transform: scaleY(0.04);
+    opacity: 0.25;
+  }
+  to {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+.hz-spec__bar.is-near-2 i {
+  transform: scaleY(1.06);
+  opacity: 0.92;
+}
+.hz-spec__bar.is-near-1 i {
+  transform: scaleY(1.12);
+  background: color-mix(in oklab, var(--hz-hot) 60%, var(--hz-white-hot));
 }
 .hz-spec__bar:hover i,
 .hz-spec__bar:focus-visible i,
 .hz-spec__bar.is-linked i {
   background: var(--hz-white-hot);
-  transform: scaleY(1.16);
+  transform: scaleY(1.22);
+  box-shadow: 0 0 14px rgb(255 90 26 / 0.72);
 }
 .hz-spec__bar.is-dimmed i {
-  opacity: 0.16;
+  opacity: 0.14;
+  transform: scaleY(0.7);
 }
 .hz-spec__scale {
   display: flex;

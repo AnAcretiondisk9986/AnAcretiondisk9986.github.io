@@ -232,6 +232,19 @@
   color: var(--hz-ink);
   font-variant-numeric: tabular-nums;
 }
+.hz-exam-unit b.is-ticking {
+  animation: hz-digit-tick 280ms var(--e-out);
+}
+@keyframes hz-digit-tick {
+  from {
+    opacity: 0.45;
+    transform: translateY(-4px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
 .hz-exam-unit span {
   display: block;
   margin-top: 6px;
@@ -451,7 +464,12 @@
   color: var(--hz-ink-3);
   font-variant-numeric: tabular-nums;
   cursor: default;
-  transition: border-color var(--d-1), background-color var(--d-1), color var(--d-1);
+  transition:
+    border-color var(--d-2) var(--e-out),
+    background-color var(--d-2) var(--e-out),
+    color var(--d-2) var(--e-out),
+    transform var(--d-1) var(--e-spring),
+    box-shadow var(--d-2) var(--e-out);
 }
 .hz-exam-day b {
   font-family: var(--f-mono);
@@ -474,6 +492,11 @@
 .hz-exam-day.has-exam:hover {
   border-color: var(--hz-hot);
   color: var(--hz-hot-ink);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px -8px rgb(255 90 26 / 0.45);
+}
+.hz-exam-day.has-exam:active {
+  transform: scale(0.95);
 }
 .hz-exam-day.has-multi {
   border-color: color-mix(in oklab, var(--hz-hot) 62%, var(--hz-line-2));
@@ -487,6 +510,7 @@
   border-color: var(--hz-hot);
   background: var(--hz-hot);
   color: #08080b;
+  box-shadow: 0 0 20px rgb(255 90 26 / 0.45);
 }
 .hz-exam-day.is-selected i {
   color: #08080b;
@@ -576,6 +600,16 @@
   display: block;
   height: 100%;
   background: var(--exam-c);
+  transform-origin: left;
+  animation: hz-bar-grow 760ms var(--e-out) both;
+}
+@keyframes hz-bar-grow {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
 }
 
 /* —— 控制条 —— */
@@ -737,12 +771,22 @@
   color: var(--hz-ink);
   text-align: left;
   cursor: pointer;
-  transition: background-color var(--d-1), border-color var(--d-1);
+  animation: hz-view-in 420ms var(--e-out) calc(var(--i, 0) * 24ms) both;
+  transition:
+    background-color var(--d-2) var(--e-out),
+    border-color var(--d-2) var(--e-out),
+    transform var(--d-2) var(--e-spring),
+    box-shadow var(--d-2) var(--e-out);
 }
 .hz-exam-card:hover,
 .hz-exam-card:focus-visible {
   background: var(--hz-bg-3);
   border-color: var(--hz-hot);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px -16px rgb(0 0 0 / 0.7), 0 0 18px -8px color-mix(in oklab, var(--exam-c, var(--hz-hot)) 45%, transparent);
+}
+.hz-exam-card:active {
+  transform: translateY(0) scale(0.99);
 }
 .hz-exam-card.is-done {
   opacity: 0.56;
@@ -932,14 +976,15 @@
   font-family: var(--f-mono), var(--f-sans);
   font-size: var(--t-micro);
   letter-spacing: 0.08em;
+  box-shadow: 0 12px 30px -12px rgb(0 0 0 / 0.75), 0 0 20px -8px rgb(255 90 26 / 0.45);
   opacity: 0;
-  transform: translate(-50%, 12px);
+  transform: translate(-50%, 14px) scale(0.96);
   pointer-events: none;
-  transition: opacity var(--d-1), transform var(--d-2) var(--e-out);
+  transition: opacity var(--d-2) var(--e-out), transform var(--d-2) var(--e-spring);
 }
 .hz-exam-toast.is-show {
   opacity: 1;
-  transform: translate(-50%, 0);
+  transform: translate(-50%, 0) scale(1);
 }
 
 /* —— 响应式 —— */

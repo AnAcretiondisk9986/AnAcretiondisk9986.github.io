@@ -68,17 +68,32 @@
 .hz-avatar-ring::before {
   inset: 0;
   border: 1px solid var(--hz-line-2);
+  box-shadow: 0 0 36px -14px rgb(255 90 26 / 0.32);
+  animation: hz-orbit 22s linear infinite;
 }
 .hz-avatar-ring::after {
   inset: 12px;
   border: 1px dashed rgb(255 90 26 / 0.45);
+  animation: hz-orbit 15s linear infinite reverse;
 }
 .hz-avatar-ring img {
+  position: relative;
+  z-index: 1;
   width: 168px;
   height: 168px;
   border-radius: 50%;
   object-fit: cover;
   border: 1px solid var(--hz-line-2);
+  transition: transform var(--d-3) var(--e-spring), border-color var(--d-2) var(--e-out);
+}
+.hz-about-side:hover .hz-avatar-ring img {
+  transform: scale(1.04);
+  border-color: var(--hz-hot);
+}
+@keyframes hz-orbit {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .hz-dl {
@@ -160,9 +175,14 @@
   grid-template-columns: 3.2em minmax(120px, 200px) minmax(0, 1fr);
   align-items: baseline;
   gap: var(--s-4);
-  padding: 12px 0;
+  padding: 12px 6px;
   border-bottom: 1px solid var(--hz-line);
   font-size: var(--t-small);
+  transition: background-color var(--d-2) var(--e-out), padding-inline var(--d-2) var(--e-out);
+}
+.hz-ledger-list li:hover {
+  background: color-mix(in oklab, var(--hz-hot) 5%, transparent);
+  padding-inline: 10px;
 }
 .hz-ledger-list li span {
   font-family: var(--f-mono);
@@ -221,7 +241,14 @@
   font-weight: 700;
   line-height: 1.2;
   color: color-mix(in oklab, var(--hz-ink-2) 55%, var(--hz-ink) calc(var(--w, 0) * 100%));
-  transition: color var(--d-1), transform var(--d-1);
+  transition:
+    color var(--d-2) var(--e-out),
+    transform var(--d-2) var(--e-spring),
+    opacity var(--d-2) var(--e-out),
+    text-shadow var(--d-2) var(--e-out);
+}
+.hz-freq__wall:has(.hz-freq__word:hover) .hz-freq__word:not(:hover) {
+  opacity: 0.38;
 }
 .hz-freq__word:nth-child(4n + 2) {
   font-family: var(--f-sans);
@@ -241,10 +268,12 @@
   font-family: var(--f-mono);
   font-size: 0.65rem;
   color: var(--hz-ink-3);
+  transition: color var(--d-2) var(--e-out);
 }
 .hz-freq__word:hover {
   color: var(--hz-hot-ink);
-  transform: translateY(-2px);
+  transform: translateY(-3px) scale(1.06);
+  text-shadow: 0 0 18px rgb(255 90 26 / 0.45);
 }
 .hz-freq__word:hover small {
   color: var(--hz-hot);

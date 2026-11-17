@@ -1,0 +1,245 @@
+/* ==========================================================================
+   HORIZON · motion.css —— 全站动效编排、光效聚光灯、滑块指示器与入场节奏
+   ========================================================================== */
+
+/* —— 导航预加载光束（点击站内链接时顶栏下方细微等离子扫线） —— */
+.hz-nav-tracer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  z-index: 95;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--hz-hot) 45%,
+    var(--hz-white-hot) 55%,
+    transparent 100%
+  );
+  background-size: 42% 100%;
+  background-repeat: no-repeat;
+  transition: opacity 160ms var(--e-out);
+}
+html.is-navigating .hz-nav-tracer {
+  opacity: 1;
+  animation: hz-tracer-sweep 820ms var(--e-io) infinite;
+}
+@keyframes hz-tracer-sweep {
+  from {
+    background-position: -45% 0;
+  }
+  to {
+    background-position: 145% 0;
+  }
+}
+
+/* —— 分段控制与图志标签滑块 —— */
+.hz-seg-glider {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  background: var(--hz-ink);
+  pointer-events: none;
+  will-change: transform, width, height;
+  transition:
+    transform var(--d-2) var(--e-spring),
+    width var(--d-2) var(--e-spring),
+    height var(--d-2) var(--e-spring),
+    opacity var(--d-1) var(--e-out);
+}
+.hz-seg.is-glider-boot .hz-seg-glider,
+.hz-gal-tabs.is-glider-boot .hz-seg-glider,
+.hz-nav.is-glider-boot .hz-nav__glider {
+  transition: none !important;
+}
+
+/* —— 首屏 / 页头到场编排（纯入场，不隐藏避免闪烁） —— */
+@keyframes hz-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: blur(0);
+  }
+}
+@keyframes hz-arrive-soft {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.hz-hero__eyebrow {
+  animation: hz-arrive 620ms var(--e-out) 60ms both;
+}
+.hz-hero__title {
+  animation: hz-arrive 720ms var(--e-out) 130ms both;
+}
+.hz-hero__deck {
+  animation: hz-arrive 720ms var(--e-out) 210ms both;
+}
+.hz-hero__tele {
+  animation: hz-arrive-soft 640ms var(--e-out) 280ms both;
+}
+.hz-hero__actions {
+  animation: hz-arrive-soft 640ms var(--e-out) 340ms both;
+}
+
+.hz-log-head,
+.hz-gal-head,
+.hz-about-head,
+.hz-acad-head,
+.hz-sched-head,
+.hz-exam-head,
+.hz-entry__head,
+.hz-darkroom__head,
+.aq-top,
+.pr-top {
+  animation: hz-arrive 560ms var(--e-out) 40ms both;
+}
+
+/* —— 滚动渐显（仅针对视口下方元素加 is-pending，进入视口后切换 is-revealed） —— */
+[data-hz-reveal] {
+  transition:
+    opacity var(--d-3) var(--e-out),
+    transform var(--d-3) var(--e-out),
+    filter var(--d-3) var(--e-out);
+  transition-delay: var(--hz-delay, 0ms);
+}
+[data-hz-reveal].is-pending {
+  opacity: 0;
+  transform: translateY(20px);
+  filter: blur(3px);
+}
+[data-hz-reveal].is-revealed {
+  opacity: 1;
+  transform: none;
+  filter: blur(0);
+}
+
+/* —— 光标光学聚光灯（大型视觉卡片与仪表盘） —— */
+[data-hz-spot] {
+  position: relative;
+  --mx: 50%;
+  --my: 50%;
+}
+[data-hz-spot]::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(
+    480px circle at var(--mx) var(--my),
+    rgb(255 90 26 / 0.11),
+    rgb(255 179 107 / 0.04) 40%,
+    transparent 70%
+  );
+  transition: opacity var(--d-2) var(--e-out);
+}
+[data-hz-spot]:hover::after {
+  opacity: 1;
+}
+:root[data-theme='light'] [data-hz-spot]::after {
+  background: radial-gradient(
+    460px circle at var(--mx) var(--my),
+    rgb(228 67 10 / 0.08),
+    rgb(47 91 211 / 0.03) 42%,
+    transparent 72%
+  );
+}
+[data-hz-spot] > * {
+  position: relative;
+  z-index: 2;
+}
+
+/* —— 标签滑轨交互 —— */
+.hz-tags-rail button {
+  transition:
+    border-color var(--d-2) var(--e-out),
+    color var(--d-2) var(--e-out),
+    background-color var(--d-2) var(--e-out),
+    box-shadow var(--d-2) var(--e-out),
+    transform var(--d-1) var(--e-spring);
+}
+.hz-tags-rail button:hover {
+  transform: translateY(-1px);
+}
+.hz-tags-rail button:active {
+  transform: scale(0.96);
+}
+.hz-tags-rail button[aria-pressed='true'] {
+  box-shadow: 0 0 18px rgb(255 90 26 / 0.34);
+}
+
+/* —— 搜索框聚焦光晕 —— */
+.hz-search {
+  transition:
+    border-color var(--d-2) var(--e-out),
+    box-shadow var(--d-2) var(--e-out),
+    background-color var(--d-2) var(--e-out);
+}
+.hz-search:focus-within {
+  box-shadow: 0 0 0 1px rgb(255 90 26 / 0.35), 0 8px 24px -14px rgb(255 90 26 / 0.45);
+}
+
+/* —— 动态视图切换与重排动效 —— */
+@keyframes hz-view-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.992);
+    filter: blur(3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: blur(0);
+  }
+}
+.hz-view-enter {
+  animation: hz-view-in 380ms var(--e-out) both;
+}
+
+/* —— 减弱动效兜底 —— */
+@media (prefers-reduced-motion: reduce) {
+  .hz-nav-tracer,
+  .hz-hero__eyebrow,
+  .hz-hero__title,
+  .hz-hero__deck,
+  .hz-hero__tele,
+  .hz-hero__actions,
+  .hz-log-head,
+  .hz-gal-head,
+  .hz-about-head,
+  .hz-acad-head,
+  .hz-sched-head,
+  .hz-exam-head,
+  .hz-entry__head,
+  .hz-darkroom__head,
+  .aq-top,
+  .pr-top,
+  .hz-view-enter {
+    animation: none !important;
+  }
+  [data-hz-reveal].is-pending {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+  [data-hz-spot]::after {
+    display: none;
+  }
+}

@@ -17,6 +17,7 @@
   place-items: center;
   border: 1px solid var(--hz-line-2);
   border-radius: 50%;
+  box-shadow: 0 0 44px -12px rgb(255 90 26 / 0.32);
 }
 .hz-404__ring::after {
   content: '';
@@ -24,6 +25,12 @@
   inset: 14px;
   border: 1px dashed var(--hz-hot);
   border-radius: 50%;
+  animation: hz-404-orbit 18s linear infinite;
+}
+@keyframes hz-404-orbit {
+  to {
+    transform: rotate(360deg);
+  }
 }
 .hz-404__code {
   font-family: var(--f-display);

@@ -72,9 +72,12 @@
   /* —— 动 —— */
   --e-out: cubic-bezier(0.16, 1, 0.3, 1);
   --e-io: cubic-bezier(0.65, 0, 0.35, 1);
-  --d-1: 160ms;
-  --d-2: 320ms;
-  --d-3: 640ms;
+  --e-spring: cubic-bezier(0.22, 1.24, 0.36, 1);
+  --e-glide: cubic-bezier(0.25, 1, 0.5, 1);
+  --d-1: 180ms;
+  --d-2: 360ms;
+  --d-3: 680ms;
+  --d-4: 960ms;
 }
 
 :root[data-theme='light'] {

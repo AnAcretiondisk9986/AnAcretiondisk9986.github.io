@@ -1,7 +1,8 @@
 /**
  * HORIZON · spectrum.ts
- * /blog/ 光谱仪：光谱条与文章列表双向联动、搜索（/ 快捷键）、标签筛选、排序（最新/最旧/字数）。
+ * /blog/ 光谱仪：光谱条与文章列表双向联动、谐波邻域联动、FLIP 排序动画、搜索（/ 快捷键）、标签筛选。
  */
+import { captureFlipRects, playFlipRects } from './motion';
 
 type SortKey = 'newest' | 'oldest' | 'mass';
 
@@ -53,14 +54,22 @@ export function initSpectrum() {
   };
 
   const linkPair = (id: string | null) => {
-    bars.forEach((b) => b.classList.toggle('is-linked', Boolean(id) && b.dataset.id === id));
+    const activeIdx = id ? bars.findIndex((b) => b.dataset.id === id) : -1;
+    bars.forEach((b, i) => {
+      const match = Boolean(id) && b.dataset.id === id;
+      b.classList.toggle('is-linked', match);
+      const dist = activeIdx >= 0 ? Math.abs(i - activeIdx) : 99;
+      b.classList.toggle('is-near-1', dist === 1);
+      b.classList.toggle('is-near-2', dist === 2);
+    });
     rows.forEach((r) => r.classList.toggle('is-linked', Boolean(id) && r.dataset.id === id));
     updateReadout(id);
   };
 
-  const apply = () => {
+  const apply = (animate = false) => {
     let shown = 0;
     let totalMass = 0;
+    const firstRects = animate ? captureFlipRects(rows) : new Map<HTMLElement, DOMRect>();
 
     const sorted = [...rows].sort((a, b) => {
       const ta = Date.parse(a.dataset.date || '') || 0;
@@ -94,7 +103,13 @@ export function initSpectrum() {
       const matchTag = activeTag === 'all' || tags.includes(activeTag);
       const ok = matchQ && matchTag;
 
+      const wasHidden = row.hidden;
       row.hidden = !ok;
+      if (animate && ok && wasHidden) {
+        row.classList.remove('hz-view-enter');
+        void row.offsetWidth;
+        row.classList.add('hz-view-enter');
+      }
       const id = row.dataset.id || '';
       barMap.get(id)?.classList.toggle('is-dimmed', !ok);
 
@@ -105,6 +120,7 @@ export function initSpectrum() {
       frag.append(row);
     }
     list.append(frag);
+    if (animate) playFlipRects(rows, firstRects);
 
     if (countEl) {
       countEl.textContent = `${shown} / ${rows.length} RECORDS · ${fmtMass(totalMass)} CHARS`;
@@ -123,13 +139,13 @@ export function initSpectrum() {
 
   search?.addEventListener('input', () => {
     query = search.value.trim().toLowerCase();
-    apply();
+    apply(true);
   });
 
   tagBtns.forEach((btn) => {
     btn.addEventListener('click', () => {
       activeTag = btn.dataset.specTag || 'all';
-      apply();
+      apply(true);
     });
   });
 
@@ -138,7 +154,7 @@ export function initSpectrum() {
       const k = btn.dataset.specSort as SortKey;
       if (k === 'newest' || k === 'oldest' || k === 'mass') {
         sortKey = k;
-        apply();
+        apply(true);
       }
     });
   });
@@ -147,7 +163,7 @@ export function initSpectrum() {
     query = '';
     activeTag = 'all';
     if (search) search.value = '';
-    apply();
+    apply(true);
   });
 
   bars.forEach((bar) => {

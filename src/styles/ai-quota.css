@@ -101,11 +101,20 @@
     border: 1px solid var(--c-rule-strong);
     border-radius: var(--r-pill);
     cursor: pointer;
-    transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+    transition:
+      background-color 0.22s var(--e-out, ease),
+      border-color 0.22s var(--e-out, ease),
+      color 0.22s var(--e-out, ease),
+      box-shadow 0.22s var(--e-out, ease),
+      transform 0.18s var(--e-spring, ease);
   }
   .aq-btn:hover {
     border-color: var(--c-metal);
     background: color-mix(in oklab, var(--c-ink) 6%, var(--c-paper-raised));
+    transform: translateY(-1px);
+  }
+  .aq-btn:active {
+    transform: scale(0.96);
   }
   /* 焦点环：同时兜底 :focus（微弱光晕，避免鼠标点击僵硬框线）与 :focus-visible（键盘清晰框线）。 */
   .aq-btn:focus {
@@ -153,11 +162,14 @@
     border-radius: var(--r-card);
     background: color-mix(in oklab, var(--c-paper-raised) 92%, var(--c-paper));
     box-shadow: var(--shadow-card);
-    transition: border-color var(--p-dur-fast) var(--p-ease), box-shadow var(--p-dur-fast) var(--p-ease);
+    transition:
+      border-color 0.28s var(--e-out, ease),
+      transform 0.28s var(--e-spring, ease),
+      background-color 0.28s var(--e-out, ease);
   }
   .aq-card:hover {
-    border-color: var(--c-rule-strong);
-    box-shadow: var(--shadow-elevated);
+    border-color: var(--c-accent);
+    transform: translateY(-2px);
   }
   .aq-card__head {
     display: flex;
@@ -219,6 +231,12 @@
   }
   .aq-card[data-state='ok'] .aq-chip__dot {
     background: var(--c-accent);
+    box-shadow: 0 0 8px var(--c-accent);
+    animation: aq-dot-pulse 2.4s ease-in-out infinite;
+  }
+  @keyframes aq-dot-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.45; }
   }
   .aq-card[data-state='loading'] .aq-chip__dot,
   .aq-card[data-state='readonly'] .aq-chip__dot {
@@ -513,7 +531,18 @@
   }
   .aq-skeleton__bar {
     height: 7px;
-    background: color-mix(in oklab, var(--c-ink) 9%, transparent);
+    background: linear-gradient(
+      90deg,
+      color-mix(in oklab, var(--c-ink) 7%, transparent) 0%,
+      color-mix(in oklab, var(--c-ink) 18%, transparent) 50%,
+      color-mix(in oklab, var(--c-ink) 7%, transparent) 100%
+    );
+    background-size: 200% 100%;
+    animation: aq-shimmer 1.4s ease-in-out infinite;
+  }
+  @keyframes aq-shimmer {
+    from { background-position: 200% 0; }
+    to { background-position: -200% 0; }
   }
   .aq-skeleton__bar--lead {
     width: 62%;

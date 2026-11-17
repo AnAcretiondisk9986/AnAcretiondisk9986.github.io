@@ -30,9 +30,22 @@ function initThemeToggle() {
       document.dispatchEvent(new CustomEvent('hz:theme-change', { detail: { theme: next } }));
     };
 
+    const rect = btn.getBoundingClientRect();
+    const x = Math.round(rect.left + rect.width * 0.5);
+    const y = Math.round(rect.top + rect.height * 0.5);
+    const r = Math.ceil(Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y)));
+
     const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (document.startViewTransition && !reduce) {
-      document.startViewTransition(apply);
+      const root = document.documentElement;
+      root.style.setProperty('--vt-x', `${x}px`);
+      root.style.setProperty('--vt-y', `${y}px`);
+      root.style.setProperty('--vt-r', `${r}px`);
+      root.dataset.vt = 'theme';
+      const vt = document.startViewTransition(apply);
+      vt.finished.finally(() => {
+        if (root.dataset.vt === 'theme') delete root.dataset.vt;
+      });
     } else {
       apply();
     }
@@ -45,13 +58,31 @@ function initMenu() {
   const closeBtn = document.querySelector<HTMLButtonElement>('[data-menu-close]');
   if (!menu || !openBtn || !closeBtn) return;
 
+  let closeTimer = 0;
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
   const setOpen = (open: boolean) => {
-    menu.hidden = !open;
+    window.clearTimeout(closeTimer);
     openBtn.setAttribute('aria-expanded', String(open));
     document.documentElement.classList.toggle('hz-menu-open', open);
+
     if (open) {
+      menu.hidden = false;
+      menu.classList.remove('is-open');
+      void menu.offsetWidth;
+      requestAnimationFrame(() => {
+        menu.classList.add('is-open');
+      });
       closeBtn.focus();
     } else {
+      menu.classList.remove('is-open');
+      if (reduce) {
+        menu.hidden = true;
+      } else {
+        closeTimer = window.setTimeout(() => {
+          if (!menu.classList.contains('is-open')) menu.hidden = true;
+        }, 360);
+      }
       openBtn.focus();
     }
   };

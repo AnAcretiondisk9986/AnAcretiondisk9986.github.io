@@ -1,3 +1,4 @@
+import { replayEnter } from './motion';
 import {
   DAY_NAMES,
   DEFAULT_SLOT_HEIGHT,
@@ -770,12 +771,28 @@ function initSchedulePage() {
     }
   };
 
+  const glideStep = (delta: number) => {
+    if (state.view === 'month') {
+      const width = byId('hzSwipeViewport')?.getBoundingClientRect().width || 600;
+      animateSwipeTo(delta > 0 ? -width : width, 0, () => navigateMonth(delta));
+      return true;
+    }
+    if (state.view === 'schedule') {
+      const next = clampNavigableWeek(state.week + delta);
+      if (next === state.week) return false;
+      const width = byId('hzSwipeViewport')?.getBoundingClientRect().width || 600;
+      animateSwipeTo(delta > 0 ? -width : width, 0, () => navigateWeek(delta));
+      return true;
+    }
+    return navigateWeek(delta);
+  };
+
   // ── 事件绑定 ──
   byId('hzSchedPrev')?.addEventListener('click', () => {
-    state.view === 'month' ? navigateMonth(-1) : navigateWeek(-1);
+    glideStep(-1);
   });
   byId('hzSchedNext')?.addEventListener('click', () => {
-    state.view === 'month' ? navigateMonth(1) : navigateWeek(1);
+    glideStep(1);
   });
   byId('hzSchedTodayBtn')?.addEventListener('click', () => {
     const today = currentWeekInfo();
@@ -784,6 +801,7 @@ function initSchedulePage() {
     const now = new Date();
     state.month = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}`;
     renderAll();
+    replayEnter(byId('hzCurrentPage'));
   });
 
   byId<HTMLSelectElement>('hzSchedTimetableSelect')?.addEventListener('change', (e) => {
@@ -791,6 +809,7 @@ function initSchedulePage() {
     state.week = clampNavigableWeek(currentWeekInfo().week);
     saveVisitorPrefs();
     renderAll();
+    replayEnter(byId('hzCurrentPage'));
   });
 
   root.querySelectorAll<HTMLButtonElement>('[data-sched-view]').forEach((btn) => {
@@ -800,6 +819,7 @@ function initSchedulePage() {
       state.view = next;
       saveVisitorPrefs();
       renderAll();
+      replayEnter(byId('hzCurrentPage'));
     });
   });
 
@@ -807,6 +827,7 @@ function initSchedulePage() {
     state.hideEmptyWeekends = !state.hideEmptyWeekends;
     saveVisitorPrefs();
     renderAll();
+    replayEnter(byId('hzCurrentPage'));
   });
 
   const searchInput = byId<HTMLInputElement>('hzSchedSearch');
@@ -853,9 +874,9 @@ function initSchedulePage() {
     }
     if (!inInput && !document.body.classList.contains('hz-drawer-open') && (state.view === 'schedule' || state.view === 'month')) {
       if (e.key === 'ArrowLeft') {
-        state.view === 'month' ? navigateMonth(-1) : navigateWeek(-1);
+        glideStep(-1);
       } else if (e.key === 'ArrowRight') {
-        state.view === 'month' ? navigateMonth(1) : navigateWeek(1);
+        glideStep(1);
       }
     }
   });

@@ -257,6 +257,11 @@
   padding: 14px 16px;
   border: 1px solid var(--hz-line-2);
   background: var(--hz-bg-2);
+  transition: border-color var(--d-2) var(--e-out), box-shadow var(--d-2) var(--e-out);
+}
+.hz-prose .song-player.is-playing {
+  border-color: rgb(255 90 26 / 0.65);
+  box-shadow: 0 12px 32px -18px rgb(255 90 26 / 0.55);
 }
 .hz-prose .song-player__cover {
   width: 52px;
@@ -268,6 +273,7 @@
   background: var(--hz-void);
   color: var(--hz-hot-ink);
   overflow: hidden;
+  transition: border-color var(--d-2) var(--e-out), box-shadow var(--d-2) var(--e-out), transform var(--d-2) var(--e-spring);
 }
 .hz-prose .song-player__cover img {
   margin: 0;
@@ -283,7 +289,18 @@
 }
 .hz-prose .song-player.is-playing .song-player__cover {
   border-color: var(--hz-hot);
-  box-shadow: var(--hz-glow);
+  box-shadow: 0 0 22px rgb(255 90 26 / 0.5);
+  animation: hz-player-pulse 2.2s ease-in-out infinite;
+}
+@keyframes hz-player-pulse {
+  0%, 100% {
+    box-shadow: 0 0 14px rgb(255 90 26 / 0.35);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 24px rgb(255 90 26 / 0.65);
+    transform: scale(1.03);
+  }
 }
 .hz-prose .song-player__info {
   flex: 1 1 140px;
