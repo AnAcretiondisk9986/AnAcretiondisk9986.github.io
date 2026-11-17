@@ -36,47 +36,68 @@ uniform float u_hasTex;
 uniform float u_texFade;
 uniform sampler2D u_sky;
 
-#define STEPS 112
+#define STEPS 160
 #define RS 1.0
+#define TAU 6.28318530718
+#define INV_TAU 0.15915494309
 
 float hash21(vec2 p) {
-  p = fract(p * vec2(123.34, 456.21));
-  p += dot(p, p + 45.32);
-  return fract(p.x * p.y);
+  vec3 p3 = fract(vec3(p.xyx + 17.13) * vec3(0.1031, 0.1030, 0.0973));
+  p3 += dot(p3, p3.yzx + 33.33);
+  return fract((p3.x + p3.y) * p3.z);
 }
 
-float noise2(vec2 p) {
-  vec2 i = floor(p);
-  vec2 f = fract(p);
+float hash31(vec3 p) {
+  p = fract((p + vec3(13.7, 29.3, 7.1)) * vec3(0.1031, 0.1030, 0.0973));
+  p += dot(p, p.yxz + 33.33);
+  return fract((p.x + p.y) * p.z);
+}
+
+vec2 rot2(vec2 v, float a) {
+  float c = cos(a);
+  float s = sin(a);
+  return vec2(v.x * c - v.y * s, v.x * s + v.y * c);
+}
+
+// 3D 值噪声：z 轴按 256 周期无缝包裹，配合旋转单位圆矢量实现 360° 零接缝螺旋演化
+float vnoise3(vec3 p) {
+  vec3 i = floor(p);
+  vec3 f = fract(p);
   f = f * f * (3.0 - 2.0 * f);
-  float a = hash21(i);
-  float b = hash21(i + vec2(1.0, 0.0));
-  float c = hash21(i + vec2(0.0, 1.0));
-  float d = hash21(i + vec2(1.0, 1.0));
-  return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
-}
 
-float fbm(vec2 p) {
-  float v = 0.0;
-  float a = 0.52;
-  mat2 rot = mat2(0.8, 0.6, -0.6, 0.8);
-  for (int i = 0; i < 5; i++) {
-    v += a * noise2(p);
-    p = rot * p * 2.07;
-    a *= 0.49;
-  }
-  return v;
+  float z0 = mod(i.z, 256.0);
+  float z1 = mod(i.z + 1.0, 256.0);
+
+  float n000 = hash31(vec3(i.x,       i.y,       z0));
+  float n100 = hash31(vec3(i.x + 1.0, i.y,       z0));
+  float n010 = hash31(vec3(i.x,       i.y + 1.0, z0));
+  float n110 = hash31(vec3(i.x + 1.0, i.y + 1.0, z0));
+
+  float n001 = hash31(vec3(i.x,       i.y,       z1));
+  float n101 = hash31(vec3(i.x + 1.0, i.y,       z1));
+  float n011 = hash31(vec3(i.x,       i.y + 1.0, z1));
+  float n111 = hash31(vec3(i.x + 1.0, i.y + 1.0, z1));
+
+  float nx00 = mix(n000, n100, f.x);
+  float nx10 = mix(n010, n110, f.x);
+  float nx01 = mix(n001, n101, f.x);
+  float nx11 = mix(n011, n111, f.x);
+
+  return mix(mix(nx00, nx10, f.y), mix(nx01, nx11, f.y), f.z);
 }
 
 vec3 blackbody(float t) {
-  // 高饱和度黑体等离子光谱：深绯红 -> 烈焰等离橙 -> 熔金 -> 炽金白
-  vec3 c0 = vec3(0.76, 0.04, 0.02);
-  vec3 c1 = vec3(1.00, 0.28, 0.01);
-  vec3 c2 = vec3(1.00, 0.68, 0.09);
-  vec3 c3 = vec3(1.00, 0.94, 0.72);
-  if (t < 0.34) return mix(c0, c1, t / 0.34);
-  if (t < 0.70) return mix(c1, c2, (t - 0.34) / 0.36);
-  return mix(c2, c3, (t - 0.70) / 0.30);
+  // 高对比度炽烈黑体等离光谱：暗黑余烬 -> 深炽红 -> 烈焰等离橙 -> 熔金 -> 白炽核
+  t = clamp(t, 0.0, 1.0);
+  vec3 c0 = vec3(0.32, 0.01, 0.005);
+  vec3 c1 = vec3(0.95, 0.16, 0.01);
+  vec3 c2 = vec3(1.00, 0.50, 0.04);
+  vec3 c3 = vec3(1.00, 0.82, 0.34);
+  vec3 c4 = vec3(1.00, 0.97, 0.84);
+  if (t < 0.25) return mix(c0, c1, t / 0.25);
+  if (t < 0.55) return mix(c1, c2, (t - 0.25) / 0.30);
+  if (t < 0.84) return mix(c2, c3, (t - 0.55) / 0.29);
+  return mix(c3, c4, (t - 0.84) / 0.16);
 }
 
 vec3 acesTone(vec3 x) {
@@ -93,27 +114,119 @@ vec3 boostSaturation(vec3 col, float sat) {
   return max(vec3(0.0), mix(vec3(luma), col, sat));
 }
 
+// 无极区与接缝的立方体贴图程序星场（高密度针尖星点 + 引力透镜微弧）
 vec3 sampleSky(vec3 dir, float lensing) {
-  vec2 sph = vec2(atan(dir.z, dir.x) * 0.15915 + 0.5, asin(clamp(dir.y, -1.0, 1.0)) * 0.31831 + 0.5);
+  vec3 ad = abs(dir);
+  vec2 suv;
+  float faceId;
+  if (ad.x >= ad.y && ad.x >= ad.z) {
+    suv = dir.yz / ad.x;
+    faceId = dir.x > 0.0 ? 0.0 : 1.0;
+  } else if (ad.y >= ad.x && ad.y >= ad.z) {
+    suv = dir.xz / ad.y;
+    faceId = dir.y > 0.0 ? 2.0 : 3.0;
+  } else {
+    suv = dir.xy / ad.z;
+    faceId = dir.z > 0.0 ? 4.0 : 5.0;
+  }
 
-  // 纯净深空虚无底色 + 两层锐利星场引力的透镜增亮（不映射前景插画）
-  float band = exp(-abs(dir.y) * 3.6);
-  vec3 cosmos = mix(vec3(0.008, 0.009, 0.016), vec3(0.022, 0.028, 0.056), band);
+  float band = exp(-abs(dir.y) * 3.5);
+  float dust = vnoise3(dir * 2.8 + vec3(4.2, 1.7, 9.1));
+  vec3 cosmos = mix(vec3(0.005, 0.006, 0.012), vec3(0.024, 0.028, 0.062), band * (0.55 + 0.65 * dust));
+  cosmos += vec3(0.042, 0.014, 0.007) * band * smoothstep(0.48, 0.92, dust);
 
-  vec2 g1 = sph * vec2(170.0, 85.0);
+  vec2 uv01 = suv * 0.5 + 0.5;
+
+  vec2 g1 = uv01 * 144.0;
   vec2 id1 = floor(g1);
   vec2 fv1 = fract(g1) - 0.5;
-  float h1 = hash21(id1);
-  float s1 = smoothstep(0.986, 0.999, h1) * smoothstep(0.42, 0.04, length(fv1));
-  vec3 stars = mix(vec3(1.0, 0.84, 0.62), vec3(0.42, 0.68, 1.0), hash21(id1 + 7.1)) * s1 * 1.9;
+  float h1 = hash21(id1 + faceId * 131.0);
+  float s1 = smoothstep(0.986, 0.9994, h1) * smoothstep(0.22, 0.02, length(fv1));
+  vec3 stars = mix(vec3(1.0, 0.80, 0.52), vec3(0.45, 0.72, 1.0), hash21(id1 + faceId * 71.0 + 7.1)) * s1 * 2.1;
 
-  vec2 g2 = sph * vec2(320.0, 160.0);
+  vec2 g2 = uv01 * 260.0;
   vec2 id2 = floor(g2);
   vec2 fv2 = fract(g2) - 0.5;
-  float s2 = smoothstep(0.991, 0.9995, hash21(id2)) * smoothstep(0.36, 0.04, length(fv2));
-  stars += vec3(0.75, 0.84, 1.0) * s2 * 0.95;
+  float s2 = smoothstep(0.992, 0.9996, hash21(id2 + faceId * 197.0)) * smoothstep(0.18, 0.015, length(fv2));
+  stars += vec3(0.78, 0.86, 1.0) * s2 * 1.1;
 
   return cosmos + stars * lensing;
+}
+
+// 无缝极坐标加速发光物质团块/拖尾流束层（严格按整数 N 周向周期包裹，零接缝）
+vec2 evalClumpLayer(
+  float ang01,
+  float hr,
+  float dr,
+  float N,
+  float spiralC,
+  float infallV,
+  float seedOff,
+  float radialRangeMin,
+  float radialRangeMax,
+  float aaSoft
+) {
+  float bandMask = smoothstep(radialRangeMin, radialRangeMin + 0.30, hr)
+                 * smoothstep(radialRangeMax, radialRangeMax - 0.90, hr);
+  if (bandMask <= 0.001) return vec2(0.0);
+
+  float invSqrtR = inversesqrt(max(hr, 0.55));
+  float angSpiral01 = fract(ang01 + (spiralC * INV_TAU) * invSqrtR);
+  float rAdv = hr + mod(infallV * u_time, 256.0 * dr);
+
+  float rCoord = rAdv / dr;
+  float aCoord = angSpiral01 * N;
+
+  float ir0 = floor(rCoord);
+  float fr = fract(rCoord);
+  float ia0 = mod(floor(aCoord), N);
+  float fa = fract(aCoord);
+
+  float glowSum = 0.0;
+  float heatSum = 0.0;
+
+  // 局部 3x3 邻域：粒子偏移与轮廓严格在 0.70 单元内归零，绝不截断或产生接缝
+  for (int j = -1; j <= 1; j++) {
+    float cellR = mod(ir0 + float(j) + 256.0, 256.0);
+    for (int k = -1; k <= 1; k++) {
+      float cellA = mod(ia0 + float(k) + N, N);
+      vec2 seed = vec2(cellR + seedOff * 19.3, cellA + seedOff * 37.7);
+      float presence = hash21(seed);
+      if (presence < 0.30) continue;
+
+      float h1 = hash21(seed + vec2(11.3, 27.9));
+      float h2 = hash21(seed + vec2(43.7, 9.1));
+      float h3 = hash21(seed + vec2(71.9, 53.3));
+
+      float offR = (h1 - 0.5) * 0.44;
+      float offA = (h2 - 0.5) * 0.44;
+
+      float dR = float(j) + offR - fr;
+      float dA = float(k) + offA - fa;
+
+      float env = smoothstep(0.70, 0.40, abs(dA)) * smoothstep(0.70, 0.40, abs(dR));
+      if (env <= 0.0) continue;
+
+      // 越接近黑洞视界，物质被潮汐拉伸得越细长且速度感越强
+      float innerTight = mix(0.30, 0.44, clamp((hr - 1.42) / 5.2, 0.0, 1.0)) * aaSoft;
+      // 顺行前缘紧凑锐利，后方（dA < 0）拖拽出炽热彗星等离子尾迹
+      float tailSpan = dA < 0.0 ? 0.68 : 0.21;
+
+      float nr = dR / innerTight;
+      float na = dA / tailSpan;
+      float tail = env * exp(-(nr * nr * 3.2 + na * na * 2.8));
+
+      float nrCore = dR / (innerTight * 0.55);
+      float naCore = dA / (0.20 * aaSoft);
+      float head = env * exp(-(nrCore * nrCore * 3.0 + naCore * naCore * 4.2));
+
+      float lum = (0.48 + 0.92 * pow(presence, 1.4)) * (tail * 0.86 + head * 1.45 / aaSoft);
+      glowSum += lum;
+      heatSum += lum * (0.42 + 0.58 * h3);
+    }
+  }
+
+  return vec2(glowSum, heatSum) * bandMask;
 }
 
 void main() {
@@ -122,10 +235,10 @@ void main() {
   float shiftX = mix(0.0, 0.19, smoothstep(1.05, 1.5, aspect.x));
   vec2 p = (v_uv - 0.5) * 2.0 * aspect - vec2(shiftX * aspect.x, 0.0);
 
-  // 更近的视距 + 鼠标视差 + 滚屏下潜
-  float camDist = mix(9.4, 5.2, clamp(u_scroll, 0.0, 1.0));
-  float yaw = u_mouse.x * 0.34 + u_time * 0.065;
-  float pitch = 0.23 - u_mouse.y * 0.22 + u_scroll * 0.14;
+  // 更富有张力的近距视角 + 呼吸微动 + 鼠标视差 + 滚屏下潜
+  float camDist = mix(8.75, 4.75, clamp(u_scroll, 0.0, 1.0)) + 0.16 * sin(u_time * 0.37);
+  float yaw = u_mouse.x * 0.36 + u_time * 0.085;
+  float pitch = 0.24 - u_mouse.y * 0.23 + u_scroll * 0.15 + 0.022 * sin(u_time * 0.29);
 
   vec3 ro = vec3(
     camDist * cos(pitch) * sin(yaw),
@@ -136,11 +249,10 @@ void main() {
   vec3 fwd = normalize(target - ro);
   vec3 right = normalize(cross(fwd, vec3(0.0, 1.0, 0.0)));
   vec3 up = cross(right, fwd);
-  // 轻微倾斜角让吸积盘更有空间张力
-  float roll = -0.14 + u_mouse.x * 0.06;
+  float roll = -0.17 + u_mouse.x * 0.075 + 0.018 * cos(u_time * 0.24);
   vec3 rTilt = right * cos(roll) + up * sin(roll);
   vec3 uTilt = up * cos(roll) - right * sin(roll);
-  vec3 rd = normalize(fwd * 1.62 + rTilt * p.x + uTilt * p.y);
+  vec3 rd = normalize(fwd * 1.60 + rTilt * p.x + uTilt * p.y);
 
   vec3 hVec = cross(ro, rd);
   float h2 = dot(hVec, hVec);
@@ -151,63 +263,143 @@ void main() {
   float trans = 1.0;
   float minR = 1e6;
   bool captured = false;
+  int crossings = 0;
 
-  float diskIn = 1.88;
-  float diskOut = 7.6;
+  float diskIn = 1.40;
+  float diskOut = 8.50;
+  float plasmaShift = mod(0.84 * u_time, 512.0);
+  float coronaShift = mod(1.05 * u_time, 256.0);
 
   for (int i = 0; i < STEPS; i++) {
-    float r = length(pos);
-    minR = min(minR, r);
+    float r2 = dot(pos, pos);
+    float r = sqrt(r2);
     if (r < RS) {
       captured = true;
       break;
     }
-    if (r > 18.0 && dot(pos, vel) > 0.0) {
+    if (r > 14.5 && dot(pos, vel) > 0.0) {
       break;
     }
 
-    float dt = clamp(0.042 * (r - 0.78), 0.022, 0.42);
-    if (abs(pos.y) < 0.35 && r < diskOut + 0.4) {
-      dt = min(dt, 0.12);
+    // 平滑自适应步长（远距大步快进、近视界精步积分，彻底杜绝步数耗尽截断边）
+    float dt = clamp(0.082 * (r - 0.86), 0.026, 0.85);
+    float nearDisk = (1.0 - smoothstep(0.18, 0.85, abs(pos.y))) * (1.0 - smoothstep(diskOut, diskOut + 1.4, r));
+    dt = mix(dt, min(dt, 0.135), nearDisk);
+
+    // 体积化高温日冕与内盘三维热等离子晕
+    if (abs(pos.y) < 0.86 && r > 1.24 && r < 7.9) {
+      float hrV = length(pos.xz);
+      float H = 0.11 + 0.032 * hrV + 0.22 * exp(-(hrV - 1.85) * (hrV - 1.85));
+      float vEnv = exp(-(pos.y * pos.y) / (H * H));
+      if (vEnv > 0.04 && hrV > 1.30) {
+        vec2 dirV = pos.xz / max(hrV, 1e-4);
+        float spV = 14.5 * inversesqrt(max(hrV, 0.55));
+        float rAdvV = hrV + coronaShift;
+        float vn = vnoise3(vec3(rot2(dirV, spV) * 3.1, rAdvV * 0.75));
+        float vr = smoothstep(1.30, 1.96, hrV) * smoothstep(7.9, 2.1, hrV);
+
+        vec3 tangV = normalize(vec3(-pos.z, 0.0, pos.x));
+        float vOrbV = clamp(0.72 * inversesqrt(hrV), 0.0, 0.76);
+        float dopV = pow(clamp(1.0 + vOrbV * dot(tangV, vel), 0.28, 2.30), 2.4);
+
+        float vDens = vEnv * vr * (0.18 + 0.82 * vn * vn);
+        float vTemp = clamp(pow(1.42 / hrV, 0.68) * 0.68 + vn * 0.24 + (dopV - 1.0) * 0.14, 0.0, 1.0);
+        vec3 vCol = blackbody(vTemp) * dopV * 1.05;
+        float vAlpha = clamp(vDens * dt * 0.76, 0.0, 0.34);
+        col += trans * vCol * vAlpha;
+        trans *= (1.0 - vAlpha * 0.50);
+        if (trans < 0.015) break;
+      }
     }
 
     vec3 prevPos = pos;
-    float r5 = pow(max(r, 0.48), 5.0);
-    vec3 acc = -1.5 * h2 * pos / r5;
-    vel = normalize(vel + acc * dt);
-    pos += vel * dt;
+    // RK2 中点法严格守恒角动量积分史瓦西零测地线
+    float invR5 = 1.0 / max(r2 * r2 * r, 0.025);
+    vec3 acc1 = -1.5 * h2 * pos * invR5;
+    vec3 midVel = normalize(vel + acc1 * (0.5 * dt));
+    vec3 midPos = pos + midVel * (0.5 * dt);
+    float mr2 = dot(midPos, midPos);
+    float mr = sqrt(mr2);
+    float minvR5 = 1.0 / max(mr2 * mr2 * mr, 0.025);
+    vec3 acc2 = -1.5 * h2 * midPos * minvR5;
+    vel = normalize(vel + acc2 * dt);
+    pos += midVel * dt;
 
-    if (prevPos.y * pos.y <= 0.0) {
+    // 连续线段最近距计算（消除光子环离散步进虚线噪点）
+    vec3 seg = pos - prevPos;
+    float tSeg = clamp(-dot(prevPos, seg) / max(dot(seg, seg), 1e-6), 0.0, 1.0);
+    minR = min(minR, length(prevPos + seg * tSeg));
+
+    // 严格单次赤道面穿越判定
+    if ((prevPos.y > 0.0 && pos.y <= 0.0) || (prevPos.y < 0.0 && pos.y >= 0.0)) {
       float frac = abs(prevPos.y) / max(abs(prevPos.y - pos.y), 1e-5);
       vec3 hit = mix(prevPos, pos, frac);
       float hr = length(hit.xz);
       if (hr > diskIn && hr < diskOut) {
-        float ang = atan(hit.z, hit.x);
-        float kepler = u_time * (4.4 / pow(hr, 1.32));
-        float spiral = ang + kepler + 7.2 / sqrt(hr);
+        crossings += 1;
+        // 综合光线偏折角、是否绕过黑洞背面与二次穿越次数做物理低通抗锯齿，彻底消灭压缩透镜环噪点
+        float bend = 1.0 - clamp(dot(rd, normalize(vel)), -1.0, 1.0);
+        float isBack = dot(hit, ro) < 0.0 ? 0.55 : 0.0;
+        float lensAA = smoothstep(0.18, 0.90, bend) + (crossings > 1 ? 0.95 : 0.0) + isBack * smoothstep(0.08, 0.35, bend);
+        float aaSoft = min(1.0 + 1.35 * lensAA, 2.15);
+        float midMask = smoothstep(1.45, 0.20, lensAA);
+        float highMask = smoothstep(0.85, 0.08, lensAA);
+        float clumpMacroMask = smoothstep(1.85, 0.45, lensAA);
+        float clumpDetailMask = smoothstep(1.10, 0.25, lensAA);
 
-        // 多尺度剪切等离子体丝状纹理
-        float warp = fbm(vec2(hr * 1.6, spiral * 0.4));
-        float rings = fbm(vec2(hr * 3.4 + warp * 0.7, spiral * 0.75));
-        float fine = noise2(vec2(hr * 13.5, spiral * 2.6 + warp * 1.6));
-        float lanes = 0.55 + 0.45 * sin(hr * 9.5 + warp * 3.2);
+        vec2 dirXZ = hit.xz / hr;
+        float invSqrtR = inversesqrt(max(hr, 0.55));
+        float spiralAngle = 15.8 * invSqrtR;
+        vec2 pRot = rot2(dirXZ, spiralAngle);
+        float rAdv = hr + plasmaShift;
 
-        float radialFade = smoothstep(diskIn, diskIn + 0.24, hr) * smoothstep(diskOut, diskIn + 1.25, hr);
-        float density = radialFade * (0.28 + 0.88 * rings) * (0.55 + 0.55 * fine) * lanes;
+        // 4 层严格无缝旋转 3D 螺旋等离子体湍流（随透镜压缩自动平滑降频）
+        float warp = vnoise3(vec3(pRot * 2.4, rAdv * 0.5));
+        vec2 pWarp1 = rot2(pRot, (warp - 0.5) * 1.25);
+        float arms = mix(0.54, vnoise3(vec3(pWarp1 * 5.0, rAdv * 1.0)), 0.25 + 0.75 * midMask);
+        vec2 pWarp2 = rot2(pRot, (arms - 0.5) * 1.55 + (warp - 0.5) * 0.75);
+        float streams = mix(0.50, vnoise3(vec3(pWarp2 * 10.0, rAdv * 2.0)), highMask);
+        float fine = mix(0.50, vnoise3(vec3(rot2(pRot, (streams - 0.5) * 1.2) * 18.0, rAdv * 4.0)), highMask * highMask);
 
-        // 强烈相对论多普勒聚束：顺行侧炽热蓝移增亮，逆行侧深红暗沉
+        // 深邃磁力剪切暗隙 + 脊状炽白等离子丝纹（暗隙反衬出高速加速绕转的发光物质）
+        float ridge = 1.0 - abs(2.0 * streams - 1.0);
+        float filaments = pow(clamp(ridge, 0.0, 1.0), 1.85);
+        float lanes = 0.09 + 0.91 * pow(smoothstep(0.20, 0.90, arms * 0.54 + filaments * 0.46), 1.48);
+
+        float radialFade = smoothstep(diskIn, diskIn + 0.26, hr) * smoothstep(diskOut, 2.30, hr);
+        float gravRedshift = sqrt(clamp(1.0 - 0.96 / max(hr, 1.02), 0.12, 1.0));
+
+        float plasmaDensity = radialFade * (0.12 + 0.88 * arms) * (0.45 + 0.75 * fine) * lanes;
+
+        // 三层流畅、无锯齿、加速绕转的发光物质团块与炽热彗星拖尾
+        float ang01 = atan(hit.z, hit.x) * INV_TAU + 0.5;
+        vec2 cMacro = evalClumpLayer(ang01, hr, 0.92, 10.0, 14.0, 0.68, 1.0, diskIn + 0.15, diskOut - 0.2, aaSoft) * clumpMacroMask;
+        vec2 cMid   = evalClumpLayer(ang01, hr, 0.54, 17.0, 17.5, 0.98, 2.0, diskIn + 0.05, diskOut - 0.9, aaSoft) * clumpDetailMask;
+        vec2 cInner = evalClumpLayer(ang01, hr, 0.36, 24.0, 21.5, 1.38, 3.0, diskIn,        4.5,           aaSoft) * clumpDetailMask;
+
+        float clumpLum = cMacro.x * 1.15 + cMid.x * 1.65 + cInner.x * 2.15;
+        float clumpHeat = (cMacro.y * 1.15 + cMid.y * 1.65 + cInner.y * 2.15) / max(clumpLum, 1e-4);
+
+        // 强相对论多普勒聚束
         vec3 tang = normalize(vec3(-hit.z, 0.0, hit.x));
-        float vOrb = clamp(0.68 / sqrt(hr), 0.0, 0.72);
+        float vOrb = clamp(0.75 * invSqrtR, 0.0, 0.78);
         float cosTheta = dot(tang, normalize(vel));
-        float doppler = pow(clamp(1.0 + vOrb * cosTheta, 0.28, 2.25), 3.0);
+        float doppler = pow(clamp(1.0 + vOrb * cosTheta, 0.26, 2.35), 2.95);
 
-        float temp = clamp(pow(diskIn / hr, 0.62) * 0.82 + rings * 0.28 + fine * 0.12 + (doppler - 1.0) * 0.24, 0.0, 1.0);
-        vec3 diskCol = blackbody(temp) * doppler * 1.68;
-        // 顺行内缘强蓝移电弧 + 逆行外缘深红余烬
-        diskCol += vec3(0.24, 0.58, 1.0) * pow(max(0.0, doppler - 1.22), 1.25) * 0.72;
-        diskCol += vec3(0.65, 0.04, 0.06) * max(0.0, 1.0 - doppler) * 0.42;
+        float baseTemp = pow(diskIn / hr, 0.68) * 0.70 + arms * 0.20 + filaments * 0.18 + (doppler - 1.0) * 0.16;
+        float totalTemp = clamp(baseTemp + clamp(clumpLum * 0.24, 0.0, 0.45), 0.0, 1.0);
 
-        float alpha = clamp(density * 0.96, 0.0, 0.98);
+        // 适度压低连续背景底盘亮度，让高能发光团块与灼热丝纹在整张盘面鲜明跃出
+        vec3 diskCol = blackbody(totalTemp) * doppler * 1.22;
+        vec3 clumpCol = mix(vec3(1.00, 0.44, 0.04), vec3(1.00, 0.96, 0.76), clamp(clumpHeat, 0.0, 1.0));
+        diskCol += clumpCol * clumpLum * doppler * (1.75 + 0.85 * smoothstep(4.6, 1.5, hr));
+
+        // 顺行极速内缘等离子蓝移电弧 + 逆行侧深红余烬
+        diskCol += vec3(0.28, 0.62, 1.00) * pow(max(0.0, doppler - 1.46), 1.35) * (0.22 + 0.48 * cInner.x);
+        diskCol += vec3(0.60, 0.03, 0.03) * max(0.0, 1.0 - doppler) * 0.44;
+        diskCol *= gravRedshift;
+
+        float alpha = clamp((plasmaDensity * 0.82 + clumpLum * 0.72 * radialFade), 0.0, 0.985);
         col += trans * diskCol * alpha;
         trans *= (1.0 - alpha);
         if (trans < 0.015) break;
@@ -215,37 +407,53 @@ void main() {
     }
   }
 
-  // 双层锐利爱因斯坦光子环 + 炽热日冕耀斑
-  float sharpRing = exp(-abs(minR - 1.50) * 14.0) * (captured ? 0.45 : 1.15);
-  float coronaGlow = exp(-abs(minR - 1.56) * 4.2) * (captured ? 0.24 : 0.85);
-  float shimmer = 0.92 + 0.08 * sin(u_time * 3.1 + atan(p.y, p.x) * 4.0);
-  col += trans * (vec3(1.0, 0.84, 0.48) * sharpRing * 1.45 + vec3(1.0, 0.34, 0.04) * coronaGlow * 1.25) * shimmer;
+  // 若光线在临界轨道缠绕耗尽步数且仍困在光子球内侧，视为被视界捕获，防止漏出背景星点
+  if (!captured && minR < 1.46) {
+    captured = true;
+  }
 
-  float lensingBoost = 1.0 + 1.85 * exp(-abs(minR - 1.72) * 2.1);
+  // 锐利顺滑双阶爱因斯坦光子环 + 绕环疾驰的相对论耀斑脉冲（完全连续无阶跃）
+  vec2 screenDir = p / max(length(p), 1e-4);
+  float ringPulse1 = vnoise3(vec3(rot2(screenDir, -u_time * 2.45) * 4.5, mod(u_time * 0.70, 256.0)));
+  float ringPulse2 = vnoise3(vec3(rot2(screenDir, -u_time * 4.25) * 8.5, mod(u_time * 1.15, 256.0)));
+  float ringArc = 0.72 + 0.68 * smoothstep(0.38, 0.92, ringPulse1 * 0.6 + ringPulse2 * 0.4);
+  float ringDoppler = 1.0 - 0.34 * clamp(p.x * 0.42, -1.0, 1.0);
+
+  float escapeFade = smoothstep(1.36, 1.52, minR);
+  float sharpRing = exp(-abs(minR - 1.50) * 14.5) * mix(0.48, 1.45, escapeFade);
+  float secondaryRing = exp(-abs(minR - 1.56) * 6.8) * mix(0.28, 0.95, escapeFade);
+  float coronaGlow = exp(-abs(minR - 1.62) * 3.0) * mix(0.18, 0.82, escapeFade);
+
+  col += trans * (
+    vec3(1.00, 0.91, 0.62) * sharpRing * 1.68 * ringArc +
+    vec3(1.00, 0.48, 0.08) * secondaryRing * 1.28 * (0.85 + 0.3 * ringPulse1) +
+    vec3(1.00, 0.22, 0.03) * coronaGlow * 1.10
+  ) * ringDoppler;
+
+  float lensingBoost = 1.0 + 2.15 * exp(-abs(minR - 1.72) * 2.1);
   if (!captured && trans > 0.01) {
     col += trans * sampleSky(normalize(vel), lensingBoost);
   }
 
-  // ACES 色调映射 + 饱和度增强
-  col = acesTone(col * 1.18);
+  // ACES 色调映射 + 高饱和保持
+  col = acesTone(col * 1.04);
   col = boostSaturation(col, 1.28);
 
   vec3 darkBg = vec3(0.031, 0.031, 0.043);   // #08080b
   vec3 lightBg = vec3(0.918, 0.910, 0.886);  // #eae8e2
 
-  float vignette = smoothstep(1.36, 0.42, length((v_uv - 0.5) * vec2(1.32, 1.62)));
+  float vignette = smoothstep(1.42, 0.40, length((v_uv - 0.5) * vec2(1.26, 1.56)));
   vec3 voidCol = mix(darkBg, max(col, darkBg * 0.72), vignette);
 
-  // 白洞 / 照相底片（PLATE）模式：高饱和度冷蔚蓝 + 炽烈朱砂反相光谱，保留纯白奇点核
+  // 白洞 / 照相底片（PLATE）模式：高饱和度冷蔚蓝 + 炽烈朱砂反相光谱，按透射率平滑保留纯白奇点核（杜绝前盘撕裂）
   vec3 invTone = vec3(
     pow(col.r, 0.88) * 0.25 + col.g * 0.65 + col.b * 0.75,
     pow(col.g, 0.92) * 0.45 + col.r * 0.45,
     col.r * 0.22 + col.g * 0.14
   );
-  vec3 plateCol = clamp(lightBg - invTone * 1.08, 0.0, 1.0);
-  // 白洞核心奇点微光与光环高饱和点缀
+  vec3 plateCol = clamp(lightBg - invTone * 1.06, 0.0, 1.0);
   if (captured) {
-    plateCol = mix(plateCol, vec3(0.985, 0.978, 0.955), 0.75 * trans);
+    plateCol = mix(plateCol, vec3(0.972, 0.966, 0.946), 0.82 * trans);
   }
   plateCol = boostSaturation(plateCol, 1.26);
   plateCol = mix(lightBg, plateCol, vignette);
