@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="810" viewBox="0 0 1440 810" role="img" aria-labelledby="title desc">
+  <title id="title">ClinMedAgent-RAG 检索性能优化前后对比</title>
+  <desc id="desc">四本书、3463 个文本块、10 个固定问题、三轮测量。搜索平均耗时从 104.3 毫秒降至 50.2 毫秒，下降 51.9%。44 条回归查询的结果标识与分数保持一致，自动化测试从 249 项增加到 289 项。</desc>
+  <defs>
+    <linearGradient id="bg" x2="1" y2="1"><stop stop-color="#101b2d"/><stop offset="1" stop-color="#08121e"/></linearGradient>
+    <linearGradient id="after"><stop stop-color="#62e4db"/><stop offset="1" stop-color="#56a9ff"/></linearGradient>
+  </defs>
+  <rect width="1440" height="810" fill="url(#bg)"/>
+  <g fill="none" stroke="#97b4d3" opacity=".13"><path d="M80 80H1360V730H80Z"/><path d="M80 660H1360M80 150H1360"/><path d="M800 80V730"/></g>
+  <g font-family="'Segoe UI','Microsoft YaHei',sans-serif">
+    <text x="110" y="124" fill="#a9bfd7" font-size="19" letter-spacing="4">ENGINEERING REPORT / 2026.11.17</text>
+    <text x="110" y="225" fill="#f3f7fc" font-size="57" font-weight="700">ClinMedAgent-RAG</text>
+    <text x="110" y="276" fill="#a9bfd7" font-size="28">多层协作审计 · 检索优化 · 回归验证</text>
+    <text x="110" y="350" fill="#c4d3e4" font-size="21">SEARCH LATENCY · MEAN</text>
+    <text x="110" y="398" fill="#a9bfd7" font-size="22">BEFORE</text>
+    <rect x="110" y="418" width="570" height="36" rx="8" fill="#526783"/>
+    <text x="110" y="492" fill="#f3f7fc" font-size="40" font-weight="600">104.3 <tspan font-size="23" font-weight="400">ms</tspan></text>
+    <text x="110" y="540" fill="#9be7e3" font-size="22">AFTER</text>
+    <rect x="110" y="560" width="274.34" height="36" rx="8" fill="url(#after)"/>
+    <text x="410" y="589" fill="#8ff0e6" font-size="34" font-weight="600">50.2 <tspan font-size="21" font-weight="400">ms</tspan></text>
+    <text x="860" y="374" fill="#90eee5" font-size="112" font-weight="700">−51.9<tspan font-size="54">%</tspan></text>
+    <text x="867" y="427" fill="#c4d3e4" font-size="24">平均检索耗时下降</text>
+    <text x="865" y="514" fill="#f3f7fc" font-size="37" font-weight="600">44 / 44</text>
+    <text x="865" y="551" fill="#a9bfd7" font-size="22">回归查询结果与分数一致</text>
+    <text x="865" y="605" fill="#f3f7fc" font-size="30">249 → 289 <tspan fill="#a9bfd7" font-size="22">tests passed</tspan></text>
+    <text x="110" y="707" fill="#a9bfd7" font-size="20">4 本书 · 3,463 块 · 10 个固定问题 · 3 轮 · 暖缓存 · 本机测量</text>
+  </g>
+</svg>
