@@ -202,15 +202,21 @@
     rgb(255 90 26 / 0.14) 54%,
     transparent 70%
   );
-  animation: hz-lens-scan 2.4s var(--e-io) infinite;
+  animation: hz-lens-scan 2.4s linear infinite;
   pointer-events: none;
 }
 @keyframes hz-lens-scan {
   0% {
     transform: translateY(-65%);
+    opacity: 0;
+  }
+  15%,
+  85% {
+    opacity: 1;
   }
   100% {
     transform: translateY(65%);
+    opacity: 0;
   }
 }
 .hz-lens.is-visible {
@@ -291,6 +297,8 @@
 /* 光谱发射线图 */
 .hz-spec {
   border: 1px solid var(--hz-line);
+  border-radius: 14px;
+  overflow: hidden;
   background: var(--hz-bg-2);
   padding: var(--s-4);
   margin-bottom: var(--s-5);
@@ -330,26 +338,33 @@
 .hz-spec__bars::before {
   content: '';
   position: absolute;
-  inset: 0;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 38%;
   pointer-events: none;
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgb(255 90 26 / 0.09) 46%,
+    rgb(255 90 26 / 0.09) 42%,
     rgb(255 241 214 / 0.14) 50%,
-    rgb(143 179 255 / 0.08) 54%,
+    rgb(143 179 255 / 0.08) 58%,
     transparent 100%
   );
-  background-size: 38% 100%;
-  background-repeat: no-repeat;
-  animation: hz-spec-sweep 6.8s var(--e-io) infinite;
+  animation: hz-spec-sweep 6.8s linear infinite;
 }
 @keyframes hz-spec-sweep {
   0% {
-    background-position: -45% 0;
+    transform: translate3d(-115%, 0, 0);
+    opacity: 0;
+  }
+  12%,
+  88% {
+    opacity: 1;
   }
   100% {
-    background-position: 145% 0;
+    transform: translate3d(375%, 0, 0);
+    opacity: 0;
   }
 }
 .hz-spec__bars::after {
@@ -386,6 +401,7 @@
   display: block;
   width: 100%;
   height: var(--bar-h, 40%);
+  border-radius: 3px 3px 0 0;
   background: color-mix(
     in oklab,
     var(--hz-hot-2) calc((1 - var(--bar-age, 0)) * 85%),
@@ -475,6 +491,7 @@
   align-items: center;
   gap: var(--s-3);
   border: 1px solid var(--hz-line-2);
+  border-radius: 10px;
   background: var(--hz-bg-2);
   padding: 0 var(--s-4);
   min-height: 46px;
@@ -485,6 +502,7 @@
 .hz-search kbd {
   padding: 2px 6px;
   border: 1px solid var(--hz-line-2);
+  border-radius: 5px;
   font-size: 0.65rem;
   color: var(--hz-ink-3);
 }
@@ -507,8 +525,9 @@
 .hz-tags-rail button {
   flex: none;
   min-height: 36px;
-  padding: 0 12px;
+  padding: 0 14px;
   border: 1px solid var(--hz-line);
+  border-radius: 999px;
   font-family: var(--f-mono);
   font-size: var(--t-micro);
   letter-spacing: 0.06em;

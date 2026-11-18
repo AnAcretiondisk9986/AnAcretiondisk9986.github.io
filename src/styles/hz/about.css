@@ -48,6 +48,7 @@
   gap: var(--s-5);
   padding: var(--s-5);
   border: 1px solid var(--hz-line-2);
+  border-radius: 14px;
   background: var(--hz-bg-2);
 }
 .hz-avatar-ring {
@@ -233,6 +234,7 @@
   gap: var(--s-4);
   padding: var(--s-6);
   border: 1px solid var(--hz-line-2);
+  border-radius: 14px;
   background: var(--hz-bg-2);
 }
 .hz-freq__head {

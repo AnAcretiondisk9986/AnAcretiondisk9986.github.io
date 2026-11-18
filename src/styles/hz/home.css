@@ -10,9 +10,8 @@
   grid-template-rows: 1fr auto;
   align-items: end;
   padding-top: calc(var(--hud-h) + var(--s-6));
-  padding-bottom: var(--s-7);
+  padding-bottom: var(--s-8);
   overflow: hidden;
-  border-bottom: 1px solid var(--hz-line);
 }
 
 .hz-hero__canvas {
@@ -24,6 +23,8 @@
   z-index: 0;
   pointer-events: none;
   opacity: 0;
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 72%, transparent 100%);
+  mask-image: linear-gradient(180deg, #000 0%, #000 72%, transparent 100%);
   transition: opacity 960ms var(--e-out);
 }
 .hz-hero__canvas.is-ready {
@@ -37,6 +38,8 @@
   z-index: 0;
   display: none;
   pointer-events: none;
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 72%, transparent 100%);
+  mask-image: linear-gradient(180deg, #000 0%, #000 72%, transparent 100%);
   background:
     radial-gradient(circle at 66% 48%, #000 0 11%, rgb(255 90 26 / 0.9) 12%, rgb(255 179 107 / 0.25) 17%, transparent 48%),
     radial-gradient(ellipse 52% 16% at 66% 50%, rgb(255 90 26 / 0.42), transparent 72%);
@@ -48,12 +51,14 @@
   display: block;
 }
 
-/* 左侧软保护暗角，只护住文字区域，右侧完全透出高亮吸积盘与视界 */
+/* 左侧软保护暗角，只护住文字区域，右侧完全透出高亮吸积盘与视界；底部平滑渐变融入背景 */
 .hz-hero__scrim {
   position: absolute;
   inset: 0;
   z-index: 1;
   pointer-events: none;
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 74%, transparent 100%);
+  mask-image: linear-gradient(180deg, #000 0%, #000 74%, transparent 100%);
   background:
     radial-gradient(ellipse 46% 62% at 24% 52%, rgb(8 8 11 / 0.72) 0%, rgb(8 8 11 / 0.34) 55%, transparent 100%),
     linear-gradient(95deg, rgb(8 8 11 / 0.72) 0%, rgb(8 8 11 / 0.28) 42%, transparent 64%);
@@ -87,6 +92,7 @@
 .hz-hero__jp {
   padding: 2px 10px;
   border: 1px solid rgb(255 90 26 / 0.45);
+  border-radius: 7px;
   font-family: var(--f-jp);
   font-weight: 400;
   font-size: 0.84rem;
@@ -151,13 +157,14 @@
   background: linear-gradient(
     105deg,
     var(--hz-hot-ink) 0%,
-    var(--hz-hot) 34%,
-    var(--hz-white-hot) 50%,
-    var(--hz-blue) 60%,
-    var(--hz-hot-ink) 74%,
+    var(--hz-hot-ink) 32%,
+    var(--hz-hot) 43%,
+    #fff1d6 50%,
+    var(--hz-blue) 56%,
+    var(--hz-hot-ink) 68%,
     var(--hz-hot-ink) 100%
   );
-  background-size: 240% 100%;
+  background-size: 300% 100%;
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -171,12 +178,13 @@
   background: linear-gradient(
     105deg,
     var(--hz-hot-ink) 0%,
-    var(--hz-hot) 36%,
+    var(--hz-hot-ink) 32%,
+    var(--hz-hot) 44%,
     var(--hz-blue) 52%,
-    var(--hz-hot-ink) 70%,
+    var(--hz-hot-ink) 68%,
     var(--hz-hot-ink) 100%
   );
-  background-size: 240% 100%;
+  background-size: 300% 100%;
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -184,10 +192,10 @@
 }
 @keyframes hz-domain-shimmer {
   0% {
-    background-position: 130% 0;
+    background-position: 100% 0;
   }
   100% {
-    background-position: -130% 0;
+    background-position: 0% 0;
   }
 }
 .hz-hero__l2 {
@@ -264,14 +272,13 @@
 .hz-plates-strip {
   display: grid;
   grid-template-columns: 1.45fr 1fr 1fr 1fr;
-  border-top: 1px solid var(--hz-line);
-  border-left: 1px solid var(--hz-line);
+  gap: 12px;
 }
 .hz-hplate {
   position: relative;
   display: block;
-  border-right: 1px solid var(--hz-line);
-  border-bottom: 1px solid var(--hz-line);
+  border: 1px solid var(--hz-line);
+  border-radius: 14px;
   background: var(--hz-bg-2);
   overflow: hidden;
   transition: border-color var(--d-2) var(--e-out), box-shadow var(--d-2) var(--e-out);
@@ -348,6 +355,8 @@
   align-items: center;
   padding: var(--s-7);
   border: 1px solid var(--hz-line);
+  border-radius: 16px;
+  overflow: hidden;
   background: var(--hz-bg-2);
   transition: border-color var(--d-2) var(--e-out), box-shadow var(--d-2) var(--e-out);
 }

@@ -53,6 +53,7 @@
   min-height: 36px;
   padding: 0 var(--s-3);
   border: 1px solid var(--hz-line-2);
+  border-radius: 8px;
   background: var(--hz-bg-2);
   color: var(--hz-ink);
   font-family: var(--f-mono), var(--f-sans);
@@ -74,6 +75,7 @@
 .hz-sched-pulse-dot {
   width: 6px;
   height: 6px;
+  border-radius: 50%;
   background: var(--hz-hot);
   box-shadow: var(--hz-glow);
   animation: hz-pulse 2.2s ease-in-out infinite;
@@ -88,12 +90,14 @@
 .hz-sched-exam-cta__dot {
   width: 6px;
   height: 6px;
+  border-radius: 50%;
   background: currentColor;
   flex: none;
 }
 .hz-sched-exam-cta__count {
   padding: 2px 6px;
   border: 1px solid currentColor;
+  border-radius: 5px;
   font-size: 0.65rem;
   line-height: 1.1;
   font-variant-numeric: tabular-nums;
@@ -104,6 +108,8 @@
   display: grid;
   grid-template-columns: 1.35fr 1fr 1fr;
   border: 1px solid var(--hz-line-2);
+  border-radius: 14px;
+  overflow: hidden;
   background: var(--hz-bg-2);
   margin-bottom: var(--s-5);
 }
@@ -157,6 +163,8 @@
   display: inline-flex;
   align-items: center;
   border: 1px solid var(--hz-line-2);
+  border-radius: 10px;
+  overflow: hidden;
   background: var(--hz-bg-2);
 }
 .hz-sched-nav__btn {
@@ -241,6 +249,8 @@
 /* —— 周视图网格 —— */
 .hz-sched-shell {
   border: 1px solid var(--hz-line-2);
+  border-radius: 14px;
+  overflow: clip;
   background: var(--hz-bg);
 }
 .hz-sched-grid {
@@ -257,6 +267,7 @@
   grid-column: 1 / -1;
   min-height: 44px;
   border-bottom: 1px solid var(--hz-line-2);
+  border-radius: 13px 13px 0 0;
   background: var(--hz-bg-2);
 }
 .hz-head-cell {
@@ -358,18 +369,25 @@
 .hz-now-line::after {
   content: '';
   position: absolute;
-  inset: -1px 0;
+  top: -1px;
+  bottom: -1px;
+  left: 0;
+  width: 28%;
   background: linear-gradient(90deg, transparent, #fff1d6 50%, transparent);
-  background-size: 28% 100%;
-  background-repeat: no-repeat;
-  animation: hz-now-sweep 3.2s var(--e-io) infinite;
+  animation: hz-now-sweep 3.2s linear infinite;
 }
 @keyframes hz-now-sweep {
-  from {
-    background-position: -35% 0;
+  0% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0;
   }
-  to {
-    background-position: 135% 0;
+  18%,
+  82% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(257%, 0, 0);
+    opacity: 0;
   }
 }
 .hz-now-line::before {
@@ -419,6 +437,7 @@
   overflow: hidden;
   border: 1px solid var(--c-bd);
   border-left: 3px solid var(--c-accent);
+  border-radius: 8px;
   background: var(--c-bg);
   color: var(--c-ink);
   text-align: left;
@@ -704,6 +723,7 @@
   max-width: 100%;
   padding: 1px 5px;
   border: 1px solid var(--c-bd);
+  border-radius: 4px;
   background: rgb(0 0 0 / 0.18);
   font-family: var(--f-mono), var(--f-sans);
   font-size: 0.5625rem;
@@ -730,6 +750,8 @@
 /* —— 月视图 —— */
 .hz-month {
   border: 1px solid var(--hz-line-2);
+  border-radius: 14px;
+  overflow: hidden;
   background: var(--hz-bg);
 }
 .hz-month__weekdays,
@@ -812,6 +834,7 @@
   padding: 3px 5px;
   border: 1px solid var(--c-bd);
   border-left: 2px solid var(--c-accent);
+  border-radius: 6px;
   background: var(--c-bg);
   color: var(--c-ink);
   text-align: left;

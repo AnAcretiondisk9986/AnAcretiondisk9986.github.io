@@ -115,6 +115,18 @@ src/
 
 <!-- 新条目追加在这里 -->
 
+### 2026-11-18 · 光效收敛、P1/P2 无缝过渡、极向相对论喷流与协调圆角抛光
+
+- **P1/P2 硬切边界消除与全动画无缝循环**：
+  - [home.css](src/styles/hz/home.css) 移除 `.hz-hero` 底部分割实线并加大底部留白，为 `.hz-hero__canvas`、`.hz-hero__fallback` 与 `.hz-hero__scrim` 添加底部纵向渐变遮罩（`mask-image: linear-gradient(...)`），配合 [motion.ts](src/scripts/hz/motion.ts) 在首页滚屏时提前淡入背景星场，消除黑洞首屏底部的水平硬切线（P1）；
+  - [shell.css](src/styles/hz/shell.css) 为 `.hz-foot__word` 的 `::before`/`::after` 光效伪元素添加上下双向垂直渐隐遮罩并用 `width: 200%` 双周期 `translate3d(-50%)` 替代 `background-position` 扫光，彻底消除页脚巨型字标顶部的矩形发光截断边（P2）；
+  - 将全站可动光效统一升级为真正无跳变循环：固定星云 `hz-aurora-drift` 闭合椭圆轨道、[base.css](src/styles/hz/base.css) `hz-rule-beam`、[shell.css](src/styles/hz/shell.css) `hz-hud-sweep`、[motion.css](src/styles/hz/motion.css) `hz-tracer-sweep`、[home.css](src/styles/hz/home.css) `hz-domain-shimmer`、[log.css](src/styles/hz/log.css) `hz-spec-sweep` / `hz-lens-scan`、[schedule.css](src/styles/hz/schedule.css) `hz-now-sweep` 及 [ai-quota.css](src/styles/ai-quota.css) `aq-bar-flow`。
+- **黑洞点击相对论极向喷流与背景粒子调优**：
+  - [disk.ts](src/scripts/hz/disk.ts) 将 `u_pulse` 由同心扩张波纹重构为黑洞南北极沿磁轴爆发的准直相对论喷流（抛物磁喷嘴 + 切伦科夫蓝白核芯 + 等离橙外鞘 + 极区磁重联闪光）；[motion.ts](src/scripts/hz/motion.ts) 在 `[data-hero]` 内屏蔽 DOM 点击扩散特效，非首屏区域则由同心圆波改为精简的 34px 十字星芒闪光（[motion.css](src/styles/hz/motion.css)）；
+  - [motion.ts](src/scripts/hz/motion.ts) 提升 `.hz-cosmos-canvas` 粒子数量至 86 颗并加快自由漂移速度；[tokens.css](src/styles/hz/tokens.css) 与 [motion.css](src/styles/hz/motion.css) 调低背景鼠标光晕范围与透明度（`220px`，降噪至低干扰体积晕光）。
+- **克制协调的局部圆角化**：
+  - 保留顶栏 HUD、四角取景框线、观测账簿分割线及课表网格内部矩阵的锐利几何骨架，将交互控件与独立卡面/容器协调圆角化：[base.css](src/styles/hz/base.css)（`.hz-btn` `10px`、`.hz-mini-btn` `8px`、`.hz-seg` `10px`、`.hz-ja-pill` `6px`）、[motion.css](src/styles/hz/motion.css)（`.hz-seg-glider` `7px`）、[home.css](src/styles/hz/home.css)（`.hz-hero__jp` / `.hz-hplate` / `.hz-dossier-teaser`）、[log.css](src/styles/hz/log.css)（`.hz-spec` / `.hz-search` / `.hz-tags-rail button` 胶囊）、[gallery.css](src/styles/hz/gallery.css)（`.hz-gal-tabs` / `.hz-gal-filter` / `.hz-field-stage` / `.hz-fplate` / `.hz-iplate` / `.hz-viewer`）、[about.css](src/styles/hz/about.css)、[entry.css](src/styles/hz/entry.css)、[prose.css](src/styles/hz/prose.css)、[schedule.css](src/styles/hz/schedule.css)（`.hz-sched-shell` 采用 `overflow: clip` 保全吸顶表头）、[exams.css](src/styles/hz/exams.css) 与 [legacy-bridge.css](src/styles/hz/legacy-bridge.css)。
+
 ### 2026-11-18 · 全站体积光场、相对论粒子与高动态交互光效升级
 
 - **全站光场与交互引擎**（[BaseLayout.astro](src/layouts/BaseLayout.astro)、[tokens.css](src/styles/hz/tokens.css)、[motion.css](src/styles/hz/motion.css)、[motion.ts](src/scripts/hz/motion.ts)）：

@@ -31,8 +31,8 @@
   --p-sp-4: 16px;
   --p-sp-5: 24px;
 
-  --r-card: 0px;
-  --r-pill: 0px;
+  --r-card: 14px;
+  --r-pill: 9px;
   --shadow-card: none;
   --shadow-elevated: none;
   --p-dur-fast: var(--d-1);
@@ -48,13 +48,4 @@ body.page-pricing .hz-main {
 
 body.page-quota .hz-foot {
   display: none;
-}
-
-/* 对齐 HORIZON 锐利直角与等宽读数细节（保留光效阴影） */
-body.page-quota .aq-card,
-body.page-quota .aq-btn,
-body.page-quota .aq-notice,
-body.page-pricing .pr-sort,
-body.page-pricing .pr-dir {
-  border-radius: 0 !important;
 }

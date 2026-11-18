@@ -28,12 +28,12 @@
   --hz-glow: 0 0 28px rgb(255 90 26 / 0.58);
   --hz-plasma-bloom: 0 0 38px rgb(255 90 26 / 0.56), 0 0 90px rgb(255 179 107 / 0.22);
   --hz-blue-glow: 0 0 28px rgb(143 179 255 / 0.42);
-  --hz-spot-core: rgb(255 241 214 / 0.16);
-  --hz-spot-mid: rgb(255 90 26 / 0.16);
-  --hz-spot-edge: rgb(143 179 255 / 0.08);
-  --hz-border-beam-a: rgb(255 241 214 / 0.92);
-  --hz-border-beam-b: rgb(255 90 26 / 0.72);
-  --hz-border-beam-c: rgb(143 179 255 / 0.38);
+  --hz-spot-core: rgb(255 241 214 / 0.085);
+  --hz-spot-mid: rgb(255 90 26 / 0.09);
+  --hz-spot-edge: rgb(143 179 255 / 0.045);
+  --hz-border-beam-a: rgb(255 241 214 / 0.78);
+  --hz-border-beam-b: rgb(255 90 26 / 0.56);
+  --hz-border-beam-c: rgb(143 179 255 / 0.28);
   /* HUD 用 difference 混合，颜色在两套主题下都必须是亮色 */
   --hz-hud-ink: #f1ece2;
 
@@ -108,12 +108,12 @@
   --hz-glow: 0 0 18px rgb(228 67 10 / 0.34);
   --hz-plasma-bloom: 0 14px 36px -10px rgb(228 67 10 / 0.32), 0 0 24px rgb(47 91 211 / 0.16);
   --hz-blue-glow: 0 10px 26px -8px rgb(47 91 211 / 0.28);
-  --hz-spot-core: rgb(255 255 255 / 0.52);
-  --hz-spot-mid: rgb(228 67 10 / 0.11);
-  --hz-spot-edge: rgb(47 91 211 / 0.08);
-  --hz-border-beam-a: rgb(228 67 10 / 0.92);
-  --hz-border-beam-b: rgb(255 122 67 / 0.7);
-  --hz-border-beam-c: rgb(47 91 211 / 0.48);
+  --hz-spot-core: rgb(255 255 255 / 0.36);
+  --hz-spot-mid: rgb(228 67 10 / 0.068);
+  --hz-spot-edge: rgb(47 91 211 / 0.045);
+  --hz-border-beam-a: rgb(228 67 10 / 0.78);
+  --hz-border-beam-b: rgb(255 122 67 / 0.56);
+  --hz-border-beam-c: rgb(47 91 211 / 0.36);
 }
 
 @media (max-width: 900px) {

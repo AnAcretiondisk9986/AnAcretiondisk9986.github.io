@@ -434,25 +434,47 @@ void main() {
     vec3(1.00, 0.24, 0.04) * coronaGlow * 1.22
   ) * ringDoppler * ringBoost;
 
-  // 极区同步辐射等离子日冕与相对论极向微流（垂直于吸积盘旋转轴）
+  // 极区同步辐射等离子日冕 + 点击触发的南北极相对论高能喷流射线（Blazar / Quasar Bipolar Jets）
   vec2 pAxis = rot2(p, roll);
-  float poleDist = length(pAxis);
-  float axisMask = exp(-abs(pAxis.x) * 4.6) * smoothstep(0.32, 0.72, abs(pAxis.y)) * smoothstep(1.95, 0.65, poleDist);
-  if (axisMask > 0.005) {
-    float jetNoise = vnoise3(vec3(pAxis * vec2(8.0, 2.4), mod(u_time * 1.35, 256.0) - abs(pAxis.y) * 2.2));
-    float jetStreak = pow(clamp(jetNoise, 0.0, 1.0), 2.1) * axisMask;
-    vec3 jetCol = mix(vec3(0.32, 0.64, 1.00), vec3(1.00, 0.66, 0.30), smoothstep(0.55, 1.25, abs(pAxis.y)));
-    col += trans * jetCol * jetStreak * (0.58 + 0.45 * u_flare + 0.55 * u_pulse);
+  float absY = abs(pAxis.y);
+  float absX = abs(pAxis.x);
+  // 抛物线磁喷嘴准直包络：从南北极事件视界附近极窄束流向外柔和扩散
+  float nozzleW = 0.036 + 0.068 * pow(max(absY - 0.25, 0.0), 0.92);
+  float idleCore = exp(-pow(absX / (nozzleW * 1.35), 2.0)) * smoothstep(0.30, 0.72, absY) * smoothstep(1.95, 0.65, length(pAxis));
+  if (idleCore > 0.004) {
+    float jetNoise = vnoise3(vec3(pAxis * vec2(10.0, 2.2), mod(u_time * 1.6, 256.0) - absY * 2.4));
+    float jetStreak = pow(clamp(jetNoise, 0.0, 1.0), 2.0) * idleCore;
+    vec3 jetCol = mix(vec3(0.32, 0.66, 1.00), vec3(1.00, 0.68, 0.34), smoothstep(0.55, 1.35, absY));
+    col += trans * jetCol * jetStreak * (0.48 + 0.42 * u_flare);
   }
 
-  // 点击交互 / 降临相对论引力波冲击环
+  // 点击黑洞时从南北极沿磁轴猛烈喷射相对论高能射线束（无廉价同心圆波）
   if (u_pulse > 0.002) {
-    float wavePhase = 1.0 - u_pulse;
-    float waveR = mix(0.24, 2.45, wavePhase);
-    float distCenter = length(p);
-    float ringWave = exp(-pow((distCenter - waveR) * 14.0, 2.0)) * u_pulse;
-    float innerEcho = exp(-pow((distCenter - waveR * 0.72) * 18.0, 2.0)) * u_pulse * 0.55;
-    col += vec3(1.00, 0.78, 0.38) * ringWave * 1.15 + vec3(0.45, 0.74, 1.00) * innerEcho * 0.85;
+    float progress = 1.0 - u_pulse;
+    float envFade = pow(u_pulse, 0.72) * smoothstep(0.0, 0.08, progress);
+    // 主喷流前方高速激波锋面，从视界两极沿南北极磁轴冲出至画面外缘
+    float frontY = mix(0.28, 3.10, pow(progress, 0.78));
+    float tailLen = mix(0.35, 1.45, progress);
+    float beamTravel = smoothstep(0.24, 0.48, absY) * smoothstep(frontY + 0.28, frontY - 0.12, absY);
+    float beamTrail = exp(-max(0.0, frontY - absY) / max(tailLen, 0.1));
+
+    // 紧束准直内核 + 外围激波羽鞘 + 高速等离子节结纹理
+    float jetNozzle = 0.022 + 0.052 * pow(max(absY - 0.24, 0.0), 0.85);
+    float beamCore = exp(-pow(absX / (jetNozzle * 0.55), 2.0));
+    float beamSheath = exp(-pow(absX / (jetNozzle * 2.15), 2.0));
+    float beamRays = vnoise3(vec3(pAxis.x / max(jetNozzle, 0.02) * 1.4, absY * 5.2 - progress * 9.5, mod(u_time * 1.8, 256.0)));
+    float filament = 0.45 + 0.95 * pow(clamp(beamRays, 0.0, 1.0), 1.6);
+
+    float jetIntensity = beamTravel * beamTrail * envFade * filament;
+    vec3 coreCol = vec3(0.86, 0.94, 1.00) * beamCore * 2.35;
+    vec3 plasmaCol = mix(vec3(0.32, 0.66, 1.00), vec3(1.00, 0.52, 0.14), smoothstep(0.45, 2.0, absY)) * beamSheath * 1.15;
+    col += (coreCol + plasmaCol) * jetIntensity;
+
+    // 南北极出口短暂磁重联耀斑
+    float northPole = length(pAxis - vec2(0.0, 0.36));
+    float southPole = length(pAxis + vec2(0.0, 0.36));
+    float poleFlash = (exp(-northPole * 7.5) + exp(-southPole * 7.5)) * pow(u_pulse, 1.35);
+    col += vec3(0.75, 0.88, 1.00) * poleFlash * 0.95;
   }
 
   // 下潜越过视界时的径向光学速度流线
@@ -649,7 +671,7 @@ export function initBlackHole() {
   let scrollDepth = 0;
   let plateVal = document.documentElement.dataset.theme === 'light' ? 1 : 0;
   let plateTarget = plateVal;
-  let pulseVal = reduceMotion ? 0 : 0.72;
+  let pulseVal = 0;
   let flareVal = 0;
   let flareTarget = 0;
 
@@ -722,7 +744,7 @@ export function initBlackHole() {
     plateVal += (plateTarget - plateVal) * 0.14;
     flareVal += (flareTarget - flareVal) * 0.08;
     if (pulseVal > 0.001) {
-      pulseVal = Math.max(0, pulseVal - Math.min(0.05, dt * 0.001) * 0.72);
+      pulseVal = Math.max(0, pulseVal - Math.min(0.05, dt * 0.001) * 0.54);
     }
     if (hasTex && texFade < 1) texFade = Math.min(1, texFade + 0.04);
 

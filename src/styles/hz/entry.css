@@ -77,6 +77,7 @@
   min-height: 30px;
   padding: 0 10px;
   border: 1px solid var(--hz-line-2);
+  border-radius: 7px;
   background: var(--hz-bg-2);
   color: var(--hz-ink-2);
   transition: border-color var(--d-1), color var(--d-1);
@@ -175,6 +176,7 @@
   min-height: 28px;
   padding: 0 8px;
   border: 1px solid var(--hz-line-2);
+  border-radius: 7px;
   background: var(--hz-bg-2);
   color: var(--hz-ink-2);
   transition: border-color var(--d-1), color var(--d-1);
@@ -200,6 +202,7 @@
   min-height: 34px;
   padding: 0 11px;
   border: 1px solid var(--hz-line-2);
+  border-radius: 8px;
   background: color-mix(in oklab, var(--hz-bg-2) 88%, transparent);
   backdrop-filter: blur(12px);
   color: var(--hz-ink-2);
@@ -240,6 +243,7 @@
   min-height: 40px;
   padding: 0 var(--s-3);
   border: 1px solid var(--hz-line-2);
+  border-radius: 9px;
   background: var(--hz-bg-2);
   font-size: var(--t-small);
   color: var(--hz-ink);
@@ -270,6 +274,7 @@
   gap: 8px;
   padding: var(--s-3);
   border: 1px solid var(--hz-hot);
+  border-radius: 12px;
   background: var(--hz-bg-2);
   box-shadow: 0 10px 26px -14px rgb(255 90 26 / 0.4);
   animation: hz-view-in 320ms var(--e-out) both;
@@ -282,6 +287,7 @@
   display: block;
   padding: 6px 8px;
   border: 1px solid var(--hz-line);
+  border-radius: 7px;
   background: var(--hz-void);
   color: var(--hz-hot-ink);
   font-size: 0.72rem;
@@ -296,6 +302,7 @@
 .hz-shortlink__copy {
   min-height: 30px;
   padding: 0 10px;
+  border-radius: 7px;
   background: var(--hz-hot);
   color: #08080b;
 }
@@ -389,6 +396,7 @@
   gap: var(--s-4);
   padding: var(--s-7);
   border: 1px solid var(--hz-line-2);
+  border-radius: 16px;
   background:
     radial-gradient(circle at 12% 16%, rgb(255 90 26 / 0.08), transparent 48%),
     var(--hz-bg-2);
@@ -475,6 +483,7 @@
   min-height: 48px;
   padding: 0 var(--s-4);
   border: 1px solid var(--hz-line-2);
+  border-radius: 9px;
   background: var(--hz-void);
   color: var(--hz-ink);
   font-family: var(--f-mono);
@@ -522,6 +531,8 @@
   gap: 8px;
   padding: var(--s-4);
   border: 1px solid var(--hz-line);
+  border-radius: 14px;
+  overflow: hidden;
   background: var(--hz-bg-2);
   transition:
     border-color var(--d-2) var(--e-out),

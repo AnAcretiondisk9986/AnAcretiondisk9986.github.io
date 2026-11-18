@@ -125,6 +125,7 @@
   gap: 8px;
   padding: 6px 12px;
   border: 1px solid var(--hz-line-2);
+  border-radius: 999px;
   background: var(--hz-bg-2);
   color: var(--hz-ink);
   font-variant-numeric: tabular-nums;
@@ -138,6 +139,7 @@
 .hz-exam-pulse {
   width: 6px;
   height: 6px;
+  border-radius: 50%;
   background: var(--hz-hot);
   flex: none;
 }
@@ -155,6 +157,8 @@
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
   border: 1px solid var(--hz-line-2);
+  border-radius: 14px;
+  overflow: hidden;
   background: var(--hz-bg-2);
   margin-bottom: var(--s-4);
 }
@@ -204,6 +208,7 @@
 .hz-exam-cd__room {
   padding: 1px 7px;
   border: 1px solid color-mix(in oklab, var(--exam-c, var(--hz-hot)) 45%, var(--hz-line-2));
+  border-radius: 6px;
   color: var(--hz-ink);
   font-family: var(--f-mono);
   font-weight: 700;
@@ -213,6 +218,8 @@
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   border: 1px solid var(--hz-line-2);
+  border-radius: 12px;
+  overflow: hidden;
   background: var(--hz-bg);
   box-shadow: inset 0 0 28px -16px rgb(255 90 26 / 0.24);
 }
@@ -351,13 +358,14 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* —— 状态徽标（直角方框） —— */
+/* —— 状态徽标 —— */
 .hz-exam-badge {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 2px 8px;
+  padding: 2px 9px;
   border: 1px solid var(--hz-line-2);
+  border-radius: 999px;
   background: var(--hz-bg);
   font-family: var(--f-mono), var(--f-sans);
   font-size: 0.65rem;
@@ -394,6 +402,7 @@
   gap: 5px;
   padding: 2px 7px;
   border: 1px solid color-mix(in oklab, var(--hz-hot-2) 60%, var(--hz-line-2));
+  border-radius: 6px;
   background: color-mix(in oklab, var(--hz-hot-2) 12%, var(--hz-bg));
   color: var(--hz-hot-2);
   font-family: var(--f-mono), var(--f-sans);
@@ -408,6 +417,7 @@
   content: '';
   width: 5px;
   height: 5px;
+  border-radius: 50%;
   background: currentColor;
   flex: none;
 }
@@ -433,6 +443,7 @@
 }
 .hz-exam-panel {
   border: 1px solid var(--hz-line-2);
+  border-radius: 14px;
   background: var(--hz-bg-2);
   padding: var(--s-4);
   min-width: 0;
@@ -468,6 +479,7 @@
   min-height: 48px;
   padding: 5px 2px;
   border: 1px solid var(--hz-line);
+  border-radius: 8px;
   background: var(--hz-bg);
   color: var(--hz-ink-3);
   font-variant-numeric: tabular-nums;
@@ -640,6 +652,7 @@
   min-height: 44px;
   padding: 0 var(--s-3);
   border: 1px solid var(--hz-line-2);
+  border-radius: 9px;
   background: var(--hz-bg-2);
   color: var(--hz-ink);
   font-family: var(--f-mono), var(--f-sans);
@@ -776,6 +789,8 @@
   padding: var(--s-4);
   border: 1px solid var(--hz-line-2);
   border-left: 3px solid var(--exam-c, var(--hz-hot));
+  border-radius: 12px;
+  overflow: hidden;
   background: var(--hz-bg-2);
   color: var(--hz-ink);
   text-align: left;
@@ -822,6 +837,7 @@
 .hz-exam-card__college i {
   width: 6px;
   height: 6px;
+  border-radius: 50%;
   background: currentColor;
   flex: none;
 }
@@ -854,6 +870,7 @@
 .hz-exam-card__room {
   padding: 1px 7px;
   border: 1px solid color-mix(in oklab, var(--exam-c, var(--hz-hot)) 45%, var(--hz-line-2));
+  border-radius: 6px;
   background: color-mix(in oklab, var(--exam-c, var(--hz-hot)) 10%, var(--hz-bg));
   color: var(--hz-ink);
   font-family: var(--f-mono);
@@ -981,6 +998,7 @@
   z-index: 90;
   padding: 10px 18px;
   border: 1px solid var(--hz-hot);
+  border-radius: 999px;
   background: var(--hz-bg-2);
   color: var(--hz-ink);
   font-family: var(--f-mono), var(--f-sans);

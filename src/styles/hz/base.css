@@ -324,8 +324,9 @@ html [lang='ja'] {
 .hz-ja-pill {
   display: inline-block;
   margin-left: 0.45em;
-  padding: 1px 7px;
+  padding: 1px 8px;
   border: 1px solid rgb(255 90 26 / 0.45);
+  border-radius: 6px;
   color: var(--hz-hot-ink);
   font-size: 0.78rem;
   vertical-align: middle;
@@ -364,6 +365,7 @@ html [lang='ja'] {
   min-height: 48px;
   padding: 0 1.4em;
   border: 1px solid var(--hz-line-2);
+  border-radius: 10px;
   font-family: var(--f-mono);
   font-size: var(--t-small);
   letter-spacing: 0.08em;
@@ -488,6 +490,7 @@ html [lang='ja'] {
   min-height: 44px;
   padding: 0 14px;
   border: 1px solid var(--hz-line-2);
+  border-radius: 8px;
   background: var(--hz-bg-2);
   font-family: var(--f-mono);
   font-size: var(--t-micro);
@@ -547,6 +550,8 @@ html [lang='ja'] {
   position: relative;
   display: inline-flex;
   border: 1px solid var(--hz-line-2);
+  border-radius: 10px;
+  overflow: hidden;
   background: var(--hz-bg-2);
   isolation: isolate;
 }
@@ -642,7 +647,10 @@ html [lang='ja'] {
 .hz-sect__rule::after {
   content: '';
   position: absolute;
-  inset: -1px 0;
+  top: -1px;
+  bottom: -1px;
+  left: 0;
+  width: 38%;
   background: linear-gradient(
     90deg,
     transparent 0%,
@@ -651,23 +659,20 @@ html [lang='ja'] {
     var(--hz-blue) 70%,
     transparent 100%
   );
-  background-size: 38% 100%;
-  background-repeat: no-repeat;
-  animation: hz-rule-beam 6.4s var(--e-io) infinite;
+  animation: hz-rule-beam 6.4s linear infinite;
 }
 @keyframes hz-rule-beam {
   0% {
-    background-position: -45% 0;
+    transform: translate3d(-115%, 0, 0);
     opacity: 0;
   }
-  15% {
+  15%,
+  75% {
     opacity: 1;
   }
-  65% {
-    opacity: 1;
-  }
-  85%, 100% {
-    background-position: 145% 0;
+  92%,
+  100% {
+    transform: translate3d(380%, 0, 0);
     opacity: 0;
   }
 }

@@ -428,8 +428,17 @@
     height: 100%;
     border-radius: var(--r-pill);
     transform-origin: left center;
-    background: linear-gradient(90deg, var(--c-accent), var(--c-metal), #fff1d6 70%, var(--c-accent));
-    background-size: 220% 100%;
+    background: linear-gradient(
+      90deg,
+      var(--c-accent) 0%,
+      var(--c-accent) 34%,
+      var(--c-metal) 46%,
+      #fff1d6 50%,
+      var(--c-metal) 54%,
+      var(--c-accent) 66%,
+      var(--c-accent) 100%
+    );
+    background-size: 300% 100%;
     box-shadow: 0 0 12px -1px var(--c-accent);
     animation: aq-bar-flow 4.5s linear infinite;
     transition: transform 0.42s ease;
@@ -439,12 +448,19 @@
       background-position: 100% 0;
     }
     to {
-      background-position: -120% 0;
+      background-position: 0% 0;
     }
   }
   .aq-window__fill[data-level='high'] {
-    background: linear-gradient(90deg, var(--c-accent-2), #fff1d6 70%, var(--c-accent-2));
-    background-size: 220% 100%;
+    background: linear-gradient(
+      90deg,
+      var(--c-accent-2) 0%,
+      var(--c-accent-2) 34%,
+      #fff1d6 50%,
+      var(--c-accent-2) 66%,
+      var(--c-accent-2) 100%
+    );
+    background-size: 300% 100%;
     box-shadow: 0 0 12px -1px var(--c-accent-2);
   }
   .aq-window__meta {

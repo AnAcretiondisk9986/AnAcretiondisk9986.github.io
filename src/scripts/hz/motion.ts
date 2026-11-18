@@ -163,14 +163,14 @@ function initCosmosField() {
     phase: number;
   }
 
-  const COUNT = 76;
+  const COUNT = 86;
   const stars: Star[] = Array.from({ length: COUNT }, (_, i) => ({
     x: Math.random() * w,
     y: Math.random() * h,
-    z: 0.25 + Math.random() * 0.85,
-    vx: (Math.random() - 0.5) * 0.16,
-    vy: -0.06 - Math.random() * 0.22,
-    r: 0.7 + Math.random() * 1.45,
+    z: 0.35 + Math.random() * 0.85,
+    vx: (Math.random() - 0.5) * 44 - 14,
+    vy: -28 - Math.random() * 64,
+    r: 0.8 + Math.random() * 1.45,
     tone: (i % 7 === 0 ? 1 : i % 5 === 0 ? 2 : 0) as 0 | 1 | 2,
     phase: Math.random() * Math.PI * 2,
   }));
@@ -211,11 +211,11 @@ function initCosmosField() {
 
   const syncVisibilityFade = () => {
     if (!hero || hero.dataset.diskMode === 'fallback') {
-      canvas.style.opacity = '0.95';
+      canvas.style.opacity = '0.96';
       return 1;
     }
     const hh = Math.max(1, hero.offsetHeight);
-    const ratio = Math.min(1, Math.max(0, (window.scrollY - hh * 0.22) / (hh * 0.52)));
+    const ratio = 0.28 + 0.68 * Math.min(1, Math.max(0, window.scrollY / (hh * 0.65)));
     canvas.style.opacity = ratio.toFixed(3);
     return ratio;
   };
@@ -268,8 +268,8 @@ function initCosmosField() {
     const warpLen = Math.min(34, Math.abs(scrollVel) * 0.024 + pulseEnergy * 9);
 
     for (const s of stars) {
-      s.x += (s.vx * 34 + (s.z - 0.5) * 4) * dt;
-      s.y += (s.vy * 42 - scrollVel * 0.045 * s.z) * dt;
+      s.x += s.vx * s.z * dt;
+      s.y += (s.vy * s.z - scrollVel * 0.055 * s.z) * dt;
 
       if (s.x < -12) s.x += w + 24;
       else if (s.x > w + 12) s.x -= w + 24;
@@ -368,6 +368,8 @@ function initCursorEffects() {
     'pointerdown',
     (e) => {
       if (e.button > 0) return;
+      // 点击黑洞首屏时由 WebGL 着色器从南北极喷流高能射线，不再叠加廉价圆环波
+      if ((e.target as Element | null)?.closest('[data-hero]')) return;
       if (shockLayer.childElementCount >= 6) {
         shockLayer.firstElementChild?.remove();
       }
@@ -378,7 +380,7 @@ function initCursorEffects() {
       shockLayer.append(wave);
       const clean = () => wave.remove();
       wave.addEventListener('animationend', clean, { once: true });
-      window.setTimeout(clean, 660);
+      window.setTimeout(clean, 520);
     },
     { passive: true },
   );

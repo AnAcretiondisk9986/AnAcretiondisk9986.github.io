@@ -44,6 +44,8 @@
   position: relative;
   display: inline-flex;
   border: 1px solid var(--hz-line-2);
+  border-radius: 10px;
+  overflow: hidden;
   background: var(--hz-bg-2);
   isolation: isolate;
 }
@@ -98,6 +100,7 @@
   width: 210px;
   padding: 0 var(--s-3);
   border: 1px solid var(--hz-line-2);
+  border-radius: 10px;
   background: var(--hz-bg-2);
   font-size: var(--t-small);
 }
@@ -143,6 +146,7 @@
   position: relative;
   height: clamp(500px, 70svh, 780px);
   border: 1px solid var(--hz-line-2);
+  border-radius: 14px;
   background-color: var(--hz-void);
   background-image:
     linear-gradient(var(--hz-line) 1px, transparent 1px),
@@ -255,6 +259,8 @@
   max-width: min(74vw, 900px);
   display: block;
   border: 1px solid var(--hz-line-2);
+  border-radius: 10px;
+  overflow: hidden;
   background: var(--hz-bg-2);
   text-align: left;
   will-change: transform, opacity;
@@ -301,14 +307,14 @@
 .hz-index-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  border-top: 1px solid var(--hz-line);
-  border-left: 1px solid var(--hz-line);
+  gap: 12px;
 }
 .hz-iplate {
   position: relative;
   display: block;
-  border-right: 1px solid var(--hz-line);
-  border-bottom: 1px solid var(--hz-line);
+  border: 1px solid var(--hz-line);
+  border-radius: 12px;
+  overflow: hidden;
   background: var(--hz-bg-2);
   text-align: left;
   transition: background-color var(--d-2) var(--e-out), box-shadow var(--d-2) var(--e-out);
@@ -381,6 +387,8 @@ dialog.hz-viewer {
   width: min(94vw, 1180px);
   max-height: 92svh;
   border: 1px solid color-mix(in oklab, var(--hz-hot) 45%, var(--hz-line-2));
+  border-radius: 14px;
+  overflow: hidden;
   background: var(--hz-bg);
   color: var(--hz-ink);
   box-shadow:
