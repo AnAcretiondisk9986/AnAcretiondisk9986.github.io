@@ -299,6 +299,61 @@ export async function uploadImageToRepo(file: File): Promise<{ url: string; prev
   };
 }
 
+export interface DailyMomentRecord {
+  id: string;
+  createdAt: string;
+  text: string;
+  images: Array<{ src: string; alt?: string; original?: string }>;
+  tags?: string[];
+  pinned?: boolean;
+  draft?: boolean;
+  location?: string;
+  device?: string;
+  mood?: string;
+  threadId?: string;
+  threadLabel?: string;
+  linkCard?: { title: string; url: string; label?: string; description?: string };
+}
+
+export async function readDailyJson(): Promise<{ items: DailyMomentRecord[]; sha: string }> {
+  const res = await ghRequest(`/repos/${BLOG_OWNER}/${BLOG_REPO}/contents/src/data/daily.json`);
+  const data = await parseJsonOrThrow(res);
+  const rawText = base64ToUtf8(data.content || '[]');
+  let parsed: unknown = [];
+  try {
+    parsed = JSON.parse(rawText);
+  } catch {
+    parsed = [];
+  }
+  return {
+    items: Array.isArray(parsed) ? parsed : [],
+    sha: data.sha || '',
+  };
+}
+
+export async function saveDailyJson({
+  items,
+  sha,
+  message,
+}: {
+  items: DailyMomentRecord[];
+  sha?: string;
+  message: string;
+}): Promise<{ sha: string }> {
+  const jsonText = `${JSON.stringify(items, null, 2)}\n`;
+  const body: Record<string, string> = {
+    message,
+    content: utf8ToBase64(jsonText),
+  };
+  if (sha) body.sha = sha;
+  const res = await ghRequest(`/repos/${BLOG_OWNER}/${BLOG_REPO}/contents/src/data/daily.json`, {
+    method: 'PUT',
+    body: JSON.stringify(body),
+  });
+  const data = await parseJsonOrThrow(res);
+  return { sha: data.content?.sha || '' };
+}
+
 export async function getLatestDeployRun(): Promise<{
   status: string;
   conclusion: string | null;

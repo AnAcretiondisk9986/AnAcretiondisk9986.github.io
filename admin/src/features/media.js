@@ -296,6 +296,7 @@ const POSTS_API = '/api/posts';
       if (owner === 'about:avatar' || owner.startsWith('about:')) return '关于页：头像';
       if (owner === 'frontend:hero' || owner.startsWith('frontend:')) return '外观定制：首页首屏背景图';
       if (owner.startsWith('gallery:')) return `画廊：${owner.slice('gallery:'.length)}`;
+      if (owner.startsWith('daily:')) return `日常：${owner.slice('daily:'.length)}`;
       if (owner.startsWith('post:')) {
         const slug = owner.slice('post:'.length);
         const p = ctx.getPosts().find((x) => x.slug === slug);

@@ -307,8 +307,8 @@ const xUrl =
   </div>
 </BaseLayout>
 
-{/* ── 1~9 图高清灯箱查看器 ── */}
-<dialog class="hz-viewer hz-dv" id="hz-daily-viewer" aria-label="日常影像查看器">
+{/* ── 1~9 图全屏高清查看大图灯箱 ── */}
+<dialog class="hz-viewer hz-dv" id="hz-daily-viewer" aria-label="查看大图">
   <div class="hz-viewer__shell">
     <div class="hz-viewer__top">
       <div class="hz-viewer__nav">
@@ -316,11 +316,16 @@ const xUrl =
         <span class="hz-mono hz-dv__counter" data-dv-counter>01 / 01</span>
         <button type="button" class="hz-mini-btn" data-dv-next aria-label="下一张">NEXT →</button>
       </div>
-      <button type="button" class="hz-mini-btn" data-dv-close aria-label="关闭灯箱">CLOSE ✕</button>
+      <div class="hz-dv__top-right">
+        <span class="hz-mono hz-dv__tip">点击空白处或按 ESC 关闭</span>
+        <button type="button" class="hz-mini-btn" data-dv-close aria-label="关闭大图">关闭 ✕</button>
+      </div>
     </div>
 
     <div class="hz-viewer__media" data-dv-media>
+      <button type="button" class="hz-dv__side hz-dv__side--prev" data-dv-side-prev aria-label="上一张" hidden>‹</button>
       <img data-dv-img alt="" referrerpolicy="no-referrer" draggable="false" />
+      <button type="button" class="hz-dv__side hz-dv__side--next" data-dv-side-next aria-label="下一张" hidden>›</button>
     </div>
 
     <div class="hz-dv__thumbs" data-dv-thumbs hidden aria-label="本条图集缩略图"></div>

@@ -14,6 +14,7 @@ import { openModal, closeModal, isModalOpen } from '../ui/modal.js';
 let ctx = {
   getMode: () => 'posts',
   reloadPosts: () => {},
+  reloadDaily: () => {},
   reloadGallery: () => {},
   fetchHealth: async () => null,
 };
@@ -329,6 +330,7 @@ let ctx = {
         await refreshSyncStatus({ silent: true });
         if (data.status === 'pulled') {
           if (ctx.getMode() === 'gallery') ctx.reloadGallery();
+          else if (ctx.getMode() === 'daily') ctx.reloadDaily();
           else if (ctx.getMode() === 'posts') ctx.reloadPosts();
         }
       } catch (e) {

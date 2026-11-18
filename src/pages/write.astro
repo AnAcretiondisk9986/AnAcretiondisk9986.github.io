@@ -23,7 +23,11 @@
     <div class="mw-shell" id="mwShell">
       <!-- 顶部精简栏 -->
       <header class="mw-header">
-        <button type="button" class="mw-icon-btn" id="btnMwPosts" aria-label="文章列表">☰</button>
+        <button type="button" class="mw-icon-btn" id="btnMwPosts" aria-label="列表与历史">☰</button>
+        <div class="mw-mode-seg" id="mwModeTabs" role="tablist" aria-label="创作模式">
+          <button type="button" class="mw-mode-btn active" data-mw-mode="post" role="tab" aria-selected="true">文章</button>
+          <button type="button" class="mw-mode-btn" data-mw-mode="daily" role="tab" aria-selected="false">日常</button>
+        </div>
         <div class="mw-header-info">
           <span class="mw-brand">WRITE</span>
           <span class="mw-pill" id="mwDraftStatus">新文章</span>
@@ -37,8 +41,8 @@
 
       <div class="mw-deploy-banner" id="mwDeployBanner" hidden></div>
 
-      <!-- 主写作区（标题 + 元信息胶囊 + 全屏编辑器） -->
-      <main class="mw-main">
+      <!-- 主写作区 A：长文章编辑器 -->
+      <main class="mw-main" id="mwPostMain">
         <div class="mw-title-wrap">
           <input id="mwTitle" class="mw-title-input" placeholder="输入文章标题…" autocomplete="off" />
           <div class="mw-meta-row">
@@ -50,6 +54,74 @@
         <div class="mw-editor-area">
           <div id="mwProseHost" class="mw-prose-host"></div>
           <textarea id="mwSourceInput" class="mw-source-input" spellcheck="false" hidden placeholder="Markdown / HTML 源码…"></textarea>
+        </div>
+      </main>
+
+      <!-- 主写作区 B：03 日常（微信朋友圈样式） -->
+      <main class="mw-daily-main" id="mwDailyMain" hidden>
+        <div class="mw-daily-subbar">
+          <span class="mw-daily-subbar__label" id="mwDailyModeLabel">发布新日常 · 微信朋友圈模式</span>
+          <button type="button" class="mw-meta-chip" id="btnMwDailyReset" hidden>新建日常</button>
+        </div>
+
+        <div class="mw-daily-compose">
+          <textarea id="mwDailyText" class="mw-daily-textarea" rows="4" placeholder="这一刻的想法… 支持输入 #话题标签"></textarea>
+          <div class="mom-tag-chips" id="mwDailyTagChips" aria-label="快捷话题标签"></div>
+
+          <div class="mw-daily-photo-head">
+            <button type="button" class="mw-btn mw-btn--photo-pick" id="btnMwDailyPick">＋ 多选照片（最多9张）</button>
+            <span class="mw-daily-photo-tip">按住照片可拖动排序</span>
+          </div>
+          <div class="mom-grid mom-grid--mobile" id="mwDailyGrid"></div>
+          <input type="file" id="mwDailyPhotoInput" accept="image/*" multiple hidden />
+        </div>
+
+        <div class="mom-rows mom-rows--mobile">
+          <label class="mom-row">
+            <span class="mom-row__icon">📍</span>
+            <span class="mom-row__label">所在位置</span>
+            <input id="mwDailyLocation" type="text" placeholder="如：温州 · 校园（可选）" />
+          </label>
+          <label class="mom-row">
+            <span class="mom-row__icon">#</span>
+            <span class="mom-row__label">话题标签</span>
+            <input id="mwDailyTags" type="text" placeholder="逗号分隔，可自动识别正文 #标签" />
+          </label>
+          <div class="mom-row mom-row--split">
+            <label class="mom-row__cell">
+              <span class="mom-row__icon">📷</span>
+              <span class="mom-row__label">设备</span>
+              <input id="mwDailyDevice" type="text" placeholder="iPhone / 相机" />
+            </label>
+            <label class="mom-row__cell">
+              <span class="mom-row__icon">💭</span>
+              <span class="mom-row__label">心情</span>
+              <input id="mwDailyMood" type="text" placeholder="清醒 / 深夜" />
+            </label>
+          </div>
+          <label class="mom-row">
+            <span class="mom-row__icon">🕒</span>
+            <span class="mom-row__label">时间</span>
+            <input id="mwDailyCreatedAt" type="datetime-local" />
+          </label>
+          <div class="mom-row mom-row--checks">
+            <label class="mw-check-row"><input type="checkbox" id="mwDailyPinned" /><span>置顶</span></label>
+            <label class="mw-check-row"><input type="checkbox" id="mwDailyDraft" /><span>存为草稿</span></label>
+          </div>
+          <details class="mom-extra-details" id="mwDailyExtraDetails">
+            <summary>🔗 串连线程 / 引用链接卡片（可选）</summary>
+            <div class="mw-form" style="margin-top:10px">
+              <label>串连 ID<input id="mwDailyThreadId" class="mw-input" placeholder="同一串连主题共用 ID" /></label>
+              <label>串连名称<input id="mwDailyThreadLabel" class="mw-input" placeholder="如：黑洞折腾日记" /></label>
+              <label>卡片角标<input id="mwDailyLinkLabel" class="mw-input" placeholder="文章 / 外链" /></label>
+              <label>卡片标题<input id="mwDailyLinkTitle" class="mw-input" placeholder="链接卡片标题" /></label>
+              <label>卡片链接<input id="mwDailyLinkUrl" class="mw-input" placeholder="/posts/xxx 或 https://..." /></label>
+              <label>卡片说明<input id="mwDailyLinkDesc" class="mw-input" placeholder="一句话简介" /></label>
+            </div>
+          </details>
+          <div class="mw-daily-danger-wrap">
+            <button type="button" class="mw-btn mw-btn--danger" id="btnMwDailyDelete" hidden>从 GitHub 删除此条日常</button>
+          </div>
         </div>
       </main>
 
@@ -75,11 +147,11 @@
 
     <div class="mw-toast" id="mwToast" role="status" aria-live="polite"></div>
 
-    <!-- 滑出抽屉 1：文章列表 -->
+    <!-- 滑出抽屉 1：文章 / 日常列表 -->
     <div class="mw-sheet-mask" id="mwPostsSheet" hidden>
       <div class="mw-sheet">
         <div class="mw-sheet-head">
-          <h3>仓库文章</h3>
+          <h3 id="mwSheetPostsTitle">仓库文章</h3>
           <div style="display:flex;gap:8px">
             <button type="button" class="mw-btn mw-btn--hot" id="btnMwNewPost">＋ 新建</button>
             <button type="button" class="mw-btn" data-close-sheet>关闭</button>
@@ -183,6 +255,26 @@
           <label>Worker 地址<input id="mwWorkerUrlInput" class="mw-input" placeholder="https://blog-mobile-write.xxx.workers.dev" /></label>
           <label>登录密码<input id="mwWorkerPassInput" type="password" class="mw-input" placeholder="输入设定的 WRITE_PASSWORD" /></label>
           <button type="button" class="mw-btn mw-btn--hot" id="btnMwLoginWorker">登录 Worker</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 滑出抽屉 5：日常配图大图预览与 ALT 编辑 -->
+    <div class="mw-sheet-mask" id="mwDailyImgSheet" hidden>
+      <div class="mw-sheet">
+        <div class="mw-sheet-head">
+          <h3 id="mwDailyImgTitle">配图详情</h3>
+          <button type="button" class="mw-btn" data-close-sheet>关闭</button>
+        </div>
+        <div class="mw-daily-img-stage">
+          <img id="mwDailyImgPreview" src="" alt="" />
+        </div>
+        <div class="mw-form">
+          <label>图片说明 / ALT（可选）<input id="mwDailyImgAlt" class="mw-input" placeholder="屏幕阅读器说明与图注（可选）" /></label>
+          <div class="mw-form-row">
+            <button type="button" class="mw-btn mw-btn--danger" id="btnMwDailyImgRemove">移除此图</button>
+            <button type="button" class="mw-btn mw-btn--hot" id="btnMwDailyImgDone">完成</button>
+          </div>
         </div>
       </div>
     </div>
@@ -356,6 +448,140 @@
         transition: opacity .18s, transform .18s; white-space: nowrap; max-width: 90vw; overflow: hidden; text-overflow: ellipsis;
       }
       .mw-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+      .mw-main[hidden], .mw-daily-main[hidden], .mw-accessory-bar[hidden] { display: none !important; }
+
+      .mw-mode-seg {
+        flex: 0 0 auto; display: inline-flex; padding: 2px; border-radius: 8px;
+        background: var(--bg); border: 1px solid var(--line); gap: 2px;
+      }
+      .mw-mode-btn {
+        height: 28px; padding: 0 9px; border: 0; border-radius: 6px;
+        background: transparent; color: var(--dim); font-size: 12px; font-weight: 600; cursor: pointer;
+      }
+      .mw-mode-btn.active { background: var(--hot); color: #0b0b0e; }
+
+      .mw-daily-main {
+        flex: 1 1 auto; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch;
+        padding: 10px 14px calc(24px + env(safe-area-inset-bottom));
+        display: flex; flex-direction: column; gap: 12px;
+      }
+      .mw-daily-subbar {
+        display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      }
+      .mw-daily-subbar__label { font-size: 12px; color: var(--dim); }
+      .mw-daily-compose {
+        display: flex; flex-direction: column; gap: 10px; padding: 12px;
+        background: var(--s1); border: 1px solid var(--line); border-radius: 14px;
+      }
+      .mw-daily-textarea {
+        width: 100%; min-height: 112px; padding: 4px 2px; border: 0; outline: 0; resize: vertical;
+        background: transparent; color: var(--ink); font-size: 16px; line-height: 1.65;
+        font-family: inherit;
+      }
+      .mw-daily-textarea::placeholder { color: #646a79; }
+      .mom-tag-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+      .mom-chip {
+        padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px;
+        background: var(--s2); color: var(--dim); font-size: 12px; cursor: pointer;
+      }
+      .mom-chip:active { border-color: var(--hot); color: var(--hot); }
+      .mw-daily-photo-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+      .mw-btn--photo-pick { height: 32px; padding: 0 11px; font-size: 12px; border-color: rgba(255,90,26,.55); color: var(--hot); }
+      .mw-daily-photo-tip { font-size: 11.5px; color: var(--dim); }
+
+      .mom-grid {
+        display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;
+        padding: 2px; border: 1px dashed transparent; border-radius: 10px;
+      }
+      .mom-grid.is-dragover { border-color: var(--hot); background: rgba(255,90,26,.08); }
+      .mom-tile {
+        position: relative; aspect-ratio: 1 / 1; border-radius: 10px; overflow: hidden;
+        border: 1px solid var(--line); background: var(--bg);
+        touch-action: none; user-select: none; cursor: grab;
+      }
+      .mom-tile img { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
+      .mom-tile.is-drag-source { opacity: 0.24; transform: scale(0.95); border-style: dashed; border-color: var(--hot); }
+      .mom-tile--ghost {
+        position: fixed; z-index: 95; pointer-events: none; margin: 0;
+        border: 2px solid var(--hot); border-radius: 10px;
+        box-shadow: 0 14px 36px rgba(0, 0, 0, 0.7); transform: scale(1.04); opacity: 0.94;
+      }
+      .mom-tile--ghost img { width: 100%; height: 100%; object-fit: cover; display: block; }
+      .mom-tile--add {
+        touch-action: auto; cursor: pointer; display: flex; flex-direction: column;
+        align-items: center; justify-content: center; gap: 3px;
+        border-style: dashed; border-color: var(--line); background: var(--bg); color: var(--dim);
+      }
+      .mom-add__plus { font-size: 24px; line-height: 1; }
+      .mom-add__count { font-size: 10.5px; }
+      .mom-tile__num {
+        position: absolute; left: 5px; top: 5px; min-width: 18px; height: 18px; padding: 0 5px;
+        border-radius: 999px; background: rgba(12,13,17,.78); color: var(--ink);
+        font-size: 10px; line-height: 18px; text-align: center; pointer-events: none;
+      }
+      .mom-tile__alt {
+        position: absolute; left: 5px; bottom: 5px; padding: 1px 5px; border-radius: 4px;
+        background: rgba(12,13,17,.78); color: var(--hot); font-size: 9px; pointer-events: none;
+      }
+      .mom-tile__del {
+        position: absolute; right: 5px; top: 5px; width: 22px; height: 22px; border: 0;
+        border-radius: 999px; background: rgba(12,13,17,.8); color: var(--ink);
+        font-size: 14px; line-height: 22px; padding: 0; cursor: pointer;
+      }
+      .mom-tile__prog {
+        position: absolute; left: 0; right: 0; bottom: 0; height: 4px;
+        background: rgba(0,0,0,.6); opacity: 0;
+      }
+      .mom-tile.is-uploading .mom-tile__prog { opacity: 1; }
+      .mom-tile__prog i { display: block; height: 100%; background: var(--hot); }
+      .mom-tile__state {
+        position: absolute; inset: 0; border: 0; background: rgba(12,13,17,.72);
+        color: var(--ink); font-size: 11px; padding: 4px; text-align: center; cursor: pointer;
+      }
+      .mom-tile.is-error .mom-tile__state { background: rgba(110,20,20,.85); color: #ffd4d4; }
+
+      .mom-rows--mobile {
+        background: var(--s1); border: 1px solid var(--line); border-radius: 14px; overflow: hidden;
+      }
+      .mom-row {
+        display: flex; align-items: center; gap: 8px; padding: 11px 12px;
+        border-bottom: 1px solid var(--line);
+      }
+      .mom-row:last-child { border-bottom: 0; }
+      .mom-row__icon { flex: 0 0 18px; text-align: center; font-size: 14px; color: var(--dim); }
+      .mom-row__label { flex: 0 0 60px; font-size: 13px; color: var(--dim); }
+      .mom-row input[type='text'], .mom-row input[type='datetime-local'], .mom-row input:not([type='checkbox']) {
+        flex: 1; min-width: 0; height: 34px; padding: 4px 9px; border: 1px solid var(--line);
+        border-radius: 8px; background: var(--bg); color: var(--ink); font-size: 13.5px;
+      }
+      .mom-row--split { flex-wrap: wrap; gap: 10px; }
+      .mom-row__cell { flex: 1 1 140px; display: flex; align-items: center; gap: 6px; min-width: 0; }
+      .mom-row__cell .mom-row__label { flex: 0 0 auto; }
+      .mom-row__checks { gap: 18px; }
+      .mom-extra-details { padding: 11px 12px; font-size: 13px; color: var(--dim); border-bottom: 1px solid var(--line); }
+      .mom-extra-details summary { cursor: pointer; user-select: none; }
+      .mw-daily-danger-wrap { padding: 10px 12px; }
+      .mw-daily-danger-wrap:empty, .mw-daily-danger-wrap button[hidden] { display: none; }
+      .mw-daily-danger-wrap button { width: 100%; }
+
+      .mw-daily-img-stage {
+        display: flex; align-items: center; justify-content: center;
+        background: var(--bg); border: 1px solid var(--line); border-radius: 10px;
+        max-height: 46dvh; overflow: hidden; padding: 6px;
+      }
+      .mw-daily-img-stage img { max-width: 100%; max-height: 43dvh; object-fit: contain; display: block; }
+      .mw-post-row--daily { display: flex; flex-direction: column; gap: 4px; }
+      .mw-post-row__title { font-size: 13.5px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .mw-post-row__meta { font-size: 11px; color: var(--dim); }
+
+      @media (max-width: 480px) {
+        .mw-brand { display: none; }
+        .mw-header { gap: 5px; padding: 0 8px; }
+        .mw-pill { padding: 2px 5px; font-size: 10.5px; }
+        .mw-btn { padding: 0 9px; font-size: 12px; }
+        .mw-icon-btn { width: 34px; height: 34px; font-size: 16px; }
+      }
     </style>
   </body>
 </html>

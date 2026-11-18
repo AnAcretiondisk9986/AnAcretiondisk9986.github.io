@@ -19,6 +19,7 @@ const TOKEN_TTL_MS = 7 * 24 * 3600 * 1000;
 
 const ALLOWED_GH_PATHS = [
   new RegExp(`^/repos/${BLOG_REPO}/contents/src/content/blog(?:/[^?#]*)?(?:\\?.*)?$`),
+  new RegExp(`^/repos/${BLOG_REPO}/contents/src/data/daily\\.json(?:\\?.*)?$`),
   new RegExp(`^/repos/${BLOG_REPO}/actions/runs(?:\\?.*)?$`),
   new RegExp(`^/repos/${IMG_REPO}/contents/(?:image|audio|video)/[^?#]+$`),
 ];

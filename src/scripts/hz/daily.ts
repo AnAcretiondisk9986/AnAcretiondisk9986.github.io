@@ -60,6 +60,8 @@ function initDailyViewer() {
   const vImg = viewer.querySelector<HTMLImageElement>('[data-dv-img]');
   const vPrev = viewer.querySelector<HTMLButtonElement>('[data-dv-prev]');
   const vNext = viewer.querySelector<HTMLButtonElement>('[data-dv-next]');
+  const vSidePrev = viewer.querySelector<HTMLButtonElement>('[data-dv-side-prev]');
+  const vSideNext = viewer.querySelector<HTMLButtonElement>('[data-dv-side-next]');
   const vClose = viewer.querySelector<HTMLButtonElement>('[data-dv-close]');
   const vCounter = viewer.querySelector<HTMLElement>('[data-dv-counter]');
   const vThumbs = viewer.querySelector<HTMLElement>('[data-dv-thumbs]');
@@ -80,6 +82,7 @@ function initDailyViewer() {
   let panX = 0;
   let panY = 0;
   let dragging = false;
+  let justMoved = false;
   let swipeDownX = 0;
   let swipeDownY = 0;
   let lastX = 0;
@@ -181,6 +184,8 @@ function initDailyViewer() {
     if (vCounter) vCounter.textContent = `${pad2(activeIndex + 1)} / ${pad2(items.length)}`;
     if (vPrev) vPrev.disabled = items.length <= 1;
     if (vNext) vNext.disabled = items.length <= 1;
+    if (vSidePrev) vSidePrev.hidden = items.length <= 1;
+    if (vSideNext) vSideNext.hidden = items.length <= 1;
     if (vTitle) vTitle.textContent = item.alt || `影像帧 ${pad2(activeIndex + 1)}`;
     if (vOriginal) {
       const origUrl = item.original || item.src;
@@ -197,6 +202,23 @@ function initDailyViewer() {
   vClose?.addEventListener('click', () => viewer.close());
   vPrev?.addEventListener('click', () => showAt(activeIndex - 1));
   vNext?.addEventListener('click', () => showAt(activeIndex + 1));
+  vSidePrev?.addEventListener('pointerdown', (e) => e.stopPropagation());
+  vSideNext?.addEventListener('pointerdown', (e) => e.stopPropagation());
+  vSidePrev?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    showAt(activeIndex - 1);
+  });
+  vSideNext?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    showAt(activeIndex + 1);
+  });
+  vMedia?.addEventListener('click', (e) => {
+    if (justMoved) {
+      justMoved = false;
+      return;
+    }
+    if (e.target === vMedia && zoomPct <= 100.5) viewer.close();
+  });
   vZoomReset?.addEventListener('click', resetZoom);
   vZoom?.addEventListener('input', () => setZoom(Number(vZoom.value) || MIN_ZOOM));
   vImg?.addEventListener('load', () => {
@@ -217,6 +239,7 @@ function initDailyViewer() {
   );
 
   vMedia?.addEventListener('pointerdown', (e) => {
+    if ((e.target as Element)?.closest('.hz-dv__side')) return;
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     try {
@@ -279,6 +302,7 @@ function initDailyViewer() {
     if (pointers.size === 0) {
       dragging = false;
       vMedia?.classList.remove('is-dragging');
+      justMoved = Math.hypot(dx, dy) > 8;
       if (wasSingleUnzoomed && e.type === 'pointerup' && Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.4) {
         showAt(dx < 0 ? activeIndex + 1 : activeIndex - 1);
       }

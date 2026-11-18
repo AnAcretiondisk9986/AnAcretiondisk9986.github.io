@@ -12,6 +12,7 @@
     import { initFrontend, renderFrontendList, loadFrontend, saveFrontend, syncFrontendPreview, isFrontendDirty, clearFrontendDirty, syncFrontendDirty } from './features/frontend.js';
     import { initSchedule, renderScheduleSidebar, loadSchedule, saveSchedule, isScheduleDirty, clearScheduleDirty } from './features/schedule.js';
     import { initPosts, updateBatchBar, setupBatchControls, showRevisionHistory, previewPostBySlug, copyPostLink, duplicatePost, quickToggleDraft, toggleArchive, closePostPreview, putPostFields, restoreRevision, renderLineDiff, renderMarkdownPreviewInto } from './features/posts.js';
+    import { initDaily, loadDaily, newDailyItem, saveDailyItem, deleteDailyItem, getCurrentDailyId, resetDailySelection, isDailyDirty, clearDailyDirty, isDailyBusy } from './features/daily.js';
     import { initGallery, loadGallery, newGalleryItem, saveGalleryItem, deleteGalleryItem, getCurrentGalleryId, resetGallerySelection, isGalleryDirty, clearGalleryDirty, syncGalleryDirty, openGalleryBatchUploader, isGalleryBatchBusy } from './features/gallery.js';
     import { initMedia, loadMedia, renderMediaSidebar, triggerMediaUpload, openMediaPicker, closeMediaPicker, setupMediaPicker, setupCoverMediaButton, setupMediaInsertButton, setupGalleryMediaButton } from './features/media.js';
     import { renderWordRibbonHtml, mountWordEditor, katex } from './editor/word-ui.js';
@@ -1915,6 +1916,7 @@
 
     function hasAnyDirtyState() {
       if (currentMode === 'posts') return postDirty;
+      if (currentMode === 'daily') return isDailyDirty();
       if (currentMode === 'gallery') return isGalleryDirty();
       if (currentMode === 'about') return isAboutDirty();
       if (currentMode === 'frontend') return isFrontendDirty();
@@ -1928,7 +1930,7 @@
     }
 
     window.addEventListener('beforeunload', e => {
-      if (!hasAnyDirtyState() && !isGalleryBatchBusy()) return;
+      if (!hasAnyDirtyState() && !isGalleryBatchBusy() && !isDailyBusy()) return;
       if (currentMode === 'posts') savePostDraftNow();
       e.preventDefault();
       e.returnValue = '';
@@ -2057,7 +2059,8 @@
         e.preventDefault();
         // 各模块只处理自己可保存的内容；媒体/画廊列表等无「保存」语义的模块不应落到文章保存上
         // （此前 media 缺失分支，Ctrl+S 会误报「没有未保存修改」）
-        if(currentMode==='gallery') saveGalleryItem();
+        if(currentMode==='daily') saveDailyItem();
+        else if(currentMode==='gallery') saveGalleryItem();
         else if(currentMode==='about') saveAbout();
         else if(currentMode==='frontend') saveFrontend();
         else if(currentMode==='schedule') saveSchedule();
@@ -2087,8 +2090,16 @@
     initSyncCenter({
       getMode: () => currentMode,
       reloadPosts: () => loadPosts(),
+      reloadDaily: () => loadDaily(),
       reloadGallery: () => loadGallery(),
       fetchHealth,
+    });
+    initDaily({
+      openMediaPicker,
+      onDirtyChange: updateSubModuleDirtyStatus,
+      refreshSyncStatus,
+      getUploadMaxBytes: () => appUploadMaxBytes,
+      isDailyMode: () => currentMode === 'daily',
     });
     initGallery({
       setupUpload,
@@ -2138,6 +2149,7 @@
 
     function canLeaveCurrentEditor() {
       if (currentMode === 'posts') return canLeavePostEditor();
+      if (currentMode === 'daily' && isDailyDirty()) return confirm('当前日常有未保存修改，确定离开？');
       if (currentMode === 'gallery' && isGalleryDirty()) return confirm('当前画廊项目有未保存修改，确定离开？');
       if (currentMode === 'about' && isAboutDirty()) return confirm('当前关于页面有未保存修改，确定离开？');
       if (currentMode === 'frontend' && isFrontendDirty()) return confirm('当前外观配置有未保存修改，确定离开？');
@@ -2148,6 +2160,7 @@
     function switchMode(mode) {
       if (mode !== currentMode && !canLeaveCurrentEditor()) return;
       if (mode !== 'posts') resetPostEditorTracking();
+      if (mode !== 'daily') resetDailySelection();
       if (mode !== 'gallery') clearGalleryDirty();
       if (mode !== 'about') clearAboutDirty();
       if (mode !== 'frontend') clearFrontendDirty();
@@ -2165,7 +2178,17 @@
         if (batchBar) batchBar.hidden = true;
       }
       document.querySelectorAll('.mode-tab').forEach(t => t.classList.toggle('active', t.dataset.mode === mode));
-      if (mode === 'gallery') {
+      if (mode === 'daily') {
+        currentSlug = null;
+        resetGallerySelection();
+        $('#btnNew').textContent = '＋ 新建';
+        $('#btnNew').style.display = '';
+        $('#btnSave').style.display = '';
+        $('#btnDelete').style.display = 'none';
+        $('#btnSave').disabled = false;
+        newDailyItem({ skipLeaveGuard: true });
+        loadDaily();
+      } else if (mode === 'gallery') {
         $('#btnNew').textContent = '＋ 新建';
         currentSlug = null;
         $('#btnNew').style.display = '';
@@ -2236,11 +2259,11 @@
     }
 
     // ── 按钮分发 ──
-    $('#btnNew').onclick = () => currentMode === 'media' ? triggerMediaUpload() : currentMode === 'gallery' ? newGalleryItem() : newPost();
-    $('#btnRefresh').onclick = () => currentMode === 'gallery' ? loadGallery() : currentMode === 'media' ? loadMedia() : currentMode === 'about' ? loadAbout() : currentMode === 'frontend' ? loadFrontend() : currentMode === 'schedule' ? loadSchedule() : currentMode === 'access' ? renderPrivateAccess() : loadPosts();
-    $('#btnSave').onclick = () => currentMode === 'gallery' ? saveGalleryItem() : currentMode === 'about' ? saveAbout() : currentMode === 'frontend' ? saveFrontend() : currentMode === 'schedule' ? saveSchedule() : savePost();
+    $('#btnNew').onclick = () => currentMode === 'media' ? triggerMediaUpload() : currentMode === 'daily' ? newDailyItem() : currentMode === 'gallery' ? newGalleryItem() : newPost();
+    $('#btnRefresh').onclick = () => currentMode === 'daily' ? loadDaily() : currentMode === 'gallery' ? loadGallery() : currentMode === 'media' ? loadMedia() : currentMode === 'about' ? loadAbout() : currentMode === 'frontend' ? loadFrontend() : currentMode === 'schedule' ? loadSchedule() : currentMode === 'access' ? renderPrivateAccess() : loadPosts();
+    $('#btnSave').onclick = () => currentMode === 'daily' ? saveDailyItem() : currentMode === 'gallery' ? saveGalleryItem() : currentMode === 'about' ? saveAbout() : currentMode === 'frontend' ? saveFrontend() : currentMode === 'schedule' ? saveSchedule() : savePost();
     $('#btnPreflight').onclick = showPreflight;
-    $('#btnDelete').onclick = () => currentMode === 'gallery' ? (getCurrentGalleryId() && deleteGalleryItem(getCurrentGalleryId())) : (currentSlug && deletePost(currentSlug));
+    $('#btnDelete').onclick = () => currentMode === 'daily' ? (getCurrentDailyId() && deleteDailyItem(getCurrentDailyId())) : currentMode === 'gallery' ? (getCurrentGalleryId() && deleteGalleryItem(getCurrentGalleryId())) : (currentSlug && deletePost(currentSlug));
     $('#previewClose').onclick = closePostPreview;
     $('#preflightClose').onclick = () => closeModal($('#preflightModal'));
     $('#preflightModal').addEventListener('click', (e) => { if (e.target === $('#preflightModal')) closeModal($('#preflightModal')); });

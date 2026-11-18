@@ -35,8 +35,10 @@ import {
   getLatestDeployRun,
   type RemoteBlogEntry,
 } from './github-client';
+import { createMobileDailyController } from './mobile-daily';
 
 const DRAFT_PREFIX = 'hz-write-draft:';
+const WRITE_MODE_KEY = 'hz-write-mode-v1';
 
 /** 手机端轻量图片节点：保留对齐与宽度，同时支持刚上传时用 blobUrl 立即预览而不污染 CDN src */
 const previewBlobMap = new Map<string, string>();
@@ -249,9 +251,17 @@ export function initMobileWriteApp() {
   let currentSha = '';
   let currentSlugEdited = false;
   let editorMode: 'wysiwyg' | 'source' = 'wysiwyg';
+  let composeMode: 'post' | 'daily' = 'post';
   let remotePosts: RemoteBlogEntry[] = [];
   let draftTimer = 0;
   let dirty = false;
+
+  function setHeaderBadges(draftText: string, statsText: string) {
+    const st = $('#mwDraftStatus');
+    const sc = $('#mwStatsChip');
+    if (st) st.textContent = draftText;
+    if (sc) sc.textContent = statsText;
+  }
 
   let meta: PostMeta = {
     title: '',
@@ -338,8 +348,10 @@ export function initMobileWriteApp() {
       content: getBodyMarkdown(),
     };
     try { localStorage.setItem(draftKey(), JSON.stringify(payload)); } catch { /* ignore */ }
-    const badge = $('#mwDraftStatus');
-    if (badge) badge.textContent = '已本地暂存';
+    if (composeMode === 'post') {
+      const badge = $('#mwDraftStatus');
+      if (badge) badge.textContent = '已本地暂存';
+    }
   }
 
   function clearLocalDraft(filename = currentFilename) {
@@ -348,13 +360,16 @@ export function initMobileWriteApp() {
 
   function markDirty() {
     dirty = true;
-    const badge = $('#mwDraftStatus');
-    if (badge) badge.textContent = '未发布';
+    if (composeMode === 'post') {
+      const badge = $('#mwDraftStatus');
+      if (badge) badge.textContent = '未发布';
+    }
     window.clearTimeout(draftTimer);
     draftTimer = window.setTimeout(saveLocalDraftNow, 300);
   }
 
   function updateStats() {
+    if (composeMode !== 'post') return;
     const stats = countMarkdownStats(getBodyMarkdown());
     const el = $('#mwStatsChip');
     if (el) el.textContent = `${stats.chars} 字`;
@@ -702,9 +717,26 @@ export function initMobileWriteApp() {
     }
   }
 
-  $('#btnMwPosts')?.addEventListener('click', openPostList);
-  $('#btnMwNewPost')?.addEventListener('click', () => startNewPost(true));
-  $('#mwPostsSearch')?.addEventListener('input', (e) => renderPostList((e.target as HTMLInputElement).value));
+  const dailyCtrl = createMobileDailyController({
+    openSheet,
+    closeSheets,
+    showToast,
+    isDailyActive: () => composeMode === 'daily',
+    updateHeaderBadges: setHeaderBadges,
+    pollBuildProgress: (url) => pollBuildProgress(url),
+  });
+
+  $('#btnMwPosts')?.addEventListener('click', () => (
+    composeMode === 'daily' ? dailyCtrl.openDrawerList() : openPostList()
+  ));
+  $('#btnMwNewPost')?.addEventListener('click', () => (
+    composeMode === 'daily' ? dailyCtrl.startNewMoment(true) : startNewPost(true)
+  ));
+  $('#mwPostsSearch')?.addEventListener('input', (e) => {
+    const q = (e.target as HTMLInputElement).value;
+    if (composeMode === 'daily') dailyCtrl.renderDrawerList(q);
+    else renderPostList(q);
+  });
 
   $('#btnMwDeletePost')?.addEventListener('click', async () => {
     if (!currentFilename || !currentSha) return;
@@ -769,7 +801,7 @@ export function initMobileWriteApp() {
     }
   }
 
-  async function pollBuildProgress() {
+  async function pollBuildProgress(targetUrl = 'https://blog.acretiondisk.top/blog/') {
     const bar = $('#mwDeployBanner');
     if (!bar) return;
     bar.hidden = false;
@@ -780,7 +812,7 @@ export function initMobileWriteApp() {
       if (!run) continue;
       if (run.status === 'completed') {
         bar.innerHTML = run.conclusion === 'success'
-          ? `✅ 博客已构建上线！<a href="https://blog.acretiondisk.top/blog/" target="_blank" rel="noopener">查看站点 ↗</a>`
+          ? `✅ 博客已构建上线！<a href="${targetUrl}" target="_blank" rel="noopener">查看站点 ↗</a>`
           : `⚠ 构建结束（${run.conclusion}）<a href="${run.url}" target="_blank" rel="noopener">查看日志 ↗</a>`;
         return;
       }
@@ -788,7 +820,9 @@ export function initMobileWriteApp() {
     }
   }
 
-  $('#btnMwPublish')?.addEventListener('click', () => publishToGitHub({ asDraft: false }));
+  $('#btnMwPublish')?.addEventListener('click', () => (
+    composeMode === 'daily' ? dailyCtrl.publish() : publishToGitHub({ asDraft: false })
+  ));
   $('#btnMwSaveDraftRemote')?.addEventListener('click', () => publishToGitHub({ asDraft: true }));
 
   // ── 9. 设置面板（PAT 直连 vs Cloudflare Worker 双模）──
@@ -848,6 +882,50 @@ export function initMobileWriteApp() {
 
   $('#btnMwSettings')?.addEventListener('click', () => { fillSettingsForm(); openSheet('#mwSettingsSheet'); });
 
+  function setComposeMode(nextMode: 'post' | 'daily', { persist = true } = {}) {
+    composeMode = nextMode;
+    if (persist) {
+      try { localStorage.setItem(WRITE_MODE_KEY, nextMode); } catch { /* ignore */ }
+    }
+    const postMain = $('#mwPostMain');
+    const dailyMainEl = $('#mwDailyMain');
+    const accBar = $('#mwAccessoryBar');
+    if (postMain) postMain.hidden = nextMode === 'daily';
+    if (dailyMainEl) dailyMainEl.hidden = nextMode !== 'daily';
+    if (accBar) accBar.hidden = nextMode === 'daily';
+
+    document.querySelectorAll('#mwModeTabs [data-mw-mode]').forEach((btn) => {
+      const active = (btn as HTMLElement).dataset.mwMode === nextMode;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+
+    const sheetTitle = $('#mwSheetPostsTitle');
+    if (sheetTitle) sheetTitle.textContent = nextMode === 'daily' ? '仓库日常（03 日常）' : '仓库文章';
+    const searchInput = $('#mwPostsSearch') as HTMLInputElement | null;
+    if (searchInput) {
+      searchInput.value = '';
+      searchInput.placeholder = nextMode === 'daily' ? '搜索日常内容 / 标签 / 地点…' : '搜索文章文件名 / Slug…';
+    }
+
+    if (nextMode === 'daily') {
+      dailyCtrl.refreshHeader();
+    } else {
+      const postStatus = currentFilename
+        ? (dirty ? '未发布' : '已同步')
+        : (dirty ? '已本地暂存' : (isConfigured() ? '新文章' : '待配置'));
+      const stats = countMarkdownStats(getBodyMarkdown());
+      setHeaderBadges(postStatus, `${stats.chars} 字`);
+    }
+  }
+
+  document.querySelectorAll('#mwModeTabs [data-mw-mode]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const next = (btn as HTMLElement).dataset.mwMode === 'daily' ? 'daily' : 'post';
+      if (next !== composeMode) setComposeMode(next);
+    });
+  });
+
   // 启动恢复 & 若未配置则引导打开设置
   syncMetaSummary();
   restoreDraftIfAny();
@@ -855,4 +933,14 @@ export function initMobileWriteApp() {
     const st = $('#mwDraftStatus');
     if (st) st.textContent = '待配置';
   }
+  const urlMode = new URLSearchParams(window.location.search).get('mode');
+  let initialMode: 'post' | 'daily' = 'post';
+  if (urlMode === 'daily' || urlMode === 'post') {
+    initialMode = urlMode;
+  } else {
+    try {
+      if (localStorage.getItem(WRITE_MODE_KEY) === 'daily') initialMode = 'daily';
+    } catch { /* ignore */ }
+  }
+  setComposeMode(initialMode, { persist: false });
 }

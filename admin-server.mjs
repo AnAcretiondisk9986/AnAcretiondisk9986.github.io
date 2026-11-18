@@ -25,6 +25,7 @@ import { createJsonStore, InvalidDataError, parseExpectedHash, VersionConflictEr
 import { parseFile as parseAudioMeta } from 'music-metadata';
 import { createQuotaService } from './scripts/ai-quota-proxy.mjs';
 import { normalizeSchedulePayload } from './src/lib/schedule-core.mjs';
+import { sanitizeDailyEntry, sortDailyItems } from './src/lib/daily-moments-grid.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // 内容 / 数据目录支持环境变量覆盖（自动化测试使用隔离目录，不触碰真实数据）
@@ -44,6 +45,7 @@ const AUDIO_BASE_URL = 'https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-imag
 const VIDEO_BASE_URL = 'https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/video/';
 const FILE_BASE_URL = 'https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/file/';
 const GALLERY_JSON = resolve(DATA_DIR, 'gallery.json');
+const DAILY_JSON = resolve(DATA_DIR, 'daily.json');
 const ABOUT_JSON = resolve(DATA_DIR, 'about.json');
 const FRONTEND_JSON = resolve(DATA_DIR, 'frontend.json');
 const SCHEDULE_JSON = resolve(DATA_DIR, 'schedule.json');
@@ -102,7 +104,20 @@ function validateScheduleData(value) {
   return normalized;
 }
 
+function validateDailyData(value) {
+  if (!Array.isArray(value)) throw new InvalidDataError('日常数据必须是数组');
+  value.forEach((item, index) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) throw new InvalidDataError(`日常第 ${index + 1} 项不是对象`);
+    if (typeof item.id !== 'string' || !item.id) throw new InvalidDataError(`日常第 ${index + 1} 项缺少 id`);
+    if (typeof item.createdAt !== 'string' || !item.createdAt) throw new InvalidDataError(`日常第 ${index + 1} 项缺少 createdAt`);
+    if (item.images != null && !Array.isArray(item.images)) throw new InvalidDataError(`日常第 ${index + 1} 项 images 必须是数组`);
+    if (Array.isArray(item.images) && item.images.length > 9) throw new InvalidDataError(`日常第 ${index + 1} 项图片不能超过 9 张`);
+  });
+  return value;
+}
+
 const galleryStore = createJsonStore({ filePath: GALLERY_JSON, label: 'gallery', readDefault: () => [], validate: validateGalleryData, backupDir: BACKUP_DIR });
+const dailyStore = createJsonStore({ filePath: DAILY_JSON, label: 'daily', readDefault: () => [], validate: validateDailyData, backupDir: BACKUP_DIR });
 const aboutStore = createJsonStore({ filePath: ABOUT_JSON, label: 'about', readDefault: () => ({}), validate: (value) => requirePlainObject(value, '关于页数据'), backupDir: BACKUP_DIR });
 const frontendStore = createJsonStore({ filePath: FRONTEND_JSON, label: 'frontend', readDefault: () => ({}), validate: (value) => requirePlainObject(value, '前端定制数据'), backupDir: BACKUP_DIR });
 const scheduleStore = createJsonStore({ filePath: SCHEDULE_JSON, label: 'schedule', readDefault: () => ({ ...SCHEDULE_DEFAULT }), validate: validateScheduleData, backupDir: BACKUP_DIR });
@@ -142,8 +157,8 @@ const REPO_ROOT = process.env.ADMIN_REPO_ROOT ? resolve(process.env.ADMIN_REPO_R
 const blogGit = createGitService({ cwd: REPO_ROOT });
 // 图片仓库（上传时提交并推送；批量上传大文件夹时适当放宽超时）
 const imageGit = createGitService({ cwd: IMG_REPO_DIR, timeout: 600_000 });
-// 内容推送范围：仅文章 / 画廊 / 关于 / 前端定制 / 日程课表数据
-const CONTENT_PUSH_PATHS = ['src/content/blog/', 'src/data/gallery.json', 'src/data/about.json', 'src/data/frontend.json', 'src/data/schedule.json'];
+// 内容推送范围：文章 / 日常 / 画廊 / 关于 / 前端定制 / 日程课表数据
+const CONTENT_PUSH_PATHS = ['src/content/blog/', 'src/data/daily.json', 'src/data/gallery.json', 'src/data/about.json', 'src/data/frontend.json', 'src/data/schedule.json'];
 // 全量推送范围：除 reasonix.toml（本机配置，不提交）外的全部改动
 const FULL_PUSH_PATHS = ['.', ':(exclude)reasonix.toml'];
 
@@ -2028,6 +2043,113 @@ app.route('/api/gallery/:id')
     }
   });
 
+// ── Daily Moments API（03 日常 · 朋友圈微片段，src/data/daily.json）──
+async function readDaily() {
+  try {
+    const { data } = await dailyStore.read();
+    return Array.isArray(data) ? data : [];
+  } catch (err) {
+    if (err instanceof InvalidDataError) throw err;
+    return [];
+  }
+}
+
+async function writeDaily(items, { expectedHash = null } = {}) {
+  return dailyStore.write(sortDailyItems(items), { expectedHash });
+}
+
+function buildDailyPayload(raw, existingItems, fixedId = '') {
+  if (raw?.linkCard?.url) {
+    const checked = safeLink(raw.linkCard.url);
+    if (checked === null) return { error: 'Invalid linkCard URL' };
+  }
+  const item = sanitizeDailyEntry({ ...raw, id: fixedId || raw?.id }, existingItems);
+  if (!item.text && (!item.images || !item.images.length)) {
+    return { error: '请填写日常正文或至少上传 1 张图片' };
+  }
+  return { item };
+}
+
+app.route('/api/daily')
+  .get(async (_req, res) => {
+    try {
+      const { data, contentHash } = await dailyStore.read();
+      res.setHeader('x-content-hash', contentHash || '');
+      res.json(sortDailyItems(Array.isArray(data) ? data : []));
+    } catch (err) {
+      respondStoreError(res, err, 'Daily API');
+    }
+  })
+  .post(express.json({ limit: '2mb' }), async (req, res) => {
+    try {
+      const hashCheck = readExpectedHash(res, req.body?.expectedHash);
+      if (!hashCheck.ok) return;
+      const items = await readDaily();
+      const built = buildDailyPayload(req.body, items);
+      if (built.error) return res.status(400).json({ error: built.error });
+      items.unshift(built.item);
+      const written = await writeDaily(items, { expectedHash: hashCheck.hash });
+      res.status(201).json({ success: true, item: built.item, contentHash: written.contentHash });
+    } catch (err) {
+      respondStoreError(res, err, 'Daily API');
+    }
+  });
+
+app.post('/api/daily/push', express.json({ limit: '1mb' }), async (req, res) => {
+  try {
+    const imgPush = await pushImageRepo({ requestId: req.requestId });
+    warmUploadedUrlsAsync(req.body?.urls);
+    const blogPush = await pushGitChanges({
+      paths: ['src/data/daily.json'],
+      commitMsg: '通过管理面板更新日常时间线',
+      requestId: req.requestId,
+    });
+    res.json({
+      ok: true,
+      success: true,
+      imageRepoPushed: Boolean(imgPush.pushed),
+      ...blogPush,
+      requestId: req.requestId,
+    });
+  } catch (err) {
+    console.error('Daily Push Error:', err.message);
+    respondSyncError(res, req, err, 'DAILY_PUSH_FAILED');
+  }
+});
+
+app.route('/api/daily/:id')
+  .put(express.json({ limit: '2mb' }), async (req, res) => {
+    try {
+      const hashCheck = readExpectedHash(res, req.body?.expectedHash);
+      if (!hashCheck.ok) return;
+      const items = await readDaily();
+      const idx = items.findIndex((i) => i.id === req.params.id);
+      if (idx === -1) return res.status(404).json({ error: '日常记录不存在' });
+      const others = items.filter((_, i) => i !== idx);
+      const built = buildDailyPayload(req.body, others, req.params.id);
+      if (built.error) return res.status(400).json({ error: built.error });
+      items[idx] = built.item;
+      const written = await writeDaily(items, { expectedHash: hashCheck.hash });
+      res.json({ success: true, item: built.item, contentHash: written.contentHash });
+    } catch (err) {
+      respondStoreError(res, err, 'Daily API');
+    }
+  })
+  .delete(async (req, res) => {
+    try {
+      const hashCheck = readExpectedHash(res, req.query.expectedHash);
+      if (!hashCheck.ok) return;
+      const items = await readDaily();
+      const idx = items.findIndex((i) => i.id === req.params.id);
+      if (idx === -1) return res.status(404).json({ error: '日常记录不存在' });
+      items.splice(idx, 1);
+      const written = await writeDaily(items, { expectedHash: hashCheck.hash });
+      res.json({ success: true, contentHash: written.contentHash });
+    } catch (err) {
+      respondStoreError(res, err, 'Daily API');
+    }
+  });
+
 // ── About page API ──
 
 function cleanAboutStr(v, max = 5000) {
@@ -2400,13 +2522,14 @@ function fileNameFromUrl(value) {
 let mediaUsageCache = { key: '', usage: null };
 
 async function collectMediaUsage() {
-  const [galleryStat, aboutStat, frontendStat] = await Promise.all([
+  const [galleryStat, dailyStat, aboutStat, frontendStat] = await Promise.all([
     statFile(GALLERY_JSON).catch(() => null),
+    statFile(DAILY_JSON).catch(() => null),
     statFile(ABOUT_JSON).catch(() => null),
     statFile(FRONTEND_JSON).catch(() => null),
   ]);
   const statSig = (st) => (st ? `${st.mtimeMs}:${st.size}` : 'none');
-  const cacheKey = `${postListEpoch}:${statSig(galleryStat)}:${statSig(aboutStat)}:${statSig(frontendStat)}`;
+  const cacheKey = `${postListEpoch}:${statSig(galleryStat)}:${statSig(dailyStat)}:${statSig(aboutStat)}:${statSig(frontendStat)}`;
   if (mediaUsageCache.usage && mediaUsageCache.key === cacheKey) return mediaUsageCache.usage;
 
   const usage = new Map();
@@ -2433,6 +2556,16 @@ async function collectMediaUsage() {
       }
     }
   } catch { /* 画廊读取失败时忽略 */ }
+  try {
+    const { data } = await dailyStore.read();
+    if (Array.isArray(data)) {
+      for (const item of data) {
+        for (const img of item.images || []) {
+          for (const u of [img?.src, img?.original]) mark(fileNameFromUrl(u), `daily:${item.id}`);
+        }
+      }
+    }
+  } catch { /* 日常读取失败时忽略 */ }
   try {
     const { data } = await aboutStore.read();
     if (data && typeof data === 'object' && data.avatar) {
@@ -2774,6 +2907,12 @@ app.get('/admin/shared/editor-codec.mjs', (_req, res) => {
   res.type('application/javascript; charset=utf-8');
   res.sendFile(resolve(__dirname, 'src', 'lib', 'editor-codec.mjs'));
 });
+app.get('/admin/shared/daily-moments-grid.mjs', (_req, res) => {
+  res.set('Cache-Control', 'no-cache');
+  res.type('application/javascript; charset=utf-8');
+  res.sendFile(resolve(__dirname, 'src', 'lib', 'daily-moments-grid.mjs'));
+});
+app.use('/admin/img-repo', express.static(IMAGE_DIR));
 app.use('/admin', express.static(join(__dirname, 'admin'), { setHeaders: setAdminStaticCacheHeaders }));
 
 app.listen(PORT, '127.0.0.1', (err) => {
