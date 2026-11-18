@@ -1,7 +1,7 @@
 /**
  * 日程与课表管理（src/data/schedule.json，带版本冲突校验）。
  * 仅在管理后台提供 WMU 课表 PDF 解析、JSON 导入/导出与课程/自定义日程的完整增删改；
- * 公开主站「06 日程」只读展示保存后的 schedule.json。
+ * 公开主站「07 日程」只读展示保存后的 schedule.json。
  */
 import { $, esc, escAttr } from '../ui/dom.js';
 import { toast } from '../ui/app-toast.js';
@@ -369,7 +369,7 @@ function renderScheduleEditor() {
 
   const globalSection = `
     <section class="frontend-section">
-      <h3>主站「06 日程」全局显示偏好</h3>
+      <h3>主站「07 日程」全局显示偏好</h3>
       <div class="form-row">
         <div class="form-group"><label>每 45 分钟格高 (px, 48–144)</label><input id="fSchedSlotHeight" type="number" min="48" max="144" step="4" value="${scheduleState.slotHeight}" /></div>
         <div class="form-group"><label>默认隐藏无课周末列</label><select id="fSchedHideWeekends"><option value="false"${!scheduleState.hideEmptyWeekends ? ' selected' : ''}>显示全部 7 天</option><option value="true"${scheduleState.hideEmptyWeekends ? ' selected' : ''}>隐藏无课周末</option></select></div>

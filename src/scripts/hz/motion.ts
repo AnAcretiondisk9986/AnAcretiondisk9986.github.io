@@ -559,6 +559,9 @@ function initSpotlightAndTilt() {
     '.hz-iplate',
     '.hz-row',
     '.hz-sched-tele__cell',
+    '.hz-tl-profile',
+    '.hz-tl-card',
+    '.hz-tweet__card',
   ];
   const tiltSelectors = [
     '.hz-dossier-teaser',

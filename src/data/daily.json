@@ -1,0 +1,304 @@
+[
+  {
+    "id": "daily-20261118-01",
+    "createdAt": "2026-11-18T23:45:00+08:00",
+    "pinned": true,
+    "text": "给主站新开了一条 03 日常时间线。\n\n不值得单独起一篇长文的细碎瞬间——晚霞边角、路过时按下的一卷快门、深夜写代码冒出来的几句吐槽，以后就都按时间落在这里。单条最多放九张图，像把底片直接铺在时间轴上。\n\n#日常 #HORIZON #时间线",
+    "images": [
+      {
+        "src": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/_DSC0217_1785663966034.webp",
+        "alt": "去年夏天云南路上的一帧"
+      }
+    ],
+    "location": "温州 · HORIZON",
+    "mood": "启航",
+    "linkCard": {
+      "label": "SPECTRUM // 02",
+      "title": "想看完整长文记录？前往 02 文章光谱",
+      "description": "技术记录、游记与较长篇幅的文字仍归档在主博客目录。",
+      "url": "/blog/"
+    }
+  },
+  {
+    "id": "daily-20261117-01",
+    "createdAt": "2026-11-17T21:18:00+08:00",
+    "text": "近期顺手收进图库里的八张视觉片段，集中存一格预览，点开任意一张可以直接滑看大图。\n\n#收图 #随记",
+    "images": [
+      {
+        "src": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/20261115_oysm163_2121764590967214222_1_1794903484388.webp",
+        "alt": "收藏片段 01"
+      },
+      {
+        "src": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/20261115_eternal_core909_2122098922302943528_1_1794903484167.webp",
+        "alt": "收藏片段 02"
+      },
+      {
+        "src": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/20261114_muninshiki_2121543864221884491_1_1794903483893.webp",
+        "alt": "收藏片段 03"
+      },
+      {
+        "src": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/20261113_yubinanika_2121200553078165592_1_1794903483726.webp",
+        "alt": "收藏片段 04"
+      },
+      {
+        "src": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/20261111_KrisChibana_2120586176595722327_1_1794903481866.webp",
+        "alt": "收藏片段 05"
+      },
+      {
+        "src": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/20261110_DamianGrzebals2_2120259004056129630_1_1794903481506.webp",
+        "alt": "收藏片段 06"
+      },
+      {
+        "src": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/20261109_starglas__2119729213603479596_1_1794903481265.webp",
+        "alt": "收藏片段 07"
+      },
+      {
+        "src": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/20261108_anim_fanart_2119373496476439021_1_1794903480898.webp",
+        "alt": "收藏片段 08"
+      }
+    ],
+    "linkCard": {
+      "label": "LENSING // 04",
+      "title": "在 04 图像透镜场查看完整图库",
+      "description": "可拖拽平移与滚轮缩放的引力透镜视场。",
+      "url": "/gallery/"
+    }
+  },
+  {
+    "id": "daily-20261116-01",
+    "createdAt": "2026-11-16T23:52:00+08:00",
+    "text": "深夜把几个零散的小想法记下来：比起攒很久写一篇大而全的总结，反而是这种当下发生、十几秒就能读完的碎片更容易保留当时的情绪密度。\n\n纯文字一条测试排版行距与呼吸感。\n\n#碎碎念 #日常",
+    "images": [],
+    "mood": "夜深"
+  },
+  {
+    "id": "daily-20261107-01",
+    "createdAt": "2026-11-07T19:40:00+08:00",
+    "text": "七张图一组的测试序列：首张跨栏做视觉锚点，下面六张按三列展开，整组看起来也很齐整。\n\n#收图 #测试序列",
+    "images": [
+      {
+        "src": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/20261107_shadingyu05_2118920892306882839_1_1794903479713.webp",
+        "alt": "七图序列 01"
+      },
+      {
+        "src": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/20261107_OoOssssssstar_2119086319033073877_2_1794903478995.webp",
+        "alt": "七图序列 02"
+      },
+      {
+        "src": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/20261107_OoOssssssstar_2119086319033073877_1_1794903478343.webp",
+        "alt": "七图序列 03"
+      },
+      {
+        "src": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/20261107_juncitogx3_2119087466590183787_4_1794903478168.webp",
+        "alt": "七图序列 04"
+      },
+      {
+        "src": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/20261107_juncitogx3_2119087466590183787_3_1794903477963.webp",
+        "alt": "七图序列 05"
+      },
+      {
+        "src": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/20261107_juncitogx3_2119087466590183787_2_1794903477713.webp",
+        "alt": "七图序列 06"
+      },
+      {
+        "src": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/20261107_juncitogx3_2119087466590183787_1_1794903477495.webp",
+        "alt": "七图序列 07"
+      }
+    ]
+  },
+  {
+    "id": "daily-20261017-01",
+    "createdAt": "2026-10-17T14:21:00+08:00",
+    "text": "去龙湾附二院把视觉检查的盖章补掉了。学校只认章不认系统内文件，在综合服务台排队等了一小会，办完在院区里绕了两步就回学校了。\n\n#日常 #随拍",
+    "images": [
+      {
+        "src": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/------------_20261017142113_723_241_1792218194676.webp",
+        "alt": "医院挂号与窗口"
+      },
+      {
+        "src": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/------------_20261017142114_725_241_1792218535645.webp",
+        "alt": "院内走廊一角"
+      },
+      {
+        "src": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/------------_20261017142115_726_241_1792218553694.webp",
+        "alt": "准备返校前拍的一张"
+      }
+    ],
+    "location": "温州 · 龙湾附二院",
+    "linkCard": {
+      "label": "BLOG // 完整记录",
+      "title": "去龙湾附二院把这个该死的盖章给补掉了",
+      "description": "当天的完整文字经过归档在文章目录。",
+      "url": "/blog/去龙湾附二院把这个该死的盖章给补掉了/"
+    }
+  },
+  {
+    "id": "daily-20261003-02",
+    "createdAt": "2026-10-03T21:45:00+08:00",
+    "threadId": "hk-night-walk",
+    "threadLabel": "星光大道夜拍 · 续",
+    "text": "离开星光大道、把相机收回背包之前回头拍的几张：K11 Musea 背后视角，以及那天晚上让人回味的日式拉面和双倍价喜茶。\n\n#摄影 #港深游记 #随拍",
+    "images": [
+      {
+        "src": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/_DSC0651_1791211255674.webp",
+        "alt": "维港夜色 _DSC0651"
+      },
+      {
+        "src": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/_DSC0662_1791211291947.webp",
+        "alt": "维港夜色 _DSC0662"
+      },
+      {
+        "src": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/_DSC0671-----------------_1791211319872.webp",
+        "alt": "维港夜色 _DSC0671 降噪增强"
+      },
+      {
+        "src": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/image_1791211601636.webp",
+        "alt": "K11 Musea 背后视角"
+      },
+      {
+        "src": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/ops-coffee-1791210539404_1791210581433.webp",
+        "alt": "当晚的拉面与饮品"
+      }
+    ],
+    "location": "香港 · 尖沙咀"
+  },
+  {
+    "id": "daily-20261003-01",
+    "createdAt": "2026-10-03T21:10:00+08:00",
+    "threadId": "hk-night-walk",
+    "threadLabel": "星光大道夜拍",
+    "text": "吃完晚饭在星光大道靠着栏杆吹夜晚的陆风，连续按下的一整组九宫格快门。维多利亚港对岸的灯光在水面拖出一条条光带。\n\n#摄影 #港深游记 #九宫格",
+    "images": [
+      {
+        "src": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/_DSC0593_1791210836130.webp",
+        "alt": "星光大道夜拍 _DSC0593"
+      },
+      {
+        "src": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/_DSC0608_1791210863848.webp",
+        "alt": "星光大道夜拍 _DSC0608"
+      },
+      {
+        "src": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/_DSC0617_1791210894268.webp",
+        "alt": "星光大道夜拍 _DSC0617"
+      },
+      {
+        "src": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/_DSC0620_1791210922786.webp",
+        "alt": "星光大道夜拍 _DSC0620"
+      },
+      {
+        "src": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/_DSC0623_1791210951892.webp",
+        "alt": "星光大道夜拍 _DSC0623"
+      },
+      {
+        "src": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/_DSC0624_1791210983901.webp",
+        "alt": "星光大道夜拍 _DSC0624"
+      },
+      {
+        "src": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/_DSC0633_1791211019561.webp",
+        "alt": "星光大道夜拍 _DSC0633"
+      },
+      {
+        "src": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/_DSC0638_1791211093657.webp",
+        "alt": "星光大道夜拍 _DSC0638"
+      },
+      {
+        "src": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/_DSC0641_1791211165777.webp",
+        "alt": "星光大道夜拍 _DSC0641"
+      }
+    ],
+    "location": "香港 · 星光大道",
+    "linkCard": {
+      "label": "TRAVEL LOG // EP3",
+      "title": "港深游记EP3：莅临香港",
+      "description": "当晚完整游记与更多原片。",
+      "url": "/blog/港深游记ep3-莅临香港/"
+    }
+  },
+  {
+    "id": "daily-20261001-01",
+    "createdAt": "2026-10-01T18:30:00+08:00",
+    "text": "国庆当天出发去深圳，站台左右两侧同时接车、上面还有两班人在等，顺手拍了一组六格路途片段。\n\n#港深游记 #随拍",
+    "images": [
+      {
+        "src": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/image_1791126993432.webp",
+        "alt": "出发路上"
+      },
+      {
+        "src": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/image_1791127801347.webp",
+        "alt": "国庆火车站站台"
+      },
+      {
+        "src": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/image_1791176774858.webp",
+        "alt": "高铁上点的一份外卖"
+      },
+      {
+        "src": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/ops-coffee-1791211669073_1791211677904.webp",
+        "alt": "街头剪影"
+      },
+      {
+        "src": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/20261105_SeBaStIaNL71087_2118475986622730665_1_1794903477243.webp",
+        "alt": "旅途留影"
+      },
+      {
+        "src": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/_DSC0217_1785663966034.webp",
+        "alt": "公路远景"
+      }
+    ],
+    "location": "铁路沿线 → 深圳"
+  },
+  {
+    "id": "daily-20260921-01",
+    "createdAt": "2026-09-21T16:15:00+08:00",
+    "text": "凯尔希兔兔到了。\n\n#日常 #开箱",
+    "images": [
+      {
+        "src": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/18cc7dd374b7c12a7cb258b9e354493e_1790157324658.webp",
+        "alt": "凯尔希兔兔正面"
+      },
+      {
+        "src": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/5ce6a3cc4b44aa608ccf7349d62c4ba2_1790157339520.webp",
+        "alt": "凯尔希兔兔细节"
+      }
+    ],
+    "mood": "开心"
+  },
+  {
+    "id": "daily-20260801-01",
+    "createdAt": "2026-08-01T19:22:00+08:00",
+    "text": "今天的晚霞（来晚了，，\n相机拍的和手机稍早时候拍的两张放一起，天边真是挺黄的。\n\n#晚霞 #摄影 #日常",
+    "images": [
+      {
+        "src": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/82157e3eba19ea321712d2d735987839_1785582527319.webp",
+        "alt": "相机拍到的晚霞"
+      },
+      {
+        "src": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/0594b7f9262c3128e07100fa05425af9_1785582530703.webp",
+        "alt": "手机稍早拍到的晚霞"
+      }
+    ],
+    "device": "相机 + 手机"
+  },
+  {
+    "id": "daily-20260731-01",
+    "createdAt": "2026-07-31T23:05:00+08:00",
+    "text": "看番顺手截了四张画面放进时间线，典型的二乘二四格排列效果。\n\n#观影笔记 #四格",
+    "images": [
+      {
+        "src": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/image_1785498666719.webp",
+        "alt": "截图帧 01"
+      },
+      {
+        "src": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/image_1785498871585.webp",
+        "alt": "截图帧 02"
+      },
+      {
+        "src": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/image_1785498943991.webp",
+        "alt": "截图帧 03"
+      },
+      {
+        "src": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/image_1785499181968.webp",
+        "alt": "截图帧 04"
+      }
+    ]
+  }
+]

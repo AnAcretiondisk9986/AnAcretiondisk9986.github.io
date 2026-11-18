@@ -1,0 +1,350 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import DailyCard from '../components/hz/DailyCard.astro';
+import { computeDailyStats, normalizeDailyEntries, type DailyEntryInput } from '../lib/daily';
+import { pad2 } from '../lib/horizon';
+import rawDaily from '../data/daily.json';
+import about from '../data/about.json';
+import '../styles/hz/daily.css';
+
+const entries = normalizeDailyEntries(rawDaily as DailyEntryInput[]);
+const stats = computeDailyStats(entries);
+
+const avatar = about.avatar || '/logo.webp';
+const authorName = 'Acretiondisk';
+const handle = '@Acretiondisk_';
+const xUrl =
+  (about.interests || []).find((item) => /twitter|x\(/i.test(item.name || ''))?.note ||
+  'https://x.com/Acretiondisk_';
+---
+
+<BaseLayout
+  title="日常"
+  description="Acretiondisk 的极其细微日常小短片时间线，支持至多九图展示。"
+  page="daily"
+>
+  <div class="hz-wrap hz-daily" data-daily-root>
+    <header class="hz-daily-head">
+      <div class="hz-daily-head__top">
+        <div>
+          <p class="hz-mono hz-daily-head__kicker">
+            DAILY CHRONICLE // 03 · <span lang="ja">日常断片</span>
+          </p>
+          <h1 class="hz-daily-head__title">日常</h1>
+        </div>
+        <p class="hz-mono hz-daily-head__tele" data-tl-readout>
+          {stats.totalMoments} / {stats.totalMoments} MOMENTS · {stats.totalFrames} FRAMES
+        </p>
+      </div>
+      <p class="hz-daily-head__deck">
+        极其细微的日常小短片：几句随想、几帧快门，或一次路过的晚风。按时间线序列排布，单条支持至多九张影像显影。
+      </p>
+    </header>
+
+    <div class="hz-tl-layout">
+      {/* ── 左栏：作者简介卡 + 频道切换 + 月份跳转 ── */}
+      <aside class="hz-tl-rail hz-tl-rail--left" aria-label="时间线侧栏">
+        <div class="hz-tl-rail-sticky">
+          <section class="hz-tl-profile" aria-label="观测者资料">
+            <div class="hz-tl-profile__banner" aria-hidden="true"></div>
+            <div class="hz-tl-profile__inner">
+              <div class="hz-tl-profile__top">
+                <a class="hz-tl-profile__avatar" href="/about/">
+                  <img src={avatar} alt={authorName} loading="eager" decoding="async" />
+                </a>
+                <a
+                  class="hz-mini-btn hz-tl-profile__x"
+                  href={xUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  X ↗
+                </a>
+              </div>
+              <div class="hz-tl-profile__names">
+                <strong>{authorName}</strong>
+                <span class="hz-mono">{handle}</span>
+              </div>
+              <p class="hz-tl-profile__bio">
+                医学生 / 业余摄影与代码。把不够写成一篇长文的细碎微粒直接按时间线铺开。
+              </p>
+              <dl class="hz-tl-profile__stats hz-mono">
+                <div>
+                  <dt>动态</dt>
+                  <dd>{stats.totalMoments}</dd>
+                </div>
+                <div>
+                  <dt>影像</dt>
+                  <dd>{stats.totalFrames}</dd>
+                </div>
+                <div>
+                  <dt>活跃日</dt>
+                  <dd>{stats.activeDays}</dd>
+                </div>
+              </dl>
+            </div>
+          </section>
+
+          <nav class="hz-tl-railnav" aria-label="时间线视图筛选">
+            <button type="button" data-tl-tab="all" aria-pressed="true">
+              <span class="hz-tl-railnav__lead">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                  <path d="M4 7h16M4 12h16M4 17h10" stroke-linecap="round" />
+                </svg>
+                <span>全部时间线</span>
+              </span>
+              <b class="hz-mono">{pad2(stats.totalMoments)}</b>
+            </button>
+            <button type="button" data-tl-tab="media" aria-pressed="false">
+              <span class="hz-tl-railnav__lead">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                  <rect x="3" y="4" width="18" height="16" rx="3" />
+                  <circle cx="8.5" cy="9.5" r="1.4" fill="currentColor" stroke="none" />
+                  <path d="m21 15-4.5-4.5L9 18" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+                <span>含图集片段</span>
+              </span>
+              <b class="hz-mono">{pad2(stats.mediaMoments)}</b>
+            </button>
+            <button type="button" data-tl-tab="text" aria-pressed="false">
+              <span class="hz-tl-railnav__lead">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                  <path d="M6 7h12M6 12h8M6 17h10" stroke-linecap="round" />
+                </svg>
+                <span>纯文字碎碎念</span>
+              </span>
+              <b class="hz-mono">{pad2(stats.textMoments)}</b>
+            </button>
+            <button type="button" data-tl-tab="bookmarked" aria-pressed="false">
+              <span class="hz-tl-railnav__lead">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                  <path d="M6.5 4.5h11a1 1 0 0 1 1 1v14.8l-6.5-4.1-6.5 4.1V5.5a1 1 0 0 1 1-1Z" stroke-linejoin="round" />
+                </svg>
+                <span>本地收藏</span>
+              </span>
+              <b class="hz-mono" data-tl-bm-count>00</b>
+            </button>
+          </nav>
+
+          {stats.months.length > 0 && (
+            <section class="hz-tl-card" aria-label="按月份归档筛选">
+              <header class="hz-tl-card__head">
+                <span class="hz-mono">ARCHIVE // 月份</span>
+              </header>
+              <div class="hz-tl-months">
+                {stats.months.map((m) => (
+                  <button type="button" class="hz-tl-month-btn" data-tl-month={m.key} aria-pressed="false">
+                    <span class="hz-mono">{m.label}</span>
+                    <small class="hz-mono">{pad2(m.count)}</small>
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
+        </div>
+      </aside>
+
+      {/* ── 中栏：X TimeLine 主时间线 ── */}
+      <section class="hz-tl-stream" aria-label="日常推文时间线">
+        <div class="hz-tl-sticky">
+          <div class="hz-tl-tabs" role="tablist" aria-label="时间线栏目">
+            <button type="button" role="tab" data-tl-tab="all" aria-selected="true">
+              <span>全部动态</span>
+            </button>
+            <button type="button" role="tab" data-tl-tab="media" aria-selected="false">
+              <span>含图集</span>
+            </button>
+            <button type="button" role="tab" data-tl-tab="text" aria-selected="false">
+              <span>纯文字</span>
+            </button>
+            <button type="button" role="tab" data-tl-tab="bookmarked" aria-selected="false">
+              <span>收藏</span>
+              <b class="hz-mono" data-tl-bm-count-inline>0</b>
+            </button>
+          </div>
+
+          <div class="hz-tl-toolbar">
+            <label class="hz-tl-mobile-search">
+              <span class="sr-only">搜索日常片段</span>
+              <input
+                type="search"
+                data-tl-search
+                placeholder="搜索关键词、#标签或日期…"
+                autocomplete="off"
+              />
+            </label>
+
+            <div class="hz-tl-toolbar__row">
+              <div class="hz-seg" role="group" aria-label="时间线排序方式">
+                <button type="button" data-tl-sort="newest" aria-pressed="true">最新优先</button>
+                <button type="button" data-tl-sort="oldest" aria-pressed="false">最早优先</button>
+              </div>
+
+              <div class="hz-tl-toolbar__status">
+                <button
+                  type="button"
+                  class="hz-tl-active-chip"
+                  data-tl-active-chip
+                  hidden
+                  title="点击清除当前附加筛选"
+                >
+                  <span data-tl-active-chip-text></span>
+                  <span aria-hidden="true">✕</span>
+                </button>
+                <span class="hz-mono hz-tl-stream-count" data-tl-stream-count>
+                  {pad2(entries.length)} / {pad2(entries.length)}
+                </span>
+              </div>
+            </div>
+          </div>
+          {stats.tags.length > 0 && (
+            <div class="hz-tl-tagstrip" aria-label="快捷标签筛选">
+              {stats.tags.slice(0, 10).map((item) => (
+                <button type="button" data-tl-tag={item.tag} aria-pressed="false">
+                  #{item.tag} ({item.count})
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div class="hz-tl-feed" data-tl-feed>
+          {entries.map((entry, idx) => (
+            <DailyCard
+              entry={entry}
+              avatar={avatar}
+              authorName={authorName}
+              handle={handle}
+              index={idx}
+            />
+          ))}
+        </div>
+
+        <div class="hz-empty hz-tl-empty" data-tl-empty hidden>
+          <p class="hz-mono">NO DAILY SIGNALS MATCH CURRENT FILTER</p>
+          <p>当前筛选条件下没有对应的日常碎片，试试清除检索词或切换时间线视图。</p>
+          <button type="button" class="hz-btn" data-tl-reset>重置全部筛选</button>
+        </div>
+      </section>
+
+      {/* ── 右栏：X 检索 + 脉动观测 + 热门话题 ── */}
+      <aside class="hz-tl-rail hz-tl-rail--right" aria-label="检索与话题索引">
+        <div class="hz-tl-rail-sticky">
+          <label class="hz-tl-search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+              <circle cx="11" cy="11" r="7" />
+              <path d="m20 20-3.8-3.8" stroke-linecap="round" />
+            </svg>
+            <input
+              type="search"
+              data-tl-search
+              aria-label="搜索日常动态、标签或日期"
+              placeholder="搜索日常、#标签或日期…"
+              autocomplete="off"
+            />
+            <kbd class="hz-mono" aria-hidden="true">/</kbd>
+          </label>
+
+          <section class="hz-tl-card" aria-label="28日发射脉动">
+            <header class="hz-tl-card__head">
+              <span class="hz-mono">TELEMETRY // 观测脉动</span>
+              <span class="hz-mono hz-tl-card__sub">28D</span>
+            </header>
+            <div class="hz-tl-pulse" aria-hidden="true">
+              {stats.pulseDays.map((day) => (
+                <span
+                  class="hz-tl-pulse__cell"
+                  data-level={String(day.level)}
+                  title={`${day.dayKey} · ${day.count} 条动态`}
+                />
+              ))}
+            </div>
+            <p class="hz-mono hz-tl-card__foot">LATEST // {stats.latestLabel}</p>
+          </section>
+
+          {stats.tags.length > 0 && (
+            <section class="hz-tl-card" aria-label="话题标签索引">
+              <header class="hz-tl-card__head">
+                <span class="hz-mono">TRENDING // 话题索引</span>
+                <span class="hz-mono hz-tl-card__sub">{stats.tags.length} TAGS</span>
+              </header>
+              <ol class="hz-tl-topics">
+                {stats.tags.slice(0, 8).map((item, i) => (
+                  <li>
+                    <button type="button" class="hz-tl-topic" data-tl-tag={item.tag} aria-pressed="false">
+                      <span class="hz-tl-topic__rank hz-mono">{pad2(i + 1)}</span>
+                      <span class="hz-tl-topic__name">#{item.tag}</span>
+                      <small class="hz-mono">{item.count} 条</small>
+                    </button>
+                  </li>
+                ))}
+              </ol>
+            </section>
+          )}
+
+          <section class="hz-tl-card hz-tl-card--links" aria-label="关联频道">
+            <header class="hz-tl-card__head">
+              <span class="hz-mono">CHANNELS // 关联通道</span>
+            </header>
+            <div class="hz-tl-rel-links">
+              <a href="/blog/">
+                <span>02 文章光谱</span>
+                <small class="hz-mono">SPECTRUM →</small>
+              </a>
+              <a href="/gallery/">
+                <span>04 图像档案</span>
+                <small class="hz-mono">LENSING →</small>
+              </a>
+              <a href={xUrl} target="_blank" rel="noopener noreferrer">
+                <span>X (Twitter) 主页</span>
+                <small class="hz-mono">@Acretiondisk_ ↗</small>
+              </a>
+            </div>
+          </section>
+        </div>
+      </aside>
+    </div>
+  </div>
+</BaseLayout>
+
+{/* ── 1~9 图高清灯箱查看器 ── */}
+<dialog class="hz-viewer hz-dv" id="hz-daily-viewer" aria-label="日常影像查看器">
+  <div class="hz-viewer__shell">
+    <div class="hz-viewer__top">
+      <div class="hz-viewer__nav">
+        <button type="button" class="hz-mini-btn" data-dv-prev aria-label="上一张">← PREV</button>
+        <span class="hz-mono hz-dv__counter" data-dv-counter>01 / 01</span>
+        <button type="button" class="hz-mini-btn" data-dv-next aria-label="下一张">NEXT →</button>
+      </div>
+      <button type="button" class="hz-mini-btn" data-dv-close aria-label="关闭灯箱">CLOSE ✕</button>
+    </div>
+
+    <div class="hz-viewer__media" data-dv-media>
+      <img data-dv-img alt="" referrerpolicy="no-referrer" draggable="false" />
+    </div>
+
+    <div class="hz-dv__thumbs" data-dv-thumbs hidden aria-label="本条图集缩略图"></div>
+
+    <div class="hz-viewer__tools">
+      <div class="hz-viewer__zoom">
+        <span class="hz-mono">ZOOM</span>
+        <input type="range" min="100" max="400" step="1" value="100" data-dv-zoom aria-label="缩放比例" />
+        <b class="hz-mono" data-dv-zoom-val>100%</b>
+        <button type="button" class="hz-mini-btn" data-dv-zoom-reset>100%</button>
+      </div>
+      <a class="hz-mini-btn" data-dv-original target="_blank" rel="noopener noreferrer">查看原图 ↗</a>
+    </div>
+
+    <footer class="hz-viewer__foot">
+      <div>
+        <p class="hz-mono hz-dv__date" data-dv-date>—</p>
+        <h2 data-dv-title>日常影像</h2>
+      </div>
+      <p class="hz-viewer__cap hz-dv__excerpt" data-dv-excerpt></p>
+    </footer>
+  </div>
+</dialog>
+
+<script>
+  import '../scripts/hz/daily';
+</script>

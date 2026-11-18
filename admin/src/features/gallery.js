@@ -324,7 +324,7 @@ function renderGalleryList() {
   };
 }
 
-// ── 批量上传到 03 图像档案 · 独立收藏 ──
+// ── 批量上传到 04 图像档案 · 独立收藏 ──
 
 function enqueueGalleryBatchFiles(rawEntries) {
   const list = Array.isArray(rawEntries) ? rawEntries : [];

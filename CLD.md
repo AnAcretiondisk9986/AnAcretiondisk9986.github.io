@@ -115,6 +115,15 @@ src/
 
 <!-- 新条目追加在这里 -->
 
+### 2026-11-19 · 新增「03 日常」(/daily/) X TimeLine 样式日常微片段频道与导航顺延
+
+- **新增 `03 日常` 页面与数据管线**（[daily.astro](src/pages/daily.astro)、[DailyCard.astro](src/components/hz/DailyCard.astro)、[daily.ts](src/lib/daily.ts)、[daily.ts](src/scripts/hz/daily.ts)、[daily.css](src/styles/hz/daily.css)、[daily.json](src/data/daily.json)）：
+  - 参照 X (Twitter) TimeLine 三栏版式融入 HORIZON VOID/PLATE 双主题与液态玻璃吸顶栏：左侧资料卡、归档与垂直栏目导航；中间 640px 时间线流；右侧检索框、28 日发射脉动点阵、热门 `#话题` 索引与关联通道。
+  - 支持时间线顺序切换（`最新优先` / `最早优先` + FLIP 动画）、置顶标识、串连 Thread 指示线、内嵌链接卡片，以及 **0 至 9 张图自适应网格**（1 图原比例、2 图并排、3 图左大右二、4 图 2×2、5/7/8 图无缺口拼排、6 图 3×2、9 图 3×3 九宫格），并配备支持缩略图条、缩放拖拽与键盘/触控切换的高清灯箱。
+  - 底部操作栏提供 `localStorage` 持久化的共鸣、本地收藏筛选与直链复制。
+- **全站通道编号顺延**（[Hud.astro](src/components/hz/Hud.astro)、[shell.css](src/styles/hz/shell.css)、[gallery.astro](src/pages/gallery.astro)、[about.astro](src/pages/about.astro)、[academics.astro](src/pages/academics.astro)、[schedule.astro](src/pages/schedule.astro)、[exams.astro](src/pages/schedule/exams.astro)、[et.astro](src/pages/et.astro)）：
+  - 顶部主导航插入 `03 日常`，后续通道顺延为 `04 图像`、`05 关于`、`06 学业`、`07 日程`、`08 额度`，同步调整 901–1120px 桌面端顶栏间距防止拥挤，并更新各页眉 Kicker 与 `07.1` 考试安排返回链。
+
 ### 2026-11-18 · 光效收敛、P1/P2 无缝过渡、极向相对论喷流与协调圆角抛光
 
 - **P1/P2 硬切边界消除与全动画无缝循环**：

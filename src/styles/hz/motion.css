@@ -276,6 +276,7 @@ html.is-navigating .hz-nav-tracer {
 }
 
 .hz-log-head,
+.hz-daily-head,
 .hz-gal-head,
 .hz-about-head,
 .hz-acad-head,
@@ -444,6 +445,7 @@ html.is-navigating .hz-nav-tracer {
   .hz-hero__tele,
   .hz-hero__actions,
   .hz-log-head,
+  .hz-daily-head,
   .hz-gal-head,
   .hz-about-head,
   .hz-acad-head,
