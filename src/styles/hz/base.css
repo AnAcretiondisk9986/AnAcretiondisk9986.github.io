@@ -138,36 +138,36 @@
 }
 
 ::view-transition-old(root) {
-  animation: hz-vt-out 320ms var(--e-io) both;
+  animation: hz-vt-out 380ms var(--e-io) both;
 }
 ::view-transition-new(root) {
-  animation: hz-vt-in 540ms var(--e-out) both;
+  animation: hz-vt-in 620ms var(--e-out) both;
 }
 ::view-transition-old(hz-stage) {
-  animation: hz-stage-out 340ms var(--e-io) both;
+  animation: hz-stage-out 380ms var(--e-io) both;
 }
 ::view-transition-new(hz-stage) {
-  animation: hz-stage-in 580ms var(--e-out) both;
+  animation: hz-stage-in 660ms var(--e-out) both;
 }
 ::view-transition-old(hz-foot) {
-  animation: hz-vt-out 260ms var(--e-io) both;
+  animation: hz-vt-out 300ms var(--e-io) both;
 }
 ::view-transition-new(hz-foot) {
-  animation: hz-vt-in 520ms var(--e-out) both;
+  animation: hz-vt-in 600ms var(--e-out) both;
 }
 
 /* 方向性页面过渡：进入详情 / 返回列表 */
 :root[data-vt-dir='forward']::view-transition-old(hz-stage) {
-  animation: hz-stage-fwd-out 340ms var(--e-io) both;
+  animation: hz-stage-fwd-out 380ms var(--e-io) both;
 }
 :root[data-vt-dir='forward']::view-transition-new(hz-stage) {
-  animation: hz-stage-fwd-in 580ms var(--e-out) both;
+  animation: hz-stage-fwd-in 660ms var(--e-out) both;
 }
 :root[data-vt-dir='back']::view-transition-old(hz-stage) {
-  animation: hz-stage-back-out 340ms var(--e-io) both;
+  animation: hz-stage-back-out 380ms var(--e-io) both;
 }
 :root[data-vt-dir='back']::view-transition-new(hz-stage) {
-  animation: hz-stage-back-in 580ms var(--e-out) both;
+  animation: hz-stage-back-in 660ms var(--e-out) both;
 }
 
 /* VOID / PLATE 径向光圈切换 */
@@ -181,71 +181,94 @@
 }
 :root[data-vt='theme']::view-transition-new(root) {
   z-index: 2;
-  animation: hz-theme-iris 620ms var(--e-out) both;
+  animation: hz-theme-iris 720ms var(--e-out) both;
 }
 
 @keyframes hz-theme-iris {
-  from {
+  0% {
     clip-path: circle(0px at var(--vt-x, 92%) var(--vt-y, 32px));
+    filter: brightness(1.38) contrast(1.08);
   }
-  to {
+  45% {
+    filter: brightness(1.14) contrast(1.03);
+  }
+  100% {
     clip-path: circle(var(--vt-r, 150vmax) at var(--vt-x, 92%) var(--vt-y, 32px));
+    filter: brightness(1) contrast(1);
   }
 }
 @keyframes hz-vt-out {
   to {
     opacity: 0;
-    transform: scale(0.985);
-    filter: blur(6px);
+    transform: scale(0.975);
+    filter: blur(8px) brightness(0.8);
   }
 }
 @keyframes hz-vt-in {
   from {
     opacity: 0;
-    transform: scale(1.012);
-    filter: blur(6px);
+    transform: scale(1.022);
+    filter: blur(8px) brightness(1.25);
   }
 }
 @keyframes hz-stage-out {
   to {
     opacity: 0;
-    transform: translateY(-10px) scale(0.982);
-    filter: blur(8px) brightness(0.86);
+    transform: translateY(-18px) scale(0.968);
+    filter: blur(11px) brightness(0.75);
   }
 }
 @keyframes hz-stage-in {
-  from {
+  0% {
     opacity: 0;
-    transform: translateY(18px) scale(1.012);
-    filter: blur(8px);
+    transform: translateY(28px) scale(1.024);
+    filter: blur(12px) brightness(1.35) saturate(1.18);
+  }
+  65% {
+    filter: blur(1px) brightness(1.06) saturate(1.04);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+    filter: blur(0) brightness(1) saturate(1);
   }
 }
 @keyframes hz-stage-fwd-out {
   to {
     opacity: 0;
-    transform: translateX(-28px) scale(0.982);
-    filter: blur(6px) brightness(0.88);
+    transform: translateX(-54px) scale(0.968);
+    filter: blur(10px) brightness(0.78);
   }
 }
 @keyframes hz-stage-fwd-in {
-  from {
+  0% {
     opacity: 0;
-    transform: translateX(34px) scale(1.008);
-    filter: blur(8px);
+    transform: translateX(60px) scale(1.018);
+    filter: blur(12px) brightness(1.32) saturate(1.16);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+    filter: blur(0) brightness(1) saturate(1);
   }
 }
 @keyframes hz-stage-back-out {
   to {
     opacity: 0;
-    transform: translateX(28px) scale(0.982);
-    filter: blur(6px) brightness(0.88);
+    transform: translateX(54px) scale(0.968);
+    filter: blur(10px) brightness(0.78);
   }
 }
 @keyframes hz-stage-back-in {
-  from {
+  0% {
     opacity: 0;
-    transform: translateX(-34px) scale(1.008);
-    filter: blur(8px);
+    transform: translateX(-60px) scale(1.018);
+    filter: blur(12px) brightness(1.32) saturate(1.16);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+    filter: blur(0) brightness(1) saturate(1);
   }
 }
 
@@ -332,7 +355,7 @@ html [lang='ja'] {
   color: var(--hz-ink-3);
 }
 
-/* 按钮：直角、发丝线、悬停时橙色从左侧「注入」+ 镜面扫光与按压回弹 */
+/* 按钮：直角、发丝线、悬停时橙色从左侧「注入」+ 双层等离子镜面扫光与磁吸回弹 */
 .hz-btn {
   position: relative;
   display: inline-flex;
@@ -348,6 +371,7 @@ html [lang='ja'] {
   color: var(--hz-ink);
   isolation: isolate;
   overflow: hidden;
+  transform: translate3d(var(--mag-x, 0px), var(--mag-y, 0px), 0);
   transition:
     color var(--d-2) var(--e-out),
     border-color var(--d-2) var(--e-out),
@@ -359,7 +383,7 @@ html [lang='ja'] {
   position: absolute;
   inset: 0;
   z-index: -1;
-  background: var(--hz-hot);
+  background: linear-gradient(95deg, var(--hz-hot) 0%, var(--hz-hot-2) 100%);
   transform: scaleX(0);
   transform-origin: left;
   transition: transform var(--d-2) var(--e-out);
@@ -367,11 +391,18 @@ html [lang='ja'] {
 .hz-btn::after {
   content: '';
   position: absolute;
-  inset: -20% -60%;
+  inset: -25% -65%;
   z-index: 0;
-  background: linear-gradient(110deg, transparent 38%, rgb(255 255 255 / 0.24) 50%, transparent 62%);
-  transform: translateX(-75%);
-  transition: transform 620ms var(--e-out);
+  background: linear-gradient(
+    112deg,
+    transparent 34%,
+    rgb(255 241 214 / 0.25) 45%,
+    rgb(255 255 255 / 0.56) 50%,
+    rgb(143 179 255 / 0.22) 55%,
+    transparent 66%
+  );
+  transform: translateX(-82%);
+  transition: transform 680ms var(--e-out);
   pointer-events: none;
 }
 .hz-btn > * {
@@ -384,28 +415,40 @@ html [lang='ja'] {
 .hz-btn:hover,
 .hz-btn:focus-visible {
   color: #08080b;
-  border-color: var(--hz-hot);
-  box-shadow: 0 0 24px rgb(255 90 26 / 0.28);
-  transform: translateY(-1px);
+  border-color: var(--hz-white-hot);
+  box-shadow:
+    0 0 28px rgb(255 90 26 / 0.45),
+    0 0 64px -8px rgb(255 179 107 / 0.28),
+    inset 0 0 14px rgb(255 241 214 / 0.28);
+  transform: translate3d(var(--mag-x, 0px), calc(var(--mag-y, 0px) - 2px), 0);
 }
 .hz-btn:hover::before,
 .hz-btn:focus-visible::before {
   transform: scaleX(1);
 }
 .hz-btn:hover::after {
-  transform: translateX(75%);
+  transform: translateX(82%);
 }
 .hz-btn:hover > span:last-child {
-  transform: translateX(3px);
+  transform: translateX(4px);
 }
 .hz-btn:active {
-  transform: translateY(1px) scale(0.98);
+  transform: translate3d(var(--mag-x, 0px), calc(var(--mag-y, 0px) + 1px), 0) scale(0.97);
 }
 .hz-btn--hot {
-  background: var(--hz-hot);
+  background: linear-gradient(125deg, var(--hz-hot) 0%, color-mix(in oklab, var(--hz-hot) 78%, var(--hz-hot-2)) 100%);
   border-color: var(--hz-hot);
   color: #08080b;
-  box-shadow: 0 0 20px rgb(255 90 26 / 0.26);
+  box-shadow: 0 0 24px rgb(255 90 26 / 0.36), inset 0 1px 0 rgb(255 241 214 / 0.35);
+  animation: hz-hot-btn-breath 3.8s ease-in-out infinite;
+}
+@keyframes hz-hot-btn-breath {
+  0%, 100% {
+    box-shadow: 0 0 20px rgb(255 90 26 / 0.34), inset 0 1px 0 rgb(255 241 214 / 0.32);
+  }
+  50% {
+    box-shadow: 0 0 34px rgb(255 90 26 / 0.56), 0 0 64px -10px rgb(255 179 107 / 0.35), inset 0 1px 0 rgb(255 241 214 / 0.48);
+  }
 }
 .hz-btn--hot::before {
   background: var(--hz-ink);
@@ -414,7 +457,22 @@ html [lang='ja'] {
 .hz-btn--hot:focus-visible {
   border-color: var(--hz-ink);
   color: var(--hz-bg);
-  box-shadow: 0 0 28px rgb(255 90 26 / 0.4);
+  animation: none;
+  box-shadow: 0 0 36px rgb(255 90 26 / 0.56), 0 0 72px -8px rgb(255 241 214 / 0.35);
+}
+:root[data-theme='light'] .hz-btn:hover,
+:root[data-theme='light'] .hz-btn:focus-visible {
+  color: #fff;
+  border-color: var(--hz-hot);
+  box-shadow: 0 10px 28px -6px rgb(228 67 10 / 0.45), 0 0 22px rgb(228 67 10 / 0.25);
+}
+:root[data-theme='light'] .hz-btn--hot {
+  color: #fff;
+}
+:root[data-theme='light'] .hz-btn--hot:hover,
+:root[data-theme='light'] .hz-btn--hot:focus-visible {
+  color: var(--hz-bg);
+  border-color: var(--hz-ink);
 }
 .hz-btn svg {
   width: 1.1em;
@@ -450,22 +508,35 @@ html [lang='ja'] {
   position: absolute;
   inset: 0;
   z-index: -1;
-  background: color-mix(in oklab, var(--hz-hot) 12%, transparent);
+  background: color-mix(in oklab, var(--hz-hot) 16%, transparent);
   transform: scaleX(0);
   transform-origin: left;
   transition: transform var(--d-2) var(--e-out);
 }
+.hz-mini-btn::after {
+  content: '';
+  position: absolute;
+  inset: -20% -70%;
+  z-index: 0;
+  background: linear-gradient(110deg, transparent 40%, rgb(255 241 214 / 0.26) 50%, transparent 60%);
+  transform: translateX(-80%);
+  transition: transform 560ms var(--e-out);
+  pointer-events: none;
+}
 .hz-mini-btn:hover:not(:disabled) {
   border-color: var(--hz-hot);
   color: var(--hz-hot-ink);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 16px -6px rgb(255 90 26 / 0.35);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 22px -6px rgb(255 90 26 / 0.48), inset 0 0 12px rgb(255 90 26 / 0.14);
 }
 .hz-mini-btn:hover:not(:disabled)::before {
   transform: scaleX(1);
 }
+.hz-mini-btn:hover:not(:disabled)::after {
+  transform: translateX(80%);
+}
 .hz-mini-btn:active:not(:disabled) {
-  transform: translateY(0) scale(0.97);
+  transform: translateY(0) scale(0.96);
 }
 .hz-mini-btn:disabled {
   opacity: 0.35;
@@ -527,6 +598,7 @@ html [lang='ja'] {
   font-weight: 700;
   color: var(--hz-hot-ink);
   letter-spacing: 0.1em;
+  text-shadow: 0 0 14px rgb(255 90 26 / 0.45);
 }
 .hz-sect__title {
   font-family: var(--f-sans);
@@ -561,9 +633,43 @@ html [lang='ja'] {
   color: var(--hz-hot-ink);
 }
 .hz-sect__rule {
+  position: relative;
   height: 1px;
   align-self: center;
   background: var(--hz-line-2);
+  overflow: hidden;
+}
+.hz-sect__rule::after {
+  content: '';
+  position: absolute;
+  inset: -1px 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--hz-hot) 45%,
+    #fff1d6 55%,
+    var(--hz-blue) 70%,
+    transparent 100%
+  );
+  background-size: 38% 100%;
+  background-repeat: no-repeat;
+  animation: hz-rule-beam 6.4s var(--e-io) infinite;
+}
+@keyframes hz-rule-beam {
+  0% {
+    background-position: -45% 0;
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  65% {
+    opacity: 1;
+  }
+  85%, 100% {
+    background-position: 145% 0;
+    opacity: 0;
+  }
 }
 .hz-sect__more {
   font-family: var(--f-mono);
@@ -571,10 +677,12 @@ html [lang='ja'] {
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--hz-ink-2);
-  transition: color var(--d-1);
+  transition: color var(--d-1), text-shadow var(--d-2) var(--e-out), transform var(--d-2) var(--e-spring);
 }
 .hz-sect__more:hover {
   color: var(--hz-hot-ink);
+  text-shadow: 0 0 14px rgb(255 90 26 / 0.45);
+  transform: translateX(3px);
 }
 @media (max-width: 640px) {
   .hz-sect {

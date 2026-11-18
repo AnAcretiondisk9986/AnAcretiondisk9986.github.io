@@ -68,13 +68,26 @@
 .hz-avatar-ring::before {
   inset: 0;
   border: 1px solid var(--hz-line-2);
-  box-shadow: 0 0 36px -14px rgb(255 90 26 / 0.32);
-  animation: hz-orbit 22s linear infinite;
+  background: conic-gradient(
+    from 0deg,
+    rgb(255 90 26 / 0.75) 0deg 62deg,
+    rgb(255 241 214 / 0.85) 80deg,
+    rgb(143 179 255 / 0.55) 115deg,
+    transparent 165deg 360deg
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  padding: 1.5px;
+  box-shadow: 0 0 48px -8px rgb(255 90 26 / 0.52);
+  animation: hz-orbit 18s linear infinite;
 }
 .hz-avatar-ring::after {
   inset: 12px;
-  border: 1px dashed rgb(255 90 26 / 0.45);
-  animation: hz-orbit 15s linear infinite reverse;
+  border: 1px dashed rgb(255 90 26 / 0.62);
+  box-shadow: inset 0 0 28px -12px rgb(255 90 26 / 0.35);
+  animation: hz-orbit 14s linear infinite reverse;
 }
 .hz-avatar-ring img {
   position: relative;
@@ -84,11 +97,13 @@
   border-radius: 50%;
   object-fit: cover;
   border: 1px solid var(--hz-line-2);
-  transition: transform var(--d-3) var(--e-spring), border-color var(--d-2) var(--e-out);
+  box-shadow: 0 0 32px -10px rgb(255 90 26 / 0.36);
+  transition: transform var(--d-3) var(--e-spring), border-color var(--d-2) var(--e-out), box-shadow var(--d-2) var(--e-out);
 }
 .hz-about-side:hover .hz-avatar-ring img {
-  transform: scale(1.04);
+  transform: scale(1.06);
   border-color: var(--hz-hot);
+  box-shadow: 0 0 44px -6px rgb(255 90 26 / 0.68);
 }
 @keyframes hz-orbit {
   to {
@@ -178,11 +193,15 @@
   padding: 12px 6px;
   border-bottom: 1px solid var(--hz-line);
   font-size: var(--t-small);
-  transition: background-color var(--d-2) var(--e-out), padding-inline var(--d-2) var(--e-out);
+  transition:
+    background-color var(--d-2) var(--e-out),
+    padding-inline var(--d-2) var(--e-out),
+    box-shadow var(--d-2) var(--e-out);
 }
 .hz-ledger-list li:hover {
-  background: color-mix(in oklab, var(--hz-hot) 5%, transparent);
-  padding-inline: 10px;
+  background: linear-gradient(90deg, color-mix(in oklab, var(--hz-hot) 12%, transparent), transparent 72%);
+  padding-inline: 12px;
+  box-shadow: inset 2px 0 0 var(--hz-hot);
 }
 .hz-ledger-list li span {
   font-family: var(--f-mono);
@@ -248,7 +267,8 @@
     text-shadow var(--d-2) var(--e-out);
 }
 .hz-freq__wall:has(.hz-freq__word:hover) .hz-freq__word:not(:hover) {
-  opacity: 0.38;
+  opacity: 0.26;
+  filter: blur(0.6px);
 }
 .hz-freq__word:nth-child(4n + 2) {
   font-family: var(--f-sans);
@@ -272,8 +292,13 @@
 }
 .hz-freq__word:hover {
   color: var(--hz-hot-ink);
-  transform: translateY(-3px) scale(1.06);
-  text-shadow: 0 0 18px rgb(255 90 26 / 0.45);
+  transform: translateY(-4px) scale(1.1);
+  text-shadow:
+    0 0 22px rgb(255 90 26 / 0.72),
+    0 0 42px rgb(255 179 107 / 0.38);
+}
+:root[data-theme='light'] .hz-freq__word:hover {
+  text-shadow: 0 4px 16px rgb(228 67 10 / 0.35);
 }
 .hz-freq__word:hover small {
   color: var(--hz-hot);

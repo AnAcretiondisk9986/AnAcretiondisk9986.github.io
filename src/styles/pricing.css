@@ -349,7 +349,8 @@
     transition: background-color 0.2s var(--e-out, ease);
   }
   .pr-row:hover {
-    background: color-mix(in oklab, var(--c-ink) 4%, transparent);
+    background: linear-gradient(90deg, color-mix(in oklab, var(--c-accent) 10%, transparent), transparent 72%);
+    box-shadow: inset 2px 0 0 var(--c-accent);
   }
   /* 供应商品牌色：同一行三档靠明度区分（浅=缓存、中=输入、深=输出）。
      黑/灰黑这类在暗色主题里会糊掉，所以统一往 --c-ink 靠，跟随明暗翻转。 */
@@ -388,6 +389,7 @@
   .pr-chart[data-sort='in'] .pr-bar--in .pr-bar__fill,
   .pr-chart[data-sort='out'] .pr-bar--out .pr-bar__fill {
     opacity: 1;
+    box-shadow: 0 0 12px -2px var(--bar-fill, var(--c-accent));
   }
   .pr-bar b {
     position: absolute;
@@ -456,17 +458,18 @@
   }
   .pr-point {
     fill: var(--c-accent);
-    fill-opacity: 0.55;
+    fill-opacity: 0.65;
     stroke: var(--c-accent);
-    stroke-width: 0.8;
+    stroke-width: 0.9;
+    filter: drop-shadow(0 0 4px color-mix(in oklab, var(--c-accent) 48%, transparent));
     transform-box: fill-box;
     transform-origin: center;
-    transition: transform 0.24s var(--e-spring, ease), fill-opacity 0.2s ease, filter 0.2s ease;
+    transition: transform 0.26s var(--e-spring, ease), fill-opacity 0.2s ease, filter 0.2s ease;
   }
   .pr-point:hover {
-    fill-opacity: 0.95;
-    transform: scale(1.38);
-    filter: drop-shadow(0 0 6px var(--c-accent));
+    fill-opacity: 1;
+    transform: scale(1.48);
+    filter: drop-shadow(0 0 10px var(--c-accent)) drop-shadow(0 0 20px var(--c-accent));
   }
   .pr-point--openai,
   .pr-point--anthropic,

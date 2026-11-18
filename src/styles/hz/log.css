@@ -21,8 +21,9 @@
 }
 .hz-row:hover,
 .hz-row.is-linked {
-  background: var(--hz-bg-2);
-  border-bottom-color: var(--hz-line-2);
+  background: color-mix(in oklab, var(--hz-bg-2) 86%, var(--hz-hot) 5%);
+  border-bottom-color: color-mix(in oklab, var(--hz-hot) 45%, var(--hz-line-2));
+  box-shadow: inset 0 1px 0 rgb(255 90 26 / 0.14);
 }
 
 /* 左侧红移光谱刻度条：最新偏蓝白，渐旧红移 */
@@ -42,9 +43,16 @@
 }
 .hz-row:hover .hz-row__tick,
 .hz-row.is-linked .hz-row__tick {
-  transform: scaleY(1.6);
-  background: var(--hz-hot);
-  box-shadow: 0 0 12px rgb(255 90 26 / 0.65);
+  transform: scaleY(2.15) scaleX(1.3);
+  background: linear-gradient(180deg, #fff1d6, var(--hz-hot) 55%, var(--hz-blue));
+  box-shadow:
+    0 0 16px rgb(255 90 26 / 0.85),
+    0 0 32px rgb(255 179 107 / 0.45);
+}
+:root[data-theme='light'] .hz-row:hover .hz-row__tick,
+:root[data-theme='light'] .hz-row.is-linked .hz-row__tick {
+  background: linear-gradient(180deg, var(--hz-hot), var(--hz-blue));
+  box-shadow: 0 0 14px rgb(228 67 10 / 0.55);
 }
 
 .hz-row__tele {
@@ -138,12 +146,13 @@
   font-size: 1rem;
   line-height: 1;
   color: var(--hz-ink-3);
-  transition: transform var(--d-2) var(--e-out), color var(--d-2);
+  transition: transform var(--d-2) var(--e-spring), color var(--d-2), text-shadow var(--d-2);
 }
 .hz-row:hover .hz-row__arrow,
 .hz-row.is-linked .hz-row__arrow {
   color: var(--hz-hot);
-  transform: translate(3px, -3px);
+  transform: translate(4px, -4px) scale(1.16);
+  text-shadow: 0 0 14px rgb(255 90 26 / 0.72);
 }
 
 .hz-row__thumb {
@@ -162,24 +171,47 @@
   top: 0;
   left: 0;
   z-index: 42;
-  width: 204px;
-  height: 132px;
-  border-radius: 10px;
+  width: 214px;
+  height: 138px;
+  border-radius: 11px;
   border: 1px solid var(--hz-hot);
   background: var(--hz-void);
   overflow: hidden;
   pointer-events: none;
   opacity: 0;
-  scale: 0.84;
+  scale: 0.82;
   transition:
     opacity var(--d-2) var(--e-out),
     scale var(--d-2) var(--e-spring),
     box-shadow var(--d-2) var(--e-out);
   will-change: transform, opacity, scale;
   box-shadow:
-    0 16px 34px -12px rgb(0 0 0 / 0.72),
-    0 0 22px -6px rgb(255 90 26 / 0.35),
-    0 0 0 4px rgb(255 90 26 / 0.08);
+    0 22px 44px -12px rgb(0 0 0 / 0.84),
+    0 0 34px -4px rgb(255 90 26 / 0.56),
+    0 0 64px -14px rgb(143 179 255 / 0.32),
+    0 0 0 4px rgb(255 90 26 / 0.12);
+}
+.hz-lens::after {
+  content: '';
+  position: absolute;
+  inset: -40% 0;
+  background: linear-gradient(
+    180deg,
+    transparent 35%,
+    rgb(255 241 214 / 0.22) 50%,
+    rgb(255 90 26 / 0.14) 54%,
+    transparent 70%
+  );
+  animation: hz-lens-scan 2.4s var(--e-io) infinite;
+  pointer-events: none;
+}
+@keyframes hz-lens-scan {
+  0% {
+    transform: translateY(-65%);
+  }
+  100% {
+    transform: translateY(65%);
+  }
 }
 .hz-lens.is-visible {
   opacity: 1;
@@ -290,11 +322,57 @@
   display: flex;
   align-items: flex-end;
   gap: 2px;
-  height: 92px;
-  padding-top: var(--s-2);
+  height: 102px;
+  padding-top: var(--s-3);
   border-bottom: 1px solid var(--hz-line-2);
+  overflow: hidden;
+}
+.hz-spec__bars::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgb(255 90 26 / 0.09) 46%,
+    rgb(255 241 214 / 0.14) 50%,
+    rgb(143 179 255 / 0.08) 54%,
+    transparent 100%
+  );
+  background-size: 38% 100%;
+  background-repeat: no-repeat;
+  animation: hz-spec-sweep 6.8s var(--e-io) infinite;
+}
+@keyframes hz-spec-sweep {
+  0% {
+    background-position: -45% 0;
+  }
+  100% {
+    background-position: 145% 0;
+  }
+}
+.hz-spec__bars::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--spec-x, -10px);
+  width: 2px;
+  background: linear-gradient(180deg, transparent, rgb(255 241 214 / 0.92) 35%, var(--hz-hot) 100%);
+  box-shadow: 0 0 18px var(--hz-hot), 0 0 34px rgb(255 179 107 / 0.55);
+  opacity: var(--spec-laser, 0);
+  pointer-events: none;
+  transform: translateX(-50%);
+  transition: left 90ms var(--e-out), opacity var(--d-1) var(--e-out);
+}
+:root[data-theme='light'] .hz-spec__bars::after {
+  background: linear-gradient(180deg, transparent, var(--hz-blue) 35%, var(--hz-hot) 100%);
+  box-shadow: 0 0 14px rgb(228 67 10 / 0.48);
 }
 .hz-spec__bar {
+  position: relative;
+  z-index: 1;
   flex: 1 1 0;
   min-width: 3px;
   height: 100%;
@@ -304,6 +382,7 @@
   cursor: pointer;
 }
 .hz-spec__bar i {
+  position: relative;
   display: block;
   width: 100%;
   height: var(--bar-h, 40%);
@@ -320,6 +399,19 @@
   transform-origin: bottom;
   animation: hz-bar-rise 680ms var(--e-out) calc(var(--bar-i, 0) * 14ms) both;
 }
+.hz-spec__bar i::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: rgb(255 241 214 / 0.65);
+  opacity: calc(1 - var(--bar-age, 0) * 0.65);
+}
+:root[data-theme='light'] .hz-spec__bar i::after {
+  background: rgb(228 67 10 / 0.85);
+}
 @keyframes hz-bar-rise {
   from {
     transform: scaleY(0.04);
@@ -331,19 +423,29 @@
   }
 }
 .hz-spec__bar.is-near-2 i {
-  transform: scaleY(1.06);
-  opacity: 0.92;
+  transform: scaleY(1.1);
+  opacity: 0.94;
+  box-shadow: 0 0 10px rgb(255 90 26 / 0.35);
 }
 .hz-spec__bar.is-near-1 i {
-  transform: scaleY(1.12);
-  background: color-mix(in oklab, var(--hz-hot) 60%, var(--hz-white-hot));
+  transform: scaleY(1.22);
+  background: color-mix(in oklab, var(--hz-hot) 68%, #fff1d6);
+  box-shadow: 0 0 16px rgb(255 90 26 / 0.56);
 }
 .hz-spec__bar:hover i,
 .hz-spec__bar:focus-visible i,
 .hz-spec__bar.is-linked i {
-  background: var(--hz-white-hot);
-  transform: scaleY(1.22);
-  box-shadow: 0 0 14px rgb(255 90 26 / 0.72);
+  background: linear-gradient(180deg, #fff1d6 0%, var(--hz-hot) 75%);
+  transform: scaleY(1.34);
+  box-shadow:
+    0 0 20px rgb(255 90 26 / 0.92),
+    0 -12px 24px rgb(255 241 214 / 0.45);
+}
+:root[data-theme='light'] .hz-spec__bar:hover i,
+:root[data-theme='light'] .hz-spec__bar:focus-visible i,
+:root[data-theme='light'] .hz-spec__bar.is-linked i {
+  background: linear-gradient(180deg, var(--hz-blue) 0%, var(--hz-hot) 85%);
+  box-shadow: 0 0 16px rgb(228 67 10 / 0.65);
 }
 .hz-spec__bar.is-dimmed i {
   opacity: 0.14;

@@ -115,6 +115,16 @@ src/
 
 <!-- 新条目追加在这里 -->
 
+### 2026-11-18 · 全站体积光场、相对论粒子与高动态交互光效升级
+
+- **全站光场与交互引擎**（[BaseLayout.astro](src/layouts/BaseLayout.astro)、[tokens.css](src/styles/hz/tokens.css)、[motion.css](src/styles/hz/motion.css)、[motion.ts](src/scripts/hz/motion.ts)）：
+  - 新增固定背景体积星云/底片光洗（`.hz-aurora`）与 2D 实时相对论粒子/引力弧线场（`.hz-cosmos-canvas`），随滚动速度产生翘曲光丝流，并在光标近域形成引力偏折与双主题（VOID / PLATE）色彩同步，在首页首屏自动淡出避让 WebGL 黑洞；
+  - 新增光标体积光晕（`.hz-cursor-aura`）、全站点击爱因斯坦环引力冲击波（`.hz-shockwave`）、跨页高能等离子顶部扫光束（`.hz-nav-tracer`）、按钮磁吸微交互（`.hz-btn` / `.hz-foot__top`）、遥测数字锁定动画，以及覆盖动态渲染节点的双层边缘描边聚光灯（`[data-hz-spot]`）与 3D 光学倾角（`[data-hz-tilt]`）；
+  - 强化跨文档 View Transitions 曝光过冲与方向性视差（[base.css](src/styles/hz/base.css)），升级 HUD 指针高光追踪、底边流光与页脚巨型字标日冕扫光（[shell.css](src/styles/hz/shell.css)）。
+- **首页黑洞与全板块定向光效**（[disk.ts](src/scripts/hz/disk.ts)、[home.css](src/styles/hz/home.css)、[log.css](src/styles/hz/log.css)、[spectrum.ts](src/scripts/hz/spectrum.ts)、[lens.ts](src/scripts/hz/lens.ts)、[gallery.css](src/styles/hz/gallery.css)、[gallery-field.ts](src/scripts/hz/gallery-field.ts)、[about.css](src/styles/hz/about.css)、[academics.css](src/styles/hz/academics.css)、[academics.ts](src/scripts/hz/academics.ts)、[entry.css](src/styles/hz/entry.css)、[prose.css](src/styles/hz/prose.css)、[schedule.css](src/styles/hz/schedule.css)、[exams.css](src/styles/hz/exams.css)、[ai-quota.css](src/styles/ai-quota.css)、[pricing.css](src/styles/pricing.css)、[legacy-bridge.css](src/styles/hz/legacy-bridge.css)、[misc.css](src/styles/hz/misc.css)）：
+  - 首页黑洞着色器新增极区同步辐射等离子微流、降临/点击触发的相对论引力波冲击环（`u_pulse`）、光标临近视界增亮（`u_flare`）与下潜径向速度流线；标题域名流光渐变、Section 02 图版棱镜炫光与 Section 03 弧光轨道环同步升级；
+  - `/blog/` 光谱仪增加悬停垂直激光准星（`--spec-x`）与邻域谐波涌浪，悬浮预览 `.hz-lens` 增加速度倾斜与扫描光束；`/gallery/` 透镜场加入光标引力焦点与光箱曝光切换；`/academics/` 课程方块支持 3D 指针倾角与翻转边缘爆闪；`/schedule/` 修复关闭抽屉阴影右缘溢出问题并升级当前时间激光线与课程高光；`/ai-quota/` 与 `/ai-quota/pricing/` 解除阴影屏蔽并新增流光进度条与脉冲状态环；`/404` 新增反旋吸积涡旋环。
+
 ### 2026-11-17 · 新增 06 日程三级页 `/schedule/exams/`（重构原独立仓库 `/et/` 期末考试安排）
 
 - **全量重构接入**：将原独立仓库 `AnAcretiondisk9986/et` 的 2026–2027 学年第一学期期末考试安排（含 12-12 `六级笔试（CET6）`、01-10 `英语（3）` 共 10 场）归档至 [exams.json](src/data/exams.json)，抛弃原有玻璃拟态圆角渐变风格，依据 HORIZON 视界双主题（VOID / PLATE）设计规范重写为 [exams.astro](src/pages/schedule/exams.astro)、[exams.css](src/styles/hz/exams.css) 与 [exams.ts](src/scripts/hz/exams.ts)（含实时倒计时、33 天日期矩阵筛选、同课多考短时自动标注「实验考核」徽标、开课学院分布、时间轴/卡片/表格三视图、右侧详情抽屉、信息复制、`.ics` 日历导出与打印样式）。

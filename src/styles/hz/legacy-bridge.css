@@ -50,12 +50,11 @@ body.page-quota .hz-foot {
   display: none;
 }
 
-/* 对齐 HORIZON 锐利直角与等宽读数细节 */
+/* 对齐 HORIZON 锐利直角与等宽读数细节（保留光效阴影） */
 body.page-quota .aq-card,
 body.page-quota .aq-btn,
 body.page-quota .aq-notice,
 body.page-pricing .pr-sort,
 body.page-pricing .pr-dir {
   border-radius: 0 !important;
-  box-shadow: none !important;
 }

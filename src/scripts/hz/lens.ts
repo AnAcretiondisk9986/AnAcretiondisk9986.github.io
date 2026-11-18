@@ -31,16 +31,21 @@ export function initLens() {
   const frame = () => {
     raf = 0;
     if (!activeRow) return;
+    let tilt = 0;
     if (reduce) {
       cx = tx;
       cy = ty;
     } else {
-      cx += (tx - cx) * 0.2;
+      const dx = tx - cx;
+      cx += dx * 0.2;
       cy += (ty - cy) * 0.2;
+      tilt = Math.max(-7, Math.min(7, dx * 0.14));
     }
-    lens.style.transform = `translate3d(${cx.toFixed(1)}px, ${cy.toFixed(1)}px, 0) translate(-50%, -50%)`;
+    lens.style.transform = `translate3d(${cx.toFixed(1)}px, ${cy.toFixed(1)}px, 0) translate(-50%, -50%) rotate(${tilt.toFixed(2)}deg)`;
     if (Math.abs(tx - cx) > 0.4 || Math.abs(ty - cy) > 0.4) {
       raf = requestAnimationFrame(frame);
+    } else if (!reduce) {
+      lens.style.transform = `translate3d(${cx.toFixed(1)}px, ${cy.toFixed(1)}px, 0) translate(-50%, -50%)`;
     }
   };
 

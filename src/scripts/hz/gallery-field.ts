@@ -964,9 +964,13 @@ export function initGallery() {
   const updatePointerOffset = (e: PointerEvent) => {
     if (!stage) return;
     const rect = stage.getBoundingClientRect();
-    pointerOffX = e.clientX - rect.left - rect.width * 0.5;
-    pointerOffY = e.clientY - rect.top - rect.height * 0.5;
+    const lx = e.clientX - rect.left;
+    const ly = e.clientY - rect.top;
+    pointerOffX = lx - rect.width * 0.5;
+    pointerOffY = ly - rect.height * 0.5;
     pointerActive = true;
+    stage.style.setProperty('--stage-mx', `${lx.toFixed(1)}px`);
+    stage.style.setProperty('--stage-my', `${ly.toFixed(1)}px`);
   };
 
   stage?.addEventListener('pointermove', (e) => {

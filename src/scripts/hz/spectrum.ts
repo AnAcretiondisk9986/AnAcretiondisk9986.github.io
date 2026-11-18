@@ -53,6 +53,8 @@ export function initSpectrum() {
     readout.textContent = `${bar.dataset.folio || ''} · ${bar.dataset.title || ''} · ${bar.dataset.mass || '0'} 字 · z=${bar.dataset.z || '0'}`;
   };
 
+  const barsWrap = root.querySelector<HTMLElement>('.hz-spec__bars');
+
   const linkPair = (id: string | null) => {
     const activeIdx = id ? bars.findIndex((b) => b.dataset.id === id) : -1;
     bars.forEach((b, i) => {
@@ -62,6 +64,16 @@ export function initSpectrum() {
       b.classList.toggle('is-near-1', dist === 1);
       b.classList.toggle('is-near-2', dist === 2);
     });
+    if (barsWrap) {
+      const activeBar = activeIdx >= 0 ? bars[activeIdx] : null;
+      if (activeBar) {
+        const cx = activeBar.offsetLeft + activeBar.offsetWidth * 0.5;
+        barsWrap.style.setProperty('--spec-x', `${cx.toFixed(1)}px`);
+        barsWrap.style.setProperty('--spec-laser', '1');
+      } else {
+        barsWrap.style.setProperty('--spec-laser', '0');
+      }
+    }
     rows.forEach((r) => r.classList.toggle('is-linked', Boolean(id) && r.dataset.id === id));
     updateReadout(id);
   };

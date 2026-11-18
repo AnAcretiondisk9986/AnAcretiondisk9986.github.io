@@ -71,6 +71,8 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? 'https://blog.acreti
     </script>
   </head>
   <body class={bodyClass} data-page={page}>
+    <div class="hz-aurora" aria-hidden="true"></div>
+    <canvas class="hz-cosmos-canvas" data-hz-cosmos aria-hidden="true"></canvas>
     <a class="hz-skip" href="#main">跳到正文</a>
     <Hud siteName={siteName} siteTagline={siteTagline} pathname={Astro.url.pathname} />
     <main id="main" class:list={['hz-main', { 'hz-main--bleed': bleed }]}>

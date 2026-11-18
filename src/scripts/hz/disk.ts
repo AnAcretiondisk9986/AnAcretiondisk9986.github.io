@@ -32,6 +32,8 @@ uniform float u_time;
 uniform vec2 u_mouse;
 uniform float u_scroll;
 uniform float u_plate;
+uniform float u_pulse;
+uniform float u_flare;
 uniform float u_hasTex;
 uniform float u_texFade;
 uniform sampler2D u_sky;
@@ -424,13 +426,44 @@ void main() {
   float secondaryRing = exp(-abs(minR - 1.56) * 6.8) * mix(0.28, 0.95, escapeFade);
   float coronaGlow = exp(-abs(minR - 1.62) * 3.0) * mix(0.18, 0.82, escapeFade);
 
-  col += trans * (
-    vec3(1.00, 0.91, 0.62) * sharpRing * 1.68 * ringArc +
-    vec3(1.00, 0.48, 0.08) * secondaryRing * 1.28 * (0.85 + 0.3 * ringPulse1) +
-    vec3(1.00, 0.22, 0.03) * coronaGlow * 1.10
-  ) * ringDoppler;
+  float ringBoost = 1.0 + 0.42 * u_scroll + 0.36 * u_flare + 0.65 * u_pulse;
 
-  float lensingBoost = 1.0 + 2.15 * exp(-abs(minR - 1.72) * 2.1);
+  col += trans * (
+    vec3(1.00, 0.92, 0.66) * sharpRing * 1.78 * ringArc +
+    vec3(1.00, 0.48, 0.08) * secondaryRing * 1.36 * (0.85 + 0.3 * ringPulse1) +
+    vec3(1.00, 0.24, 0.04) * coronaGlow * 1.22
+  ) * ringDoppler * ringBoost;
+
+  // 极区同步辐射等离子日冕与相对论极向微流（垂直于吸积盘旋转轴）
+  vec2 pAxis = rot2(p, roll);
+  float poleDist = length(pAxis);
+  float axisMask = exp(-abs(pAxis.x) * 4.6) * smoothstep(0.32, 0.72, abs(pAxis.y)) * smoothstep(1.95, 0.65, poleDist);
+  if (axisMask > 0.005) {
+    float jetNoise = vnoise3(vec3(pAxis * vec2(8.0, 2.4), mod(u_time * 1.35, 256.0) - abs(pAxis.y) * 2.2));
+    float jetStreak = pow(clamp(jetNoise, 0.0, 1.0), 2.1) * axisMask;
+    vec3 jetCol = mix(vec3(0.32, 0.64, 1.00), vec3(1.00, 0.66, 0.30), smoothstep(0.55, 1.25, abs(pAxis.y)));
+    col += trans * jetCol * jetStreak * (0.58 + 0.45 * u_flare + 0.55 * u_pulse);
+  }
+
+  // 点击交互 / 降临相对论引力波冲击环
+  if (u_pulse > 0.002) {
+    float wavePhase = 1.0 - u_pulse;
+    float waveR = mix(0.24, 2.45, wavePhase);
+    float distCenter = length(p);
+    float ringWave = exp(-pow((distCenter - waveR) * 14.0, 2.0)) * u_pulse;
+    float innerEcho = exp(-pow((distCenter - waveR * 0.72) * 18.0, 2.0)) * u_pulse * 0.55;
+    col += vec3(1.00, 0.78, 0.38) * ringWave * 1.15 + vec3(0.45, 0.74, 1.00) * innerEcho * 0.85;
+  }
+
+  // 下潜越过视界时的径向光学速度流线
+  if (u_scroll > 0.05) {
+    float radAngle = atan(p.y, p.x);
+    float streakNoise = vnoise3(vec3(cos(radAngle) * 14.0, sin(radAngle) * 14.0, mod(u_time * 2.2 + u_scroll * 6.0, 256.0)));
+    float edgeMask = smoothstep(0.65, 1.65, length(p)) * u_scroll;
+    col += vec3(1.00, 0.62, 0.28) * pow(clamp(streakNoise, 0.0, 1.0), 4.0) * edgeMask * 0.52;
+  }
+
+  float lensingBoost = 1.0 + 2.25 * exp(-abs(minR - 1.72) * 2.1);
   if (!captured && trans > 0.01) {
     col += trans * sampleSky(normalize(vel), lensingBoost);
   }
@@ -569,6 +602,8 @@ export function initBlackHole() {
   const uMouse = gl.getUniformLocation(prog, 'u_mouse');
   const uScroll = gl.getUniformLocation(prog, 'u_scroll');
   const uPlate = gl.getUniformLocation(prog, 'u_plate');
+  const uPulse = gl.getUniformLocation(prog, 'u_pulse');
+  const uFlare = gl.getUniformLocation(prog, 'u_flare');
   const uHasTex = gl.getUniformLocation(prog, 'u_hasTex');
   const uTexFade = gl.getUniformLocation(prog, 'u_texFade');
   const uSky = gl.getUniformLocation(prog, 'u_sky');
@@ -614,6 +649,9 @@ export function initBlackHole() {
   let scrollDepth = 0;
   let plateVal = document.documentElement.dataset.theme === 'light' ? 1 : 0;
   let plateTarget = plateVal;
+  let pulseVal = reduceMotion ? 0 : 0.72;
+  let flareVal = 0;
+  let flareTarget = 0;
 
   if (matchMedia('(pointer: fine)').matches) {
     window.addEventListener(
@@ -621,6 +659,20 @@ export function initBlackHole() {
       (e) => {
         tmx = (e.clientX / Math.max(1, window.innerWidth) - 0.5) * 2;
         tmy = (e.clientY / Math.max(1, window.innerHeight) - 0.5) * 2;
+        const aspect = window.innerWidth / Math.max(1, window.innerHeight);
+        const bhCenterX = aspect > 1.2 ? 0.66 : 0.5;
+        const distBH = Math.hypot(e.clientX / Math.max(1, window.innerWidth) - bhCenterX, e.clientY / Math.max(1, window.innerHeight) - 0.5);
+        flareTarget = Math.max(0, Math.min(1, 1 - distBH / 0.45));
+      },
+      { passive: true },
+    );
+  }
+
+  if (!reduceMotion) {
+    hero.addEventListener(
+      'pointerdown',
+      () => {
+        pulseVal = 1.0;
       },
       { passive: true },
     );
@@ -668,6 +720,10 @@ export function initBlackHole() {
     mx += (tmx - mx) * 0.06;
     my += (tmy - my) * 0.06;
     plateVal += (plateTarget - plateVal) * 0.14;
+    flareVal += (flareTarget - flareVal) * 0.08;
+    if (pulseVal > 0.001) {
+      pulseVal = Math.max(0, pulseVal - Math.min(0.05, dt * 0.001) * 0.72);
+    }
     if (hasTex && texFade < 1) texFade = Math.min(1, texFade + 0.04);
 
     gl.uniform2f(uRes, width, height);
@@ -675,6 +731,8 @@ export function initBlackHole() {
     gl.uniform2f(uMouse, mx, my);
     gl.uniform1f(uScroll, scrollDepth);
     gl.uniform1f(uPlate, plateVal);
+    gl.uniform1f(uPulse, reduceMotion ? 0 : pulseVal);
+    gl.uniform1f(uFlare, reduceMotion ? 0 : flareVal);
     gl.uniform1f(uHasTex, hasTex);
     gl.uniform1f(uTexFade, reduceMotion && hasTex ? 1 : texFade);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
