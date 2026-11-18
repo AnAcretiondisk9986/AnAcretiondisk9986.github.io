@@ -35,10 +35,14 @@ const DATA_DIR = process.env.ADMIN_DATA_DIR ? resolve(process.env.ADMIN_DATA_DIR
 const IMG_REPO_DIR = process.env.IMG_REPO_DIR ? resolve(process.env.IMG_REPO_DIR) : resolve(__dirname, '..', 'blog-images');
 const IMAGE_DIR = resolve(IMG_REPO_DIR, 'image');
 const AUDIO_DIR = resolve(IMG_REPO_DIR, 'audio');
+const VIDEO_DIR = resolve(IMG_REPO_DIR, 'video');
+const FILE_DIR = resolve(IMG_REPO_DIR, 'file');
 const ORIGINAL_DIR = resolve(IMAGE_DIR, 'original');
 const THUMB_DIR = resolve(IMAGE_DIR, 'thumb');
 const IMG_BASE_URL = 'https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/';
 const AUDIO_BASE_URL = 'https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/audio/';
+const VIDEO_BASE_URL = 'https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/video/';
+const FILE_BASE_URL = 'https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/file/';
 const GALLERY_JSON = resolve(DATA_DIR, 'gallery.json');
 const ABOUT_JSON = resolve(DATA_DIR, 'about.json');
 const FRONTEND_JSON = resolve(DATA_DIR, 'frontend.json');
@@ -705,10 +709,32 @@ function nextGalleryDayIndex(items, date) {
     .reduce((max, i) => Math.max(max, i.dayIndex || 0), 0) + 1;
 }
 
-// ── Multer: image-only upload ──
-const ALLOWED_MIME = ['image/png', 'image/jpeg', 'image/jpg', 'image/pjpeg', 'image/gif', 'image/webp', 'image/avif', 'image/svg+xml', 'image/x-icon', 'image/heic', 'image/heif', 'image/tiff', 'audio/mpeg', 'audio/flac', 'audio/ogg', 'audio/wav', 'audio/x-wav', 'audio/mp4', 'audio/aac', 'audio/x-m4a'];
+// ── Multer: 统一媒体上传（图片 / 音频 / 视频 / 常见文档附件） ──
+const IMAGE_MIME = ['image/png', 'image/jpeg', 'image/jpg', 'image/pjpeg', 'image/gif', 'image/webp', 'image/avif', 'image/svg+xml', 'image/x-icon', 'image/heic', 'image/heif', 'image/tiff'];
+const AUDIO_MIME = ['audio/mpeg', 'audio/flac', 'audio/ogg', 'audio/wav', 'audio/x-wav', 'audio/mp4', 'audio/aac', 'audio/x-m4a'];
+const VIDEO_MIME = ['video/mp4', 'video/webm', 'video/quicktime', 'video/ogg'];
+const FILE_MIME = [
+  'application/pdf', 'application/zip', 'application/x-zip-compressed',
+  'text/markdown', 'text/csv', 'application/json',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+];
+const ALLOWED_MIME = [...IMAGE_MIME, ...AUDIO_MIME, ...VIDEO_MIME, ...FILE_MIME];
 // URL 导入支持的图片扩展名（与 MIME 校验互补；CDN/图床对 HEIC 等常返回 application/octet-stream）
 const IMAGE_EXTS = ['.png', '.jpg', '.jpeg', '.jfif', '.gif', '.webp', '.avif', '.svg', '.heic', '.heif', '.tiff', '.tif'];
+const VIDEO_EXTS = ['.mp4', '.webm', '.mov', '.ogv'];
+const FILE_EXTS = ['.pdf', '.zip', '.md', '.csv', '.json', '.docx', '.xlsx', '.pptx'];
+const JSDELIVR_FILE_WARN_BYTES = 20 * 1024 * 1024;
+
+function detectUploadKind(file) {
+  const mime = String(file?.mimetype || '').toLowerCase();
+  const ext = extname(file?.originalname || '').toLowerCase();
+  if (mime.startsWith('audio/') || MEDIA_AUDIO_EXTS.includes(ext)) return 'audio';
+  if (mime.startsWith('video/') || VIDEO_EXTS.includes(ext)) return 'video';
+  if (FILE_MIME.includes(mime) || FILE_EXTS.includes(ext)) return 'file';
+  return 'image';
+}
 
 let lastUploadTs = 0;
 let uploadSeq = 0;
@@ -726,7 +752,8 @@ function nextUploadStamp() {
 const upload = multer({
   storage: multer.diskStorage({
     destination: (_req, file, cb) => {
-      const dir = String(file.mimetype).startsWith('audio/') ? AUDIO_DIR : IMAGE_DIR;
+      const kind = detectUploadKind(file);
+      const dir = kind === 'audio' ? AUDIO_DIR : kind === 'video' ? VIDEO_DIR : kind === 'file' ? FILE_DIR : IMAGE_DIR;
       try {
         mkdir(dir, { recursive: true }).then(() => cb(null, dir), err => cb(err));
       } catch (err) { cb(err); }
@@ -735,21 +762,19 @@ const upload = multer({
       const safeName = file.originalname
         .replace(/\.[^.]+$/, '')
         .replace(/[^a-zA-Z0-9\u4e00-\u9fff_-]/g, '-')
-        .substring(0, 60) || 'image';
+        .substring(0, 60) || 'asset';
       const ext = extname(file.originalname).toLowerCase();
       cb(null, `${safeName}_${nextUploadStamp()}${ext}`);
     },
   }),
   fileFilter: (_req, file, cb) => {
-    // Chrome/Edge 等浏览器不识别 HEIC 等格式，会以 application/octet-stream（或空 MIME）上传：
-    // 对 heic/heif/avif/tiff 按扩展名兜底放行（均经 libheif / sharp 内容解码校验）
     const ext = extname(file.originalname).toLowerCase();
     const genericOk = (file.mimetype === 'application/octet-stream' || file.mimetype === '')
-      && ['.heic', '.heif', '.avif', '.tiff', '.tif'].includes(ext);
+      && ['.heic', '.heif', '.avif', '.tiff', '.tif', ...VIDEO_EXTS, ...FILE_EXTS].includes(ext);
     if (ALLOWED_MIME.includes(file.mimetype) || genericOk) {
       cb(null, true);
     } else {
-      cb(new Error('仅支持 PNG / JPEG / GIF / WebP / AVIF / TIFF / SVG / HEIC 图片与 MP3 / FLAC / OGG / WAV / M4A 音频'), false);
+      cb(new Error('仅支持图片 / 音频 / MP4·WebM 视频 / PDF·Office·ZIP·TXT 等常见附件'), false);
     }
   },
   limits: { fileSize: LIMITS.uploadMaxBytes },
@@ -1306,15 +1331,18 @@ app.post('/api/upload', (req, res, next) => {
     if (!req.file) return res.status(400).json({ error: '未选择文件' });
     let filesSaved = false; // 转码/归档是否已成功落库（推送失败时保留文件，不清理）
     try {
-      const isAudio = String(req.file.mimetype).startsWith('audio/');
+      const kind = detectUploadKind(req.file);
       let filename, origName = null, title = '', artist = '', coverUrl = '';
-      if (isAudio) {
+      if (kind === 'audio') {
         // 音频：原样保留（不做转码），落库到 audio/ 目录，并尝试解析歌名 / 歌手 / 封面
         filename = basename(req.file.path);
         const meta = await extractAudioMeta(req.file.path);
         title = meta.title;
         artist = meta.artist;
         coverUrl = meta.coverUrl;
+      } else if (kind === 'video' || kind === 'file') {
+        // 视频与文档附件：原样保留，分别落库到 video/ 与 file/ 目录
+        filename = basename(req.file.path);
       } else {
         origName = await archiveOriginal(req.file.path, basename(req.file.path));
         filename = await saveImageFile(req.file.path);
@@ -1323,19 +1351,25 @@ app.post('/api/upload', (req, res, next) => {
       const deferPush = req.query.deferPush === '1' || req.query.deferPush === 'true' || req.body?.deferPush === '1';
       const push = deferPush ? { pushed: false } : await pushImageRepo({ requestId: req.requestId });
       lastUploadError = null;
-      const base = isAudio ? AUDIO_BASE_URL : IMG_BASE_URL;
+      const base = kind === 'audio' ? AUDIO_BASE_URL : kind === 'video' ? VIDEO_BASE_URL : kind === 'file' ? FILE_BASE_URL : IMG_BASE_URL;
       const publicUrl = `${base}${encodeURIComponent(filename)}`;
       if (!deferPush) {
         // 上传成功后预热 jsDelivr 缓存（只等 2.5s 就返回，剩余在后台继续预热，上传更快、竞态窗口更小）
         await warmJsDelivr(publicUrl, 2500);
       }
+      const size = req.file.size || 0;
       res.status(201).json({
         success: true,
         url: publicUrl,
         originalUrl: origName ? `${IMG_BASE_URL}original/${encodeURIComponent(origName)}` : '',
         pushed: Boolean(push.pushed),
         deferredPush: deferPush,
-        type: isAudio ? 'audio' : 'image',
+        type: kind,
+        name: filename,
+        originalName: req.file.originalname || filename,
+        ext: extname(filename).toLowerCase(),
+        size,
+        jsDelivrWarn: (kind === 'video' || kind === 'file' || kind === 'audio') && size > JSDELIVR_FILE_WARN_BYTES,
         title,
         artist,
         coverUrl,
@@ -1368,7 +1402,7 @@ app.post('/api/upload', (req, res, next) => {
 function warmUploadedUrlsAsync(urls) {
   if (!Array.isArray(urls) || !urls.length) return;
   const targets = [...new Set(urls.map((u) => String(u || '').trim()))]
-    .filter((u) => u.startsWith(IMG_BASE_URL) || u.startsWith(AUDIO_BASE_URL))
+    .filter((u) => u.startsWith(IMG_BASE_URL) || u.startsWith(AUDIO_BASE_URL) || u.startsWith(VIDEO_BASE_URL) || u.startsWith(FILE_BASE_URL))
     .slice(0, 300);
   if (!targets.length) return;
   // 后台限流预热，不阻塞请求返回
@@ -1473,7 +1507,7 @@ app.post('/api/import-url', async (req, res) => {
     }
 
     const contentType = (remote.headers.get('content-type') || '').split(';')[0].trim();
-    if (!ALLOWED_MIME.includes(contentType)) {
+    if (!IMAGE_MIME.includes(contentType)) {
       // CDN/图床常把图片返回为 application/octet-stream（或缺失 Content-Type）：
       // 仅 heic/heif 按扩展名兜底放行（有 libheif 解码内容校验）；svg/gif/webp 等仍要求标准 MIME，避免未校验内容落库
       const urlExt = extname(parsed.pathname).toLowerCase();
@@ -1536,6 +1570,46 @@ app.post('/api/import-url', async (req, res) => {
     }
     console.error('Import URL Error:', err.message);
     res.status(500).json({ error: '导入失败' });
+  }
+});
+
+// 链接元信息抓取（书签卡片插入用：SSRF 校验 + 仅抓前 256KB HTML 解析 title / description）
+app.get('/api/link-meta', async (req, res) => {
+  try {
+    const raw = String(req.query.url || '').trim();
+    if (!raw) return res.status(400).json({ error: '缺少 url 参数' });
+    let parsed;
+    try {
+      parsed = new URL(raw);
+      if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('bad proto');
+    } catch {
+      return res.status(400).json({ error: '仅支持 http/https 链接' });
+    }
+    const remote = await fetchPublic(parsed.href, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; AcretiondiskBlog/1.0)', Accept: 'text/html,application/xhtml+xml' },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!remote.ok) return res.json({ ok: false, url: parsed.href, title: parsed.hostname, description: '' });
+    const ct = (remote.headers.get('content-type') || '').toLowerCase();
+    if (!ct.includes('text/html') && !ct.includes('xhtml')) {
+      return res.json({ ok: true, url: remote.url || parsed.href, title: parsed.hostname, description: '' });
+    }
+    const buf = await readLimitedBuffer(remote, 256 * 1024);
+    const html = buf.toString('utf8');
+    const decode = (s) => String(s || '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").trim();
+    const ogTitle = html.match(/<meta[^>]+(?:property|name)=["'](?:og:title|twitter:title)["'][^>]+content=["']([^"']+)["']/i)?.[1]
+      || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["'](?:og:title|twitter:title)["']/i)?.[1];
+    const docTitle = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1];
+    const ogDesc = html.match(/<meta[^>]+(?:property|name)=["'](?:og:description|description)["'][^>]+content=["']([^"']+)["']/i)?.[1]
+      || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["'](?:og:description|description)["']/i)?.[1];
+    res.json({
+      ok: true,
+      url: remote.url || parsed.href,
+      title: decode(ogTitle || docTitle || parsed.hostname).slice(0, 140),
+      description: decode(ogDesc || '').slice(0, 260),
+    });
+  } catch {
+    res.json({ ok: false, url: String(req.query.url || '').trim(), title: '', description: '' });
   }
 });
 
@@ -2231,8 +2305,12 @@ app.route('/api/schedule')
 // ── Media library API ──
 const MEDIA_IMAGE_EXTS = ['.webp', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.heic', '.heif', '.avif'];
 const MEDIA_AUDIO_EXTS = ['.mp3', '.flac', '.ogg', '.wav', '.m4a', '.aac'];
+const MEDIA_VIDEO_EXTS = ['.mp4', '.webm', '.mov', '.ogv'];
+const MEDIA_FILE_EXTS = ['.pdf', '.zip', '.txt', '.md', '.csv', '.json', '.docx', '.xlsx', '.pptx'];
 const IMAGE_ARCHIVE_DIR = join(IMAGE_DIR, '_archive');
 const AUDIO_ARCHIVE_DIR = join(AUDIO_DIR, '_archive');
+const VIDEO_ARCHIVE_DIR = join(VIDEO_DIR, '_archive');
+const FILE_ARCHIVE_DIR = join(FILE_DIR, '_archive');
 
 async function listMediaFiles(dir, exts) {
   const names = await readdir(dir).catch(() => []);
@@ -2341,10 +2419,10 @@ async function collectMediaUsage() {
   for (const file of files) {
     const slug = file.replace(/\.(md|mdx)$/i, '');
     const raw = await readFile(join(BLOG_DIR, file), 'utf8').catch(() => '');
-    const cdnRe = /https?:\/\/[^\s)"'<>]*?\/(?:image|audio)\/([^)"'<>\s/]+)/g;
+    const cdnRe = /https?:\/\/[^\s)"'<>]*?\/(?:image|audio|video|file)\/([^)"'<>\s/]+)/g;
     let m;
     while ((m = cdnRe.exec(raw))) mark(fileNameFromUrl(m[1]), `post:${slug}`);
-    const bareRe = /([A-Za-z0-9\u4e00-\u9fff_@.\-]+\.(?:webp|png|jpe?g|gif|svg|heic|heif|avif|mp3|flac|ogg|wav|m4a|aac))/gi;
+    const bareRe = /([A-Za-z0-9\u4e00-\u9fff_@.\-]+\.(?:webp|png|jpe?g|gif|svg|heic|heif|avif|mp3|flac|ogg|wav|m4a|aac|mp4|webm|mov|ogv|pdf|zip|txt|csv|docx|xlsx|pptx))/gi;
     while ((m = bareRe.exec(raw))) mark(m[1], `post:${slug}`);
   }
   try {
@@ -2474,9 +2552,11 @@ app.get('/api/upload/selfcheck', auth, async (req, res) => {
 app.get('/api/media', async (req, res) => {
   try {
     await loadMediaDimCache();
-    const [imageFiles, audioFiles, usage] = await Promise.all([
+    const [imageFiles, audioFiles, videoFiles, docFiles, usage] = await Promise.all([
       listMediaFiles(IMAGE_DIR, MEDIA_IMAGE_EXTS),
       listMediaFiles(AUDIO_DIR, MEDIA_AUDIO_EXTS),
+      listMediaFiles(VIDEO_DIR, MEDIA_VIDEO_EXTS),
+      listMediaFiles(FILE_DIR, MEDIA_FILE_EXTS),
       collectMediaUsage(),
     ]);
     let dimCacheDirty = false;
@@ -2509,17 +2589,46 @@ app.get('/api/media', async (req, res) => {
       url: `${AUDIO_BASE_URL}${encodeURIComponent(f.name)}`,
       usedBy: usage[f.name] || [],
     }));
+    const videos = videoFiles.map((f) => ({
+      type: 'video',
+      name: f.name,
+      size: f.size,
+      mtime: f.mtime,
+      url: `${VIDEO_BASE_URL}${encodeURIComponent(f.name)}`,
+      usedBy: usage[f.name] || [],
+    }));
+    const files = docFiles.map((f) => ({
+      type: 'file',
+      name: f.name,
+      size: f.size,
+      mtime: f.mtime,
+      ext: extname(f.name).toLowerCase(),
+      url: `${FILE_BASE_URL}${encodeURIComponent(f.name)}`,
+      usedBy: usage[f.name] || [],
+    }));
     images.sort((a, b) => b.mtime.localeCompare(a.mtime));
     audios.sort((a, b) => b.mtime.localeCompare(a.mtime));
-    const withUsage = images.filter((i) => i.usedBy.length).length + audios.filter((a) => a.usedBy.length).length;
+    videos.sort((a, b) => b.mtime.localeCompare(a.mtime));
+    files.sort((a, b) => b.mtime.localeCompare(a.mtime));
+    const allItems = [...images, ...audios, ...videos, ...files];
+    const withUsage = allItems.filter((i) => i.usedBy.length).length;
     res.json({
       ok: true,
       requestId: req.requestId,
       images,
       audios,
+      videos,
+      files,
       generatedAt: new Date().toISOString(),
       limits: LIMITS,
-      stats: { images: images.length, audios: audios.length, referenced: withUsage, orphan: images.length + audios.length - withUsage },
+      stats: {
+        images: images.length,
+        audios: audios.length,
+        videos: videos.length,
+        files: files.length,
+        referenced: withUsage,
+        orphan: allItems.length - withUsage,
+      },
     });
   } catch (err) {
     console.error('Media API Error:', err.message);
@@ -2531,12 +2640,16 @@ function resolveMediaTarget(type, name) {
   const raw = String(name || '');
   const safeName = basename(raw);
   if (!safeName || safeName !== raw) return null;
-  const isImage = type === 'image';
-  const dir = isImage ? IMAGE_DIR : type === 'audio' ? AUDIO_DIR : null;
-  if (!dir) return null;
-  const exts = isImage ? MEDIA_IMAGE_EXTS : MEDIA_AUDIO_EXTS;
-  if (!exts.includes(extname(safeName).toLowerCase())) return null;
-  return { dir, name: safeName, isImage };
+  const map = {
+    image: { dir: IMAGE_DIR, exts: MEDIA_IMAGE_EXTS, archiveDir: IMAGE_ARCHIVE_DIR, isImage: true },
+    audio: { dir: AUDIO_DIR, exts: MEDIA_AUDIO_EXTS, archiveDir: AUDIO_ARCHIVE_DIR, isImage: false },
+    video: { dir: VIDEO_DIR, exts: MEDIA_VIDEO_EXTS, archiveDir: VIDEO_ARCHIVE_DIR, isImage: false },
+    file: { dir: FILE_DIR, exts: MEDIA_FILE_EXTS, archiveDir: FILE_ARCHIVE_DIR, isImage: false },
+  };
+  const cfg = map[type];
+  if (!cfg) return null;
+  if (!cfg.exts.includes(extname(safeName).toLowerCase())) return null;
+  return { dir: cfg.dir, archiveDir: cfg.archiveDir, name: safeName, isImage: cfg.isImage };
 }
 
 /** 删除文件（Windows 上被占用时重试几次，避免杀毒/索引/同步盘短暂锁定导致 EBUSY）*/
@@ -2588,7 +2701,7 @@ app.post('/api/media/archive', upload.none(), async (req, res) => {
   try {
     const target = resolveMediaTarget(req.body.type, req.body.name);
     if (!target) return res.status(400).json({ error: '无效的媒体类型或文件名' });
-    const archiveDir = target.isImage ? IMAGE_ARCHIVE_DIR : AUDIO_ARCHIVE_DIR;
+    const archiveDir = target.archiveDir;
     await mkdir(archiveDir, { recursive: true });
     await rename(join(target.dir, target.name), join(archiveDir, target.name));
     let pushed = false;
@@ -2656,9 +2769,18 @@ app.get('/admin/shared/schedule-core.mjs', (_req, res) => {
   res.type('application/javascript; charset=utf-8');
   res.sendFile(resolve(__dirname, 'src', 'lib', 'schedule-core.mjs'));
 });
+app.get('/admin/shared/editor-codec.mjs', (_req, res) => {
+  res.set('Cache-Control', 'no-cache');
+  res.type('application/javascript; charset=utf-8');
+  res.sendFile(resolve(__dirname, 'src', 'lib', 'editor-codec.mjs'));
+});
 app.use('/admin', express.static(join(__dirname, 'admin'), { setHeaders: setAdminStaticCacheHeaders }));
 
-app.listen(PORT, '127.0.0.1', () => {
+app.listen(PORT, '127.0.0.1', (err) => {
+  if (err) {
+    console.error(`❌ 无法启动管理面板（端口 ${PORT}）：${err.message}`);
+    process.exit(1);
+  }
   const url = `http://localhost:${PORT}/admin`;
   console.log(`\n📚 博客管理面板已启动: ${url}\n`);
   console.log(`   仅限本地使用 — 请勿暴露到公网`);

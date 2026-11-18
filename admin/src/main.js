@@ -11,9 +11,10 @@
     import { initAbout, renderAboutList, loadAbout, saveAbout, refreshAvatarPreview, isAboutDirty, clearAboutDirty, syncAboutDirty } from './features/about.js';
     import { initFrontend, renderFrontendList, loadFrontend, saveFrontend, syncFrontendPreview, isFrontendDirty, clearFrontendDirty, syncFrontendDirty } from './features/frontend.js';
     import { initSchedule, renderScheduleSidebar, loadSchedule, saveSchedule, isScheduleDirty, clearScheduleDirty } from './features/schedule.js';
-    import { initPosts, updateBatchBar, setupBatchControls, showRevisionHistory, previewPostBySlug, copyPostLink, duplicatePost, quickToggleDraft, toggleArchive, closePostPreview, putPostFields, restoreRevision, renderLineDiff } from './features/posts.js';
+    import { initPosts, updateBatchBar, setupBatchControls, showRevisionHistory, previewPostBySlug, copyPostLink, duplicatePost, quickToggleDraft, toggleArchive, closePostPreview, putPostFields, restoreRevision, renderLineDiff, renderMarkdownPreviewInto } from './features/posts.js';
     import { initGallery, loadGallery, newGalleryItem, saveGalleryItem, deleteGalleryItem, getCurrentGalleryId, resetGallerySelection, isGalleryDirty, clearGalleryDirty, syncGalleryDirty, openGalleryBatchUploader, isGalleryBatchBusy } from './features/gallery.js';
     import { initMedia, loadMedia, renderMediaSidebar, triggerMediaUpload, openMediaPicker, closeMediaPicker, setupMediaPicker, setupCoverMediaButton, setupMediaInsertButton, setupGalleryMediaButton } from './features/media.js';
+    import { renderWordRibbonHtml, mountWordEditor, katex } from './editor/word-ui.js';
 
     const API = '/api/posts';
     let currentSlug = null, posts = [];
@@ -428,7 +429,7 @@
           const status = $('#draftStatus');
           if (status) status.textContent = state.draft ? '当前为草稿' : '已发布';
         }
-        if (vditor && typeof vditor.setValue === 'function') vditor.setValue(state.content || '');
+        if (wordController) wordController.setMarkdown(state.content || '');
         syncPostCoverPreview();
       } finally {
         postHydrating = false;
@@ -469,6 +470,12 @@
     function resetPostEditorTracking() {
       clearTimeout(postDraftTimer);
       postDraftTimer = null;
+      if (wordController) {
+        try { wordController.destroy(); } catch { /* ignore */ }
+        wordController = null;
+        window.editor = null;
+        window.wordEditor = null;
+      }
       postDirty = false;
       postHydrating = false;
       postBaselineSnapshot = '';
@@ -579,14 +586,8 @@
     function updateRichStatus() {
       const el = $('#richStatus');
       if (!el) return;
-      const md = getEditorMarkdown() || '';
-      const unsupported = /<(?:div|mark|center|u|iframe|song-player)\b/i.test(md);
-      if (!unsupported) { el.hidden = true; el.textContent = ''; return; }
-      el.hidden = false;
-      el.className = 'rich-status warn';
-      el.textContent = isWysiwygView()
-        ? '⚠ 当前为「所见即所得」：正文含原始 HTML（对齐 / 高亮 / 下划线 / 视频 / 播放条），部分结构可能不渲染；建议切到「分屏」看实时渲染，或用「即时渲染」编辑。'
-        : '◐ 正文含原始 HTML（对齐 / 高亮 / 下划线 / 视频 / 播放条）：即时渲染下以源码块展示、不会丢失；切到「分屏」右侧可看到与线上一致的实时渲染。';
+      el.hidden = true;
+      el.textContent = '';
     }
 
     function applyPostTemplate(key) {
@@ -594,7 +595,9 @@
       if (!tpl || currentSlug) return;
       if (tpl.tags) $('#fTags').value = tpl.tags;
       if (tpl.description) $('#fDesc').value = tpl.description;
-      if (!getEditorMarkdown().trim() && tpl.content && vditor) vditor.setValue(tpl.content);
+      if (!getEditorMarkdown().trim() && tpl.content && wordController) {
+        wordController.setMarkdown(tpl.content);
+      }
       const title = $('#fTitle')?.value || '';
       if (!($('#fSlug')?.value || '').trim() && title) $('#fSlug').value = slugifyTitle(title);
       updatePostValidation();
@@ -731,53 +734,29 @@
           <section class="form-section form-section-grow" data-section="body">
             <button class="form-section-head" type="button" data-collapse="body"><span class="caret">▾</span>正文</button>
             <div class="form-section-body">
-              <div class="editor-toolbar">
-                <button class="btn small" id="btnInsertVideo" title="插入 B站 / YouTube 等流媒体视频">▶ 视频</button>
-                <button class="btn small" id="btnInsertMusic" title="插入音乐播放条（自托管音频直链）">♪ 音乐</button>
-                <button class="btn small" id="btnInsertMedia" title="从媒体库插入图片 / 音频">▤ 媒体库</button>
-                <button class="btn small" id="btnInsertImgSize" title="设置图片宽度">⛶ 图宽</button>
-                <span class="fmt-sep"></span>
-                <button class="btn small" data-align="left" title="将选中段落设为居左">⇤</button>
-                <button class="btn small" data-align="center" title="将选中段落设为居中">⇔</button>
-                <button class="btn small" data-align="right" title="将选中段落设为居右">⇥</button>
-                <span class="fmt-sep"></span>
-                <button class="btn small" id="btnOutline" title="显示 / 隐藏大纲">☰ 大纲</button>
-                <button class="btn small" id="btnTypewriter" title="打字机模式：光标始终居中">⌨ 打字机</button>
-                <button class="btn small" id="btnFocusMode" title="专注模式：隐藏侧栏">⤢ 专注</button>
-                <div class="view-switch" id="viewSwitch">
-                  <button data-view="ir" class="active" title="即时渲染：直接编辑排版结果，原始 HTML 保持不变">即时渲染</button>
-                  <button data-view="sv" title="左侧 Markdown 源码 + 右侧实时预览">分屏</button>
-                  <button data-view="wysiwyg" title="所见即所得">所见即所得</button>
-                  <button data-view="source" title="仅 Markdown 源码">源码</button>
-                </div>
-              </div>
+              ${renderWordRibbonHtml()}
               <div class="post-stats" id="postStats"></div>
               <div class="field-hint" id="postDraftStatus"></div>
               <div class="rich-status" id="richStatus" hidden></div>
               <div class="editor-body" id="editorBody">
-                <div id="vditorEditor"></div>
+                <div id="wordEditorHost"></div>
               </div>
             </div>
           </section>
         </div>`;
       setupUpload();
       setupPostCover();
-      setupVideoInsert();
-      setupMusicInsert();
-      setupFmtToolbar();
-      setupImgSize();
-      setupViewSwitch();
       setupPostDirtyTracking();
       setupFormSections();
       setupSlugAutogen();
       setupTemplateChips();
       setupShareInfo(isNew ? null : value);
       setupCoverMediaButton();
-      setupMediaInsertButton();
-      setupEditorTools();
       const pfBtn = $('#btnPreflight');
       if (pfBtn) { pfBtn.style.display = ''; pfBtn.disabled = false; }
-      if (!initVditorEditor(value.content || '')) finalizePostEditorInit();
+      initWordEditorController(value.content || '');
+      setupMediaInsertButton();
+      finalizePostEditorInit();
       renderList();
       if (isNew) $('#fTitle')?.focus();
     }
@@ -930,19 +909,28 @@
      */
     function setupGlobalFileInput() {
       const fileInput = $('#fileInput');
-      if (!fileInput) return;
-      fileInput.onchange = async () => {
-        const f = fileInput.files[0];
-        const target = postUploadTarget;
-        if (f) {
-          if (f.type.startsWith('audio/')) { await uploadAudioTrack(f); }
-          else { await uploadImage(f, target); }
-          fileInput.value = '';
-        }
-        postUploadTarget = 'content';
-      };
+      if (fileInput) {
+        fileInput.onchange = async () => {
+          const f = fileInput.files[0];
+          const target = postUploadTarget;
+          if (f) {
+            if (f.type.startsWith('audio/')) { await uploadAudioTrack(f); }
+            else { await uploadImage(f, target); }
+            fileInput.value = '';
+          }
+          postUploadTarget = 'content';
+        };
+      }
+      const multiImgInput = $('#editorMultiImgInput');
+      if (multiImgInput) {
+        multiImgInput.onchange = async () => {
+          const files = [...(multiImgInput.files || [])];
+          multiImgInput.value = '';
+          if (files.length) await uploadMultipleImagesToEditor(files);
+        };
+      }
       document.onpaste = async e => {
-        // 编辑器（Vditor）已接管粘贴时会先 preventDefault，此处跳过，避免同一张图上传两次
+        // 编辑器已接管粘贴时会先 preventDefault，此处跳过，避免同一张图上传两次
         if (e.defaultPrevented) return;
         const items = e.clipboardData?.items ? [...e.clipboardData.items] : [];
         const audioItem = items.find(i => i.type.startsWith('audio/'));
@@ -962,10 +950,21 @@
       area.onclick = ()=>{postUploadTarget='content';fileInput.click()};
       area.ondragover = e=>{e.preventDefault();area.classList.add('dragover')};
       area.ondragleave = ()=>area.classList.remove('dragover');
-      area.ondrop = async e=>{e.preventDefault();area.classList.remove('dragover');const f=e.dataTransfer.files[0];if(!f)return;if(f.type.startsWith('audio/')){await uploadAudioTrack(f)}else{await uploadImage(f,'content')}};
+      area.ondrop = async e=>{
+        e.preventDefault();
+        area.classList.remove('dragover');
+        const files = [...(e.dataTransfer.files || [])];
+        if (!files.length) return;
+        const imgs = files.filter((f) => isImageFile(f));
+        const others = files.filter((f) => !isImageFile(f));
+        if (imgs.length) await uploadMultipleImagesToEditor(imgs);
+        for (const f of others) {
+          if (f.type.startsWith('audio/')) await uploadAudioTrack(f);
+        }
+      };
 
-      // 编辑器区拖放：图片由 Vditor 的 upload 处理（光标处插入）；音频由我们处理
-      const editorBox = $('#vditorEditor');
+      // 编辑器区拖放：音频由外部接管；图片交给 ProseMirror handleDrop 在落点插入
+      const editorBox = $('#wordEditorHost');
       if(editorBox){
         editorBox.ondragover = e=>{e.preventDefault();e.dataTransfer.dropEffect='copy'};
         editorBox.ondrop = async e=>{
@@ -975,7 +974,6 @@
             e.preventDefault();
             await uploadAudioTrack(f);
           }
-          // 图片不拦截：TOAST UI 原生拖放会走 addImageBlobHook 上传并在光标处插入
         };
       }
 
@@ -1023,11 +1021,11 @@
       // 这里不再重复覆盖（避免各模式互相顶掉处理器）。
     }
 
-    /* ── 插入视频（B站 / YouTube / 通用 iframe 嵌入） ── */
-    // 把用户输入转换为标准 iframe 嵌入代码；无法识别时返回 {error}
-    function buildVideoEmbed(input){
+    /* ── 插入视频（B站 / YouTube / MP4 直链 / 本地视频 / 通用 iframe 嵌入） ── */
+    // 把用户输入转换为标准 video-embed 代码；无法识别时返回 {error}
+    function buildVideoEmbed(input, poster = ''){
       const s=(input||'').trim();
-      if(!s) return {error:'请粘贴视频链接或嵌入代码'};
+      if(!s) return {error:'请粘贴视频链接、嵌入代码，或先上传本地视频'};
       // 1) 直接粘贴 iframe 嵌入代码：提取 src 重建（丢弃原始样式与事件属性）；src 必须是 http(s)
       if(/<iframe/i.test(s)){
         const m=s.match(/<iframe[^>]*\bsrc\s*=\s*["']([^"']+)["']/i);
@@ -1048,32 +1046,53 @@
       if(m){
         return {html:'<div class="video-embed"><iframe src="https://www.youtube-nocookie.com/embed/'+m[1]+'" title="YouTube 视频播放器" loading="lazy" allowfullscreen referrerpolicy="no-referrer-when-downgrade"></iframe></div>'};
       }
-      return {error:'无法识别：请粘贴 B站 / YouTube 视频链接，或视频网站提供的 iframe 嵌入代码'};
+      // 4) 直链 MP4 / WebM / MOV / OGV 视频文件
+      if(/^(https?:)?\/\/.+\.(?:mp4|webm|mov|ogv)(?:[?#].*)?$/i.test(s)){
+        const posterAttr = poster && /^(https?:)?\/\//i.test(poster.trim()) ? ` poster="${mdAttr(poster.trim())}"` : '';
+        return {html:`<div class="video-embed"><video controls preload="metadata" src="${mdAttr(s)}"${posterAttr}></video></div>`};
+      }
+      return {error:'无法识别：请粘贴 B站 / YouTube / MP4 视频链接，或 iframe 嵌入代码'};
     }
 
-    // 文章编辑器的「▶ 视频」按钮 → 打开对话框
-    function setupVideoInsert(){
-      const btn=$('#btnInsertVideo'); if(!btn) return;
-      btn.onclick=()=>{
-        const modal=$('#videoModal'); if(!modal) return;
-        const input=$('#fVideoInput');
-        if(input) input.value='';
-        openModal(modal);
-      };
+    function openVideoModal(){
+      const modal=$('#videoModal'); if(!modal) return;
+      if($('#fVideoInput')) $('#fVideoInput').value='';
+      if($('#fVideoPoster')) $('#fVideoPoster').value='';
+      openModal(modal);
     }
+
     // 对话框事件（静态 HTML，初始化时绑定一次）
     function bindVideoModal(){
       const modal=$('#videoModal'); if(!modal) return;
       $('#btnVideoCancel').onclick=()=>{closeModal(modal)};
       modal.addEventListener('click',e=>{if(e.target===modal)closeModal(modal)});
       $('#btnVideoInsert').onclick=()=>{
-        const r=buildVideoEmbed($('#fVideoInput')?.value);
+        const r=buildVideoEmbed($('#fVideoInput')?.value, $('#fVideoPoster')?.value || '');
         if(r.error){toast(r.error);return}
         insertMarkdownBlock(r.html);
         closeModal(modal);
         toast('已插入视频');
       };
       $('#fVideoInput').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('#btnVideoInsert').click()}});
+      const videoFile = $('#fVideoFile'), videoUploadBtn = $('#btnVideoUpload');
+      if (videoFile && videoUploadBtn) {
+        videoUploadBtn.onclick = () => videoFile.click();
+        videoFile.addEventListener('change', async () => {
+          const f = videoFile.files?.[0];
+          videoFile.value = '';
+          if (!f) return;
+          toast('上传视频中…');
+          const fd = new FormData();
+          fd.set('file', f);
+          try {
+            const res = await apiFetch('/api/upload', { method: 'POST', body: fd });
+            const data = await res.json();
+            if (!res.ok || data.error) { toast(uploadErrorText(data)); return; }
+            if ($('#fVideoInput')) $('#fVideoInput').value = data.url;
+            toast(data.jsDelivrWarn ? '视频已上传（>20MB 可能超出 jsDelivr 单文件加速上限）' : '视频已上传，点击插入即可');
+          } catch (e) { toast('上传失败：' + e.message); }
+        });
+      }
     }
 
     /* ── 插入音乐播放条（自托管音频直链，如 jsDelivr 上的 mp3 / flac） ── */
@@ -1114,15 +1133,11 @@
       }
       return {error:'无法识别：请粘贴音频直链（http(s)）或网易云歌曲页链接'};
     }
-    // 文章编辑器的「♪ 音乐」按钮 → 打开对话框
-    function setupMusicInsert(){
-      const btn=$('#btnInsertMusic'); if(!btn) return;
-      btn.onclick=()=>{
-        const modal=$('#musicModal'); if(!modal) return;
-        ['fMusicSrc','fMusicTitle','fMusicArtist','fMusicCover'].forEach(id=>{const el=$('#'+id);if(el) el.value=''});
-        const st=$('#musicProbe'); if(st) st.hidden=true;
-        openModal(modal);
-      };
+    function openMusicModal(){
+      const modal=$('#musicModal'); if(!modal) return;
+      ['fMusicSrc','fMusicTitle','fMusicArtist','fMusicCover'].forEach(id=>{const el=$('#'+id);if(el) el.value=''});
+      const st=$('#musicProbe'); if(st) st.hidden=true;
+      openModal(modal);
     }
     // 外链可播性探测：输入防抖后调 /api/audio-probe，结果展示在对话框内
     let musicProbeTimer=null;
@@ -1221,354 +1236,172 @@
       }catch(e){toast('上传失败：'+e.message)}
     }
 
-    /* ── Vditor（开源 Markdown 编辑器）：即时渲染 IR / 分屏 SV / 所见即所得 / 源码 ── */
-    let vditor = null;
-    let editorView = 'ir';
+    /* ── Word 级富文本编辑器（Tiptap / ProseMirror）：所见即所得 / 分屏 / 源码 ── */
+    let wordController = null;
 
-    const VDITOR_CDN = '/admin/vendor/vditor';
-    const EDITOR_VIEWS = new Set(['ir', 'sv', 'wysiwyg', 'source']);
-
-    function normalizeEditorView(view) {
-      // 兼容旧版本的视图取值
-      if (view === 'split') return 'ir';
-      if (view === 'edit') return 'source';
-      return EDITOR_VIEWS.has(view) ? view : 'ir';
-    }
-
-    // 创建/重建编辑器（每次渲染编辑器区域时调用；value 为 Markdown 源码，
-    // 兼容纯 Markdown / Markdown+HTML 混合内容）
-    function initVditorEditor(content) {
-      const el = $('#vditorEditor');
-      if (!el) return null;
-      if (vditor) { try { vditor.destroy(); } catch (e) { /* ignore */ } vditor = null; window.editor = null; }
-      if (!window.Vditor) { toast('编辑器组件加载失败，请检查 /admin/vendor/vditor/'); return null; }
-      try {
-        vditor = new Vditor(el, {
-          cdn: VDITOR_CDN,
-          lang: 'zh_CN',
-          theme: 'dark',
-          mode: 'ir',
-          height: '100%',
-          minHeight: 380,
-          value: String(content || ''),
-          placeholder: '开始写作… 支持 Markdown 与原始 HTML',
-          cache: { enable: false },
-          counter: { enable: false },
-          outline: { enable: false },
-          resize: { enable: true },
-          typewriterMode: localStorage.getItem('admin-typewriter') === '1',
-          toolbarConfig: { pin: true },
-          toolbar: [
-            'headings', 'bold', 'italic', 'strike', '|',
-            'list', 'ordered-list', 'check', 'outdent', 'indent', '|',
-            'quote', 'line', 'code', 'inline-code', 'link', 'table', '|',
-            'upload', 'forecolor', 'backcolor', '|',
-            'undo', 'redo', '|',
-            'fullscreen', 'outline', 'edit-mode', 'both', 'preview', 'help',
-          ],
-          preview: {
-            hljs: { lineNumber: true, style: 'github-dark' },
-            theme: { current: 'dark', path: `${VDITOR_CDN}/dist/css/content-theme` },
-            markdown: {
-              toc: true,
-            },
-          },
-          upload: {
-            accept: 'image/*',
-            multiple: true,
-            // 自建上传：Vditor 4 的 handler 返回字符串只会当作提示展示，不会插入图片，
-            // 因此这里自行上传并调用 insertValue 插入，最后返回 null 告知已处理。
-            handler: async (files) => {
-              const startedEditor = vditor; // 发起上传时的编辑器实例（上传期间可能被重建）
-              const uploaded = [];
-              for (const file of files) {
-                try {
-                  if (file.size > appUploadMaxBytes) {
-                    toast(`文件超过 ${Math.round(appUploadMaxBytes / 1024 / 1024)}MB 上限，请先压缩：${file.name}`);
-                    continue;
-                  }
-                  const fd = new FormData();
-                  fd.append('file', file, file.name);
-                  const res = await apiFetch('/api/upload', { method: 'POST', body: fd });
-                  let data = {};
-                  try { data = await res.json(); } catch (e) { data = {}; }
-                  if (!res.ok || data.error || !data.url) {
-                    const reason = data.detail
-                      ? `${data.error || '上传失败'}（${data.detail}）`
-                      : (data.error || `上传失败（HTTP ${res.status}）`);
-                    toast(`${reason}：${file.name}`);
-                    continue;
-                  }
-                  uploaded.push({ url: data.url, name: file.name });
-                  toast('图片已上传：' + file.name);
-                } catch (e) {
-                  toast(`上传失败：${file.name}（${e.message}）`);
-                }
-              }
-              if (uploaded.length) {
-                const md = uploaded
-                  .map((u) => `![${u.name.replace(/\.[^.]+$/, '')}](${u.url})`)
-                  .join('\n');
-                // 上传期间编辑器可能被重建（切模式 / 换文章）：不能盲目写入，否则图会丢失或插错文章
-                const live = vditor;
-                const liveEl = live && live.vditor && live.vditor.element;
-                if (live && liveEl && liveEl.isConnected && live === startedEditor) {
-                  live.focus();
-                  const before = String(live.getValue() || '');
-                  live.insertValue('\n' + md + '\n', true);
-                  // IR 模式下若光标/选区不在编辑器内，insertValue 会静默无效：校验后回退为追加到正文末尾
-                  if (!String(live.getValue() || '').includes(uploaded[0].url)) {
-                    const base = before.replace(/\s+$/, '');
-                    live.setValue(base ? `${base}\n\n${md}\n` : `${md}\n`, true);
-                    toast('图片已上传，已追加到正文末尾');
-                  }
-                } else if (live && liveEl && liveEl.isConnected) {
-                  const copied = await copyUploadedMarkdown(md);
-                  toast(copied ? '编辑器已切换，图片链接已复制，请粘贴到正文' : `编辑器已切换，请手动复制图片链接：${uploaded[0].url}`);
-                } else {
-                  const copied = await copyUploadedMarkdown(md);
-                  toast(copied ? '图片已上传，链接已复制（编辑器已关闭）' : `图片已上传，请手动复制链接：${uploaded[0].url}`);
-                }
-              }
-              return null;
-            },
-            error: (msg) => toast('上传失败：' + msg),
-          },
-          input: () => { syncPostCoverPreview(); markPostDirty(); updatePostValidation(); },
-          after: () => { setupEditorImgRetry(el); setupEditorInputTracking(el); scheduleEditorReady(); },
-        });
-        window.editor = createEditorShim();
-        window.vditor = vditor;
-      } catch (e) {
-        console.error('Vditor 初始化失败:', e);
-        toast('编辑器初始化失败: ' + e.message);
-        vditor = null;
-        return null;
+    async function uploadMultipleImagesToEditor(files) {
+      const list = [...(files || [])].filter((f) => isImageFile(f));
+      if (!list.length) return;
+      for (const file of list) {
+        if (file.size > appUploadMaxBytes) {
+          toast(`文件超过 ${Math.round(appUploadMaxBytes / 1024 / 1024)}MB 上限：${file.name}`);
+          continue;
+        }
+        toast(`上传中：${file.name}`);
+        const fd = new FormData();
+        fd.append('file', file, file.name);
+        try {
+          const res = await apiFetch('/api/upload', { method: 'POST', body: fd });
+          const data = await res.json();
+          if (!res.ok || data.error || !data.url) {
+            toast(uploadErrorText(data));
+            continue;
+          }
+          insertImageIntoEditor(data.url, file.name.replace(/\.[^.]+$/, ''));
+          toast('图片已上传：' + file.name);
+        } catch (e) {
+          toast(`上传失败：${file.name}（${e.message}）`);
+        }
       }
-      return vditor;
     }
 
-    /** Vditor 首屏渲染后 Lute 仍在异步加载：等待就绪再应用视图与基线 */
-    function scheduleEditorReady() {
-      let attempts = 0;
-      const run = () => {
-        if (!vditor) return;
-        const luteReady = Boolean(vditor.vditor && vditor.vditor.lute);
-        if (!luteReady && attempts < 40) { attempts += 1; setTimeout(run, 100); return; }
-        applyEditorInitialView();
-        finalizePostEditorInit();
-      };
-      run();
+    async function rehostExternalImages(urls) {
+      const list = (urls || []).slice(0, 8);
+      if (!list.length || !wordController) return;
+      toast(`检测到 ${list.length} 张外链图片，正在自动转存图库…`);
+      let okCount = 0;
+      for (const remoteUrl of list) {
+        try {
+          const fd = new URLSearchParams();
+          fd.set('url', remoteUrl);
+          const res = await apiFetch('/api/import-url', { method: 'POST', body: fd, headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
+          const data = await res.json();
+          if (res.ok && data.url && wordController.replaceImageSrc(remoteUrl, data.url)) {
+            okCount += 1;
+          }
+        } catch { /* 单张转存失败保留原外链 */ }
+      }
+      if (okCount) {
+        markPostDirty();
+        toast(`已自动转存 ${okCount} 张粘贴图片到图库`);
+      }
     }
 
-    /** 首次渲染完成后应用上次使用的视图；未设置时，含块级 HTML 的文章默认分屏（可实时预览） */
-    function applyEditorInitialView() {
-      const saved = localStorage.getItem('admin-editor-view');
+    function openMathModal(displayBlock = true) {
+      const modal = $('#mathModal');
+      if (!modal) return;
+      const input = $('#fMathInput');
+      const blk = $('#fMathBlock');
+      const preview = $('#mathLivePreview');
+      if (input) input.value = '';
+      if (blk) blk.checked = Boolean(displayBlock);
+      if (preview) preview.textContent = '输入公式后实时预览…';
+      openModal(modal);
+      setTimeout(() => input?.focus(), 0);
+    }
+
+    function openAttachModal() {
+      const modal = $('#attachModal');
+      if (!modal) return;
+      ['fAttachHref', 'fAttachName', 'fAttachSize'].forEach((id) => { const el = $('#' + id); if (el) el.value = ''; });
+      openModal(modal);
+    }
+
+    function openBookmarkModal() {
+      const modal = $('#bookmarkModal');
+      if (!modal) return;
+      ['fBookmarkUrl', 'fBookmarkTitle', 'fBookmarkDesc'].forEach((id) => { const el = $('#' + id); if (el) el.value = ''; });
+      openModal(modal);
+      setTimeout(() => $('#fBookmarkUrl')?.focus(), 0);
+    }
+
+    function openImgSizeModal() {
+      const modal = $('#imgSizeModal');
+      if (!modal) return;
+      const selImg = wordController?.getSelectedImage?.();
       const md = getEditorMarkdown() || '';
-      const hasBlockHtml = /(^|\n)\s*<(div|iframe|video|audio|section|figure|table|center|details)\b/i.test(md);
-      const savedView = normalizeEditorView(saved || (hasBlockHtml ? 'sv' : 'ir'));
-      applyView(savedView, true);
-      const vs = $('#viewSwitch');
-      if (vs) vs.querySelectorAll('button').forEach((b) => b.classList.toggle('active', b.dataset.view === savedView));
-      updateRichStatus();
+      const parsed = selImg
+        ? {
+            src: selImg.src || '',
+            alt: selImg.alt || '',
+            width: selImg.width ? String(selImg.width).replace(/(%|px)$/i, '') : '',
+            unit: String(selImg.width || '').endsWith('px') ? 'px' : '%',
+            pos: selImg.pos,
+            fromSelection: true,
+          }
+        : parseImageSyntax(md);
+      imgSizeTarget = parsed || null;
+      const sEl = $('#fImgSizeSrc'); if (sEl) sEl.value = parsed ? parsed.src : '';
+      const vEl = $('#fImgSizeVal'); if (vEl) vEl.value = parsed && parsed.width ? parsed.width : 60;
+      const uEl = $('#fImgSizeUnit'); if (uEl) uEl.value = parsed && parsed.unit === 'px' ? 'px' : '%';
+      openModal(modal);
+      if (parsed) setTimeout(() => $('#fImgSizeVal')?.focus(), 0);
     }
 
-    /** 兼容层：测试与旧代码通过 editor.getMarkdown() / setMarkdown() 读写正文 */
+    function initWordEditorController(content) {
+      const host = $('#wordEditorHost');
+      if (!host) return null;
+      if (wordController) {
+        try { wordController.destroy(); } catch { /* ignore */ }
+        wordController = null;
+      }
+      wordController = mountWordEditor({
+        container: host,
+        initialMarkdown: String(content || ''),
+        renderPreview: renderMarkdownPreviewInto,
+        onDirty: () => { syncPostCoverPreview(); markPostDirty(); updatePostValidation(); },
+        onStatsChange: () => { updatePostValidation(); },
+        onUploadImages: (files) => uploadMultipleImagesToEditor(files),
+        onImportExternalImages: (urls) => rehostExternalImages(urls),
+        onOpenMediaPicker: (opts) => openMediaPicker(opts),
+        onOpenMath: (blk) => openMathModal(blk),
+        onOpenVideo: openVideoModal,
+        onOpenMusic: openMusicModal,
+        onOpenAttach: openAttachModal,
+        onOpenBookmark: openBookmarkModal,
+        onOpenImgSize: openImgSizeModal,
+        onSaveShortcut: () => { if (currentMode === 'posts') savePost(); },
+        toast,
+      });
+      window.editor = createEditorShim();
+      window.wordEditor = wordController;
+      return wordController;
+    }
+
+    /** 兼容层：测试与外部模块通过 editor.getMarkdown() / setMarkdown() 读写正文 */
     function createEditorShim() {
       return {
         getMarkdown: () => getEditorMarkdown(),
-        setMarkdown: (v) => { if (vditor) { vditor.setValue(String(v || '')); syncPostCoverPreview(); markPostDirty(); updatePostValidation(); } },
+        setMarkdown: (v) => {
+          if (wordController) {
+            wordController.setMarkdown(String(v || ''));
+            syncPostCoverPreview();
+            markPostDirty();
+            updatePostValidation();
+          }
+        },
         getValue: () => getEditorMarkdown(),
-        setValue: (v) => { if (vditor) vditor.setValue(String(v || '')); },
-        getHTML: () => (vditor ? vditor.getHTML() : ''),
-        insertValue: (v, render = true) => { if (vditor) vditor.insertValue(v, render); },
-        focus: () => { if (vditor) vditor.focus(); },
+        setValue: (v) => { if (wordController) wordController.setMarkdown(String(v || '')); },
+        getHTML: () => (wordController ? wordController.getHTML() : ''),
+        insertValue: (v) => { if (wordController) wordController.insertMarkdownBlock(v); },
+        focus: () => { if (wordController) wordController.focus(); },
       };
     }
 
-    // 保存 / 封面提取等统一取 Markdown 源码（Vditor 始终以 Markdown 为事实来源）
     function getEditorMarkdown() {
-      try { return vditor ? vditor.getValue() : ''; } catch (e) { return ''; }
+      try { return wordController ? wordController.getMarkdown() : ''; } catch { return ''; }
     }
 
-    // 是否「所见即所得」（Vditor 的即时渲染 ir 同样保留原始 HTML，可安全编辑）
-    function isWysiwygView() {
-      return editorView === 'wysiwyg';
-    }
-
-    // 在光标处插入 Markdown / HTML 片段（视频 / 音乐 / 图宽 / 图片）
     function insertMarkdownBlock(md) {
-      if (!vditor) { toast('编辑器未就绪'); return; }
-      const text = (md.startsWith('\n') ? '' : '\n') + md + '\n';
-      vditor.focus();
-      vditor.insertValue(text, true);
+      if (!wordController) { toast('编辑器未就绪'); return; }
+      wordController.insertMarkdownBlock(md);
+      syncPostCoverPreview();
+      markPostDirty();
+      updatePostValidation();
     }
 
     function insertImageIntoEditor(url, alt) {
       insertMarkdownBlock(`![${alt || '图片'}](${url})`);
-    }
-
-    // 视频 / 音乐 / 图宽等标记以 HTML 形态存在：Vditor 的即时渲染 / 分屏会原样保留
-    function ensureMarkdownMode() {
-      if (!vditor) return;
-      if (editorView === 'wysiwyg') applyView('ir', true);
-    }
-
-    // Vditor 4 未提供公开的 setMode；通过内置 edit-mode 工具栏按钮切换（固定版本 4.0.0）
-    function switchVditorMode(mode) {
-      if (!vditor) return false;
-      const target = mode === 'source' ? 'sv' : mode;
-      const toolbar = vditor.vditor && vditor.vditor.toolbar;
-      const item = toolbar && toolbar.elements ? toolbar.elements['edit-mode'] : null;
-      const btn = item ? item.querySelector(`button[data-mode="${target}"]`) : null;
-      if (!btn) return false;
-      btn.click();
-      return true;
-    }
-
-    // 视图切换：即时渲染 ir / 分屏 sv / 所见即所得 wysiwyg / 源码 source；成功返回 true
-    function applyView(view, silent) {
-      if (!vditor) return false;
-      const wasDirty = postDirty;
-      const next = normalizeEditorView(view);
-      try {
-        const currentMode = vditor.getCurrentMode();
-        const targetMode = next === 'source' ? 'sv' : next;
-        if (currentMode !== targetMode) {
-          if (!switchVditorMode(next)) return false;
-        }
-        if (next === 'sv' || next === 'source') {
-          vditor.setPreviewMode(next === 'source' ? 'editor' : 'both');
-        } else {
-          try { vditor.setPreviewMode('both'); } catch (e) { /* ir/wysiwyg 下可能不适用 */ }
-        }
-      } catch (e) { return false; }
-      editorView = next;
-      const container = $('#editorBody');
-      if (container) {
-        container.classList.toggle('acr-source-only', next === 'source');
-        container.classList.toggle('acr-mode-ir', next === 'ir');
-        container.classList.toggle('acr-mode-wysiwyg', next === 'wysiwyg');
-      }
-      if (!silent && next === 'wysiwyg') {
-        const md = getEditorMarkdown() || '';
-        if (/<(?:div|mark|center|u|iframe|song-player)\b/i.test(md)) {
-          toast('正文含原始 HTML（对齐 / 高亮 / 视频 / 播放条等）：所见即所得下部分结构可能不渲染，建议用「即时渲染」编辑');
-        }
-      }
-      if (typeof updateRichStatus === 'function') updateRichStatus();
-      // 模式切换时 Vditor 可能会对 Markdown 做等价的空白/结构归一化：若切换前没有未保存修改，
-      // 则重新锁定基线，避免把「只是换了视图」误报为未保存修改。
-      if (!silent && !wasDirty && postBaselineSnapshot) {
-        postBaselineSnapshot = serializePostForm(readPostFormState());
-        postDirty = false;
-        updatePostEditorStatus();
-      }
-      return true;
-    }
-
-    function setupViewSwitch() {
-      const vs = $('#viewSwitch');
-      if (!vs) return;
-      vs.querySelectorAll('button').forEach(btn => {
-        btn.onclick = () => {
-          const v = btn.dataset.view;
-          if (!applyView(v)) return; // 切换失败时保持原状态
-          vs.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
-          try { localStorage.setItem('admin-editor-view', v); } catch(e) {}
-        };
-      });
-    }
-
-    // 原生输入监听兜底：确保任何输入路径（键盘 / 粘贴 / 拖放）都能触发脏状态与统计更新
-    function setupEditorInputTracking(root) {
-      if (!root || root.dataset.acrInputTracked) return;
-      root.dataset.acrInputTracked = '1';
-      let timer = null;
-      const onChange = () => {
-        clearTimeout(timer);
-        timer = setTimeout(() => { syncPostCoverPreview(); markPostDirty(); updatePostValidation(); }, 250);
-      };
-      root.addEventListener('input', onChange, true);
-      root.addEventListener('keyup', onChange, true);
-      root.addEventListener('paste', onChange, true);
-      root.addEventListener('drop', onChange, true);
-    }
-
-    // 预览图片加载失败自动重试：jsDelivr CDN 首次访问可能未生效（上传后立即预览）
-    function setupEditorImgRetry(root) {
-      if (!root || root.dataset.acrImgRetry) return;
-      root.dataset.acrImgRetry = '1';      root.addEventListener('error', e => {
-        const img = e.target;
-        if (!(img instanceof HTMLImageElement) || !img.src || img.dataset.retryDone) return;
-        const n = parseInt(img.dataset.retryCount || '0', 10);
-        if (n >= 7) { img.dataset.retryDone = '1'; return; }
-        img.dataset.retryCount = String(n + 1);
-        const orig = img.dataset.origSrc || img.src;
-        img.dataset.origSrc = orig;
-        setTimeout(() => {
-          if (!img.isConnected) return; // 已被重新渲染移除，交由新一轮重试
-          const mirrors = [null, null, null, null, 'fastly.jsdelivr.net', 'gcore.jsdelivr.net'];
-          const host = mirrors[Math.min(n, mirrors.length - 1)];
-          img.src = host && orig.includes('cdn.jsdelivr.net') ? orig.replace('cdn.jsdelivr.net', host) : orig;
-        }, 1500 * (n + 1));
-      }, true);
-    }
-
-    // ── 段落对齐：把选中段落包成 <div style="text-align:…">（Vditor 保留原始 HTML）──
-    function applyAlignToMarkdown(align) {
-      if (!vditor) { toast('编辑器未就绪'); return; }
-      const selected = vditor.getSelection();
-      if (!selected || !selected.trim()) {
-        toast('请先选中要设置对齐的段落，再点击对齐按钮');
-        return;
-      }
-      const m = selected.match(/^<div[^>]*>([\s\S]*)<\/div>$/);
-      const inner = m ? m[1] : selected;
-      vditor.updateValue(`<div style="text-align: ${align}">\n\n${inner}\n\n</div>`);
-      vditor.focus();
-      toast('已设为' + (align === 'left' ? '居左' : align === 'center' ? '居中' : '居右'));
-    }
-
-    
-
-    /* ── 格式工具栏（加粗/标题/列表/颜色等已由 Vditor 内置工具栏提供；此处只保留对齐） ── */
-    function setupFmtToolbar(){
-      document.querySelectorAll('[data-align]').forEach(btn=>{
-        btn.onclick=()=>applyAlignToMarkdown(btn.dataset.align);
-      });
-    }
-
-    /* ── 编辑器辅助：大纲开关 / 专注模式 ── */
-    function setupEditorTools() {
-      const outline = $('#btnOutline');
-      if (outline) outline.onclick = () => {
-        const item = vditor && vditor.vditor && vditor.vditor.toolbar ? vditor.vditor.toolbar.elements['outline'] : null;
-        const btn = item ? (item.querySelector('button') || item) : null;
-        if (btn && typeof btn.click === 'function') btn.click();
-        else toast('大纲面板不可用');
-      };
-      const focus = $('#btnFocusMode');
-      if (focus) {
-        focus.classList.toggle('primary', document.body.classList.contains('focus-mode'));
-        focus.onclick = () => {
-          const on = document.body.classList.toggle('focus-mode');
-          focus.classList.toggle('primary', on);
-          try { localStorage.setItem('admin-focus-mode', on ? '1' : '0'); } catch (e) { /* ignore */ }
-          window.dispatchEvent(new Event('resize'));
-        };
-      }
-      const typewriter = $('#btnTypewriter');
-      if (typewriter) {
-        typewriter.classList.toggle('primary', localStorage.getItem('admin-typewriter') === '1');
-        typewriter.onclick = () => {
-          const on = !(vditor && vditor.vditor && vditor.vditor.options && vditor.vditor.options.typewriterMode);
-          typewriter.classList.toggle('primary', on);
-          if (vditor && vditor.vditor && vditor.vditor.options) vditor.vditor.options.typewriterMode = on;
-          try { localStorage.setItem('admin-typewriter', on ? '1' : '0'); } catch (e) { /* ignore */ }
-          try { if (vditor) vditor.focus(); } catch (e) { /* ignore */ }
-        };
-      }
     }
 
     function applySavedFocusMode() {
@@ -1626,22 +1459,6 @@
       return null;
     }
 
-    function setupImgSize(){
-      const btn=$('#btnInsertImgSize'); if(!btn) return;
-      btn.onclick=()=>{
-        const modal=$('#imgSizeModal'); if(!modal) return;
-        const selected = vditor?.getSelection?.() || '';
-        const fromSel = parseImageSyntax(selected);
-        const md = getEditorMarkdown() || '';
-        const parsed = fromSel || parseImageSyntax(md);
-        imgSizeTarget = parsed ? { ...parsed, fromSelection: Boolean(fromSel) } : null;
-        const sEl=$('#fImgSizeSrc'); if(sEl) sEl.value=parsed?parsed.src:'';
-        const vEl=$('#fImgSizeVal'); if(vEl) vEl.value=parsed&&parsed.width?parsed.width:60;
-        const uEl=$('#fImgSizeUnit'); if(uEl) uEl.value=parsed&&parsed.unit==='px'?'px':'%';
-        openModal(modal);
-        if (parsed) setTimeout(() => $('#fImgSizeVal')?.focus(), 0);
-      };
-    }
     function bindImgSizeModal(){
       const modal=$('#imgSizeModal'); if(!modal) return;
       $('#btnImgSizeCancel').onclick=()=>{closeModal(modal);imgSizeTarget=null};
@@ -1653,31 +1470,145 @@
         const unit=$('#fImgSizeUnit')?.value==='px'?'px':'%';
         if(!src){toast('请输入图片 URL');return}
         if(!/^(https?:)?\/\//i.test(src)){toast('图片 URL 必须是 http(s) 链接');return}
-        const altText=(imgSizeTarget?.alt||'').trim()||'图片';
-        let img='<img src="'+mdAttr(src)+'" alt="'+mdAttr(altText)+'"';
-        if(val){
-          const n=parseFloat(val);
-          if(Number.isFinite(n)&&n>0) img+=' style="width:'+n+unit+'"';
-        }
-        img+=' />';
-        if (imgSizeTarget?.fromSelection && vditor?.updateValue) {
-          vditor.updateValue(img);
-          vditor.focus();
-        } else if (imgSizeTarget?.raw && vditor && imgSizeTarget.src === src) {
-          const current = getEditorMarkdown() || '';
-          if (current.includes(imgSizeTarget.raw)) {
-            vditor.setValue(current.replace(imgSizeTarget.raw, img));
+        const widthStr = val && Number.isFinite(parseFloat(val)) && parseFloat(val) > 0 ? `${parseFloat(val)}${unit}` : '';
+        if (imgSizeTarget?.fromSelection && typeof imgSizeTarget.pos === 'number' && wordController?.updateSelectedImage) {
+          wordController.updateSelectedImage(imgSizeTarget.pos, { src, width: widthStr });
+        } else {
+          const altText=(imgSizeTarget?.alt||'').trim()||'图片';
+          let img='<img src="'+mdAttr(src)+'" alt="'+mdAttr(altText)+'"';
+          if(widthStr) img+=' style="width:'+widthStr+'"';
+          img+=' />';
+          if (imgSizeTarget?.raw && wordController && imgSizeTarget.src === src) {
+            const current = getEditorMarkdown() || '';
+            if (current.includes(imgSizeTarget.raw)) {
+              wordController.setMarkdown(current.replace(imgSizeTarget.raw, img));
+              markPostDirty();
+            } else {
+              insertMarkdownBlock(img);
+            }
           } else {
             insertMarkdownBlock(img);
           }
-        } else {
-          insertMarkdownBlock(img);
         }
         imgSizeTarget = null;
         closeModal(modal);
         toast('已设置图片尺寸');
       };
       $('#fImgSizeSrc').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('#btnImgSizeInsert').click()}});
+    }
+
+    function bindMathModal() {
+      const modal = $('#mathModal');
+      if (!modal) return;
+      const input = $('#fMathInput');
+      const blk = $('#fMathBlock');
+      const preview = $('#mathLivePreview');
+      const renderLive = () => {
+        if (!preview) return;
+        const tex = (input?.value || '').trim();
+        if (!tex) { preview.textContent = '输入公式后实时预览…'; return; }
+        try {
+          katex.render(tex, preview, { displayMode: Boolean(blk?.checked), throwOnError: false, strict: false });
+        } catch {
+          preview.textContent = tex;
+        }
+      };
+      input?.addEventListener('input', renderLive);
+      blk?.addEventListener('change', renderLive);
+      $('#btnMathCancel').onclick = () => closeModal(modal);
+      modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(modal); });
+      $('#btnMathInsert').onclick = () => {
+        const tex = (input?.value || '').trim();
+        if (!tex) { toast('请输入 LaTeX 公式'); return; }
+        const isBlk = Boolean(blk?.checked);
+        const safe = mdAttr(tex);
+        if (isBlk) {
+          insertMarkdownBlock(`<div class="hz-math-block" data-tex="${safe}"></div>`);
+        } else if (wordController?.getView() === 'wysiwyg' && wordController?.editor) {
+          wordController.editor.chain().focus().insertContent({ type: 'mathInline', attrs: { tex } }).run();
+        } else {
+          insertMarkdownBlock(`<span class="hz-math" data-tex="${safe}"></span>`);
+        }
+        closeModal(modal);
+        toast('已插入数学公式');
+      };
+    }
+
+    function bindAttachModal() {
+      const modal = $('#attachModal');
+      if (!modal) return;
+      $('#btnAttachCancel').onclick = () => closeModal(modal);
+      modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(modal); });
+      const fileEl = $('#fAttachFile');
+      const uploadBtn = $('#btnAttachUpload');
+      if (fileEl && uploadBtn) {
+        uploadBtn.onclick = () => fileEl.click();
+        fileEl.addEventListener('change', async () => {
+          const f = fileEl.files?.[0];
+          fileEl.value = '';
+          if (!f) return;
+          toast('上传附件中…');
+          const fd = new FormData();
+          fd.set('file', f);
+          try {
+            const res = await apiFetch('/api/upload', { method: 'POST', body: fd });
+            const data = await res.json();
+            if (!res.ok || data.error) { toast(uploadErrorText(data)); return; }
+            if ($('#fAttachHref')) $('#fAttachHref').value = data.url;
+            if ($('#fAttachName') && !$('#fAttachName').value.trim()) $('#fAttachName').value = data.originalName || data.name || f.name;
+            if ($('#fAttachSize')) {
+              const kb = Math.max(1, Math.round((data.size || f.size) / 1024));
+              $('#fAttachSize').value = kb >= 1024 ? `${(kb / 1024).toFixed(1)} MB` : `${kb} KB`;
+            }
+            toast(data.jsDelivrWarn ? '附件已上传（>20MB 可能超出 jsDelivr 加速上限）' : '附件已上传');
+          } catch (e) { toast('上传失败：' + e.message); }
+        });
+      }
+      $('#btnAttachInsert').onclick = () => {
+        const href = ($('#fAttachHref')?.value || '').trim();
+        const name = ($('#fAttachName')?.value || '').trim() || '下载附件';
+        const size = ($('#fAttachSize')?.value || '').trim();
+        if (!href || !/^(https?:)?\/\//i.test(href)) { toast('请先上传文件或填写有效直链'); return; }
+        const m = name.match(/(\.[a-z0-9]+)$/i);
+        const ext = m ? m[1].toLowerCase() : '';
+        insertMarkdownBlock(
+          `<div class="hz-attachment" data-href="${mdAttr(href)}" data-name="${mdAttr(name)}" data-size="${mdAttr(size)}" data-ext="${mdAttr(ext)}"><a href="${mdAttr(href)}" target="_blank" rel="noopener">📎 ${mdEscapeText(name)}${size ? ` (${mdEscapeText(size)})` : ''}</a></div>`,
+        );
+        closeModal(modal);
+        toast('已插入附件卡片');
+      };
+    }
+
+    function bindBookmarkModal() {
+      const modal = $('#bookmarkModal');
+      if (!modal) return;
+      $('#btnBookmarkCancel').onclick = () => closeModal(modal);
+      modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(modal); });
+      $('#btnBookmarkFetch')?.addEventListener('click', async () => {
+        const url = ($('#fBookmarkUrl')?.value || '').trim();
+        if (!url) { toast('请先填写网页 URL'); return; }
+        const btn = $('#btnBookmarkFetch');
+        btn.disabled = true; btn.textContent = '抓取中…';
+        try {
+          const res = await apiFetch('/api/link-meta?url=' + encodeURIComponent(url));
+          const data = await res.json();
+          if (data.title && $('#fBookmarkTitle')) $('#fBookmarkTitle').value = data.title;
+          if (data.description && $('#fBookmarkDesc')) $('#fBookmarkDesc').value = data.description;
+          toast(data.ok ? '已获取网页标题' : '未能抓取标题，可手动填写');
+        } catch { toast('抓取失败，请手动填写'); }
+        btn.disabled = false; btn.textContent = '抓取标题';
+      });
+      $('#btnBookmarkInsert').onclick = () => {
+        const url = ($('#fBookmarkUrl')?.value || '').trim();
+        const title = ($('#fBookmarkTitle')?.value || '').trim() || url;
+        const desc = ($('#fBookmarkDesc')?.value || '').trim();
+        if (!url || !/^https?:\/\//i.test(url)) { toast('请输入有效 http(s) 链接'); return; }
+        insertMarkdownBlock(
+          `<div class="hz-bookmark"><a href="${mdAttr(url)}" target="_blank" rel="noopener"><strong>${mdEscapeText(title)}</strong>${desc ? `<span>${mdEscapeText(desc)}</span>` : ''}<small>${mdEscapeText(url)}</small></a></div>`,
+        );
+        closeModal(modal);
+        toast('已插入网页书签卡片');
+      };
     }
 
     // Chrome/Edge 等浏览器不识别 HEIC，file.type 为空字符串：用扩展名白名单兜底，交给后端自动转 WebP
@@ -2138,6 +2069,9 @@
     bindVideoModal();
     bindMusicModal();
     bindImgSizeModal();
+    bindMathModal();
+    bindAttachModal();
+    bindBookmarkModal();
     bindCoverCropModal();
     bindConflictModal();
     setupMediaPicker();
@@ -2329,7 +2263,11 @@
       else if (isModalOpen($('#previewModal'))) closePostPreview();
       else if (isModalOpen($('#videoModal'))) closeModal($('#videoModal'));
       else if (isModalOpen($('#musicModal'))) closeModal($('#musicModal'));
+      else if (isModalOpen($('#mathModal'))) closeModal($('#mathModal'));
+      else if (isModalOpen($('#attachModal'))) closeModal($('#attachModal'));
+      else if (isModalOpen($('#bookmarkModal'))) closeModal($('#bookmarkModal'));
       else if (isModalOpen($('#imgSizeModal'))) { closeModal($('#imgSizeModal')); imgSizeTarget = null; }
+      else if (isModalOpen($('#schedGithubModal'))) closeModal($('#schedGithubModal'));
     });
     $('#btnSite').onclick = () => window.open('https://blog.acretiondisk.top/', '_blank');
 

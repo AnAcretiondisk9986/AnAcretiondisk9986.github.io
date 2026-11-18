@@ -1,0 +1,22 @@
+{
+  "name": "ACR · 移动发文台",
+  "short_name": "ACR 写作",
+  "description": "随时随地在手机上编辑、传图并发布博文到 Acretiondisk Blog",
+  "start_url": "/write/",
+  "scope": "/write/",
+  "display": "standalone",
+  "background_color": "#0c0d11",
+  "theme_color": "#0c0d11",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

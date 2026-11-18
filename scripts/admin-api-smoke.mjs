@@ -11,10 +11,12 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { freePort } from '../desktop/server-control.mjs';
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '..');
 const TOKEN = 'admin-api-smoke-token';
-const PORT = 4400 + Math.floor(Math.random() * 400);
+const PORT = await freePort('127.0.0.1');
 
 let failures = 0;
 const check = (name, cond, extra = '') => {

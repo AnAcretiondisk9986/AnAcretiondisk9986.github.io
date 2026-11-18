@@ -8,6 +8,7 @@ import { apiFetch } from '../api/app-client.js';
 import { formatBytes } from '../util/format.js';
 import { openModal, closeModal } from '../ui/modal.js';
 import { slugifyTitle } from '../util/slug.js';
+import { markdownToEditorHtml, katex } from '../../vendor/tiptap-bundle.mjs';
 
 const API = '/api/posts';
 let ctx = {
@@ -167,7 +168,21 @@ export function initPosts(options = {}) { ctx = { ...ctx, ...options }; }
         .catch((e) => toast('预览失败: ' + e.message));
     }
 
-    // 本地预览由 Vditor.preview 渲染，无需保留实例
+    /** 将 Markdown(+HTML) 渲染进只读预览容器（含 KaTeX 公式与防 XSS 安全过滤） */
+    export function renderMarkdownPreviewInto(target, markdown) {
+      if (!target) return;
+      target.innerHTML = markdownToEditorHtml(markdown || '');
+      target.querySelectorAll('script').forEach((s) => s.remove());
+      target.querySelectorAll('.hz-math[data-tex], .hz-math-block[data-tex]').forEach((el) => {
+        const tex = el.getAttribute('data-tex') || '';
+        const displayMode = el.classList.contains('hz-math-block');
+        try {
+          katex.render(tex, el, { displayMode, throwOnError: false, strict: false });
+        } catch {
+          el.textContent = displayMode ? `$$${tex}$$` : `$${tex}$`;
+        }
+      });
+    }
 
     function openPostPreview(post) {
       const mask = $('#previewModal');
@@ -186,19 +201,8 @@ export function initPosts(options = {}) { ctx = { ...ctx, ...options }; }
       mask.setAttribute('role', 'dialog');
       mask.setAttribute('aria-modal', 'true');
       const el = $('#previewBody');
-      el.innerHTML = '<div class="vditor-reset acr-site-preview"></div>';
-      const target = el.firstElementChild;
-      if (window.Vditor && Vditor.preview) {
-        Vditor.preview(target, post.content || '', {
-          cdn: '/admin/vendor/vditor',
-          mode: 'dark',
-          theme: { current: 'dark', path: '/admin/vendor/vditor/dist/css/content-theme' },
-          hljs: { lineNumber: true, style: 'github-dark' },
-          markdown: { toc: true },
-        }).catch(() => { target.textContent = post.content || ''; });
-      } else {
-        target.textContent = post.content || '';
-      }
+      el.innerHTML = '<div class="acr-site-preview"></div>';
+      renderMarkdownPreviewInto(el.firstElementChild, post.content || '');
     }
 
     function closePostPreview() {

@@ -6,6 +6,7 @@
 import puppeteer from 'puppeteer-core';
 
 const CHROME = process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe';
+const BASE_URL = process.env.ADMIN_URL || 'http://localhost:4322/admin';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let failures = 0;
 const check = (name, cond, extra = '') => {
@@ -21,12 +22,12 @@ page.on('pageerror', (e) => pageErrors.push(String(e)));
 page.on('dialog', (d) => d.accept());
 
 try {
-  await page.goto('http://localhost:4322/admin', { waitUntil: 'networkidle0' });
+  await page.goto(BASE_URL, { waitUntil: 'networkidle0' });
   await page.waitForSelector('#postList .post-item', { timeout: 15000 });
 
   await page.click('#btnNew');
-  await page.waitForSelector('.vditor', { timeout: 15000 });
-  await sleep(400);
+  await page.waitForSelector('[data-editor-ready="1"]', { timeout: 15000 });
+  await sleep(300);
 
   // 分组结构
   const sections = await page.$$eval('.form-section', (els) => els.map((e) => e.dataset.section));
@@ -77,10 +78,13 @@ try {
   check('统计显示字数/图片/外链', stats.includes('图片') && stats.includes('外链'), stats);
   check('标记缺失 alt 的图片', stats.includes('缺 alt'), stats);
 
-  // 富文本兼容状态
+  // 富文本原生支持居中对齐与保留输出
   await page.evaluate(() => editor.setMarkdown('<div style="text-align:center">居中段落</div>\n'));
-  await sleep(400);
-  check('富文本不兼容格式显示持续状态', !(await page.$eval('#richStatus', (el) => el.hidden)), await page.$eval('#richStatus', (el) => el.textContent));
+  await sleep(300);
+  check('居中段落所见即所得原生渲染并回读', await page.evaluate(() => {
+    const p = document.querySelector('.acr-prosemirror p');
+    return Boolean(p && p.style.textAlign === 'center' && window.editor.getMarkdown().includes('text-align: center'));
+  }));
 
   // 刷新后恢复本地草稿
   await page.evaluate(() => { const t = document.querySelector('#fTitle'); t.value = '草稿恢复测试'; t.dispatchEvent(new Event('input', { bubbles: true })); });
@@ -90,8 +94,8 @@ try {
   await page.reload({ waitUntil: 'networkidle0' });
   await page.waitForSelector('#postList .post-item', { timeout: 15000 });
   await page.click('#btnNew');
-  await page.waitForSelector('.vditor', { timeout: 15000 });
-  await sleep(1800);
+  await page.waitForSelector('[data-editor-ready="1"]', { timeout: 15000 });
+  await sleep(600);
   check('刷新后恢复标题', (await page.$eval('#fTitle', (el) => el.value)) === '草稿恢复测试', await page.$eval('#fTitle', (el) => el.value));
   check('刷新后恢复正文', (await page.evaluate(() => window.editor.getMarkdown())).includes('草稿正文内容'));
 

@@ -1,0 +1,361 @@
+---
+/**
+ * /write/ —— 手机端极简云端发文 PWA（方案二）
+ * 独立轻量外壳，不加载首页 WebGL 与全站 HUD，专注单手/双指流畅写文、相册传图与一键推送上线。
+ */
+---
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="theme-color" content="#0c0d11" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="ACR 写作" />
+    <title>ACR · 移动发文台</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/favicon.png" />
+    <link rel="manifest" href="/write/manifest.webmanifest" />
+  </head>
+  <body>
+    <div class="mw-shell" id="mwShell">
+      <!-- 顶部精简栏 -->
+      <header class="mw-header">
+        <button type="button" class="mw-icon-btn" id="btnMwPosts" aria-label="文章列表">☰</button>
+        <div class="mw-header-info">
+          <span class="mw-brand">WRITE</span>
+          <span class="mw-pill" id="mwDraftStatus">新文章</span>
+          <span class="mw-pill mw-pill--muted" id="mwStatsChip">0 字</span>
+        </div>
+        <div class="mw-header-actions">
+          <button type="button" class="mw-btn" id="btnMwSettings">设置</button>
+          <button type="button" class="mw-btn mw-btn--hot" id="btnMwPublish">发布 ↑</button>
+        </div>
+      </header>
+
+      <div class="mw-deploy-banner" id="mwDeployBanner" hidden></div>
+
+      <!-- 主写作区（标题 + 元信息胶囊 + 全屏编辑器） -->
+      <main class="mw-main">
+        <div class="mw-title-wrap">
+          <input id="mwTitle" class="mw-title-input" placeholder="输入文章标题…" autocomplete="off" />
+          <div class="mw-meta-row">
+            <button type="button" class="mw-meta-chip" id="mwMetaSummary">公开 · 发布 ▾</button>
+            <button type="button" class="mw-meta-chip" id="btnMwSaveDraftRemote">存为草稿</button>
+          </div>
+        </div>
+
+        <div class="mw-editor-area">
+          <div id="mwProseHost" class="mw-prose-host"></div>
+          <textarea id="mwSourceInput" class="mw-source-input" spellcheck="false" hidden placeholder="Markdown / HTML 源码…"></textarea>
+        </div>
+      </main>
+
+      <!-- 紧贴软键盘上方的触控工具条 -->
+      <footer class="mw-accessory-bar" id="mwAccessoryBar" aria-label="排版与插图工具栏">
+        <input type="file" id="mwPhotoInput" accept="image/*" multiple hidden />
+        <button type="button" class="mw-tool-btn mw-tool-btn--photo" id="btnMwPhoto" title="拍照或从相册传图">📷 图</button>
+        <button type="button" class="mw-tool-btn" id="btnMwMedia" title="插入视频或音乐">▶ 媒体</button>
+        <span class="mw-tool-sep"></span>
+        <button type="button" class="mw-tool-btn" data-mcmd="bold" title="加粗"><b>B</b></button>
+        <button type="button" class="mw-tool-btn" data-mcmd="highlight" title="高亮">🖍</button>
+        <button type="button" class="mw-tool-btn" data-mcmd="heading" title="标题 H2/H3">H</button>
+        <button type="button" class="mw-tool-btn" data-mcmd="center" title="居中对齐">≡</button>
+        <button type="button" class="mw-tool-btn" data-mcmd="quote" title="引用">❝</button>
+        <button type="button" class="mw-tool-btn" data-mcmd="bullet" title="无序列表">•</button>
+        <button type="button" class="mw-tool-btn" data-mcmd="task" title="待办清单">☑</button>
+        <button type="button" class="mw-tool-btn" data-mcmd="link" title="链接">🔗</button>
+        <button type="button" class="mw-tool-btn" data-mcmd="undo" title="撤销">↶</button>
+        <button type="button" class="mw-tool-btn" data-mcmd="redo" title="重做">↷</button>
+        <button type="button" class="mw-tool-btn" data-mcmd="source" title="切换 Markdown 源码">源码</button>
+      </footer>
+    </div>
+
+    <div class="mw-toast" id="mwToast" role="status" aria-live="polite"></div>
+
+    <!-- 滑出抽屉 1：文章列表 -->
+    <div class="mw-sheet-mask" id="mwPostsSheet" hidden>
+      <div class="mw-sheet">
+        <div class="mw-sheet-head">
+          <h3>仓库文章</h3>
+          <div style="display:flex;gap:8px">
+            <button type="button" class="mw-btn mw-btn--hot" id="btnMwNewPost">＋ 新建</button>
+            <button type="button" class="mw-btn" data-close-sheet>关闭</button>
+          </div>
+        </div>
+        <input id="mwPostsSearch" class="mw-input" placeholder="搜索文章文件名 / Slug…" />
+        <div class="mw-posts-list" id="mwPostsList"></div>
+      </div>
+    </div>
+
+    <!-- 滑出抽屉 2：文章元数据 -->
+    <div class="mw-sheet-mask" id="mwMetaSheet" hidden>
+      <div class="mw-sheet">
+        <div class="mw-sheet-head">
+          <h3>文章设置</h3>
+          <button type="button" class="mw-btn" data-close-sheet>完成</button>
+        </div>
+        <div class="mw-form">
+          <label>URL Slug（英文或拼音，留空自动生成）<input id="mwSlug" class="mw-input" placeholder="my-post-slug" /></label>
+          <label>一句话简介<textarea id="mwDesc" class="mw-input" rows="2" placeholder="列表页与分享摘要…"></textarea></label>
+          <div class="mw-form-row">
+            <label>发布日期<input id="mwDate" type="date" class="mw-input" /></label>
+            <label>访问权限
+              <select id="mwAccess" class="mw-input">
+                <option value="public">公开查看</option>
+                <option value="authorized">授权级（答网名）</option>
+                <option value="admin">管理员级（暗房密码）</option>
+              </select>
+            </label>
+          </div>
+          <label>标签（逗号分隔）<input id="mwTags" class="mw-input" placeholder="生活, 随笔" /></label>
+          <label>封面图 URL（留空自动取首图）
+            <div class="mw-form-row">
+              <input id="mwCover" class="mw-input" placeholder="https://cdn.jsdelivr.net/..." />
+              <input type="file" id="mwCoverPhotoInput" accept="image/*" hidden />
+              <button type="button" class="mw-btn" id="btnMwUploadCover">选图</button>
+            </div>
+          </label>
+          <label class="mw-check-row">
+            <input type="checkbox" id="mwDraftCheck" />
+            <span>存为草稿（不出现在公开列表）</span>
+          </label>
+          <button type="button" class="mw-btn mw-btn--danger" id="btnMwDeletePost" hidden>从 GitHub 删除本文</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 滑出抽屉 3：插入音视频 -->
+    <div class="mw-sheet-mask" id="mwMediaSheet" hidden>
+      <div class="mw-sheet">
+        <div class="mw-sheet-head">
+          <h3>插入音视频</h3>
+          <button type="button" class="mw-btn" data-close-sheet>关闭</button>
+        </div>
+        <div class="mw-form">
+          <label>B站 BV / YouTube / MP4 视频直链
+            <div class="mw-form-row">
+              <input id="mwVideoUrl" class="mw-input" placeholder="粘贴视频链接或 BV 号…" />
+              <button type="button" class="mw-btn mw-btn--hot" id="btnMwInsertVideo">插视频</button>
+            </div>
+          </label>
+          <label>音频直链（MP3 / blog-images）
+            <input id="mwAudioUrl" class="mw-input" placeholder="https://cdn.jsdelivr.net/.../song.mp3" />
+          </label>
+          <label>歌名（可选）
+            <div class="mw-form-row">
+              <input id="mwAudioTitle" class="mw-input" placeholder="歌曲名" />
+              <button type="button" class="mw-btn mw-btn--hot" id="btnMwInsertAudio">插音乐</button>
+            </div>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- 滑出抽屉 4：双模 GitHub 连接设置 -->
+    <div class="mw-sheet-mask" id="mwSettingsSheet" hidden>
+      <div class="mw-sheet">
+        <div class="mw-sheet-head">
+          <h3>连接设置</h3>
+          <button type="button" class="mw-btn" data-close-sheet>关闭</button>
+        </div>
+        <div class="mw-auth-status" id="mwAuthStatus"></div>
+        <div class="mw-tabs">
+          <button type="button" class="mw-tab active" data-auth-tab="pat">直连 GitHub PAT</button>
+          <button type="button" class="mw-tab" data-auth-tab="worker">Worker 代理登录</button>
+        </div>
+
+        <div class="mw-form" id="mwPatBox">
+          <p class="mw-hint">
+            推荐使用 Fine-grained PAT（仅授权 <code>AnAcretiondisk9986.github.io</code> 与 <code>blog-images</code> 的 <b>Contents: Read &amp; Write</b> 权限，以及 <b>Actions: Read</b>），凭据仅存于当前手机浏览器本地。
+          </p>
+          <label>GitHub Fine-grained PAT<input id="mwPatInput" type="password" class="mw-input" placeholder="github_pat_..." autocomplete="off" /></label>
+          <label>GitHub API 地址（国内如有反代可改）<input id="mwApiBaseInput" class="mw-input" placeholder="https://api.github.com" /></label>
+          <button type="button" class="mw-btn mw-btn--hot" id="btnMwSavePat">保存并校验连接</button>
+        </div>
+
+        <div class="mw-form" id="mwWorkerBox" hidden>
+          <p class="mw-hint">
+            使用仓库配套的 <code>deploy/mobile-write-worker</code> 后，Token 留在 Cloudflare 服务端，手机只需输密码且无需直连 GitHub。
+          </p>
+          <label>Worker 地址<input id="mwWorkerUrlInput" class="mw-input" placeholder="https://blog-mobile-write.xxx.workers.dev" /></label>
+          <label>登录密码<input id="mwWorkerPassInput" type="password" class="mw-input" placeholder="输入设定的 WRITE_PASSWORD" /></label>
+          <button type="button" class="mw-btn mw-btn--hot" id="btnMwLoginWorker">登录 Worker</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      import { initMobileWriteApp } from '../scripts/write/mobile-editor';
+      initMobileWriteApp();
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/write/sw.js').catch(() => {});
+      }
+    </script>
+
+    <style is:global>
+      :root {
+        --bg: #0c0d11;
+        --s1: #14161c;
+        --s2: #1c1f27;
+        --line: #282c38;
+        --ink: #ece7dc;
+        --dim: #9ba0ad;
+        --hot: #ff5a1a;
+      }
+      * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+      html, body {
+        margin: 0; padding: 0; height: 100%; overflow: hidden;
+        background: var(--bg); color: var(--ink);
+        font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+      }
+      .mw-shell {
+        display: flex; flex-direction: column; width: 100%; height: 100dvh;
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: env(safe-area-inset-bottom);
+      }
+      .mw-header {
+        flex: 0 0 auto; display: flex; align-items: center; gap: 8px;
+        height: 48px; padding: 0 12px;
+        background: var(--s1); border-bottom: 1px solid var(--line);
+      }
+      .mw-icon-btn {
+        width: 38px; height: 38px; border: 1px solid var(--line); border-radius: 8px;
+        background: var(--s2); color: var(--ink); font-size: 18px; cursor: pointer;
+      }
+      .mw-header-info { display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1; }
+      .mw-brand { font-weight: 700; font-size: 13px; letter-spacing: 0.1em; color: var(--hot); }
+      .mw-pill {
+        font-size: 11px; padding: 2px 7px; border-radius: 999px;
+        background: var(--s2); border: 1px solid var(--line); color: var(--ink); white-space: nowrap;
+      }
+      .mw-pill--muted { color: var(--dim); }
+      .mw-header-actions { display: flex; align-items: center; gap: 6px; }
+      .mw-btn {
+        height: 36px; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px;
+        background: var(--s2); color: var(--ink); font-size: 13px; font-weight: 600; cursor: pointer;
+      }
+      .mw-btn--hot { background: var(--hot); border-color: var(--hot); color: #0b0b0e; }
+      .mw-btn--danger { border-color: #6b2626; color: #ff7b7b; background: #261414; }
+      .mw-btn:disabled { opacity: 0.6; }
+
+      .mw-deploy-banner {
+        flex: 0 0 auto; padding: 8px 14px; font-size: 12.5px;
+        background: #171d29; border-bottom: 1px solid #2b384e; color: #b8d2ff;
+      }
+      .mw-deploy-banner a { color: var(--hot); margin-left: 8px; }
+
+      .mw-main { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+      .mw-title-wrap {
+        flex: 0 0 auto; padding: 10px 14px 8px;
+        border-bottom: 1px solid var(--line);
+      }
+      .mw-title-input {
+        width: 100%; border: 0; outline: 0; background: transparent;
+        color: var(--ink); font-size: 20px; font-weight: 700; line-height: 1.35;
+      }
+      .mw-meta-row { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+      .mw-meta-chip {
+        padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line);
+        background: var(--s1); color: var(--dim); font-size: 12px; cursor: pointer;
+      }
+
+      .mw-editor-area { flex: 1 1 auto; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 12px 14px 28px; }
+      .mw-prose-host { min-height: 100%; }
+      .mw-prosemirror {
+        outline: none; min-height: 45vh; font-size: 16px; line-height: 1.8; color: var(--ink); word-break: break-word;
+      }
+      .mw-prosemirror p.is-editor-empty:first-child::before {
+        content: attr(data-placeholder); float: left; color: #646a79; pointer-events: none; height: 0;
+      }
+      .mw-prosemirror h2 { font-size: 1.32em; margin: 1.1em 0 0.45em; border-top: 1px solid var(--line); padding-top: 0.4em; }
+      .mw-prosemirror h3 { font-size: 1.14em; margin: 0.9em 0 0.4em; color: var(--hot); }
+      .mw-prosemirror blockquote { margin: 0.8em 0; padding: 6px 12px; border-left: 3px solid var(--hot); background: rgba(255,90,26,.08); color: var(--dim); }
+      .mw-prosemirror mark { background: rgba(255,90,26,.32); color: var(--ink); padding: 0 3px; border-radius: 3px; }
+      .mw-prosemirror ul[data-type="taskList"] { list-style: none; padding-left: 0; }
+      .mw-prosemirror ul[data-type="taskList"] li { display: flex; gap: 8px; align-items: flex-start; margin: 6px 0; }
+      .mw-prosemirror ul[data-type="taskList"] li > label { margin-top: 4px; }
+      .mw-img-block { margin: 12px 0; display: flex; flex-direction: column; align-items: center; }
+      .mw-img-block img { max-width: 100%; border-radius: 10px; border: 1px solid var(--line); }
+      .mw-img-actions { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+      .mw-img-actions button {
+        padding: 4px 9px; border-radius: 6px; border: 1px solid var(--line);
+        background: var(--s2); color: var(--dim); font-size: 11.5px;
+      }
+      .mw-embed-pill {
+        display: flex; align-items: center; justify-content: space-between; gap: 8px;
+        margin: 10px 0; padding: 10px 12px; border-radius: 10px;
+        background: var(--s1); border: 1px solid var(--line); font-size: 13px; color: var(--dim);
+      }
+      .mw-embed-pill button { border: 0; background: var(--s2); color: var(--ink); width: 28px; height: 28px; border-radius: 6px; }
+      .mw-source-input {
+        width: 100%; height: 100%; min-height: 55vh; border: 0; outline: 0; resize: none;
+        background: transparent; color: var(--ink); font-family: ui-monospace, Consolas, monospace; font-size: 14px; line-height: 1.7;
+      }
+
+      /* 紧贴键盘上方触控工具条 */
+      .mw-accessory-bar {
+        flex: 0 0 auto; display: flex; align-items: center; gap: 6px;
+        padding: 6px 10px; background: var(--s1); border-top: 1px solid var(--line);
+        overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none;
+      }
+      .mw-accessory-bar::-webkit-scrollbar { display: none; }
+      .mw-tool-btn {
+        flex: 0 0 auto; height: 38px; min-width: 38px; padding: 0 11px;
+        border: 1px solid var(--line); border-radius: 8px; background: var(--s2);
+        color: var(--ink); font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap;
+      }
+      .mw-tool-btn--photo { border-color: rgba(255,90,26,.65); color: var(--hot); }
+      .mw-tool-btn.active { background: var(--hot); border-color: var(--hot); color: #09090c; }
+      .mw-tool-sep { flex: 0 0 1px; height: 22px; background: var(--line); margin: 0 2px; }
+
+      /* 滑出抽屉 */
+      .mw-sheet-mask {
+        position: fixed; inset: 0; z-index: 60; background: rgba(0, 0, 0, 0.65);
+        display: flex; align-items: flex-end; justify-content: center;
+      }
+      .mw-sheet-mask[hidden] { display: none !important; }
+      .mw-sheet {
+        width: 100%; max-width: 640px; max-height: 84dvh; overflow-y: auto;
+        background: var(--s1); border-top: 1px solid var(--line); border-radius: 16px 16px 0 0;
+        padding: 14px 16px calc(20px + env(safe-area-inset-bottom));
+        display: flex; flex-direction: column; gap: 12px;
+      }
+      .mw-sheet-head { display: flex; align-items: center; justify-content: space-between; }
+      .mw-sheet-head h3 { margin: 0; font-size: 16px; }
+      .mw-form { display: flex; flex-direction: column; gap: 11px; }
+      .mw-form label { display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; color: var(--dim); }
+      .mw-form-row { display: flex; gap: 8px; align-items: center; }
+      .mw-form-row > * { flex: 1; min-width: 0; }
+      .mw-form-row > button { flex: 0 0 auto; }
+      .mw-input {
+        width: 100%; min-height: 40px; padding: 8px 11px; border: 1px solid var(--line);
+        border-radius: 8px; background: var(--bg); color: var(--ink); font-size: 14px;
+      }
+      .mw-check-row { flex-direction: row !important; align-items: center; gap: 10px !important; color: var(--ink) !important; font-size: 14px !important; }
+      .mw-check-row input { width: 18px; height: 18px; accent-color: var(--hot); }
+      .mw-posts-list { display: flex; flex-direction: column; gap: 6px; max-height: 54dvh; overflow-y: auto; }
+      .mw-post-row {
+        text-align: left; padding: 11px 12px; border: 1px solid var(--line); border-radius: 10px;
+        background: var(--bg); color: var(--ink); font-size: 14px; cursor: pointer;
+      }
+      .mw-post-row.active { border-color: var(--hot); color: var(--hot); }
+      .mw-empty, .mw-hint { font-size: 12.5px; line-height: 1.6; color: var(--dim); margin: 0; }
+      .mw-hint code { color: var(--hot); font-family: ui-monospace, monospace; }
+      .mw-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+      .mw-tab { height: 38px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--dim); font-weight: 600; cursor: pointer; }
+      .mw-tab.active { border-color: var(--hot); color: var(--hot); background: var(--s2); }
+      .mw-auth-status { font-size: 12.5px; padding: 8px 10px; border-radius: 8px; background: var(--bg); border: 1px solid var(--line); }
+
+      .mw-toast {
+        position: fixed; left: 50%; top: 58px; transform: translateX(-50%) translateY(-10px);
+        padding: 8px 14px; border-radius: 999px; background: #1e212b; border: 1px solid var(--hot);
+        color: var(--ink); font-size: 12.5px; opacity: 0; pointer-events: none; z-index: 90;
+        transition: opacity .18s, transform .18s; white-space: nowrap; max-width: 90vw; overflow: hidden; text-overflow: ellipsis;
+      }
+      .mw-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    </style>
+  </body>
+</html>

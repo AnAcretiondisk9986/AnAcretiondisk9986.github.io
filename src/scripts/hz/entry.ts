@@ -33,12 +33,66 @@ function legacyCopy(text: string): boolean {
 
 let tocObserver: IntersectionObserver | null = null;
 
+let katexLoading: Promise<typeof import('katex')> | null = null;
+
+function ensureKatexAssets(): Promise<typeof import('katex')> {
+  if (!document.querySelector('link[data-hz-katex]')) {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = '/vendor/katex/katex.min.css';
+    link.dataset.hzKatex = '1';
+    document.head.append(link);
+  }
+  if (!katexLoading) katexLoading = import('katex');
+  return katexLoading;
+}
+
+function hydrateRichProseBlocks(prose: HTMLElement) {
+  const CALLOUT_TITLES: Record<string, string> = {
+    note: '📝 NOTE',
+    tip: '💡 TIP',
+    warn: '⚠ WARNING',
+    danger: '❗ CAUTION',
+    quote: '❝ QUOTE',
+  };
+  prose.querySelectorAll<HTMLElement>('.hz-callout').forEach((box) => {
+    if (box.querySelector(':scope > .hz-callout__head')) return;
+    const title = box.dataset.title?.trim() || CALLOUT_TITLES[box.dataset.callout || 'note'] || '📝 NOTE';
+    const head = document.createElement('div');
+    head.className = 'hz-callout__head';
+    head.textContent = title;
+    box.prepend(head);
+  });
+
+  const mathEls = [...prose.querySelectorAll<HTMLElement>('.hz-math[data-tex], .hz-math-block[data-tex]')];
+  if (mathEls.length > 0) {
+    ensureKatexAssets()
+      .then((mod) => {
+        const katex = mod.default || (mod as unknown as { render: (t: string, el: HTMLElement, opts?: object) => void });
+        mathEls.forEach((el) => {
+          if (el.dataset.mathRendered === '1') return;
+          const tex = el.dataset.tex || '';
+          const displayMode = el.classList.contains('hz-math-block');
+          try {
+            katex.render(tex, el, { displayMode, throwOnError: false, strict: false });
+            el.dataset.mathRendered = '1';
+          } catch {
+            el.textContent = displayMode ? `$$${tex}$$` : `$${tex}$`;
+          }
+        });
+      })
+      .catch(() => {});
+  }
+}
+
 function enhanceProse() {
   const article = document.querySelector<HTMLElement>('[data-entry-article]');
   const prose = article?.querySelector<HTMLElement>('.hz-prose');
   const tocNav = document.querySelector<HTMLElement>('[data-entry-toc]');
   const tocList = tocNav?.querySelector<HTMLElement>('[data-toc-list]');
   if (!article || !prose) return;
+
+  hydrateRichProseBlocks(prose);
 
   // 正文首个 # 标题常与页面 h1 重复，降级并隐藏
   prose.querySelectorAll(':scope > h1').forEach((h1) => {

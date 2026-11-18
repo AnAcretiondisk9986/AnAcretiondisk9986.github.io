@@ -89,6 +89,169 @@
   color: var(--hz-ink);
   padding: 0 0.25em;
 }
+.hz-prose u {
+  text-decoration: underline;
+  text-decoration-color: var(--hz-hot-ink);
+  text-underline-offset: 0.22em;
+}
+.hz-prose sup,
+.hz-prose sub {
+  font-size: 0.76em;
+  line-height: 0;
+}
+
+/* 对齐图片与带图注图版 */
+.hz-prose img[data-align='center'] {
+  display: block;
+  margin-inline: auto;
+}
+.hz-prose img[data-align='left'] {
+  display: block;
+  margin-right: auto;
+}
+.hz-prose img[data-align='right'] {
+  display: block;
+  margin-left: auto;
+}
+.hz-prose figure.hz-figure {
+  margin-block: 2em;
+  max-width: 100%;
+}
+.hz-prose figure.hz-figure[data-align='center'] {
+  margin-inline: auto;
+  text-align: center;
+}
+.hz-prose figure.hz-figure[data-align='left'] {
+  margin-right: auto;
+}
+.hz-prose figure.hz-figure[data-align='right'] {
+  margin-left: auto;
+  text-align: right;
+}
+.hz-prose figure.hz-figure img {
+  margin-block: 0;
+  width: 100%;
+}
+
+/* 多图并排拼图网格 */
+.hz-prose .hz-gallery {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-block: 1.8em;
+}
+.hz-prose .hz-gallery[data-cols='3'] {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.hz-prose .hz-gallery img {
+  margin: 0;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}
+@media (max-width: 560px) {
+  .hz-prose .hz-gallery,
+  .hz-prose .hz-gallery[data-cols='3'] {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 提示框 Callout */
+.hz-prose .hz-callout {
+  margin-block: 1.8em;
+  padding: var(--s-4) var(--s-5);
+  border: 1px solid var(--hz-line-2);
+  border-left: 3px solid var(--hz-cool, #8fb3ff);
+  border-radius: 12px;
+  background: var(--hz-bg-2);
+}
+.hz-prose .hz-callout[data-callout='tip'] {
+  border-left-color: #4ade80;
+}
+.hz-prose .hz-callout[data-callout='warn'] {
+  border-left-color: #fbbf24;
+}
+.hz-prose .hz-callout[data-callout='danger'] {
+  border-left-color: #f87171;
+}
+.hz-prose .hz-callout[data-callout='quote'] {
+  border-left-color: var(--hz-hot);
+}
+.hz-prose .hz-callout__head {
+  margin-bottom: 0.55em;
+  font-family: var(--f-mono);
+  font-size: var(--t-small);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--hz-ink);
+}
+.hz-prose .hz-callout__body > :first-child {
+  margin-top: 0;
+}
+.hz-prose .hz-callout__body > :last-child {
+  margin-bottom: 0;
+}
+
+/* 视频嵌入与本地视频播放器 */
+.hz-prose .video-embed {
+  margin-block: 1.8em;
+}
+.hz-prose .video-embed iframe,
+.hz-prose .video-embed video {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  height: auto;
+  border: 1px solid var(--hz-line-2);
+  border-radius: 12px;
+  background: var(--hz-void);
+}
+
+/* 附件卡片与网页书签卡片 */
+.hz-prose .hz-attachment,
+.hz-prose .hz-bookmark {
+  margin-block: 1.6em;
+  border: 1px solid var(--hz-line-2);
+  border-radius: 12px;
+  background: var(--hz-bg-2);
+  transition: border-color var(--d-1), transform var(--d-1);
+}
+.hz-prose .hz-attachment:hover,
+.hz-prose .hz-bookmark:hover {
+  border-color: var(--hz-hot);
+}
+.hz-prose .hz-attachment a,
+.hz-prose .hz-bookmark a {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  border-bottom: 0;
+  color: var(--hz-ink);
+  text-decoration: none;
+}
+.hz-prose .hz-bookmark strong {
+  color: var(--hz-hot-ink);
+  font-size: 1rem;
+}
+.hz-prose .hz-bookmark span {
+  font-size: 0.88rem;
+  color: var(--hz-ink-2);
+}
+.hz-prose .hz-bookmark small {
+  font-family: var(--f-mono);
+  font-size: 0.72rem;
+  color: var(--hz-ink-3);
+  word-break: break-all;
+}
+
+/* 数学公式 */
+.hz-prose .hz-math-block {
+  margin-block: 1.6em;
+  overflow-x: auto;
+  padding-block: 0.4em;
+  text-align: center;
+}
 
 .hz-prose blockquote {
   margin-block: 1.8em;

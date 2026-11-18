@@ -34,7 +34,12 @@ const POSTS_API = '/api/posts';
 
     function allMediaItems() {
       if (!mediaData) return [];
-      return [...(mediaData.images || []), ...(mediaData.audios || [])];
+      return [
+        ...(mediaData.images || []),
+        ...(mediaData.audios || []),
+        ...(mediaData.videos || []),
+        ...(mediaData.files || []),
+      ];
     }
 
     function filteredMedia() {
@@ -79,7 +84,7 @@ const POSTS_API = '/api/posts';
       const used = m.usedBy.length ? `引用 ${m.usedBy.length}` : '未引用';
       const thumb = m.type === 'image'
         ? `<img loading="lazy" src="${escAttr(m.url)}" alt="${escAttr(m.name)}" />`
-        : '<span>♪</span>';
+        : m.type === 'video' ? '<span>▶</span>' : m.type === 'file' ? `<span>📎${esc((m.ext || '').replace('.', '').toUpperCase().slice(0, 4))}</span>` : '<span>♪</span>';
       const actions = picker ? '' : `<div class="media-actions">
           <button class="btn small" data-maction="copy" data-type="${m.type}" data-name="${escAttr(m.name)}" title="复制 CDN 地址">CDN</button>
           ${m.type === 'image' ? `<button class="btn small" data-maction="copy-original" data-type="${m.type}" data-name="${escAttr(m.name)}" title="复制原图地址">原图</button>` : ''}
@@ -124,6 +129,8 @@ const POSTS_API = '/api/posts';
               <option value="all"${mediaFilter.type === 'all' ? ' selected' : ''}>全部类型</option>
               <option value="image"${mediaFilter.type === 'image' ? ' selected' : ''}>图片</option>
               <option value="audio"${mediaFilter.type === 'audio' ? ' selected' : ''}>音频</option>
+              <option value="video"${mediaFilter.type === 'video' ? ' selected' : ''}>视频</option>
+              <option value="file"${mediaFilter.type === 'file' ? ' selected' : ''}>附件</option>
             </select>
             <select id="fMediaUsage">
               <option value="all"${mediaFilter.usage === 'all' ? ' selected' : ''}>全部引用</option>
@@ -132,7 +139,7 @@ const POSTS_API = '/api/posts';
             </select>
             <span class="filter-count" id="mediaEditorCount"></span>
             <span style="flex:1"></span>
-            <input type="file" id="fMediaUpload" multiple accept="image/*,audio/*" style="display:none" />
+            <input type="file" id="fMediaUpload" multiple accept="image/*,audio/*,video/*,.pdf,.zip,.md,.csv,.json,.docx,.xlsx,.pptx" style="display:none" />
             <button class="btn" id="btnMediaSelfCheck" title="检查上传链路（目录 / 权限 / 转码 / git / 网络）">🩺 自检</button>
             <button class="btn primary" id="btnMediaUpload">⬆ 上传</button>
           </div>
@@ -376,12 +383,25 @@ const POSTS_API = '/api/posts';
       return post;
     }
 
+    function mediaSnippetFor(m) {
+      const base = m.name.replace(/\.[^.]+$/, '');
+      if (m.type === 'audio') {
+        return `<div class="song-player" data-src="${m.url}" data-title="${base}" data-artist=""><a href="${m.url}">♪ 播放音频</a></div>`;
+      }
+      if (m.type === 'video') {
+        return `<div class="video-embed"><video controls preload="metadata" src="${m.url}"></video></div>`;
+      }
+      if (m.type === 'file') {
+        const sizeText = m.size ? formatBytes(m.size) : '';
+        return `<div class="hz-attachment" data-href="${m.url}" data-name="${m.name}" data-size="${sizeText}" data-ext="${m.ext || ''}"><a href="${m.url}" target="_blank" rel="noopener">📎 ${m.name}${sizeText ? ` (${sizeText})` : ''}</a></div>`;
+      }
+      return `![${base}](${m.url})`;
+    }
+
     async function insertMediaIntoPost(m) {
       const post = await targetPostForMedia();
       if (!post) return;
-      const block = m.type === 'audio'
-        ? `\n<div class="song-player" data-src="${m.url}" data-title="${m.name.replace(/\.[^.]+$/, '')}" data-artist="">♪ 播放音频</div>\n`
-        : `\n![${m.name.replace(/\.[^.]+$/, '')}](${m.url})\n`;
+      const block = `\n${mediaSnippetFor(m)}\n`;
       const content = `${post.content || ''}${block}`;
       await ctx.putPostFields(post, { content });
     }
@@ -556,10 +576,10 @@ const POSTS_API = '/api/posts';
       const btn = $('#btnInsertMedia');
       if (!btn) return;
       btn.onclick = () => openMediaPicker({ type: 'all', title: '从媒体库插入', onPick: (m) => {
-        if (m.type === 'audio') {
-          ctx.insertMarkdownBlock(`<div class="song-player" data-src="${m.url}" data-title="${m.name.replace(/\.[^.]+$/, '')}" data-artist="">♪ 播放音频</div>`);
-        } else {
+        if (m.type === 'image') {
           ctx.insertImageIntoEditor(m.url, m.name.replace(/\.[^.]+$/, ''));
+        } else {
+          ctx.insertMarkdownBlock(mediaSnippetFor(m));
         }
         closeMediaPicker();
       }});

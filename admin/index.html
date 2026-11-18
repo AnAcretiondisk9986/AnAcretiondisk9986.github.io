@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>博客管理 — Acretiondisk</title>
   <link rel="icon" href="/favicon.svg" />
-  <link rel="stylesheet" href="/admin/vendor/vditor/dist/index.css" />
+  <link rel="stylesheet" href="/admin/vendor/katex/katex.min.css" />
   <link rel="stylesheet" href="/admin/styles/tokens.css" />
   <link rel="stylesheet" href="/admin/styles/layout.css" />
   <link rel="stylesheet" href="/admin/styles/components.css" />
@@ -153,14 +153,21 @@
   </div>
 
   <input type="file" id="fileInput" style="display:none" accept="image/*" />
+  <input type="file" id="editorMultiImgInput" style="display:none" multiple accept="image/*" />
 
   <!-- 插入视频对话框 -->
   <div class="modal-mask" id="videoModal" style="display:none">
     <div class="modal">
       <h3>插入视频</h3>
-      <input id="fVideoInput" placeholder="粘贴 B站 / YouTube 视频链接，或官网 iframe 嵌入代码" />
+      <input id="fVideoInput" placeholder="粘贴 B站 / YouTube 链接、MP4 直链，或 iframe 嵌入代码" />
+      <input id="fVideoPoster" placeholder="视频封面图 URL（仅本地/直链 MP4 可选）" style="margin-top:8px" />
+      <div class="music-upload-row" style="margin-top:8px">
+        <input type="file" id="fVideoFile" accept="video/mp4,video/webm,video/quicktime,video/ogg" style="display:none" />
+        <button class="btn small" type="button" id="btnVideoUpload">⬆ 上传本地视频</button>
+        <span class="music-upload-tip">推荐 ≤20MB MP4/WebM（jsDelivr CDN 上限）</span>
+      </div>
       <div class="modal-hint">
-        支持：B站视频链接（bilibili.com/video/BV…）、YouTube 链接（youtube.com/watch / youtu.be / shorts）、或视频网站提供的 iframe 嵌入代码（粘贴后自动提取地址）。<br />
+        支持：B站（bilibili.com/video/BV…）、YouTube、MP4/WebM 直链、本地上传或 iframe 代码。<br />
         提示：b23.tv 短链接请先打开，再复制跳转后的完整视频地址。
       </div>
       <div class="modal-actions">
@@ -388,7 +395,92 @@
     </div>
   </div>
 
-  <script src="/admin/vendor/vditor/dist/index.min.js"></script>
+  <!-- 从 WMU 同步仓库导入课表 -->
+  <div class="modal-mask" id="schedGithubModal" style="display:none">
+    <div class="modal">
+      <h3>从 WMU 同步仓库导入课表</h3>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="fSchedGhRepo">同步仓库（所有者/仓库名）</label>
+          <input id="fSchedGhRepo" placeholder="例如 AnAcretiondisk9986/wmu-timetable-sync" autocomplete="off" />
+        </div>
+        <div class="form-group">
+          <label for="fSchedGhUser">同步用户名（可选）</label>
+          <input id="fSchedGhUser" placeholder="留空默认与仓库所有者一致；对应 users/<用户名>/config.json" autocomplete="off" />
+        </div>
+        <div class="form-group">
+          <label for="fSchedGhToken">GitHub 访问令牌（可选）</label>
+          <input id="fSchedGhToken" type="password" placeholder="公开仓库可留空；仅在限流或私有仓库时临时使用，不会保存" autocomplete="off" />
+        </div>
+        <div class="modal-hint" id="schedGhStatus">将从仓库读取 WMU 课表同步配置并自动清除学号字段，导入后请核对并保存。</div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn" type="button" id="btnSchedGhCancel">取消</button>
+        <button class="btn primary" type="button" id="btnSchedGhConfirm">拉取并导入</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 插入数学公式对话框 -->
+  <div class="modal-mask" id="mathModal" style="display:none">
+    <div class="modal">
+      <h3>插入 LaTeX 数学公式</h3>
+      <div class="form-group">
+        <label for="fMathInput">LaTeX 表达式</label>
+        <textarea id="fMathInput" rows="3" placeholder="例如：\int_0^\infty e^{-x^2} dx = \frac{\sqrt{\pi}}{2}"></textarea>
+      </div>
+      <label class="toggle-row" style="margin-block:8px;cursor:pointer">
+        <input type="checkbox" id="fMathBlock" checked />
+        <span>块级居中公式（取消勾选则为行内公式）</span>
+      </label>
+      <div class="math-live-preview" id="mathLivePreview">输入公式后实时预览…</div>
+      <div class="modal-actions">
+        <button class="btn" type="button" id="btnMathCancel">取消</button>
+        <button class="btn primary" type="button" id="btnMathInsert">插入公式</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 插入 PDF / 附件卡片对话框 -->
+  <div class="modal-mask" id="attachModal" style="display:none">
+    <div class="modal">
+      <h3>插入 PDF / 文件附件</h3>
+      <div class="music-upload-row" style="margin-bottom:8px">
+        <input type="file" id="fAttachFile" accept=".pdf,.zip,.md,.csv,.json,.docx,.xlsx,.pptx" style="display:none" />
+        <button class="btn small primary" type="button" id="btnAttachUpload">⬆ 上传本地文件</button>
+        <span class="music-upload-tip">支持 PDF / Office / ZIP / CSV / JSON（推荐 ≤20MB）</span>
+      </div>
+      <div class="music-fields">
+        <input id="fAttachHref" placeholder="文件直链 URL（上传后自动回填）" />
+        <input id="fAttachName" placeholder="显示文件名（如：系统解剖学笔记.pdf）" />
+        <input id="fAttachSize" placeholder="文件大小（可选，如：2.4 MB）" />
+      </div>
+      <div class="modal-actions">
+        <button class="btn" type="button" id="btnAttachCancel">取消</button>
+        <button class="btn primary" type="button" id="btnAttachInsert">插入卡片</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 插入网页书签卡片对话框 -->
+  <div class="modal-mask" id="bookmarkModal" style="display:none">
+    <div class="modal">
+      <h3>插入网页书签卡片</h3>
+      <div class="url-import-bar" style="margin-bottom:8px">
+        <input id="fBookmarkUrl" placeholder="粘贴网页 URL（https://...）" />
+        <button class="btn small" type="button" id="btnBookmarkFetch">抓取标题</button>
+      </div>
+      <div class="music-fields">
+        <input id="fBookmarkTitle" placeholder="卡片标题" />
+        <input id="fBookmarkDesc" placeholder="简介描述（可选）" />
+      </div>
+      <div class="modal-actions">
+        <button class="btn" type="button" id="btnBookmarkCancel">取消</button>
+        <button class="btn primary" type="button" id="btnBookmarkInsert">插入书签</button>
+      </div>
+    </div>
+  </div>
+
   <script>window.__ADMIN_TOKEN__ = '__ADMIN_TOKEN__';</script>
   <script type="module" src="/admin/src/main.js"></script>
 

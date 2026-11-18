@@ -1,0 +1,21 @@
+# 手机端发文代理（Cloudflare Worker）
+# 部署步骤：
+#   npx wrangler login
+#   npx wrangler secret put GITHUB_TOKEN --config deploy/mobile-write-worker/wrangler.toml
+#   npx wrangler secret put WRITE_PASSWORD --config deploy/mobile-write-worker/wrangler.toml
+#   npx wrangler deploy --config deploy/mobile-write-worker/wrangler.toml
+#
+# 注意：GITHUB_TOKEN 建议使用 Fine-grained PAT，仅授予以下两仓库权限：
+#   - AnAcretiondisk9986.github.io: Contents (Read & write), Actions (Read-only)
+#   - blog-images: Contents (Read & write)
+name = "blog-mobile-write"
+main = "../../scripts/mobile-write-worker.js"
+compatibility_date = "2026-01-01"
+
+[vars]
+ALLOWED_ORIGIN = "https://blog.acretiondisk.top,http://127.0.0.1:4321,http://localhost:4321"
+
+# 若已将 acretiondisk.top 的 NS 托管给 Cloudflare，可取消注释挂载同源路径：
+# routes = [
+#   { pattern = "blog.acretiondisk.top/api/write/*", zone_name = "acretiondisk.top" }
+# ]

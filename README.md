@@ -1,7 +1,43 @@
 # Acretiondisk Blog — 更新日志
 
 > 使用 Astro 构建的个人博客，部署到 GitHub Pages（`https://blog.acretiondisk.top/`）。
-> 开发版本：**4.0.0**（2026-10-17）· 最新 Release：[v4.0.0](https://github.com/AnAcretiondisk9986/AnAcretiondisk9986.github.io/releases/latest)
+> 开发版本：**5.0.0**（2026-11-18）· 最新 Release：[v5.0.0](https://github.com/AnAcretiondisk9986/AnAcretiondisk9986.github.io/releases/latest)
+
+---
+
+## 5.0.0（2026-11-18）
+
+### ✦ HORIZON 全站重构、Word 级后台编辑器与手机端 `/write/` 云端发文 PWA
+
+> 本次 `v5.0.0` 汇集自 `v4.0.0` 以来合并入 `main` 的全部主站演进，以及桌面后台编辑体验与移动端直发工作流的全面重构。
+
+#### 1. HORIZON（视界）全站重构与站点矩阵
+
+- **黑洞视界主视觉系统**：重构全站前端至 HORIZON 视觉体系，引入无接缝螺旋吸积盘、体积光场与极向喷流粒子、液态玻璃吸顶导航、圆角封面预览及中/日/英/Noto Sans/思源宋体 + Anthropic Fonts 混排。
+- **构建期图片本地化**：引入 `npm run images:localize` 与 `postbuild-rewrite`，将外链图片在构建期缓存并重写为本地资源，弱网/CDN 波动下仍可稳定渲染。
+- **新增与升级二级页面**：
+  - `/academics/`：学业课程拼贴墙与已修课程成绩展示；
+  - `/schedule/` 与 `/schedule/exams/`：整合 WMU 课表与考试日程，支持后台 `07 日程` 维护；
+  - `/ai-quota/` 与 `/ai-quota/pricing/`：AI 额度实时监控与计价二级页，采用构建快照铺屏 + 同源优先轮询；
+  - 画廊透镜场：支持滚动条与双指缩放、点击缩略图平滑平移聚焦预览，并开放画廊无限制批量顺序上传直推。
+
+#### 2. PC 管理端：Word 级富文本与多媒体工作台
+
+- **Tiptap v3（ProseMirror）本地化内核**：替代 Vditor 4，经 [build-editor-bundle.mjs](scripts/build-editor-bundle.mjs) 构建全本地离线包 `admin/vendor/tiptap-bundle.mjs` 与 KaTeX 资产，搭配双向编码器 [editor-codec.mjs](src/lib/editor-codec.mjs) 保真 Markdown + 安全 HTML、历史对齐语法、待办清单、提示框、折叠块与 LaTeX 公式。
+- **Word Ribbon 与高效排版**：双行粘性工具栏、选区浮动条、斜杠 `/` 快捷命令菜单、格式刷、Word/网页粘贴清洗（剥离 `mso-*` 冗余并支持外链图片一键本地化转存）、查找替换高亮计数（`Ctrl+F`/`Ctrl+H`）、实时大纲、专注/打字机模式，以及所见即所得 / 分屏 / 纯源码三视图。
+- **富媒体扩展与服务端配套**：支持可视化网格插表及行列合并拆分、图片右下角拖拽缩放与悬浮对齐/图注条、2/3 列多图拼图、视频嵌入（B站/YouTube/MP4直链/上传）、音乐播放卡、附件卡片与网页书签卡片；[admin-server.mjs](admin-server.mjs) 扩展 `video`/`file` 媒体库管理与 `/api/link-meta` 元信息抓取；主站 [prose.css](src/styles/hz/prose.css) 与 [entry.ts](src/scripts/hz/entry.ts) 同步对齐所有扩展块与解锁后公式渲染。
+
+#### 3. 手机端：`/write/` 极简云端发文 PWA（方案二）
+
+- **轻量写文独立外壳**：访问 `/write/` 即可使用（含 `manifest.webmanifest` 与 `sw.js`），不加载首页 WebGL 与全站 HUD，支持 `interactive-widget=resizes-content` + 软键盘吸顶排版条（加粗、高亮、H2/H3、居中、引用、待办、链接、撤销/重做、源码切换）。
+- **手机端拍照压缩直传**：相册选图在客户端通过 Canvas 自动缩放转为 WebP 后推送至 `blog-images` 仓库并自动回填 CDN 链接；配套文章列表抽屉、元数据抽屉、防丢草稿与 GitHub Actions 构建进度跟踪。
+- **双模式安全鉴权**：支持浏览器本地 Fine-grained PAT 直连模式，以及基于 [mobile-write-worker.js](scripts/mobile-write-worker.js) 的 Cloudflare Worker 密码鉴权代理模式。
+
+#### 验证
+
+- `npm run test:admin`：25/25 通过；`npm run test:admin-api`：全部通过；`node --test scripts/editor-codec.test.mjs scripts/mobile-write-worker.test.mjs`：7/7 通过。
+- `npx astro build && node scripts/postbuild-rewrite.mjs`：132 页面构建通过。
+- `node scripts/write-e2e.mjs`（390×844）与隔离端口全套 PC 管理端 E2E（含 `editor-e2e`、`quality-e2e`、`verify-admin-core`）：全部通过。
 
 ---
 

@@ -171,15 +171,15 @@ input.invalid,select.invalid{border-color:var(--danger-soft) !important}
 
 .post-item:hover .actions{display:flex}
 
-.form-group{display:flex;flex-direction:column;gap:4px}
+.form-group{display:flex;flex-direction:column;gap:4px;min-width:0}
 
 .form-group label{font-size:10px;text-transform:uppercase;letter-spacing:2px;color:var(--text-faint)}
 
-.form-row{display:flex;gap:14px}
+.form-row{display:flex;gap:14px;min-width:0}
 
-.form-row .form-group{flex:1}
+.form-row .form-group{flex:1;min-width:0}
 
-input,textarea,select{background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:8px 10px;font-size:13px;font-family:inherit;outline:none;border-radius:6px}
+input,textarea,select{background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:8px 10px;font-size:13px;font-family:inherit;outline:none;border-radius:6px;min-width:0;max-width:100%;box-sizing:border-box}
 
 input:focus,textarea:focus,select:focus{border-color:var(--accent-line)}
 
@@ -459,5 +459,14 @@ textarea.content-area{flex:1;min-height:300px;font-family:'Cascadia Code','Conso
 .gallery-batch-row.status-failed .gstatus{color:var(--danger)}
 .gallery-batch-row .gops{display:flex;gap:4px;flex:0 0 auto}
 .gallery-batch-folded{padding:6px;text-align:center;font-size:10.5px;color:var(--text-faint)}
+
+@media(max-width:760px){
+  .topbar,.topbar__nav,.nav-group{min-width:0;max-width:100%}
+  .topbar__nav{flex-wrap:wrap;overflow-x:auto}
+  .nav-group{flex-wrap:wrap}
+  .mode-tab{padding:4px 8px;font-size:11.5px}
+  .form-row{flex-wrap:wrap;gap:10px}
+  .form-row .form-group{flex:1 1 180px}
+}
 
 

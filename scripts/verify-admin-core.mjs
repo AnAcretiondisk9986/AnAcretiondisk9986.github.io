@@ -74,9 +74,9 @@ page.on('request', (req) => {
 await page.goto(base, { waitUntil: 'networkidle2' });
 await sleep(1500);
 
-// ── 1. 留言模块已移除 ──
+// ── 1. 留言模块已移除、包含日程共 7 个模块 ──
 const modes = await page.$$eval('.mode-tab', (els) => els.map((e) => ({ mode: e.dataset.mode, text: e.textContent.trim() })));
-check(`导航共 6 个模块（实际 ${modes.length}：${modes.map((m) => m.text).join('/')}）`, modes.length === 6);
+check(`导航共 7 个模块（实际 ${modes.length}：${modes.map((m) => m.text).join('/')}）`, modes.length === 7);
 check('导航无「留言」模块', !modes.some((m) => m.mode === 'guestbook' || m.text.includes('留言')));
 
 // ── 2. 发布中心总览可打开 ──
@@ -99,8 +99,8 @@ await page.evaluate(() => { const m = document.querySelector('#syncModal'); if (
 
 // ── 3. 编辑器媒体库插入 ──
 await page.click('#postList .post-item');
-await sleep(2500);
-const editorReady = await page.$('.vditor');
+await sleep(1000);
+const editorReady = await page.$('[data-editor-ready="1"]');
 check('文章编辑器已打开', Boolean(editorReady));
 
 const hasInsertBtn = await page.$('#btnInsertMedia');
