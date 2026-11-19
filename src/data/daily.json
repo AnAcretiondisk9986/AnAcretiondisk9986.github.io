@@ -1,5 +1,25 @@
 [
   {
+    "id": "daily-20261119-03",
+    "createdAt": "2026-11-19T12:17:00+08:00",
+    "text": "Gemini 4 Neon\n是一个在组织学上有极高造诣的大语言模型",
+    "images": [
+      {
+        "src": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/IMG_6651_1795061982802.jpg"
+      },
+      {
+        "src": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/IMG_6649_1795061989298.jpg"
+      },
+      {
+        "src": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/IMG_6648_1795061979255.jpg"
+      }
+    ],
+    "tags": [
+      "考试"
+    ],
+    "location": "5326组织学实验室"
+  },
+  {
     "id": "daily-20261119-02",
     "createdAt": "2026-11-19T09:14:00+08:00",
     "text": "实习医生也敢对着正式护士说三道四吗\n什么时候才能明白医护之间是平行关系而不是上下级",
