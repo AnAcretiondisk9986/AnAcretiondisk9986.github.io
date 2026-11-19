@@ -1,4 +1,4 @@
-const CACHE_NAME = 'acr-write-shell-v2';
+const CACHE_NAME = 'acr-write-shell-v3';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

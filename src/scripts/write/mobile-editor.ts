@@ -36,6 +36,7 @@ import {
   type RemoteBlogEntry,
 } from './github-client';
 import { createMobileDailyController } from './mobile-daily';
+import { setupMobileKeyboardViewport, type KeyboardViewportController } from './keyboard-viewport';
 
 const DRAFT_PREFIX = 'hz-write-draft:';
 const WRITE_MODE_KEY = 'hz-write-mode-v1';
@@ -277,21 +278,8 @@ export function initMobileWriteApp() {
     extra: {},
   };
 
-  // ── 1. 绑定 visualViewport：保证底部格式条紧贴虚拟键盘上方 ──
-  const syncViewportHeight = () => {
-    const vv = window.visualViewport;
-    if (vv) {
-      shell.style.height = `${Math.round(vv.height)}px`;
-      shell.style.transform = `translateY(${Math.round(vv.offsetTop)}px)`;
-    } else {
-      shell.style.height = `${window.innerHeight}px`;
-      shell.style.transform = '';
-    }
-  };
-  syncViewportHeight();
-  window.visualViewport?.addEventListener('resize', syncViewportHeight);
-  window.visualViewport?.addEventListener('scroll', syncViewportHeight);
-  window.addEventListener('resize', syncViewportHeight);
+  // ── 1. 绑定软键盘与 visualViewport 适配器：防止底部输入项与抽屉被键盘遮挡 ──
+  let keyboardViewport: KeyboardViewportController | null = null;
 
   // ── 2. 初始化轻量化手机 Tiptap 实例 ──
   const tiptap = new Editor({
@@ -317,9 +305,24 @@ export function initMobileWriteApp() {
     onUpdate: () => {
       markDirty();
       updateStats();
+      keyboardViewport?.ensureVisible();
     },
     onSelectionUpdate: () => {
       syncToolbarActive();
+      keyboardViewport?.ensureVisible();
+    },
+  });
+
+  keyboardViewport = setupMobileKeyboardViewport({
+    shell,
+    getRichCursorRect: () => {
+      if (!tiptap.isFocused) return null;
+      try {
+        const coords = tiptap.view.coordsAtPos(tiptap.state.selection.from);
+        return { top: coords.top, bottom: coords.bottom };
+      } catch {
+        return null;
+      }
     },
   });
 
