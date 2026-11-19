@@ -11,6 +11,12 @@ import {
   timeLabel,
 } from '../src/lib/schedule-core.mjs';
 import { detectCampusConflicts, parseTimetablePages } from '../admin/src/lib/wmu-timetable.mjs';
+import {
+  buildGithubSyncApiUrl,
+  decodeGithubFileContent,
+  fetchWmuSyncSchedule,
+  parseGithubRepoInput,
+} from '../admin/src/lib/wmu-sync-import.mjs';
 
 test('normalizeSchedulePayload accepts empty v2 schedule and clamps slotHeight', () => {
   const res = normalizeSchedulePayload({
@@ -142,4 +148,66 @@ test('wmu-timetable parser parses synthetic column and detects cross-campus conf
     },
   ]);
   assert.equal(conflicts.length, 1);
+});
+
+test('wmu-sync-import parses repo formats, builds URL, and decodes UTF-8 base64 config', async () => {
+  assert.deepEqual(parseGithubRepoInput('AnAcretiondisk9986/wmu-timetable-sync'), {
+    owner: 'AnAcretiondisk9986',
+    repo: 'wmu-timetable-sync',
+  });
+  assert.deepEqual(parseGithubRepoInput('https://github.com/AnAcretiondisk9986/wmu-timetable-sync.git/'), {
+    owner: 'AnAcretiondisk9986',
+    repo: 'wmu-timetable-sync',
+  });
+  assert.throws(() => parseGithubRepoInput('invalid-repo'));
+
+  const api = buildGithubSyncApiUrl({ owner: 'AnAcretiondisk9986', repo: 'wmu-timetable-sync' });
+  assert.equal(
+    api.url,
+    'https://api.github.com/repos/AnAcretiondisk9986/wmu-timetable-sync/contents/users/AnAcretiondisk9986/config.json',
+  );
+
+  const samplePayload = {
+    version: 2,
+    activeId: 'tt-sync',
+    timetables: [
+      {
+        id: 'tt-sync',
+        name: '2026-2027-1',
+        semester: '2026-2027-1',
+        student: { name: '测试同学', id: '20260001' },
+        termStartDate: '2026-09-07',
+        events: [
+          {
+            day: 1,
+            start: 1,
+            end: 2,
+            title: '组织胚胎学',
+            type: 'lecture',
+            campus: '滨海校区',
+            room: '1201',
+            teacher: '刘芬',
+            weeks: [{ start: 1, end: 16, parity: 'all' }],
+          },
+        ],
+      },
+    ],
+  };
+  const base64Content = Buffer.from(JSON.stringify(samplePayload), 'utf8').toString('base64');
+  assert.deepEqual(decodeGithubFileContent({ encoding: 'base64', content: base64Content }), samplePayload);
+
+  let seenAuth = '';
+  const fetched = await fetchWmuSyncSchedule({
+    repo: 'AnAcretiondisk9986/wmu-timetable-sync',
+    token: 'test-token',
+    fetchImpl: async (_url, init) => {
+      seenAuth = init.headers.Authorization;
+      return new Response(JSON.stringify({ encoding: 'base64', content: base64Content }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    },
+  });
+  assert.equal(seenAuth, 'Bearer test-token');
+  assert.equal(fetched.raw.timetables[0].events[0].title, '组织胚胎学');
 });

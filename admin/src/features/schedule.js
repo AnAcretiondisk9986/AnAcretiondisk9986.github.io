@@ -5,8 +5,10 @@
  */
 import { $, esc, escAttr } from '../ui/dom.js';
 import { toast } from '../ui/app-toast.js';
+import { openModal, closeModal } from '../ui/modal.js';
 import { apiFetch } from '../api/app-client.js';
 import { parseTimetablePdf } from '../lib/wmu-timetable.mjs';
+import { fetchWmuSyncSchedule } from '../lib/wmu-sync-import.mjs';
 import {
   DAY_NAMES,
   ACTIVITY_LABELS,
@@ -22,6 +24,8 @@ import {
 } from '/admin/shared/schedule-core.mjs';
 
 const SCHEDULE_API = '/api/schedule';
+const GITHUB_SYNC_PREFS_KEY = 'blog_admin_sched_gh_sync_v1';
+const DEFAULT_GITHUB_SYNC_REPO = 'AnAcretiondisk9986/wmu-timetable-sync';
 const COLOR_OPTIONS = [
   ['', '默认'],
   ['brand', '校红'],
@@ -57,6 +61,7 @@ let ctx = {
 
 export function initSchedule(options = {}) {
   ctx = { ...ctx, ...options };
+  bindGithubSyncModal();
 }
 export function isScheduleDirty() {
   return scheduleDirty;
@@ -188,6 +193,7 @@ function renderScheduleSidebar() {
       <div>课程表与自定义日程由后台维护，保存后点击顶栏「发布」推送到主站。</div>
       <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px">
         <button class="btn small primary" type="button" id="btnSchedPdf">⤓ 导入 WMU PDF</button>
+        <button class="btn small" type="button" id="btnSchedGithubImport">↻ 同步仓库导入</button>
         <button class="btn small" type="button" id="btnSchedNewTt">＋ 新建课表</button>
         <button class="btn small" type="button" id="btnSchedImportJson">导入 JSON</button>
         <button class="btn small" type="button" id="btnSchedExportJson">导出 JSON</button>
@@ -198,6 +204,7 @@ function renderScheduleSidebar() {
     ${rows}`;
 
   $('#btnSchedPdf')?.addEventListener('click', () => $('#fSchedPdfInput')?.click());
+  $('#btnSchedGithubImport')?.addEventListener('click', () => openGithubSyncModal());
   $('#btnSchedNewTt')?.addEventListener('click', () => createBlankTimetable());
   $('#btnSchedImportJson')?.addEventListener('click', () => $('#fSchedJsonInput')?.click());
   $('#btnSchedExportJson')?.addEventListener('click', () => exportScheduleJson());
@@ -778,26 +785,122 @@ async function handleAdminPdfImport(file) {
   }
 }
 
+function applyImportedSchedulePayload(raw, sourceLabel = '') {
+  const normalized = normalizeSchedulePayload(raw);
+  if (!normalized) {
+    return { ok: false, error: 'JSON 格式不正确（仅支持 WMU 课表 v1/v2 数据）' };
+  }
+  // 清理学号字段以防意外发布个人敏感信息
+  normalized.timetables.forEach((tt) => {
+    if (tt.student) tt.student.id = '';
+  });
+  scheduleState = normalized;
+  selectedTimetableId = normalized.activeId || normalized.timetables[0]?.id || null;
+  editingCourseIndex = -1;
+  editingCustomIndex = -1;
+  syncDirty();
+  renderScheduleSidebar();
+  renderScheduleEditor();
+  const suffix = sourceLabel ? `（${sourceLabel}）` : '';
+  toast(`已导入 ${normalized.timetables.length} 份课表${suffix}，请核对后保存`);
+  return { ok: true, count: normalized.timetables.length };
+}
+
+function readGithubSyncPrefs() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(GITHUB_SYNC_PREFS_KEY) || '{}');
+    return {
+      repo: typeof parsed.repo === 'string' && parsed.repo.trim() ? parsed.repo.trim() : DEFAULT_GITHUB_SYNC_REPO,
+      username: typeof parsed.username === 'string' ? parsed.username.trim() : '',
+    };
+  } catch {
+    return { repo: DEFAULT_GITHUB_SYNC_REPO, username: '' };
+  }
+}
+
+function saveGithubSyncPrefs(repo, username) {
+  try {
+    localStorage.setItem(GITHUB_SYNC_PREFS_KEY, JSON.stringify({
+      repo: String(repo || '').trim(),
+      username: String(username || '').trim(),
+    }));
+  } catch { /* ignore storage quota errors */ }
+}
+
+function setGithubModalStatus(message, isError = false) {
+  const el = $('#schedGhStatus');
+  if (!el) return;
+  el.textContent = message;
+  el.style.color = isError ? 'var(--danger, #e05d5d)' : '';
+}
+
+function closeGithubSyncModal() {
+  const tokenInput = $('#fSchedGhToken');
+  if (tokenInput) tokenInput.value = '';
+  closeModal($('#schedGithubModal'));
+}
+
+function openGithubSyncModal() {
+  const modal = $('#schedGithubModal');
+  if (!modal) return;
+  const prefs = readGithubSyncPrefs();
+  const repoInput = $('#fSchedGhRepo');
+  const userInput = $('#fSchedGhUser');
+  const tokenInput = $('#fSchedGhToken');
+  if (repoInput) repoInput.value = prefs.repo;
+  if (userInput) userInput.value = prefs.username;
+  if (tokenInput) tokenInput.value = '';
+  setGithubModalStatus('将从仓库读取 WMU 课表同步配置并自动清除学号字段，导入后请核对并保存。');
+  openModal(modal);
+}
+
+let githubSyncModalBound = false;
+function bindGithubSyncModal() {
+  if (githubSyncModalBound) return;
+  const modal = $('#schedGithubModal');
+  if (!modal) return;
+  githubSyncModalBound = true;
+  $('#btnSchedGhCancel')?.addEventListener('click', closeGithubSyncModal);
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) closeGithubSyncModal();
+  });
+  $('#btnSchedGhConfirm')?.addEventListener('click', handleGithubSyncImport);
+}
+
+async function handleGithubSyncImport() {
+  const btn = $('#btnSchedGhConfirm');
+  const repo = $('#fSchedGhRepo')?.value.trim() || '';
+  const username = $('#fSchedGhUser')?.value.trim() || '';
+  const token = $('#fSchedGhToken')?.value.trim() || '';
+  if (!repo) {
+    setGithubModalStatus('请填写同步仓库（所有者/仓库名）', true);
+    return;
+  }
+  if (btn) btn.disabled = true;
+  setGithubModalStatus('正在从 GitHub 同步仓库拉取课表配置…');
+  try {
+    const result = await fetchWmuSyncSchedule({ repo, username, token });
+    const applied = applyImportedSchedulePayload(result.raw, `${result.owner}/${result.repo}`);
+    if (!applied.ok) {
+      setGithubModalStatus(applied.error, true);
+      return;
+    }
+    saveGithubSyncPrefs(`${result.owner}/${result.repo}`, username ? result.username : '');
+    closeGithubSyncModal();
+  } catch (err) {
+    setGithubModalStatus(err?.message || '同步仓库导入失败', true);
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
 async function handleAdminJsonImport(file) {
   try {
     const raw = JSON.parse(await file.text());
-    const normalized = normalizeSchedulePayload(raw);
-    if (!normalized) {
-      toast('JSON 格式不正确（仅支持 WMU 课表 v1/v2 数据）');
-      return;
+    const applied = applyImportedSchedulePayload(raw);
+    if (!applied.ok) {
+      toast(applied.error);
     }
-    // 清理学号字段以防意外发布个人敏感信息
-    normalized.timetables.forEach((tt) => {
-      if (tt.student) tt.student.id = '';
-    });
-    scheduleState = normalized;
-    selectedTimetableId = normalized.activeId || normalized.timetables[0]?.id || null;
-    editingCourseIndex = -1;
-    editingCustomIndex = -1;
-    syncDirty();
-    renderScheduleSidebar();
-    renderScheduleEditor();
-    toast(`已导入 ${normalized.timetables.length} 份课表，请核对后保存`);
   } catch (err) {
     toast(`导入 JSON 失败: ${err.message}`);
   }

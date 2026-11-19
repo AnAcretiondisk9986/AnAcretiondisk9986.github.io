@@ -157,12 +157,27 @@ const REPO_ROOT = process.env.ADMIN_REPO_ROOT ? resolve(process.env.ADMIN_REPO_R
 const blogGit = createGitService({ cwd: REPO_ROOT });
 // 图片仓库（上传时提交并推送；批量上传大文件夹时适当放宽超时）
 const imageGit = createGitService({ cwd: IMG_REPO_DIR, timeout: 600_000 });
+// 串行化博客仓库的写类 Git 操作（拉取 / 推送 / 启动自动同步），防止并发产生 index.lock 冲突
+let blogGitLock = Promise.resolve();
+function withBlogGitLock(operation) {
+  const next = blogGitLock.then(operation, operation);
+  blogGitLock = next.catch(() => {});
+  return next;
+}
+// 隔离测试目录（ADMIN_DATA_DIR / ADMIN_BLOG_DIR）默认关闭启动自动拉取，避免烟测触网；
+// 正常使用默认开启安全自动拉取，显式设置 ADMIN_AUTO_PULL=0 可关闭。
+const IS_ISOLATED_DATA_MODE = Boolean(process.env.ADMIN_DATA_DIR || process.env.ADMIN_BLOG_DIR);
+function isAutoPullEnabled() {
+  if (process.env.ADMIN_AUTO_PULL === '0') return false;
+  if (process.env.ADMIN_AUTO_PULL === '1') return true;
+  return !IS_ISOLATED_DATA_MODE;
+}
 // 内容推送范围：文章 / 日常 / 画廊 / 关于 / 前端定制 / 日程课表数据
 const CONTENT_PUSH_PATHS = ['src/content/blog/', 'src/data/daily.json', 'src/data/gallery.json', 'src/data/about.json', 'src/data/frontend.json', 'src/data/schedule.json'];
 // 全量推送范围：除 reasonix.toml（本机配置，不提交）外的全部改动
 const FULL_PUSH_PATHS = ['.', ':(exclude)reasonix.toml'];
 
-/** Git 命令异常 → HTTP 可用的错误对象（保留友好文案并附带 detail） */
+/** Git 命令异常 → HTTP 可用的错误对象（保留友好文案并附带 detail / conflicts） */
 function toHttpError(err, fallbackStatus = 500) {
   if (err instanceof GitCommandError) {
     err.status = err.status || fallbackStatus;
@@ -222,7 +237,7 @@ async function collectSyncStatus({ fetch = false } = {}) {
     fetched: fetch,
     fetchError,
     checkedAt: new Date().toISOString(),
-    autoPull: process.env.ADMIN_AUTO_PULL === '1',
+    autoPull: isAutoPullEnabled(),
   };
 }
 
@@ -1629,37 +1644,52 @@ app.get('/api/link-meta', async (req, res) => {
 });
 
 // Git push（内容推送：仅文章/图片/画廊数据；全量推送：全部改动含代码，排除 reasonix.toml）
+// 默认开启推前自动同步（拉取 + 变基 + daily/gallery 语义合并），避免多设备编辑推送被拒卡死
 async function pushGitChanges({ paths, commitMsg, requestId = '' }) {
-  const startedAt = Date.now();
-  try {
-    const result = await blogGit.commitAndPush({ paths, message: commitMsg });
-    recordOperation({
-      requestId,
-      action: commitMsg.includes('全量') ? 'push-full' : 'push-content',
-      status: result.pushed ? 'success' : 'skipped',
-      message: result.message,
-      durationMs: Date.now() - startedAt,
-      meta: { fileCount: result.preview?.fileCount || 0 },
-    });
-    return {
-      success: true,
-      message: result.message,
-      detail: result.detail,
-      preview: result.preview,
-    };
-  } catch (err) {
-    const httpErr = toHttpError(err);
-    recordOperation({
-      requestId,
-      action: commitMsg.includes('全量') ? 'push-full' : 'push-content',
-      status: 'error',
-      message: httpErr.message,
-      detail: httpErr.detail || '',
-      durationMs: Date.now() - startedAt,
-      meta: { fileCount: httpErr.preview?.fileCount || 0 },
-    });
-    throw httpErr;
-  }
+  return withBlogGitLock(async () => {
+    const startedAt = Date.now();
+    try {
+      const result = await blogGit.commitAndPush({ paths, message: commitMsg, autoSync: true });
+      if (result.syncedRemote) invalidatePostCache();
+      recordOperation({
+        requestId,
+        action: commitMsg.includes('全量') ? 'push-full' : 'push-content',
+        status: result.pushed ? 'success' : 'skipped',
+        message: result.message,
+        durationMs: Date.now() - startedAt,
+        meta: {
+          fileCount: result.preview?.fileCount || 0,
+          syncedBehind: result.syncedBehind || 0,
+          autoMergedFiles: result.autoMergedFiles || [],
+        },
+      });
+      return {
+        success: true,
+        message: result.message,
+        detail: result.detail,
+        preview: result.preview,
+        syncedRemote: Boolean(result.syncedRemote),
+        syncedBehind: result.syncedBehind || 0,
+        rebased: Boolean(result.rebased),
+        autoMergedFiles: result.autoMergedFiles || [],
+      };
+    } catch (err) {
+      const httpErr = toHttpError(err);
+      recordOperation({
+        requestId,
+        action: commitMsg.includes('全量') ? 'push-full' : 'push-content',
+        status: 'error',
+        message: httpErr.message,
+        detail: httpErr.detail || '',
+        durationMs: Date.now() - startedAt,
+        meta: {
+          fileCount: httpErr.preview?.fileCount || 0,
+          conflicts: httpErr.conflicts || [],
+        },
+      });
+      throw httpErr;
+    }
+  });
 }
 
 // 内容推送：仅文章 / 画廊数据（图片已在上传时推送到图片仓库）
@@ -1701,7 +1731,7 @@ app.post('/api/push-full', async (req, res) => {
 
 // ── 发布中心：同步状态 / 预览 / 操作日志 ──
 
-/** 统一的发布中心错误响应（含错误码、详情与 requestId） */
+/** 统一的发布中心错误响应（含错误码、详情、冲突文件清单与 requestId） */
 function respondSyncError(res, req, err, fallbackCode) {
   const httpErr = toHttpError(err);
   res.status(httpErr.status || 500).json({
@@ -1710,6 +1740,7 @@ function respondSyncError(res, req, err, fallbackCode) {
     code: httpErr.errorCode || fallbackCode,
     error: httpErr.message,
     detail: httpErr.detail,
+    ...(Array.isArray(httpErr.conflicts) && httpErr.conflicts.length ? { conflicts: httpErr.conflicts } : {}),
     requestId: req.requestId,
   });
 }
@@ -1785,39 +1816,52 @@ app.get('/api/operations', (req, res) => {
   res.json({ ok: true, requestId: req.requestId, operations: operationLog.slice(0, limit) });
 });
 
-// ── Git sync（拉取远端内容）──
-// 安全同步策略：仅当「远端领先、本地无未推送提交、工作区干净」可快进时才拉取；
-// 其余情况（本地领先 / 分叉 / 工作区有未提交更改）跳过并给出原因，避免覆盖未推送内容或制造冲突。
-// 返回 { status: 'up-to-date' | 'pulled' | 'skipped', message, ahead, behind, ... }
+// ── Git sync（智能拉取远端内容）──
+// 安全同步策略：自动暂存本地未提交改动（含未跟踪文件）→ 快进或变基整合远端提交
+// （对 daily.json / gallery.json 自动按 id 三方语义合并）→ 还原本地工作区；
+// 若遇无法自动解决的真实文件冲突，则原子回滚保持原状并列出冲突文件，绝不覆盖本地改动。
+// 返回 { status: 'up-to-date' | 'pulled' | 'skipped' | 'conflict', message, ahead, behind, ... }
 async function syncFromRemote({ requestId = '' } = {}) {
-  const startedAt = Date.now();
-  // 拉取可能改写/新增文章文件（快进合并），无论结果如何都先失效文章列表缓存，避免面板读到旧快照
-  invalidatePostCache();
-  try {
-    const result = await blogGit.pullFastForward();
-    recordOperation({
-      requestId,
-      action: 'pull',
-      status: result.status === 'pulled' ? 'success' : 'skipped',
-      message: result.message,
-      durationMs: Date.now() - startedAt,
-      meta: { ahead: result.ahead, behind: result.behind, reason: result.reason },
-    });
-    return result;
-  } catch (err) {
-    const message = /无法连接远端/.test(err.message) ? '无法连接远端（网络问题），请稍后重试' : err.message;
-    recordOperation({
-      requestId,
-      action: 'pull',
-      status: 'error',
-      message,
-      detail: err.stderr || err.message,
-      durationMs: Date.now() - startedAt,
-    });
-    const httpErr = toHttpError(err);
-    httpErr.message = message;
-    throw httpErr;
-  }
+  return withBlogGitLock(async () => {
+    const startedAt = Date.now();
+    // 拉取可能改写/新增文章文件，先失效文章列表缓存，避免面板读到旧快照
+    invalidatePostCache();
+    try {
+      const result = await blogGit.pullSmart();
+      if (result.status === 'pulled') invalidatePostCache();
+      recordOperation({
+        requestId,
+        action: 'pull',
+        status: result.status === 'pulled' ? 'success' : (result.status === 'conflict' ? 'error' : 'skipped'),
+        message: result.message,
+        detail: result.detail || '',
+        durationMs: Date.now() - startedAt,
+        meta: {
+          ahead: result.ahead,
+          behind: result.behind,
+          reason: result.reason,
+          stashed: Boolean(result.stashed),
+          rebased: Boolean(result.rebased),
+          autoMergedFiles: result.autoMergedFiles || [],
+          conflicts: result.conflicts || [],
+        },
+      });
+      return result;
+    } catch (err) {
+      const message = /无法连接远端/.test(err.message) ? '无法连接远端（网络问题），请稍后重试' : err.message;
+      recordOperation({
+        requestId,
+        action: 'pull',
+        status: 'error',
+        message,
+        detail: err.stderr || err.message,
+        durationMs: Date.now() - startedAt,
+      });
+      const httpErr = toHttpError(err);
+      httpErr.message = message;
+      throw httpErr;
+    }
+  });
 }
 
 // 手动拉取远端内容（管理面板按钮触发）
@@ -1825,6 +1869,17 @@ app.post('/api/pull', async (req, res) => {
   try {
     const result = await syncFromRemote({ requestId: req.requestId });
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    if (result.status === 'conflict') {
+      return res.status(409).json({
+        ok: false,
+        success: false,
+        code: 'SYNC_CONFLICT',
+        error: result.message,
+        detail: result.detail || '',
+        requestId: req.requestId,
+        ...result,
+      });
+    }
     res.json({ ok: true, success: true, requestId: req.requestId, ...result });
   } catch (err) {
     console.error('Pull Error:', err.message);
@@ -1832,23 +1887,31 @@ app.post('/api/pull', async (req, res) => {
   }
 });
 
-// 启动时只检查同步状态，不自动拉取；需要自动拉取时显式设置 ADMIN_AUTO_PULL=1（不阻塞面板启动）
+// 启动时检查同步状态；正常模式下默认执行一次后台安全智能拉取（不阻塞面板启动，ADMIN_AUTO_PULL=0 可关闭）
 async function autoSyncOnStart() {
-  const autoPull = process.env.ADMIN_AUTO_PULL === '1';
+  const autoPull = isAutoPullEnabled();
   try {
     const info = await blogGit.status();
     const state = deriveSyncState(info);
     console.log(`   [同步检查] ${SYNC_STATE_LABELS[state] || state}（分支 ${info.branch || '未知'}，未提交 ${info.dirtyCount}，领先 ${info.ahead}，落后 ${info.behind}）`);
     if (autoPull) {
-      const result = await blogGit.pullFastForward();
+      const result = await withBlogGitLock(() => blogGit.pullSmart());
       if (result.status === 'pulled') invalidatePostCache(); // 启动时自动拉取到新内容，丢弃可能存在的旧缓存
-      recordOperation({ action: 'auto-pull', status: result.status === 'pulled' ? 'success' : 'skipped', message: result.message });
+      recordOperation({
+        action: 'auto-pull',
+        status: result.status === 'pulled' ? 'success' : (result.status === 'conflict' ? 'error' : 'skipped'),
+        message: result.message,
+        meta: {
+          autoMergedFiles: result.autoMergedFiles || [],
+          conflicts: result.conflicts || [],
+        },
+      });
       console.log(`   [自动拉取] ${result.message}`);
     } else {
-      console.log('   [同步检查] 已跳过自动拉取（需要自动拉取时设置 ADMIN_AUTO_PULL=1）；可在「发布中心」手动拉取');
+      console.log('   [同步检查] 已跳过自动拉取（ADMIN_AUTO_PULL=0 或隔离测试模式）；可在「发布中心」手动拉取');
     }
   } catch (err) {
-    console.log(`   [同步检查] 无法读取工作区状态：${err.message}`);
+    console.log(`   [同步检查] 无法完成启动同步：${err.message}`);
   }
 }
 

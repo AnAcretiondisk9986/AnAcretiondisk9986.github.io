@@ -25,3 +25,7 @@ public/quota/snapshot.json
 # 构建期本地化的图片（npm run images:localize / prebuild 生成）
 public/images/ext/
 scripts/lib/image-map.json
+
+# 本机工具与临时调试快照
+.claude/
+.live*.html

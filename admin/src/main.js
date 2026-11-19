@@ -2092,6 +2092,9 @@
       reloadPosts: () => loadPosts(),
       reloadDaily: () => loadDaily(),
       reloadGallery: () => loadGallery(),
+      reloadAbout: () => loadAbout(),
+      reloadFrontend: () => loadFrontend(),
+      reloadSchedule: () => loadSchedule(),
       fetchHealth,
     });
     initDaily({

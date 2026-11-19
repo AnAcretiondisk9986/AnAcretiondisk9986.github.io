@@ -231,9 +231,10 @@ export async function main({ input = process.stdin, output = process.stdout } = 
       case 'pull': {
         state = notify(state, '正在拉取…', 'info');
         paint();
-        const result = await blogGit(paths).pullFastForward();
+        const result = await blogGit(paths).pullSmart();
         await loadAll();
-        state = notify(state, result.message, result.status === 'pulled' ? 'ok' : 'info');
+        const level = result.status === 'pulled' ? 'ok' : (result.status === 'conflict' ? 'error' : 'info');
+        state = notify(state, result.message, level);
         return;
       }
       default:

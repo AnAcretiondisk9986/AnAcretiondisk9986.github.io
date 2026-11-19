@@ -435,8 +435,11 @@ async function cmdPush(_args, flags) {
     const info = await git.status();
     if (info.ahead > 0) {
       if (!(await confirm(`有 ${info.ahead} 个已提交但未推送的提交，是否推送？`, flags))) return;
-      await git.run(['push', git.remote, info.branch]);
-      console.log('已推送未推送的提交。');
+      const result = await git.commitAndPush({
+        paths,
+        message: flags.full ? '通过博客 CLI 全量推送' : '通过博客 CLI 更新博客',
+      });
+      console.log(result.message);
     }
   }
 
@@ -447,9 +450,10 @@ async function cmdPush(_args, flags) {
 }
 
 async function cmdPull() {
-  const result = await blogGit().pullFastForward();
+  const result = await blogGit().pullSmart();
   console.log(result.message);
-  if (result.status === 'skipped' && result.detail) console.log(result.detail);
+  if (result.conflicts?.length) console.log(`冲突文件：${result.conflicts.join('、')}`);
+  if ((result.status === 'skipped' || result.status === 'conflict') && result.detail) console.log(result.detail);
 }
 
 // ── 帮助与分发 ──
