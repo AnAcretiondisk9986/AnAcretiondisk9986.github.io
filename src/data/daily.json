@@ -1,5 +1,21 @@
 [
   {
+    "id": "daily-20261120-01",
+    "createdAt": "2026-11-20T15:57:00+08:00",
+    "text": "",
+    "images": [
+      {
+        "src": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/IMG_6737_1795161497908.jpg"
+      },
+      {
+        "src": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/IMG_6734_1795161508630.jpg"
+      },
+      {
+        "src": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/IMG_6733_1795161504216.jpg"
+      }
+    ]
+  },
+  {
     "id": "daily-20261119-06",
     "createdAt": "2026-11-19T21:22:00+08:00",
     "text": "完全进入冬天了啊，真的",
