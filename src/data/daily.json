@@ -1,5 +1,23 @@
 [
   {
+    "id": "daily-20261121-01",
+    "createdAt": "2026-11-21T00:11:00+08:00",
+    "text": "探索第三方终端中",
+    "images": [
+      {
+        "src": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/AutoSaveScreenshot2026-11-21_00-10-55_1795191078608.webp"
+      },
+      {
+        "src": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/AutoSaveScreenshot2026-11-21_00-11-59_1795191126176.webp"
+      }
+    ],
+    "tags": [
+      "Terminal"
+    ],
+    "location": "我的寝室",
+    "device": "电脑"
+  },
+  {
     "id": "daily-20261120-01",
     "createdAt": "2026-11-20T15:57:00+08:00",
     "text": "",
