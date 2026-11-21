@@ -8,6 +8,7 @@ access: public
 ---
 
 # BiliBili视频：AI对黎曼猜想的证明，正式通过形式化验证！
+
 <iframe src="//player.bilibili.com/player.html?isOutside=true&aid=117651435162383&bvid=BV1DjybzFEed&cid=43780344750&p=1" scrolling="no" border="0" frameborder="no" framespacing="0" allowfullscreen="true"></iframe>
   
 
@@ -136,7 +137,7 @@ Gemini 几乎是秒回，而且分析得头头是道。
 
   
 
-## 三、医学生的补课时间：质数的“心电图”与算力绝壁
+## 三、补课时间
 
   
 凑完这波史诗级热闹，我才有点不好意思地让 Gemini 给我这个数学门外汉补了补课：这两道挂在数学殿堂顶上的千禧年难题——**黎曼猜想**和 **P=NP**——到底在问什么？
@@ -154,9 +155,11 @@ Gemini 几乎是秒回，而且分析得头头是道。
 故事从一个看似人畜无害的无穷加法开始：
 
   
-$$
-\zeta(s) = 1 + \frac{1}{2^s} + \frac{1}{3^s} + \frac{1}{4^s} + \cdots = \sum_{n=1}^{\infty} \frac{1}{n^s}
-$$
+
+
+<div class="hz-math-block" data-tex="\zeta(s) = 1 + \frac{1}{2^s} + \frac{1}{3^s} + \frac{1}{4^s} + \cdots = \sum_{n=1}^{\infty} \frac{1}{n^s}"></div>
+
+
   
 
 1859 年，黎曼用**解析延拓**把它从一维数轴扩展到了二维复平面（每个点写成 s = a + bi）。Gemini 给了一个我很秒懂的比喻：**就像医学影像重建**——只要整张曲面必须保持绝对的“光滑”，哪怕最初只拿到一小块局部数据，补全整张二维地图的方案也是唯一确定的。
