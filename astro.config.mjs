@@ -1,5 +1,5 @@
 import { defineConfig } from 'astro/config';
-import { satteri } from '@astrojs/markdown-satteri';
+import { enhancedSatteri } from './src/lib/satteri-enhanced.mjs';
 
 /* 本地联调用的额度查询代理地址：管理服务（npm run admin）默认在 127.0.0.1:4322。
    dev / preview 都把同源的 /api/* 转发过去，浏览器因此不需要跨域，
@@ -14,7 +14,7 @@ export default defineConfig({
   site: 'https://blog.acretiondisk.top',
   output: 'static',
   markdown: {
-    processor: satteri({}),
+    processor: enhancedSatteri({}),
   },
   vite: {
     server: { proxy: apiProxy },

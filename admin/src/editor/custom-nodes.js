@@ -398,30 +398,46 @@ export const VideoEmbed = Node.create({
   },
 
   parseHTML() {
-    return [{
-      tag: 'div.video-embed',
-      getAttrs: (el) => {
-        const video = el.querySelector('video');
-        if (video) {
-          return {
-            kind: 'video',
-            src: video.getAttribute('src') || video.querySelector('source')?.getAttribute('src') || '',
-            title: video.getAttribute('title') || '视频播放',
-            poster: video.getAttribute('poster') || '',
-          };
-        }
-        const iframe = el.querySelector('iframe');
-        if (iframe) {
+    return [
+      {
+        tag: 'div.video-embed',
+        getAttrs: (el) => {
+          const video = el.querySelector('video');
+          if (video) {
+            return {
+              kind: 'video',
+              src: video.getAttribute('src') || video.querySelector('source')?.getAttribute('src') || '',
+              title: video.getAttribute('title') || '视频播放',
+              poster: video.getAttribute('poster') || '',
+            };
+          }
+          const iframe = el.querySelector('iframe');
+          if (iframe) {
+            return {
+              kind: 'iframe',
+              src: iframe.getAttribute('src') || '',
+              title: iframe.getAttribute('title') || '嵌入式视频播放器',
+              poster: '',
+            };
+          }
+          return false;
+        },
+      },
+      {
+        tag: 'iframe[src]',
+        getAttrs: (el) => {
+          if (el.closest('div.video-embed')) return false;
+          const src = el.getAttribute('src') || '';
+          if (!src) return false;
           return {
             kind: 'iframe',
-            src: iframe.getAttribute('src') || '',
-            title: iframe.getAttribute('title') || '嵌入式视频播放器',
+            src,
+            title: el.getAttribute('title') || '嵌入式视频播放器',
             poster: '',
           };
-        }
-        return false;
+        },
       },
-    }];
+    ];
   },
 
   renderHTML({ HTMLAttributes }) {

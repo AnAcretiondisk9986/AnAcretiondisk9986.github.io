@@ -153,15 +153,25 @@ const MobileVideoEmbed = Node.create({
   group: 'block',
   atom: true,
   parseHTML() {
-    return [{
-      tag: 'div.video-embed',
-      getAttrs: (el: HTMLElement) => {
-        const v = el.querySelector('video');
-        if (v) return { kind: 'video', src: v.getAttribute('src') || '' };
-        const f = el.querySelector('iframe');
-        return f ? { kind: 'iframe', src: f.getAttribute('src') || '' } : false;
+    return [
+      {
+        tag: 'div.video-embed',
+        getAttrs: (el: HTMLElement) => {
+          const v = el.querySelector('video');
+          if (v) return { kind: 'video', src: v.getAttribute('src') || '' };
+          const f = el.querySelector('iframe');
+          return f ? { kind: 'iframe', src: f.getAttribute('src') || '' } : false;
+        },
       },
-    }];
+      {
+        tag: 'iframe[src]',
+        getAttrs: (el: HTMLElement) => {
+          if (el.closest('div.video-embed')) return false;
+          const src = el.getAttribute('src') || '';
+          return src ? { kind: 'iframe', src } : false;
+        },
+      },
+    ];
   },
   addAttributes() {
     return { kind: { default: 'iframe' }, src: { default: '' } };

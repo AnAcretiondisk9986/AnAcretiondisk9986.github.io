@@ -7,6 +7,7 @@ import {
   countMarkdownStats,
   extractOutlineFromDoc,
 } from '../src/lib/editor-codec.mjs';
+import { preprocessMarkdownForRender } from '../src/lib/markdown-preprocess.mjs';
 
 test('normalizeLegacyMarkdown normalizes legacy heading and span+div alignments', () => {
   const input = [
@@ -125,4 +126,124 @@ test('countMarkdownStats counts CJK, Latin words, images, and missing alt', () =
   assert.ok(stats.chars >= 3);
   assert.equal(stats.images, 2);
   assert.equal(stats.missingAlt, 1);
+});
+
+test('preprocessMarkdownForRender fixes CJK punctuation bold, nested **, inner spaces, HTML-wrapped bold, and CJK italic', () => {
+  const cases = [
+    [
+      'AI 圈经典的**“反向圆梗”恶作剧（LARP）**——不是',
+      /经典的<strong>“反向圆梗”恶作剧（LARP）<\/strong>——不是/,
+    ],
+    [
+      '把**「先用已有窗体、新建必须审批」**做成了',
+      /把<strong>「先用已有窗体、新建必须审批」<\/strong>做成了/,
+    ],
+    [
+      '- **地区分布失衡：**人才向大城市集中',
+      /<li><strong>地区分布失衡：<\/strong>人才向大城市集中<\/li>/,
+    ],
+    [
+      'WezTerm 直接把**分屏、标签页（Workspaces）**全部做进了内核',
+      /把<strong>分屏、标签页（Workspaces）<\/strong>全部/,
+    ],
+    [
+      '数据传输的流程叫做** 路由**，需要验证',
+      /叫做<strong>路由<\/strong>，需要验证/,
+    ],
+    [
+      '** 这个DeepSeek v4 Flash GA也是直接燃烧了我2.6亿的Token**',
+      /<strong>这个DeepSeek v4 Flash GA也是直接燃烧了我2\.6亿的Token<\/strong>/,
+    ],
+    [
+      '这是**<span style="color: #ff5a1a">重要内容</span>**测试',
+      /这是<strong><span style="color: #ff5a1a">重要内容<\/span><\/strong>测试/,
+    ],
+    [
+      '相邻**甲****乙**与嵌套**外层 **内层** 外层**都能渲染',
+      /相邻<strong>甲<\/strong><strong>乙<\/strong>与嵌套<strong>外层 <strong>内层<\/strong> 外层<\/strong>都能渲染/,
+    ],
+    [
+      '柳原主治医师*（这个主治和国内不同）*也不得不，第一反应是*“我没有在闪耀吗”*，结束',
+      /医师<em>（这个主治和国内不同）<\/em>也不得不，第一反应是<em>“我没有在闪耀吗”<\/em>，结束/,
+    ],
+  ];
+
+  for (const [md, expected] of cases) {
+    const html = markdownToEditorHtml(md);
+    assert.match(html, expected, `Failed for: ${md}\nGot: ${html}`);
+    assert.doesNotMatch(html, /\*\*/, `Unrendered ** remained for: ${md}\nGot: ${html}`);
+  }
+});
+
+test('preprocessMarkdownForRender protects code, currency, PowerShell vars, and separates bare iframe from heading', () => {
+  const input = [
+    '<iframe src="//player.bilibili.com/player.html?bvid=BV1HwMm6dEAM"></iframe>',
+    '# 紧跟在 iframe 后的标题',
+    '',
+    '价格 $0.10/M 和 $0.30/M，以及 $100 和 $200，还有 $env:LOCALAPPDATA\\bin。',
+    '',
+    '行内代码 `**“不该转”**` 与公式 $a + b = c$。',
+    '',
+    '# <span style="color: #8a8a90"><div style="text-align: center">居中灰标题</div></span>',
+    '',
+    '<span style="color: #c06050"><div style="text-align: center">第一行</div>\n<div style="text-align: center">第二行</div></span>',
+  ].join('\n');
+
+  const out = preprocessMarkdownForRender(input, { forEditor: false });
+  assert.match(out, /<\/iframe>\n\n# 紧跟在 iframe 后的标题/);
+  assert.doesNotMatch(out, /data-tex="0\.10/);
+  assert.doesNotMatch(out, /data-tex="env:/);
+  assert.match(out, /`\*\*“不该转”\*\*`/);
+  assert.match(out, /class="hz-math" data-tex="a \+ b = c"/);
+  assert.match(out, /<h1 style="text-align: center"><span style="color: #8a8a90">居中灰标题<\/span><\/h1>/);
+  assert.match(out, /<p style="text-align: center"><span style="color: #c06050">第一行<\/span><\/p>/);
+  assert.match(out, /<p style="text-align: center"><span style="color: #c06050">第二行<\/span><\/p>/);
+});
+
+test('serializeDocToMarkdown avoids broken CJK flanking, inner spaces, and adjacent **** when saving', () => {
+  const doc = {
+    type: 'doc',
+    content: [
+      {
+        type: 'paragraph',
+        content: [
+          { type: 'text', text: '把' },
+          { type: 'text', text: '「先用已有窗体」', marks: [{ type: 'bold' }] },
+          { type: 'text', text: '做成了' },
+          { type: 'text', text: ' 路由', marks: [{ type: 'bold' }] },
+          { type: 'text', text: '和' },
+          { type: 'text', text: '彩色加粗', marks: [{ type: 'bold' }, { type: 'textStyle', attrs: { color: '#ff5a1a' } }] },
+          { type: 'text', text: '相邻加粗', marks: [{ type: 'bold' }] },
+        ],
+      },
+    ],
+  };
+
+  const md = serializeDocToMarkdown(doc);
+  assert.ok(md.includes('把<strong>「先用已有窗体」</strong>做成了'), `Got: ${md}`);
+  assert.ok(!md.includes('** 路由**'), `Should hoist leading space: ${md}`);
+  assert.ok(!md.includes('****'), `Should never emit ****: ${md}`);
+  assert.ok(md.includes('<strong><span style="color: #ff5a1a">彩色加粗</span>相邻加粗</strong>'), `Got: ${md}`);
+
+  // Round-trip 再次解析回 HTML，不能有残留 **
+  const roundTripHtml = markdownToEditorHtml(md);
+  assert.doesNotMatch(roundTripHtml, /\*\*/);
+});
+
+test('normalized HTML headings do not swallow subsequent Markdown blocks without blank line', () => {
+  const input = [
+    '# <div style="text-align: center">居中标题</div>',
+    '紧跟正文与~~删除线~~',
+    '',
+    '---',
+    '```c',
+    'printf("hi");',
+    '```',
+  ].join('\n');
+
+  const html = markdownToEditorHtml(input);
+  assert.match(html, /<h1 style="text-align: center">居中标题<\/h1>/);
+  assert.match(html, /<(?:del|s)>删除线<\/(?:del|s)>/);
+  assert.match(html, /<hr\s*\/?>/);
+  assert.match(html, /<pre><code/);
 });

@@ -194,11 +194,53 @@ export function initPosts(options = {}) { ctx = { ...ctx, ...options }; }
         .catch((e) => toast('预览失败: ' + e.message));
     }
 
-    /** 将 Markdown(+HTML) 渲染进只读预览容器（含 KaTeX 公式与防 XSS 安全过滤） */
+    /** 将 Markdown(+HTML) 渲染进只读预览容器（与前台 .hz-prose 保持 1:1 渲染：Callout 标题、代码块栏、KaTeX 公式与防 XSS） */
     export function renderMarkdownPreviewInto(target, markdown) {
       if (!target) return;
       target.innerHTML = markdownToEditorHtml(markdown || '');
       target.querySelectorAll('script').forEach((s) => s.remove());
+
+      // Callout 标题补全（对齐前台 entry.ts）
+      const CALLOUT_TITLES = {
+        note: '📝 NOTE',
+        tip: '💡 TIP',
+        warn: '⚠ WARNING',
+        danger: '❗ CAUTION',
+        quote: '❝ QUOTE',
+      };
+      target.querySelectorAll('.hz-callout').forEach((box) => {
+        if (box.querySelector(':scope > .hz-callout__head')) return;
+        const title = box.dataset.title?.trim() || CALLOUT_TITLES[box.dataset.callout || 'note'] || '📝 NOTE';
+        const head = document.createElement('div');
+        head.className = 'hz-callout__head';
+        head.textContent = title;
+        box.prepend(head);
+      });
+
+      // 代码块顶栏语言标记（对齐前台 .hz-code）
+      target.querySelectorAll('pre').forEach((pre) => {
+        if (pre.closest('.hz-code')) return;
+        const code = pre.querySelector('code') || pre;
+        const wrap = document.createElement('div');
+        wrap.className = 'hz-code';
+        const bar = document.createElement('div');
+        bar.className = 'hz-code__bar';
+        const codeLang = code.className.match(/language-([\w+-]+)/i)?.[1] || '';
+        const rawLang = (pre.dataset.language || codeLang || 'CODE').trim();
+        bar.textContent = rawLang === 'plaintext' || rawLang === 'text' ? 'TEXT' : rawLang.toUpperCase();
+        pre.replaceWith(wrap);
+        wrap.append(bar, pre);
+      });
+
+      // 表格横向滚动外壳
+      target.querySelectorAll('table').forEach((table) => {
+        if (table.closest('.hz-table-wrap')) return;
+        const wrap = document.createElement('div');
+        wrap.className = 'hz-table-wrap';
+        table.replaceWith(wrap);
+        wrap.append(table);
+      });
+
       target.querySelectorAll('.hz-math[data-tex], .hz-math-block[data-tex]').forEach((el) => {
         const tex = el.getAttribute('data-tex') || '';
         const displayMode = el.classList.contains('hz-math-block');

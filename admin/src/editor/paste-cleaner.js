@@ -12,11 +12,56 @@ const ALLOWED_TAGS = new Set([
   'A', 'IMG', 'FIGURE', 'FIGCAPTION', 'SPAN', 'DIV', 'DETAILS', 'SUMMARY',
 ]);
 
-function normalizeColor(raw) {
+function parseRgb(raw) {
+  const s = String(raw || '').trim().toLowerCase();
+  const rgb = s.match(/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*([\d.]+))?\s*\)$/);
+  if (rgb) return { r: Number(rgb[1]), g: Number(rgb[2]), b: Number(rgb[3]), a: rgb[4] !== undefined ? Number(rgb[4]) : 1 };
+  const hex3 = s.match(/^#([0-9a-f]{3})$/);
+  if (hex3) {
+    const [r, g, b] = hex3[1].split('').map((c) => parseInt(c + c, 16));
+    return { r, g, b, a: 1 };
+  }
+  const hex6 = s.match(/^#([0-9a-f]{6})$/);
+  if (hex6) {
+    return {
+      r: parseInt(hex6[1].slice(0, 2), 16),
+      g: parseInt(hex6[1].slice(2, 4), 16),
+      b: parseInt(hex6[1].slice(4, 6), 16),
+      a: 1,
+    };
+  }
+  return null;
+}
+
+function isNeutralGray(c) {
+  return Math.max(c.r, c.g, c.b) - Math.min(c.r, c.g, c.b) <= 18;
+}
+
+function normalizeTextColor(raw) {
   const s = String(raw || '').trim();
   if (!s || /^inherit|initial|unset|transparent|windowtext|auto$/i.test(s)) return '';
-  // 忽略默认纯黑/极暗黑字（Word 深浅主题粘贴进来常带 color: rgb(0,0,0)，在暗色编辑器里会看不见）
-  if (/^(?:#000(?:000)?|black|rgb\(\s*0\s*,\s*0\s*,\s*0\s*\))$/i.test(s)) return '';
+  if (/^(?:black|white)$/i.test(s)) return '';
+  const c = parseRgb(s);
+  if (c) {
+    if (c.a === 0) return '';
+    // 剔除默认纯黑/极暗灰正文色（浅色网页/Word 粘贴）与默认纯白/极浅灰正文色（暗色网页如 X/Twitter 粘贴）
+    const lum = 0.299 * c.r + 0.587 * c.g + 0.114 * c.b;
+    if (isNeutralGray(c) && (lum <= 48 || lum >= 220)) return '';
+  }
+  return s;
+}
+
+function normalizeBgColor(raw) {
+  const s = String(raw || '').trim();
+  if (!s || /^inherit|initial|unset|transparent|windowtext|auto$/i.test(s)) return '';
+  if (/^(?:black|white)$/i.test(s)) return '';
+  const c = parseRgb(s);
+  if (c) {
+    if (c.a === 0) return '';
+    // 剔除页面底色：纯白/近白（浅色站点）或纯黑/深灰底（暗色站点如 X/Discord/VSCode）
+    const lum = 0.299 * c.r + 0.587 * c.g + 0.114 * c.b;
+    if (isNeutralGray(c) && (lum <= 42 || lum >= 235)) return '';
+  }
   return s;
 }
 
@@ -36,12 +81,10 @@ function cleanStyleAttr(el) {
   }
 
   if (['SPAN', 'P', 'H1', 'H2', 'H3', 'H4', 'MARK'].includes(tag)) {
-    const color = normalizeColor(style.color);
+    const color = normalizeTextColor(style.color);
     if (color) kept.push(`color: ${color}`);
-    const bg = normalizeColor(style.backgroundColor);
-    if (bg && !/^rgb\(\s*255\s*,\s*255\s*,\s*255\s*\)|^#fff(?:fff)?$/i.test(bg)) {
-      kept.push(`background-color: ${bg}`);
-    }
+    const bg = normalizeBgColor(style.backgroundColor);
+    if (bg) kept.push(`background-color: ${bg}`);
   }
 
   if (tag === 'IMG') {
@@ -112,8 +155,9 @@ export function cleanPastedHtml(rawHtml) {
     const safeClasses = cls.split(/\s+/).filter((c) => /^(?:hz-|song-player|video-embed|language-)/.test(c));
     if (safeClasses.length) node.setAttribute('class', safeClasses.join(' '));
 
-    // 空无属性 span 拆壳
-    if (tag === 'SPAN' && !node.attributes.length && node.parentNode) {
+    // 空无属性 span，或非法包裹块级元素的 span 拆壳
+    const wrapsBlock = tag === 'SPAN' && Boolean(node.querySelector('p, div, blockquote, pre, table, ul, ol, h1, h2, h3, h4, h5, h6'));
+    if (tag === 'SPAN' && (!node.attributes.length || wrapsBlock) && node.parentNode) {
       while (node.firstChild) node.parentNode.insertBefore(node.firstChild, node);
       node.remove();
     }

@@ -381,17 +381,33 @@ function enhanceProse() {
 
   hydrateRichProseBlocks(prose);
 
-  // 正文首个 # 标题常与页面 h1 重复，降级并隐藏
-  prose.querySelectorAll(':scope > h1').forEach((h1) => {
-    const h2 = document.createElement('h2');
-    h2.className = 'hz-prose__dup';
-    if (h1.id) h2.id = h1.id;
-    h2.innerHTML = h1.innerHTML;
-    h1.replaceWith(h2);
-  });
+  // 仅当正文首元素是与页面标题重复的 <h1> 时才隐藏，避免误杀正文中的章节级 # 标题
+  const pageTitleEl = document.querySelector<HTMLElement>('.hz-entry__title');
+  const normHeading = (raw: string) =>
+    raw
+      .trim()
+      .toLowerCase()
+      .replace(/[\s：:·—–\-,.，。！？!?【】[\]()（）《》“”"'`]/g, '');
+  const pageTitleNorm = normHeading(pageTitleEl?.textContent || '');
+  const firstChild = prose.firstElementChild;
+  if (firstChild && firstChild.tagName === 'H1') {
+    const h1Norm = normHeading(firstChild.textContent || '');
+    const isDuplicateTitle =
+      Boolean(pageTitleNorm)
+      && Boolean(h1Norm)
+      && (h1Norm === pageTitleNorm
+        || (Math.min(h1Norm.length, pageTitleNorm.length) >= 6
+          && (pageTitleNorm.includes(h1Norm) || h1Norm.includes(pageTitleNorm))));
+    if (isDuplicateTitle) {
+      firstChild.classList.add('hz-prose__dup');
+    }
+  }
 
-  // 目录 + 稳定滚动联动
-  const headings = [...prose.querySelectorAll<HTMLElement>('h2, h3')]
+  // 目录 + 稳定滚动联动（支持正文中含章节级 h1，或常规 h2/h3 层级）
+  const visibleH1s = [...prose.querySelectorAll<HTMLElement>('h1')]
+    .filter((h) => h.textContent?.trim() && !h.classList.contains('hz-prose__dup'));
+  const hasVisibleH1 = visibleH1s.length > 0;
+  const headings = [...prose.querySelectorAll<HTMLElement>(hasVisibleH1 ? 'h1, h2, h3' : 'h2, h3')]
     .filter((h) => h.textContent?.trim())
     .filter((h) => !h.classList.contains('hz-prose__dup'));
 
@@ -414,7 +430,8 @@ function enhanceProse() {
         }
         usedIds.add(h.id);
         const li = document.createElement('li');
-        if (h.tagName === 'H3') li.className = 'hz-toc__sub';
+        const isSub = hasVisibleH1 ? h.tagName !== 'H1' : h.tagName === 'H3';
+        if (isSub) li.className = 'hz-toc__sub';
         const a = document.createElement('a');
         a.href = `#${h.id}`;
         a.textContent = (h.textContent || '').trim();

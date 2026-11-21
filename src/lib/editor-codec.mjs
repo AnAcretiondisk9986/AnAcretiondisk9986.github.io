@@ -3,19 +3,16 @@
  * 被 PC 端 Word 级编辑器、手机端 /write/ 编辑器与单元测试共同复用。
  */
 import { Marked } from 'marked';
+import {
+  escapeHtml,
+  escapeAttr,
+  preprocessMarkdownForRender,
+} from './markdown-preprocess.mjs';
 
 const ALIGN_VALUES = new Set(['left', 'center', 'right', 'justify']);
+const UNICODE_PUNCT_RE = /[\p{P}\p{S}]/u;
 
-export function escapeHtml(value) {
-  return String(value ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-}
-
-export function escapeAttr(value) {
-  return escapeHtml(value).replace(/"/g, '&quot;');
-}
+export { escapeHtml, escapeAttr };
 
 export function unescapeHtml(value) {
   return String(value ?? '')
@@ -71,149 +68,17 @@ function createEditorMarked() {
 
 const editorMarked = createEditorMarked();
 
-/** 临时占位保护代码块与行内代码，避免预处理正则误改代码内容 */
-function protectCode(src) {
-  const slots = [];
-  const hold = (value) => {
-    const idx = slots.length;
-    slots.push(value);
-    return `\u0000CODE_SLOT_${idx}\u0000`;
-  };
-  let out = String(src || '').replace(/(^|\n)(```+|~~~+)[^\n]*\n[\s\S]*?\n\2(?=\n|$)/g, (m) => hold(m));
-  out = out.replace(/(`+)([^`]|`(?!\1))*?\1/g, (m) => hold(m));
-  return {
-    text: out,
-    restore: (s) => s.replace(/\u0000CODE_SLOT_(\d+)\u0000/g, (_, idx) => slots[Number(idx)] ?? ''),
-  };
-}
-
-/** 保护已有的 HTML 块/节点免被 math/legacy 规则二次改写 */
-function protectHtmlTags(src, pattern) {
-  const slots = [];
-  const hold = (value) => {
-    const idx = slots.length;
-    slots.push(value);
-    return `\u0000HTML_SLOT_${idx}\u0000`;
-  };
-  const text = String(src || '').replace(pattern, (m) => hold(m));
-  return {
-    text,
-    restore: (s) => s.replace(/\u0000HTML_SLOT_(\d+)\u0000/g, (_, idx) => slots[Number(idx)] ?? ''),
-  };
-}
-
-function extractAlign(styleStr) {
-  const m = String(styleStr || '').match(/text-align\s*:\s*(left|center|right|justify)/i);
-  return m ? m[1].toLowerCase() : '';
-}
-
-function parseInnerInline(raw) {
-  return editorMarked.parseInline(String(raw || '').trim());
-}
-
 /**
  * 预处理历史博文中的混写 HTML（如 `# <div style="text-align: center">...</div>`、
- * `<span style="..."><div style="text-align: center">...</div></span>`）与扩展容器。
+ * `<span style="..."><div style="text-align: center">...</div></span>`）、CJK 强调与扩展容器。
+ * 与 Astro 构建端共用同一份 preprocessMarkdownForRender 实现。
  */
 export function normalizeLegacyMarkdown(markdown) {
-  const codeGuard = protectCode(String(markdown || '').replace(/\r\n?/g, '\n'));
-  let text = codeGuard.text;
-
-  // 1) 保护已结构化的数学 HTML，避免内部 $...$ 再次匹配
-  const mathHtmlGuard = protectHtmlTags(
-    text,
-    /<span\b[^>]*class=["'][^"']*\bhz-math\b[^"']*["'][^>]*>[\s\S]*?<\/span>|<div\b[^>]*class=["'][^"']*\bhz-math-block\b[^"']*["'][^>]*>[\s\S]*?<\/div>/gi,
-  );
-  text = mathHtmlGuard.text;
-
-  // 2) 转换裸 $$...$$ 块级公式与 $...$ 行内公式
-  text = text.replace(/\$\$([\s\S]+?)\$\$/g, (_, tex) => {
-    const clean = String(tex).trim();
-    return clean ? `<div class="hz-math-block" data-tex="${escapeAttr(clean)}"></div>` : '$$$$';
+  return preprocessMarkdownForRender(markdown, {
+    forEditor: true,
+    parseInline: (raw) => editorMarked.parseInline(String(raw || '').trim()),
+    parseBlock: (raw) => editorMarked.parse(String(raw || '').trim()),
   });
-  text = text.replace(/(^|[^\\$])\$([^\s$\n][^$\n]*?[^\s$\n]|[^\s$\n])\$/g, (m, prefix, tex) => {
-    // 跳过明显的金额写法，如 $100 ... $200
-    if (/^\d[\d,.]*(?:\s|$)/.test(tex)) return m;
-    return `${prefix}<span class="hz-math" data-tex="${escapeAttr(tex.trim())}"></span>`;
-  });
-
-  // 3) 规范化历史混写：<span style="..."><div style="text-align:center">...</div></span>
-  text = text.replace(
-    /<span\b([^>]*)>\s*<div\b([^>]*)>([\s\S]*?)<\/div>\s*<\/span>/gi,
-    (full, spanAttr, divAttr, inner) => {
-      const align = extractAlign(divAttr);
-      if (!align || /<(?:div|table|ul|ol|blockquote|iframe|video|figure)\b/i.test(inner)) return full;
-      return `<p style="text-align: ${align}"><span${spanAttr}>${parseInnerInline(inner)}</span></p>`;
-    },
-  );
-
-  // 4) 规范化标题里的 div 对齐：# <div style="text-align: center">...</div>
-  text = text.replace(
-    /^(#{1,6})\s+<div\b([^>]*)>([\s\S]*?)<\/div>\s*$/gim,
-    (full, hashes, divAttr, inner) => {
-      const align = extractAlign(divAttr);
-      if (!align) return full;
-      const level = hashes.length;
-      return `<h${level} style="text-align: ${align}">${parseInnerInline(inner)}</h${level}>`;
-    },
-  );
-
-  // 5) 规范化删除线包裹 div：~~<div style="text-align: center">...</div>~~
-  text = text.replace(
-    /^~~<div\b([^>]*)>([\s\S]*?)<\/div>~~\s*$/gim,
-    (full, divAttr, inner) => {
-      const align = extractAlign(divAttr);
-      if (!align) return full;
-      return `<p style="text-align: ${align}"><s>${parseInnerInline(inner)}</s></p>`;
-    },
-  );
-
-  // 6) 规范化独立对齐 div（仅单段内联文本，不含块级子标签）
-  text = text.replace(
-    /(^|\n)<div\b([^>]*)>([^\n]*)<\/div>(?=\n|$)/gi,
-    (full, lead, divAttr, inner) => {
-      if (/class\s*=/i.test(divAttr)) return full;
-      const align = extractAlign(divAttr);
-      if (!align) return full;
-      const trimmed = inner.trim();
-      if (!trimmed) return `${lead}<p style="text-align: ${align}"><br></p>`;
-      if (/<(?:div|p|table|ul|ol|blockquote|iframe|video|figure)\b/i.test(trimmed)) return full;
-      return `${lead}<p style="text-align: ${align}">${parseInnerInline(trimmed)}</p>`;
-    },
-  );
-
-  // 7) 规范化 Callout 内部 Markdown
-  text = text.replace(
-    /<div\b([^>]*class=["'][^"']*\bhz-callout\b[^"']*["'][^>]*)>([\s\S]*?)<\/div>/gi,
-    (full, attrs, inner) => {
-      if (/\bhz-callout__body\b/i.test(inner)) return full;
-      const bodyHtml = editorMarked.parse(inner.trim()).trim();
-      return `<div${attrs}><div class="hz-callout__body">${bodyHtml}</div></div>`;
-    },
-  );
-
-  // 8) 规范化 <details> 为 Tiptap Details 结构（<summary> + <div data-type="detailsContent">）
-  text = text.replace(
-    /<details\b([^>]*)>\s*<summary>([\s\S]*?)<\/summary>([\s\S]*?)<\/details>/gi,
-    (full, attrs, summary, rest) => {
-      if (/data-type=["']detailsContent["']/i.test(rest)) return full;
-      const bodyHtml = editorMarked.parse(rest.trim()).trim() || '<p></p>';
-      return `<details${attrs}><summary>${parseInnerInline(summary)}</summary><div data-type="detailsContent">${bodyHtml}</div></details>`;
-    },
-  );
-
-  // 9) 规范化 <p style="..."> 内的内联 Markdown
-  text = text.replace(
-    /(^|\n)<p\b([^>]*)>([\s\S]*?)<\/p>(?=\n|$)/gi,
-    (full, lead, attrs, inner) => {
-      if (!attrs.trim()) return full;
-      if (/<(?:div|table|ul|ol|p)\b/i.test(inner)) return full;
-      return `${lead}<p${attrs}>${parseInnerInline(inner)}</p>`;
-    },
-  );
-
-  text = mathHtmlGuard.restore(text);
-  return codeGuard.restore(text);
 }
 
 /** 将 Markdown（含嵌入式 HTML）转换为 Tiptap 编辑器可无损装载的 HTML */
@@ -226,7 +91,35 @@ export function markdownToEditorHtml(markdown) {
 
 // ── ProseMirror / Tiptap JSON → Markdown(+安全HTML) 序列化 ──
 
-function collectMarkWrappers(marks = [], { useHtml = false } = {}) {
+function needsHtmlEmphasis(content, prevChar, nextChar, { hasHtmlInner = false, hasAdjacentDelim = false } = {}) {
+  if (hasHtmlInner || hasAdjacentDelim) return true;
+  if (!content) return false;
+  const first = content[0];
+  const last = content[content.length - 1];
+  if (first === '*' || last === '*' || first === '~' || last === '~' || first === '<' || last === '>') {
+    return true;
+  }
+  const firstPunct = UNICODE_PUNCT_RE.test(first);
+  const lastPunct = UNICODE_PUNCT_RE.test(last);
+  const prevWsOrEmpty = !prevChar || /\s/.test(prevChar);
+  const nextWsOrEmpty = !nextChar || /\s/.test(nextChar);
+  const prevPunct = Boolean(prevChar) && UNICODE_PUNCT_RE.test(prevChar);
+  const nextPunct = Boolean(nextChar) && UNICODE_PUNCT_RE.test(nextChar);
+
+  // CommonMark §6.2：标点紧邻非空白非标点字符会导致定界符贴合失败，改用显式 HTML 标签保证 100% 可渲染
+  if (firstPunct && !prevWsOrEmpty && !prevPunct) return true;
+  if (lastPunct && !nextWsOrEmpty && !nextPunct) return true;
+  return false;
+}
+
+function splitOuterWhitespace(text) {
+  const str = String(text ?? '');
+  const m = str.match(/^([ \t]*)([\s\S]*?)([ \t]*)$/);
+  if (!m) return { lead: '', core: str, trail: '' };
+  return { lead: m[1], core: m[2], trail: m[3] };
+}
+
+function collectMarkWrappers(marks = [], { useHtml = false, prevChar = '', nextChar = '', adjacentEmphasis = false } = {}) {
   const sorted = [...marks];
   const styleParts = [];
   const textStyleMark = sorted.find((m) => m.type === 'textStyle');
@@ -239,13 +132,28 @@ function collectMarkWrappers(marks = [], { useHtml = false } = {}) {
   }
 
   return (rawText) => {
-    let out = useHtml ? escapeHtml(rawText) : rawText;
+    const hasCode = sorted.some((m) => m.type === 'code');
+    const hasEmphasis = sorted.some((m) => m.type === 'bold' || m.type === 'italic' || m.type === 'strike');
+
+    // 对非代码块强调文本，把误选中的首尾空白挪到定界符外，避免生成 "** 文本**" 导致无法渲染
+    let leadWs = '';
+    let trailWs = '';
+    let baseText = String(rawText ?? '');
+    if (!useHtml && !hasCode && hasEmphasis && baseText.trim()) {
+      const split = splitOuterWhitespace(baseText);
+      leadWs = split.lead;
+      baseText = split.core;
+      trailWs = split.trail;
+    }
+
+    let out = useHtml ? escapeHtml(baseText) : baseText;
+    let wrappedWithHtml = false;
 
     // 代码行内标记优先处理（避免内部符号被强调包裹干扰）
-    const hasCode = sorted.some((m) => m.type === 'code');
     if (hasCode) {
       if (useHtml) {
         out = `<code>${out}</code>`;
+        wrappedWithHtml = true;
       } else {
         const ticks = out.includes('``') ? '```' : out.includes('`') ? '``' : '`';
         const pad = out.startsWith('`') || out.endsWith('`') ? ' ' : '';
@@ -255,44 +163,88 @@ function collectMarkWrappers(marks = [], { useHtml = false } = {}) {
 
     if (styleParts.length) {
       out = `<span style="${escapeAttr(styleParts.join('; '))}">${out}</span>`;
+      wrappedWithHtml = true;
     }
+
+    const effPrev = leadWs ? leadWs[leadWs.length - 1] : prevChar;
+    const effNext = trailWs ? trailWs[0] : nextChar;
+    const hasBold = sorted.some((m) => m.type === 'bold');
+    const hasItalic = sorted.some((m) => m.type === 'italic');
 
     for (const mark of sorted) {
       if (mark.type === 'code' || mark.type === 'textStyle') continue;
       if (mark.type === 'highlight') {
         const bg = mark.attrs?.color;
         out = bg ? `<mark style="background-color: ${escapeAttr(bg)}">${out}</mark>` : `<mark>${out}</mark>`;
+        wrappedWithHtml = true;
       } else if (mark.type === 'underline') {
         out = `<u>${out}</u>`;
+        wrappedWithHtml = true;
       } else if (mark.type === 'subscript') {
         out = `<sub>${out}</sub>`;
+        wrappedWithHtml = true;
       } else if (mark.type === 'superscript') {
         out = `<sup>${out}</sup>`;
+        wrappedWithHtml = true;
       } else if (mark.type === 'strike') {
-        out = useHtml ? `<s>${out}</s>` : `~~${out}~~`;
+        const forceHtml = useHtml || needsHtmlEmphasis(out, effPrev, effNext, { hasHtmlInner: wrappedWithHtml, hasAdjacentDelim: adjacentEmphasis });
+        out = forceHtml ? `<s>${out}</s>` : `~~${out}~~`;
+        if (forceHtml) wrappedWithHtml = true;
       } else if (mark.type === 'italic') {
-        out = useHtml ? `<em>${out}</em>` : `*${out}*`;
+        const forceHtml = useHtml || needsHtmlEmphasis(out, effPrev, effNext, { hasHtmlInner: wrappedWithHtml, hasAdjacentDelim: adjacentEmphasis || hasBold });
+        out = forceHtml ? `<em>${out}</em>` : `*${out}*`;
+        if (forceHtml) wrappedWithHtml = true;
       } else if (mark.type === 'bold') {
-        out = useHtml ? `<strong>${out}</strong>` : `**${out}**`;
+        const forceHtml = useHtml || needsHtmlEmphasis(out, effPrev, effNext, { hasHtmlInner: wrappedWithHtml, hasAdjacentDelim: adjacentEmphasis || (hasItalic && wrappedWithHtml) });
+        out = forceHtml ? `<strong>${out}</strong>` : `**${out}**`;
+        if (forceHtml) wrappedWithHtml = true;
       } else if (mark.type === 'link') {
         const href = safeUrl(mark.attrs?.href) || mark.attrs?.href || '';
         const title = mark.attrs?.title;
         if (useHtml) {
           out = `<a href="${escapeAttr(href)}"${title ? ` title="${escapeAttr(title)}"` : ''} target="_blank" rel="noopener">${out}</a>`;
+          wrappedWithHtml = true;
         } else {
           out = title ? `[${out}](${href} "${title.replace(/"/g, '\\"')}")` : `[${out}](${href})`;
         }
       }
     }
-    return out;
+    return `${leadWs}${out}${trailWs}`;
   };
 }
 
+function nodeHasEmphasisMark(node) {
+  if (!node || node.type !== 'text' || !Array.isArray(node.marks)) return false;
+  return node.marks.some((m) => m.type === 'bold' || m.type === 'italic' || m.type === 'strike');
+}
+
+function edgeCharOfNode(node, side) {
+  if (!node) return '';
+  if (node.type === 'text') {
+    const t = String(node.text || '');
+    return t ? (side === 'start' ? t[0] : t[t.length - 1]) : '';
+  }
+  if (node.type === 'mathInline' || node.type === 'image' || node.type === 'figureImage') {
+    return side === 'start' ? '<' : '>';
+  }
+  return '';
+}
+
 function serializeInlineNodes(nodes = [], { useHtml = false } = {}) {
-  return nodes.map((node) => {
+  const parts = nodes.map((node, idx) => {
     if (!node) return '';
     if (node.type === 'text') {
-      const wrap = collectMarkWrappers(node.marks || [], { useHtml });
+      const prevNode = idx > 0 ? nodes[idx - 1] : null;
+      const nextNode = idx + 1 < nodes.length ? nodes[idx + 1] : null;
+      const prevChar = edgeCharOfNode(prevNode, 'end');
+      const nextChar = edgeCharOfNode(nextNode, 'start');
+      const adjacentEmphasis = nodeHasEmphasisMark(prevNode) || nodeHasEmphasisMark(nextNode);
+      const wrap = collectMarkWrappers(node.marks || [], {
+        useHtml,
+        prevChar,
+        nextChar,
+        adjacentEmphasis,
+      });
       return wrap(node.text || '');
     }
     if (node.type === 'hardBreak') {
@@ -312,7 +264,14 @@ function serializeInlineNodes(nodes = [], { useHtml = false } = {}) {
       return serializeInlineNodes(node.content, { useHtml });
     }
     return '';
-  }).join('');
+  });
+
+  // 合并相邻同类强调标签（如相邻文本节点同具加粗但内层样式不同时），避免冗余标签或 **** 拼接
+  return parts
+    .join('')
+    .replace(/<\/strong><strong>/g, '')
+    .replace(/<\/em><em>/g, '')
+    .replace(/<\/s><s>/g, '');
 }
 
 function paragraphStyleAttr(attrs = {}) {
