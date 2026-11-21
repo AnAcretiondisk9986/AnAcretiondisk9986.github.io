@@ -23,37 +23,34 @@ interface GalleryItem {
 const posts = await getPublicPosts();
 const markdownImage = /!\[([^\]]*)\]\(([^)\s]+)(?:\s+["'][^"']*["'])?\)/g;
 
-const journalImages: GalleryItem[] = posts.flatMap((post) => {
-  const body = post.body ?? '';
-  return [...body.matchAll(markdownImage)].map((match, idx) => {
-    const src = match[2];
-    const fileName = decodeURIComponent(src.split('/').pop() || `image-${idx + 1}`);
-    return {
-      id: `journal-${post.id}-${idx + 1}`,
-      src,
-      thumb: thumbOf(src),
-      alt: match[1] || `${post.data.title} 中的图像 ${idx + 1}`,
-      title: post.data.title,
-      caption: match[1] || fileName,
-      date: post.data.pubDate.toISOString().slice(0, 10),
-      dayIndex: post.data.dayIndex ?? 0,
-      sourceUrl: `/blog/${post.id}/`,
-      sourceTitle: post.data.title,
-    };
-  });
+const journalCount = posts.reduce((sum, post) => sum + [...(post.body ?? '').matchAll(markdownImage)].length, 0);
+
+const standaloneImages: GalleryItem[] = sortNewestFirst(standaloneGallery as GalleryItem[]).map((img) => {
+  const thumb = img.thumb || thumbOf(img.src);
+  const out: GalleryItem = {
+    id: img.id,
+    src: img.src,
+    alt: img.alt || '',
+    title: img.title || '',
+  };
+  if (thumb && thumb !== img.src) out.thumb = thumb;
+  if (img.original && img.original !== img.src) out.original = img.original;
+  if (img.caption) out.caption = img.caption;
+  if (img.date) out.date = img.date;
+  if (img.dayIndex) out.dayIndex = img.dayIndex;
+  const safeSrc = safeLink(img.sourceUrl);
+  if (safeSrc) out.sourceUrl = safeSrc;
+  if (img.sourceTitle) out.sourceTitle = img.sourceTitle;
+  return out;
 });
 
-const standaloneImages: GalleryItem[] = sortNewestFirst(standaloneGallery as GalleryItem[]).map((img) => ({
-  ...img,
-  thumb: img.thumb || thumbOf(img.src),
-  sourceUrl: safeLink(img.sourceUrl),
-}));
-
-const totalCount = standaloneImages.length + journalImages.length;
+const totalCount = standaloneImages.length + journalCount;
+// 首屏内联前 24 幅（满足透镜场中心视口与索引页第 1 页零延迟直出），完整池由 /data/gallery-plates.json 按需补齐
+const initialPlates = standaloneImages.slice(0, 24);
 ---
 
 <BaseLayout title="图像透镜" description="Acretiondisk 的独立影像收藏与文章随文图版。" page="lensing">
-  <div class="hz-wrap hz-gal" data-gal-root>
+  <div class="hz-wrap hz-gal" data-gal-root data-plates-total={String(standaloneImages.length)} data-journal-total={String(journalCount)}>
     <header class="hz-gal-head">
       <p class="hz-mono hz-gal-head__kicker">GRAVITATIONAL LENSING // 04 · <span lang="ja">重力レンズ図誌</span></p>
       <h1 class="hz-gal-head__title">图像档案</h1>
@@ -70,7 +67,7 @@ const totalCount = standaloneImages.length + journalImages.length;
         </button>
         <button type="button" role="tab" data-gal-tab="journal" aria-selected="false">
           <span>随文影像</span>
-          <b>{String(journalImages.length).padStart(2, '0')}</b>
+          <b>{String(journalCount).padStart(2, '0')}</b>
         </button>
         <button type="button" role="tab" data-gal-tab="all" aria-selected="false">
           <span>全部</span>
@@ -144,6 +141,7 @@ const totalCount = standaloneImages.length + journalImages.length;
     <div class="hz-viewer__top">
       <div class="hz-viewer__nav">
         <button type="button" class="hz-mini-btn" data-viewer-prev aria-label="上一张">← PREV</button>
+        <span class="hz-mono hz-viewer__counter" data-viewer-counter>01 / 01</span>
         <button type="button" class="hz-mini-btn" data-viewer-next aria-label="下一张">NEXT →</button>
       </div>
       <button type="button" class="hz-mini-btn" data-viewer-close aria-label="关闭灯箱">CLOSE ✕</button>
@@ -165,11 +163,18 @@ const totalCount = standaloneImages.length + journalImages.length;
         <a class="hz-mini-btn" data-viewer-source href="#" hidden>查看来源文章 ↗</a>
       </div>
     </div>
+
+    <footer class="hz-viewer__foot" data-viewer-foot>
+      <div>
+        <p class="hz-mono hz-viewer__cap" data-viewer-date>—</p>
+        <h2 data-viewer-title>图像档案</h2>
+      </div>
+      <p class="hz-viewer__cap" data-viewer-cap></p>
+    </footer>
   </div>
 </dialog>
 
-<script type="application/json" id="hz-plates-pool" set:html={JSON.stringify(standaloneImages).replace(/</g, '\\u003c')}></script>
-<script type="application/json" id="hz-journal-pool" set:html={JSON.stringify(journalImages).replace(/</g, '\\u003c')}></script>
+<script type="application/json" id="hz-plates-pool" set:html={JSON.stringify(initialPlates).replace(/</g, '\\u003c')}></script>
 
 <script>
   import '../scripts/hz/gallery-field';

@@ -11,8 +11,10 @@ let frontendHash = '';
 let frontendBaseline = '';
 let frontendDirty = false;
 let frontendEditorActive = false;
+let frontendSaving = false;
 let ctx = {
   onDirtyChange: () => {},
+  refreshSyncStatus: async () => null,
 };
 
 export function initFrontend(options = {}) { ctx = { ...ctx, ...options }; }
@@ -190,18 +192,31 @@ function syncFrontendPreview() {
 }
 
 async function saveFrontend() {
+  if (frontendSaving) return;
+  const saveBtn = $('#btnSave');
+  frontendSaving = true;
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '⏳ 保存中…'; }
   const body = new URLSearchParams();
   Object.entries(FRONTEND_FIELD_SELECTORS).forEach(([key, selector]) => body.set(key, $(selector)?.value ?? ''));
   body.set('expectedHash', frontendHash);
   try {
     const res = await apiFetch(FRONTEND_API, { method: 'PUT', body, headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
     const data = await res.json();
-    if (data.error) { toast(data.error); return; }
+    if (!res.ok || data.error) {
+      if (res.status === 409) { toast('外观配置已被其他来源修改，请点「↻ 刷新」获取最新后再保存'); return; }
+      toast(data.error || `保存失败（HTTP ${res.status}）`);
+      return;
+    }
     frontendHash = data.contentHash || frontendHash;
     clearFrontendDirty();
-    toast('外观配置已保存');
+    toast('外观配置已保存（点顶栏「发布」上线）');
+    ctx.refreshSyncStatus?.({ silent: true }).catch?.(() => {});
     renderFrontendEditor(data.frontend);
   } catch (e) { toast('保存失败: ' + e.message); }
+  finally {
+    frontendSaving = false;
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = '保存 (Ctrl+S)'; }
+  }
 }
 
 export { renderFrontendList, loadFrontend, saveFrontend, syncFrontendPreview, syncFrontendDirty };

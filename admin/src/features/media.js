@@ -24,6 +24,8 @@ export function initMedia(options = {}) { ctx = { ...ctx, ...options }; }
 
     const MEDIA_API = '/api/media';
 const POSTS_API = '/api/posts';
+const IMG_CDN_PREFIX = 'https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/';
+const PICKER_PAGE_SIZE = 48;
     let mediaData = null;
     let mediaVisible = 60;
     let mediaFilter = { q: '', type: 'all', usage: 'all' };
@@ -31,6 +33,23 @@ const POSTS_API = '/api/posts';
     let mediaTasks = [];
     let mediaActiveUploads = 0;
     let pickerState = null;
+    let mediaSearchTimer = null;
+    let pickerSearchTimer = null;
+    let mediaProgressRaf = 0;
+
+    function localMediaPreview(m) {
+      const url = String(m?.url || '');
+      if (m?.type !== 'image' || !url.startsWith(IMG_CDN_PREFIX)) return { primary: url, fallback1: '', fallback2: '' };
+      const encodedName = url.slice(IMG_CDN_PREFIX.length);
+      const baseName = String(m.name || '').replace(/\.[^.]+$/, '');
+      const thumbUrl = baseName ? `/admin/img-repo/thumb/${encodeURIComponent(baseName)}.webp` : '';
+      const rawLocal = `/admin/img-repo/${encodedName}`;
+      return {
+        primary: thumbUrl || rawLocal,
+        fallback1: thumbUrl ? rawLocal : url,
+        fallback2: thumbUrl ? url : '',
+      };
+    }
 
     function allMediaItems() {
       if (!mediaData) return [];
@@ -82,8 +101,10 @@ const POSTS_API = '/api/posts';
     function mediaCardHtml(m, { picker = false } = {}) {
       const dims = m.width && m.height ? ` · ${m.width}×${m.height}` : '';
       const used = m.usedBy.length ? `引用 ${m.usedBy.length}` : '未引用';
+      const pv = localMediaPreview(m);
+      const imgTag = `<img loading="lazy" decoding="async" src="${escAttr(pv.primary)}"${pv.fallback1 ? ` data-fb1="${escAttr(pv.fallback1)}"` : ''}${pv.fallback2 ? ` data-fb2="${escAttr(pv.fallback2)}"` : ''} alt="${escAttr(m.name)}" onerror="if(this.dataset.fb1){var u=this.dataset.fb1;this.dataset.fb1=this.dataset.fb2||'';this.dataset.fb2='';this.src=u;}else{this.onerror=null;}" />`;
       const thumb = m.type === 'image'
-        ? `<img loading="lazy" src="${escAttr(m.url)}" alt="${escAttr(m.name)}" />`
+        ? imgTag
         : m.type === 'video' ? '<span>▶</span>' : m.type === 'file' ? `<span>📎${esc((m.ext || '').replace('.', '').toUpperCase().slice(0, 4))}</span>` : '<span>♪</span>';
       const actions = picker ? '' : `<div class="media-actions">
           <button class="btn small" data-maction="copy" data-type="${m.type}" data-name="${escAttr(m.name)}" title="复制 CDN 地址">CDN</button>
@@ -153,7 +174,12 @@ const POSTS_API = '/api/posts';
           <div id="mediaMoreWrap" style="text-align:center"></div>
         </div>`;
 
-      $('#fMediaSearch').addEventListener('input', (e) => { mediaFilter.q = e.target.value; mediaVisible = 60; updateMediaGrid(); });
+      $('#fMediaSearch').addEventListener('input', (e) => {
+        mediaFilter.q = e.target.value;
+        mediaVisible = 60;
+        clearTimeout(mediaSearchTimer);
+        mediaSearchTimer = setTimeout(() => { mediaSearchTimer = null; updateMediaGrid(); }, 100);
+      });
       $('#fMediaType').addEventListener('change', (e) => { mediaFilter.type = e.target.value; mediaVisible = 60; updateMediaGrid(); });
       $('#fMediaUsage').addEventListener('change', (e) => { mediaFilter.usage = e.target.value; mediaVisible = 60; updateMediaGrid(); });
       $('#fMediaTargetPost').addEventListener('change', (e) => { mediaTargetSlug = e.target.value; });
@@ -183,11 +209,11 @@ const POSTS_API = '/api/posts';
       if (!mediaTasks.length) { el.innerHTML = ''; updateUploadState(); return; }
       const statusText = { queued: '等待', uploading: '上传中', ready: '完成', failed: '失败', cancelled: '已取消' };
       el.innerHTML = mediaTasks.map((t) => `
-        <div class="media-task${t.status === 'failed' ? ' failed' : ''}">
+        <div class="media-task${t.status === 'failed' ? ' failed' : ''}" data-task-id="${escAttr(t.id)}">
           <span class="tname" title="${escAttr(t.name)}">${esc(t.name)}</span>
           ${t.duplicate && t.status !== 'ready' ? '<span style="color:var(--warn)">可能重复</span>' : ''}
           <span class="bar"><i style="width:${t.progress || 0}%"></i></span>
-          <span>${t.status === 'failed' ? esc(t.error || '失败') : (statusText[t.status] || t.status)}${t.status === 'uploading' ? ` ${t.progress || 0}%` : ''}</span>
+          <span class="tstatus">${t.status === 'failed' ? esc(t.error || '失败') : (statusText[t.status] || t.status)}${t.status === 'uploading' ? ` ${t.progress || 0}%` : ''}</span>
           ${t.status === 'uploading' ? `<button class="btn small" data-mtask="cancel" data-id="${t.id}">取消</button>` : ''}
           ${t.status === 'failed' || t.status === 'cancelled' ? `<button class="btn small" data-mtask="retry" data-id="${t.id}">重试</button>` : ''}
           ${t.status === 'ready' || t.status === 'failed' || t.status === 'cancelled' ? `<button class="btn small" data-mtask="remove" data-id="${t.id}">×</button>` : ''}
@@ -258,7 +284,22 @@ const POSTS_API = '/api/posts';
       xhr.upload.onprogress = (e) => {
         if (!e.lengthComputable) return;
         task.progress = Math.round((e.loaded / e.total) * 100);
-        renderMediaQueue();
+        if (!mediaProgressRaf) {
+          mediaProgressRaf = requestAnimationFrame(() => {
+            mediaProgressRaf = 0;
+            const queueEl = $('#mediaQueue');
+            if (!queueEl) return;
+            for (const item of mediaTasks) {
+              if (item.status !== 'uploading') continue;
+              const row = queueEl.querySelector(`[data-task-id="${item.id}"]`);
+              if (!row) continue;
+              const bar = row.querySelector('.bar i');
+              if (bar) bar.style.width = `${item.progress || 0}%`;
+              const st = row.querySelector('.tstatus');
+              if (st) st.textContent = `上传中 ${item.progress || 0}%`;
+            }
+          });
+        }
       };
       xhr.onload = () => {
         mediaActiveUploads = Math.max(0, mediaActiveUploads - 1);
@@ -465,10 +506,12 @@ const POSTS_API = '/api/posts';
     }
 
     async function openMediaPicker({ type = 'image', title = '选择媒体', multiple = false, onPick, onPickBatch } = {}) {
-      pickerState = { type, multiple: Boolean(multiple), selectedNames: new Set(), onPick, onPickBatch };
+      pickerState = { type, multiple: Boolean(multiple), selectedNames: new Set(), query: '', visible: PICKER_PAGE_SIZE, onPick, onPickBatch };
       const mask = $('#mediaPickerModal');
       if (!mask) return;
       $('#mediaPickerTitle').textContent = title;
+      const searchEl = $('#fMediaPickerSearch');
+      if (searchEl) searchEl.value = '';
       const tip = mask.querySelector('.media-toolbar .field-hint');
       if (tip) tip.textContent = multiple ? '点击缩略图可多选，选好后点击下方确认；上传后自动刷新。' : '点击缩略图即选择；上传后自动刷新。';
       const actions = mask.querySelector('.modal-actions');
@@ -490,7 +533,11 @@ const POSTS_API = '/api/posts';
       }
       syncPickerConfirmButton();
       openModal(mask);
-      if (!mediaData) await loadMedia();
+      if (!mediaData) {
+        const grid = $('#mediaPickerGrid');
+        if (grid) grid.innerHTML = '<div class="media-empty">正在加载媒体库…</div>';
+        await loadMedia();
+      }
       refreshMediaPicker();
     }
 
@@ -504,14 +551,58 @@ const POSTS_API = '/api/posts';
     function refreshMediaPicker() {
       const grid = $('#mediaPickerGrid');
       if (!grid || !pickerState) return;
-      const list = allMediaItems().filter((m) => pickerState.type === 'all' || m.type === pickerState.type);
-      grid.innerHTML = list.length ? list.map((m) => mediaCardHtml(m, { picker: true })).join('') : '<div class="media-empty">媒体库为空，先上传一个文件</div>';
-      grid.querySelectorAll('.media-card').forEach((card) => {
-        const key = `${card.dataset.type}:${card.dataset.name}`;
-        if (pickerState.multiple && pickerState.selectedNames.has(key)) card.classList.add('picked');
-        card.onclick = () => {
+      const q = (pickerState.query || '').trim().toLowerCase();
+      const list = allMediaItems().filter((m) => {
+        if (pickerState.type !== 'all' && m.type !== pickerState.type) return false;
+        if (q && !m.name.toLowerCase().includes(q)) return false;
+        return true;
+      });
+      const shown = list.slice(0, pickerState.visible || PICKER_PAGE_SIZE);
+      const more = list.length - shown.length;
+      const countEl = $('#mediaPickerCount');
+      if (countEl) countEl.textContent = list.length ? `${shown.length} / ${list.length}` : '0 项';
+      grid.innerHTML = shown.length ? shown.map((m) => mediaCardHtml(m, { picker: true })).join('') : `<div class="media-empty">${q ? '没有匹配的媒体' : '媒体库为空，先上传一个文件'}</div>`;
+      if (pickerState.multiple && pickerState.selectedNames.size) {
+        grid.querySelectorAll('.media-card').forEach((card) => {
+          if (pickerState.selectedNames.has(`${card.dataset.type}:${card.dataset.name}`)) card.classList.add('picked');
+        });
+      }
+      const moreWrap = $('#mediaPickerMoreWrap');
+      if (moreWrap) {
+        moreWrap.innerHTML = more > 0 ? `<button type="button" class="btn small" id="btnMediaPickerMore">加载更多（剩余 ${more}）</button>` : '';
+        const moreBtn = $('#btnMediaPickerMore');
+        if (moreBtn) moreBtn.onclick = () => {
+          if (!pickerState) return;
+          pickerState.visible = (pickerState.visible || PICKER_PAGE_SIZE) + PICKER_PAGE_SIZE;
+          refreshMediaPicker();
+        };
+      }
+      syncPickerConfirmButton();
+    }
+
+    function setupMediaPicker() {
+      const close = $('#mediaPickerClose');
+      if (close) close.onclick = closeMediaPicker;
+      const mask = $('#mediaPickerModal');
+      if (mask) mask.addEventListener('click', (e) => { if (e.target === mask) closeMediaPicker(); });
+      const searchEl = $('#fMediaPickerSearch');
+      if (searchEl) {
+        searchEl.addEventListener('input', (e) => {
+          if (!pickerState) return;
+          pickerState.query = e.target.value || '';
+          pickerState.visible = PICKER_PAGE_SIZE;
+          clearTimeout(pickerSearchTimer);
+          pickerSearchTimer = setTimeout(() => { pickerSearchTimer = null; refreshMediaPicker(); }, 100);
+        });
+      }
+      const grid = $('#mediaPickerGrid');
+      if (grid) {
+        grid.addEventListener('click', (e) => {
+          const card = e.target.closest('.media-card');
+          if (!card || !pickerState) return;
+          const key = `${card.dataset.type}:${card.dataset.name}`;
           const m = allMediaItems().find((x) => x.name === card.dataset.name && x.type === card.dataset.type);
-          if (!m || !pickerState) return;
+          if (!m) return;
           if (pickerState.multiple) {
             if (pickerState.selectedNames.has(key)) {
               pickerState.selectedNames.delete(key);
@@ -524,16 +615,8 @@ const POSTS_API = '/api/posts';
           } else if (pickerState.onPick) {
             pickerState.onPick(m);
           }
-        };
-      });
-      syncPickerConfirmButton();
-    }
-
-    function setupMediaPicker() {
-      const close = $('#mediaPickerClose');
-      if (close) close.onclick = closeMediaPicker;
-      const mask = $('#mediaPickerModal');
-      if (mask) mask.addEventListener('click', (e) => { if (e.target === mask) closeMediaPicker(); });
+        });
+      }
       const uploadBtn = $('#btnMediaPickerUpload');
       const input = $('#fMediaPickerUpload');
       if (uploadBtn && input) {

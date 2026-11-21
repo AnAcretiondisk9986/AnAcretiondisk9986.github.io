@@ -1,6 +1,6 @@
 /**
  * HORIZON · academics.ts
- * /academics/ 连续课程拼贴墙：原地 3D 翻转展示开课部门与成绩、聚光灯筛选、/ 搜索。
+ * /academics/ 连续课程拼贴墙：原地 3D 翻转展示开课部门与成绩、聚光灯筛选、空状态重置、URL 状态同步、/ 与 Escape 快捷键。
  */
 
 function initAcademics() {
@@ -11,9 +11,34 @@ function initAcademics() {
   const filterBtns = [...root.querySelectorAll<HTMLButtonElement>('[data-acad-filter]')];
   const search = root.querySelector<HTMLInputElement>('[data-acad-search]');
   const readout = root.querySelector<HTMLElement>('[data-acad-readout]');
+  const emptyEl = root.querySelector<HTMLElement>('[data-acad-empty]');
+  const resetBtn = root.querySelector<HTMLButtonElement>('[data-acad-reset]');
 
   let activeFilter = 'all';
   let query = '';
+
+  const params = new URLSearchParams(location.search);
+  const initFilter = params.get('filter')?.trim() || '';
+  const initQ = params.get('q')?.trim() || '';
+  if (initFilter && filterBtns.some((b) => b.dataset.acadFilter === initFilter)) {
+    activeFilter = initFilter;
+  }
+  if (initQ && search) {
+    search.value = initQ;
+    query = initQ.toLowerCase();
+  }
+
+  const syncUrl = () => {
+    const next = new URLSearchParams();
+    if (activeFilter !== 'all') next.set('filter', activeFilter);
+    const rawQ = search?.value.trim() || '';
+    if (rawQ) next.set('q', rawQ);
+    const qs = next.toString();
+    const target = `${location.pathname}${qs ? `?${qs}` : ''}${location.hash}`;
+    if (target !== location.pathname + location.search + location.hash) {
+      history.replaceState(null, '', target);
+    }
+  };
 
   const matchesFilter = (tile: HTMLButtonElement): boolean => {
     const status = tile.dataset.status || '';
@@ -28,7 +53,7 @@ function initAcademics() {
     return (tile.dataset.search || '').includes(query);
   };
 
-  const applySpotlight = () => {
+  const applySpotlight = (pushUrl = true) => {
     let matched = 0;
     for (const tile of tiles) {
       const ok = matchesFilter(tile) && matchesQuery(tile);
@@ -41,22 +66,44 @@ function initAcademics() {
           ? `${tiles.length} / ${tiles.length}`
           : `${matched} / ${tiles.length}`;
     }
+    if (emptyEl) {
+      emptyEl.hidden = matched > 0;
+    }
+    filterBtns.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.acadFilter === activeFilter)));
+    if (pushUrl) syncUrl();
   };
 
   filterBtns.forEach((btn) => {
     btn.addEventListener('click', () => {
       activeFilter = btn.dataset.acadFilter || 'all';
-      filterBtns.forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
       applySpotlight();
     });
   });
 
   if (search) {
+    let searchTimer = 0;
     search.addEventListener('input', () => {
-      query = search.value.trim().toLowerCase();
-      applySpotlight();
+      window.clearTimeout(searchTimer);
+      const nextQ = search.value.trim().toLowerCase();
+      if (!nextQ) {
+        query = '';
+        applySpotlight();
+        return;
+      }
+      searchTimer = window.setTimeout(() => {
+        query = nextQ;
+        applySpotlight();
+      }, 100);
     });
   }
+
+  resetBtn?.addEventListener('click', () => {
+    activeFilter = 'all';
+    query = '';
+    if (search) search.value = '';
+    applySpotlight();
+    search?.focus();
+  });
 
   const toggleFlip = (tile: HTMLButtonElement) => {
     const flipped = tile.classList.toggle('is-flipped');
@@ -77,9 +124,16 @@ function initAcademics() {
 
   if (matchMedia('(pointer: fine)').matches && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
     let activeTile: HTMLButtonElement | null = null;
+    let activeRect: DOMRect | null = null;
     let tx = 0;
     let ty = 0;
     let raf = 0;
+
+    const invalidateRect = () => {
+      activeRect = null;
+    };
+    window.addEventListener('scroll', invalidateRect, { passive: true });
+    window.addEventListener('resize', invalidateRect, { passive: true });
 
     const clearTile = (t: HTMLButtonElement | null) => {
       if (!t) return;
@@ -90,7 +144,8 @@ function initAcademics() {
     const paint = () => {
       raf = 0;
       if (!activeTile) return;
-      const r = activeTile.getBoundingClientRect();
+      if (!activeRect) activeRect = activeTile.getBoundingClientRect();
+      const r = activeRect;
       if (r.width <= 0 || r.height <= 0) return;
       const lx = tx - r.left;
       const ly = ty - r.top;
@@ -107,7 +162,10 @@ function initAcademics() {
       'pointermove',
       (e) => {
         const tile = (e.target as Element | null)?.closest<HTMLButtonElement>('[data-acad-tile]') ?? null;
-        if (activeTile && activeTile !== tile) clearTile(activeTile);
+        if (activeTile && activeTile !== tile) {
+          clearTile(activeTile);
+          activeRect = null;
+        }
         activeTile = tile;
         if (!activeTile) return;
         tx = e.clientX;
@@ -125,6 +183,7 @@ function initAcademics() {
         if (!rel || !activeTile.contains(rel)) {
           clearTile(activeTile);
           activeTile = null;
+          activeRect = null;
         }
       },
       { passive: true },
@@ -133,22 +192,27 @@ function initAcademics() {
 
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && search && document.activeElement === search) {
-      search.value = '';
-      query = '';
-      applySpotlight();
-      search.blur();
+      if (search.value) {
+        search.value = '';
+        query = '';
+        applySpotlight();
+      } else {
+        search.blur();
+      }
       return;
     }
 
     if (e.key === '/' && !e.ctrlKey && !e.metaKey && !e.altKey) {
-      const tag = (document.activeElement as HTMLElement | null)?.tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      const active = document.activeElement as HTMLElement | null;
+      const tag = active?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || active?.isContentEditable) return;
       e.preventDefault();
       search?.focus();
+      search?.select();
     }
   });
 
-  applySpotlight();
+  applySpotlight(false);
 }
 
 initAcademics();

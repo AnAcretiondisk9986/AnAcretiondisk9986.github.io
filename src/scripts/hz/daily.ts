@@ -75,6 +75,7 @@ function initDailyViewer() {
 
   let items: ViewerMediaItem[] = [];
   let activeIndex = 0;
+  let lastTrigger: HTMLElement | null = null;
 
   const MIN_ZOOM = 100;
   const MAX_ZOOM = 400;
@@ -197,6 +198,19 @@ function initDailyViewer() {
         btn.setAttribute('aria-current', i === activeIndex ? 'true' : 'false');
       });
     }
+
+    // 预加载相邻图像以加速切图
+    if (items.length > 1) {
+      const nextIt = items[(activeIndex + 1) % items.length];
+      const prevIt = items[(activeIndex - 1 + items.length) % items.length];
+      [nextIt, prevIt].forEach((it) => {
+        if (!it?.src) return;
+        const pre = new Image();
+        pre.decoding = 'async';
+        pre.referrerPolicy = 'no-referrer';
+        pre.src = it.src;
+      });
+    }
   };
 
   vClose?.addEventListener('click', () => viewer.close());
@@ -317,6 +331,8 @@ function initDailyViewer() {
     dragging = false;
     vMedia?.classList.remove('is-dragging');
     resetZoom();
+    if (lastTrigger && lastTrigger.isConnected) lastTrigger.focus({ preventScroll: true });
+    lastTrigger = null;
   });
   viewer.addEventListener('click', (e) => {
     if (e.target === viewer) viewer.close();
@@ -328,6 +344,12 @@ function initDailyViewer() {
     } else if (e.key === 'ArrowRight') {
       e.preventDefault();
       showAt(activeIndex + 1);
+    } else if (e.key === 'Home') {
+      e.preventDefault();
+      showAt(0);
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      showAt(items.length - 1);
     } else if (e.key === '+' || e.key === '=') {
       e.preventDefault();
       setZoom(zoomPct * 1.2);
@@ -341,8 +363,9 @@ function initDailyViewer() {
   });
 
   return {
-    open(mediaList: ViewerMediaItem[], startIndex: number, dateLabel: string, excerpt: string) {
+    open(mediaList: ViewerMediaItem[], startIndex: number, dateLabel: string, excerpt: string, trigger?: HTMLElement | null) {
       if (mediaList.length === 0) return;
+      lastTrigger = trigger ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
       items = mediaList;
       if (vDate) vDate.textContent = dateLabel || '—';
       if (vExcerpt) vExcerpt.textContent = excerpt || '';
@@ -381,6 +404,7 @@ export function initDailyTimeline() {
   const likes = readStorageSet(LIKE_KEY);
   const bookmarks = readStorageSet(BOOKMARK_KEY);
   const viewer = initDailyViewer();
+  const tagsMap = new Map<HTMLElement, string[]>(tweets.map((el) => [el, parseTagsAttr(el)]));
 
   const totalFrames = tweets.reduce((sum, el) => sum + Number(el.dataset.mediaCount || '0'), 0);
 
@@ -477,7 +501,22 @@ export function initDailyTimeline() {
     }
   };
 
-  const apply = (animate = false) => {
+  const syncUrl = () => {
+    const next = new URLSearchParams();
+    if (activeTab !== 'all') next.set('tab', activeTab);
+    if (sortKey !== 'newest') next.set('sort', sortKey);
+    if (activeTag) next.set('tag', activeTag);
+    if (activeMonth) next.set('month', activeMonth);
+    const rawQ = searchInputs[0]?.value.trim() || '';
+    if (rawQ) next.set('q', rawQ);
+    const qs = next.toString();
+    const target = `${location.pathname}${qs ? `?${qs}` : ''}${location.hash}`;
+    if (target !== location.pathname + location.search + location.hash) {
+      history.replaceState(null, '', target);
+    }
+  };
+
+  const apply = (animate = false, pushUrl = true) => {
     const firstRects = animate ? captureFlipRects(tweets) : new Map<HTMLElement, DOMRect>();
 
     const sorted = [...tweets].sort((a, b) => {
@@ -504,7 +543,7 @@ export function initDailyTimeline() {
       const month = tweet.dataset.month || '';
       const threadId = tweet.dataset.threadId || '';
       const searchText = tweet.dataset.search || '';
-      const tags = parseTagsAttr(tweet);
+      const tags = tagsMap.get(tweet) || [];
 
       const matchTab =
         activeTab === 'all' ||
@@ -532,7 +571,7 @@ export function initDailyTimeline() {
     updateThreadConnectors(visibleList);
 
     if (animate) {
-      playFlipRects(visibleList, firstRects, { duration: 360 });
+      playFlipRects(visibleList, firstRects, 360);
     }
 
     if (emptyEl) emptyEl.hidden = visibleList.length > 0;
@@ -544,6 +583,7 @@ export function initDailyTimeline() {
     }
 
     syncControls();
+    if (pushUrl) syncUrl();
   };
 
   tabButtons.forEach((btn) => {
@@ -644,7 +684,7 @@ export function initDailyTimeline() {
         try {
           const list = JSON.parse(mediaBox.dataset.media || '[]') as ViewerMediaItem[];
           const idx = Number(openImgBtn.dataset.tlOpenImg || '0');
-          viewer.open(list, idx, tweet.dataset.dateLabel || '', tweet.dataset.excerpt || '');
+          viewer.open(list, idx, tweet.dataset.dateLabel || '', tweet.dataset.excerpt || '', openImgBtn);
         } catch {
           /* ignore invalid json */
         }
@@ -680,18 +720,37 @@ export function initDailyTimeline() {
       const id = copyBtn.dataset.tlCopy || '';
       const labelEl = copyBtn.querySelector<HTMLElement>('[data-tl-copy-label]');
       const url = `${location.origin}${location.pathname}#${encodeURIComponent(id)}`;
-      const finishCopy = () => {
-        copyBtn.classList.add('is-copied');
-        if (labelEl) labelEl.textContent = '已复制 ✓';
+      const showResult = (ok: boolean) => {
+        copyBtn.classList.toggle('is-copied', ok);
+        if (labelEl) labelEl.textContent = ok ? '已复制 ✓' : '复制失败';
         window.setTimeout(() => {
           copyBtn.classList.remove('is-copied');
           if (labelEl) labelEl.textContent = '直链';
         }, 1800);
       };
+      const fallbackCopy = (): boolean => {
+        const ta = document.createElement('textarea');
+        ta.value = url;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.append(ta);
+        ta.select();
+        let ok = false;
+        try {
+          ok = document.execCommand('copy');
+        } catch {
+          ok = false;
+        }
+        ta.remove();
+        return ok;
+      };
       if (navigator.clipboard?.writeText) {
-        navigator.clipboard.writeText(url).then(finishCopy).catch(finishCopy);
+        navigator.clipboard.writeText(url).then(
+          () => showResult(true),
+          () => showResult(fallbackCopy()),
+        );
       } else {
-        finishCopy();
+        showResult(fallbackCopy());
       }
     }
   });
@@ -700,13 +759,18 @@ export function initDailyTimeline() {
   document.addEventListener('keydown', (e) => {
     const dialogOpen = Boolean((document.getElementById('hz-daily-viewer') as HTMLDialogElement | null)?.open);
     if (dialogOpen) return;
-    const active = document.activeElement;
-    const isTyping = active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement;
-    if (e.key === '/' && !isTyping) {
+    const active = document.activeElement as HTMLElement | null;
+    const isTyping =
+      active instanceof HTMLInputElement
+      || active instanceof HTMLTextAreaElement
+      || active instanceof HTMLSelectElement
+      || Boolean(active?.isContentEditable);
+    if (e.key === '/' && !isTyping && !e.ctrlKey && !e.metaKey && !e.altKey) {
       e.preventDefault();
       const targetInput = searchInputs.find((el) => el.offsetParent !== null) || searchInputs[0];
       targetInput?.focus();
-    } else if (e.key === 'Escape' && isTyping && searchInputs.includes(active as HTMLInputElement)) {
+      targetInput?.select();
+    } else if (e.key === 'Escape' && active instanceof HTMLInputElement && searchInputs.includes(active)) {
       if (query) {
         query = '';
         searchInputs.forEach((el) => {
@@ -714,13 +778,13 @@ export function initDailyTimeline() {
         });
         apply(false);
       } else {
-        (active as HTMLElement).blur();
+        active.blur();
       }
     }
   });
 
   syncInteractionUI();
-  apply(false);
+  apply(false, false);
 
   // 支持 #id 锚点高亮定位
   const hashId = decodeURIComponent(location.hash.replace(/^#/, ''));

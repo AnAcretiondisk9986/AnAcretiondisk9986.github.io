@@ -11,7 +11,8 @@ let aboutHash = '';
 let aboutBaseline = '';
 let aboutDirty = false;
 let aboutEditorActive = false;
-let ctx = { setupUpload: () => {}, openMediaPicker: null, onDirtyChange: () => {} };
+let aboutSaving = false;
+let ctx = { setupUpload: () => {}, openMediaPicker: null, onDirtyChange: () => {}, refreshSyncStatus: async () => null };
 
 export function initAbout(options = {}) { ctx = { ...ctx, ...options }; }
 export function isAboutDirty() { return aboutDirty; }
@@ -212,13 +213,13 @@ function renderAboutEditor(data) {
     });
   });
   $('#fAvatar')?.addEventListener('input', refreshAvatarPreview);
-  const root = $('#editorContainer');
-  if (root) {
-    root.addEventListener('input', (e) => {
+  const formRoot = $('#editorContainer .frontend-editor');
+  if (formRoot) {
+    formRoot.addEventListener('input', (e) => {
       if (e.target?.id === 'fImportUrl' || e.target?.id === 'fImportReferer') return;
       syncAboutDirty();
     });
-    root.addEventListener('change', (e) => {
+    formRoot.addEventListener('change', (e) => {
       if (e.target?.id === 'fImportUrl' || e.target?.id === 'fImportReferer') return;
       syncAboutDirty();
     });
@@ -282,7 +283,11 @@ function renderAboutEditor(data) {
 }
 
 async function saveAbout() {
+  if (aboutSaving) return;
   const payload = collectAboutPayload();
+  const saveBtn = $('#btnSave');
+  aboutSaving = true;
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '⏳ 保存中…'; }
   try {
     const fd = new URLSearchParams();
     fd.set('avatar', payload.avatar);
@@ -299,11 +304,22 @@ async function saveAbout() {
     fd.set('expectedHash', aboutHash);
     const res = await apiFetch(ABOUT_API, { method: 'PUT', body: fd, headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
     const data = await res.json();
-    if (data.error) { toast(data.error); return; }
+    if (!res.ok || data.error) {
+      if (res.status === 409) { toast('关于页配置已被其他来源修改，请点「↻ 刷新」获取最新后再保存'); return; }
+      toast(data.error || `保存失败（HTTP ${res.status}）`);
+      return;
+    }
+    aboutHash = data.contentHash || aboutHash;
     clearAboutDirty();
-    toast('观测者档案已保存');
-    await loadAbout();
+    toast('观测者档案已保存（点顶栏「发布」上线）');
+    ctx.refreshSyncStatus?.({ silent: true }).catch?.(() => {});
+    if (data.about) renderAboutEditor(data.about);
+    else await loadAbout();
   } catch (e) { toast('保存失败: ' + e.message); }
+  finally {
+    aboutSaving = false;
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = '保存 (Ctrl+S)'; }
+  }
 }
 
 export { renderAboutList, loadAbout, saveAbout, refreshAvatarPreview, syncAboutDirty };

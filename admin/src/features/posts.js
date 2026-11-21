@@ -11,10 +11,12 @@ import { slugifyTitle } from '../util/slug.js';
 import { markdownToEditorHtml, katex } from '../../vendor/tiptap-bundle.mjs';
 
 const API = '/api/posts';
+let batchBusy = false;
 let ctx = {
-  getPosts: () => [], getSelection: () => new Set(), getCurrentSlug: () => null,
+  getPosts: () => [], getFilteredSlugs: () => [], getSelection: () => new Set(), getCurrentSlug: () => null,
   isPostDirty: () => false, clearCurrentSlug: () => {}, loadPosts: async () => {},
   selectPost: async () => {}, resetEditor: () => {}, renderList: () => {},
+  refreshSyncStatus: async () => null,
 };
 const selection = () => ctx.getSelection();
 
@@ -28,34 +30,58 @@ export function initPosts(options = {}) { ctx = { ...ctx, ...options }; }
     }
 
     async function batchAction(kind) {
+      if (batchBusy) return;
+      if (kind === 'select-all') {
+        const allSlugs = ctx.getFilteredSlugs?.() || ctx.getPosts().map((p) => p.slug);
+        const sel = selection();
+        const allSelected = allSlugs.length > 0 && allSlugs.every((s) => sel.has(s));
+        if (allSelected) allSlugs.forEach((s) => sel.delete(s));
+        else allSlugs.forEach((s) => sel.add(s));
+        updateBatchBar();
+        ctx.renderList();
+        return;
+      }
       const slugs = [...selection()];
       if (!slugs.length) return;
       if (kind === 'clear') { selection().clear(); updateBatchBar(); ctx.renderList(); return; }
       const labels = { publish: '发布', unpublish: '撤回', archive: '归档', delete: '删除' };
       if (!confirm(`对选中的 ${slugs.length} 篇文章执行「${labels[kind]}」？`)) return;
+      batchBusy = true;
+      const bar = $('#batchBar');
+      const countEl = $('#batchCount');
+      bar?.querySelectorAll('button').forEach((b) => { b.disabled = true; });
       let ok = 0;
       let fail = 0;
-      for (const slug of slugs) {
-        try {
-          if (kind === 'delete') {
-            const res = await apiFetch(`${API}/${encodeURIComponent(slug)}`, { method: 'DELETE' });
-            if (res.ok) ok += 1; else fail += 1;
-            continue;
-          }
-          const res = await apiFetch(`${API}/${encodeURIComponent(slug)}`);
-          const post = await res.json();
-          if (!res.ok || post.error) { fail += 1; continue; }
-          const overrides = kind === 'publish' ? { draft: false, archived: false, scheduledAt: '' }
-            : kind === 'unpublish' ? { draft: true }
-              : { archived: true };
-          const done = await putPostFields(post, overrides, { silent: true, skipReload: true });
-          if (done) ok += 1; else fail += 1;
-        } catch { fail += 1; }
+      try {
+        for (let i = 0; i < slugs.length; i += 1) {
+          const slug = slugs[i];
+          if (countEl) countEl.textContent = `正在${labels[kind]} (${i + 1}/${slugs.length})…`;
+          try {
+            if (kind === 'delete') {
+              const res = await apiFetch(`${API}/${encodeURIComponent(slug)}`, { method: 'DELETE' });
+              if (res.ok) ok += 1; else fail += 1;
+              continue;
+            }
+            const res = await apiFetch(`${API}/${encodeURIComponent(slug)}`);
+            const post = await res.json();
+            if (!res.ok || post.error) { fail += 1; continue; }
+            const overrides = kind === 'publish' ? { draft: false, archived: false, scheduledAt: '' }
+              : kind === 'unpublish' ? { draft: true }
+                : { archived: true };
+            const done = await putPostFields(post, overrides, { silent: true, skipReload: true });
+            if (done) ok += 1; else fail += 1;
+          } catch { fail += 1; }
+        }
+        if (kind === 'delete' && slugs.includes(ctx.getCurrentSlug())) { ctx.clearCurrentSlug(); ctx.resetEditor(); }
+        selection().clear();
+        await ctx.loadPosts();
+        ctx.refreshSyncStatus?.({ silent: true }).catch?.(() => {});
+        toast(`批量${labels[kind]}：成功 ${ok}${fail ? `，失败 ${fail}` : ''}`);
+      } finally {
+        batchBusy = false;
+        bar?.querySelectorAll('button').forEach((b) => { b.disabled = false; });
+        updateBatchBar();
       }
-      if (kind === 'delete' && slugs.includes(ctx.getCurrentSlug())) { ctx.clearCurrentSlug(); ctx.resetEditor(); }
-      selection().clear();
-      await ctx.loadPosts();
-      toast(`批量${labels[kind]}：成功 ${ok}${fail ? `，失败 ${fail}` : ''}`);
     }
 
     function setupBatchControls() {
@@ -197,18 +223,14 @@ export function initPosts(options = {}) { ctx = { ...ctx, ...options }; }
       } else {
         link.style.display = 'none';
       }
-      mask.style.display = 'flex';
-      mask.setAttribute('role', 'dialog');
-      mask.setAttribute('aria-modal', 'true');
+      openModal(mask);
       const el = $('#previewBody');
       el.innerHTML = '<div class="acr-site-preview"></div>';
       renderMarkdownPreviewInto(el.firstElementChild, post.content || '');
     }
 
     function closePostPreview() {
-      const mask = $('#previewModal');
-      mask.style.display = 'none';
-      mask.removeAttribute('aria-modal');
+      closeModal($('#previewModal'));
     }
 
     async function duplicatePost(slug) {
@@ -242,6 +264,7 @@ export function initPosts(options = {}) { ctx = { ...ctx, ...options }; }
         if (!put.ok || data.error) { toast(data.error || '复制失败'); return; }
         toast('已复制为新草稿：' + data.slug);
         await ctx.loadPosts();
+        ctx.refreshSyncStatus?.({ silent: true }).catch?.(() => {});
         await ctx.selectPost(data.slug, { skipLeaveGuard: true });
       } catch (e) { toast('复制失败: ' + e.message); }
     }
@@ -273,6 +296,7 @@ export function initPosts(options = {}) { ctx = { ...ctx, ...options }; }
         if (!put.ok || data.error) { toast(data.error || '归档操作失败'); return; }
         toast(nextArchived ? '已归档（推送后线上生效）' : '已取消归档（推送后线上生效）');
         await ctx.loadPosts();
+        ctx.refreshSyncStatus?.({ silent: true }).catch?.(() => {});
         if (slug === ctx.getCurrentSlug()) await ctx.selectPost(data.slug || slug, { skipLeaveGuard: true });
       } catch (e) { toast('归档操作失败: ' + e.message); }
     }
@@ -319,6 +343,7 @@ export function initPosts(options = {}) { ctx = { ...ctx, ...options }; }
         if (!put.ok || data.error) { toast(data.error || '切换发布状态失败'); return; }
         toast(nextDraft ? '已转为草稿（推送后线上生效）' : '已发布（推送后线上生效）');
         await ctx.loadPosts();
+        ctx.refreshSyncStatus?.({ silent: true }).catch?.(() => {});
         if (slug === ctx.getCurrentSlug()) await ctx.selectPost(data.slug || slug, { skipLeaveGuard: true });
       } catch (e) {
         toast('切换发布状态失败: ' + e.message);

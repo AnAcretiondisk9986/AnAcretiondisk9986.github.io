@@ -2,6 +2,21 @@
    HORIZON · academics.css —— 纵向坐标轴 + 圆角冲击力拼贴墙 + 原地翻转
    ========================================================================== */
 
+@font-face {
+  font-family: 'Google Sans Italic';
+  src: url('/fonts/google-sans-italic.ttf') format('truetype');
+  font-weight: 400 700;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Noto Serif SC Black';
+  src: url('/fonts/noto-serif-sc-black-acad.ttf') format('truetype');
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 .hz-acad {
   padding-bottom: var(--s-9);
 }

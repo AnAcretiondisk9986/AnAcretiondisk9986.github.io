@@ -53,10 +53,13 @@ let scheduleHash = '';
 let scheduleBaseline = '';
 let scheduleDirty = false;
 let scheduleActive = false;
+let scheduleSaving = false;
+let courseSearchTimer = null;
 let pdfjsLibPromise = null;
 
 let ctx = {
   onDirtyChange: () => {},
+  refreshSyncStatus: async () => null,
 };
 
 export function initSchedule(options = {}) {
@@ -367,6 +370,43 @@ function renderCustomForm(tt) {
     </div>`;
 }
 
+function renderCourseListHtml(tt) {
+  const q = courseFilterText.trim().toLowerCase();
+  const filteredCourses = (tt.events || []).map((ev, idx) => ({ ev, idx })).filter(({ ev }) => {
+    if (courseFilterDay && String(ev.day) !== courseFilterDay) return false;
+    if (q) {
+      const hay = `${ev.title} ${getCourseAlias(tt, ev)} ${ev.teacher} ${ev.room} ${ev.campus} ${ev.courseCode || ''}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  return filteredCourses.map(({ ev, idx }) => {
+    const alias = getCourseAlias(tt, ev);
+    const fav = scheduleState.favorites.includes(favoriteKey(ev, tt.id));
+    return `
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border:1px solid var(--border);background:var(--surface-1);border-radius:4px">
+        <div style="min-width:0">
+          <div style="font-size:12px;color:var(--text)">
+            ${esc(alias || ev.title)}${alias ? ` <span class="field-hint">（原：${esc(ev.title)}）</span>` : ''}
+            <span class="badge">${esc(ev.label)}</span>
+            ${fav ? '<span class="badge authorized">★ 收藏</span>' : ''}
+            ${ev.hidden ? '<span class="badge draft">已隐藏</span>' : ''}
+          </div>
+          <div style="font-size:10px;color:var(--text-faint)">
+            ${DAY_NAMES[ev.day - 1]} 第 ${ev.start}–${ev.end} 节 · ${esc(weeksLabel(ev.weeks))} · ${esc(ev.campus)} · ${esc(ev.room)} · ${esc(ev.teacher)}
+          </div>
+        </div>
+        <div style="display:flex;gap:4px;flex-shrink:0">
+          <button class="btn small" type="button" data-course-fav="${idx}" title="切换收藏">${fav ? '★' : '☆'}</button>
+          <button class="btn small" type="button" data-course-hide="${idx}">${ev.hidden ? '显示' : '隐藏'}</button>
+          <button class="btn small" type="button" data-course-edit="${idx}">编辑</button>
+          <button class="btn small danger" type="button" data-course-del="${idx}">删除</button>
+        </div>
+      </div>`;
+  }).join('') || '<div class="field-hint">没有匹配的课程</div>';
+}
+
 function renderScheduleEditor() {
   const container = $('#editorContainer');
   if (!container) return;
@@ -394,16 +434,6 @@ function renderScheduleEditor() {
     return;
   }
 
-  const q = courseFilterText.trim().toLowerCase();
-  const filteredCourses = (tt.events || []).map((ev, idx) => ({ ev, idx })).filter(({ ev }) => {
-    if (courseFilterDay && String(ev.day) !== courseFilterDay) return false;
-    if (q) {
-      const hay = `${ev.title} ${getCourseAlias(tt, ev)} ${ev.teacher} ${ev.room} ${ev.campus} ${ev.courseCode || ''}`.toLowerCase();
-      if (!hay.includes(q)) return false;
-    }
-    return true;
-  });
-
   const customList = (tt.customEvents || []).map((ev, idx) => `
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border:1px solid var(--border);background:var(--surface-1);border-radius:4px">
       <div style="min-width:0">
@@ -416,30 +446,7 @@ function renderScheduleEditor() {
       </div>
     </div>`).join('') || '<div class="field-hint">暂无自定义日程</div>';
 
-  const courseList = filteredCourses.map(({ ev, idx }) => {
-    const alias = getCourseAlias(tt, ev);
-    const fav = scheduleState.favorites.includes(favoriteKey(ev, tt.id));
-    return `
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border:1px solid var(--border);background:var(--surface-1);border-radius:4px">
-        <div style="min-width:0">
-          <div style="font-size:12px;color:var(--text)">
-            ${esc(alias || ev.title)}${alias ? ` <span class="field-hint">（原：${esc(ev.title)}）</span>` : ''}
-            <span class="badge">${esc(ev.label)}</span>
-            ${fav ? '<span class="badge authorized">★ 收藏</span>' : ''}
-            ${ev.hidden ? '<span class="badge draft">已隐藏</span>' : ''}
-          </div>
-          <div style="font-size:10px;color:var(--text-faint)">
-            ${DAY_NAMES[ev.day - 1]} 第 ${ev.start}–${ev.end} 节 · ${esc(weeksLabel(ev.weeks))} · ${esc(ev.campus)} · ${esc(ev.room)} · ${esc(ev.teacher)}
-          </div>
-        </div>
-        <div style="display:flex;gap:4px;flex-shrink:0">
-          <button class="btn small" type="button" data-course-fav="${idx}" title="切换收藏">${fav ? '★' : '☆'}</button>
-          <button class="btn small" type="button" data-course-hide="${idx}">${ev.hidden ? '显示' : '隐藏'}</button>
-          <button class="btn small" type="button" data-course-edit="${idx}">编辑</button>
-          <button class="btn small danger" type="button" data-course-del="${idx}">删除</button>
-        </div>
-      </div>`;
-  }).join('') || '<div class="field-hint">没有匹配的课程</div>';
+  const courseList = renderCourseListHtml(tt);
 
   container.innerHTML = `
     <div class="editor frontend-editor">
@@ -464,7 +471,7 @@ function renderScheduleEditor() {
           <button class="btn small primary" type="button" id="btnAddCustomEvent">＋ 添加自定义日程</button>
         </div>
         ${editingCustomIndex !== -1 ? renderCustomForm(tt) : ''}
-        <div style="display:flex;flex-direction:column;gap:6px">${customList}</div>
+        <div id="schedCustomList" style="display:flex;flex-direction:column;gap:6px">${customList}</div>
       </section>
 
       <section class="frontend-section">
@@ -480,7 +487,7 @@ function renderScheduleEditor() {
           </div>
         </div>
         ${editingCourseIndex !== -1 ? renderCourseForm(tt) : ''}
-        <div style="display:flex;flex-direction:column;gap:6px;max-height:480px;overflow-y:auto">${courseList}</div>
+        <div id="schedCourseList" style="display:flex;flex-direction:column;gap:6px;max-height:480px;overflow-y:auto">${courseList}</div>
       </section>
     </div>`;
 
@@ -505,7 +512,12 @@ function bindTimetableFields(tt) {
   $('#fTtName')?.addEventListener('input', (e) => {
     tt.name = e.target.value.trim() || '课表';
     syncDirty();
-    renderScheduleSidebar();
+    const activeCardTitle = document.querySelector(`#postList [data-tt-select="${CSS.escape(tt.id)}"] .title`);
+    if (activeCardTitle) {
+      const badge = tt.id === scheduleState.activeId ? ' <span class="badge authorized">默认展示</span>' : '';
+      activeCardTitle.innerHTML = `${esc(tt.name)}${badge}`;
+    }
+    $('#editorTitle').textContent = `日程管理：${tt.name}`;
   });
   $('#fTtSemester')?.addEventListener('input', (e) => {
     tt.semester = e.target.value.trim();
@@ -534,18 +546,21 @@ function bindTimetableFields(tt) {
 }
 
 function bindCourseAndCustomActions(tt) {
+  const refreshCourseListOnly = () => {
+    const listEl = $('#schedCourseList');
+    if (listEl) listEl.innerHTML = renderCourseListHtml(tt);
+  };
   $('#fCourseSearch')?.addEventListener('input', (e) => {
     courseFilterText = e.target.value;
-    renderScheduleEditor();
-    const input = $('#fCourseSearch');
-    if (input) {
-      input.focus();
-      input.setSelectionRange(input.value.length, input.value.length);
-    }
+    clearTimeout(courseSearchTimer);
+    courseSearchTimer = setTimeout(() => {
+      courseSearchTimer = null;
+      refreshCourseListOnly();
+    }, 100);
   });
   $('#fCourseDayFilter')?.addEventListener('change', (e) => {
     courseFilterDay = e.target.value;
-    renderScheduleEditor();
+    refreshCourseListOnly();
   });
 
   $('#btnAddCourse')?.addEventListener('click', () => {
@@ -646,25 +661,26 @@ function bindCourseAndCustomActions(tt) {
     renderScheduleEditor();
   });
 
-  document.querySelectorAll('[data-course-edit]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      editingCourseIndex = Number(btn.dataset.courseEdit);
+  $('#schedCourseList')?.addEventListener('click', (e) => {
+    const editBtn = e.target.closest('[data-course-edit]');
+    if (editBtn) {
+      editingCourseIndex = Number(editBtn.dataset.courseEdit);
       renderScheduleEditor();
-    });
-  });
-  document.querySelectorAll('[data-course-hide]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const idx = Number(btn.dataset.courseHide);
+      return;
+    }
+    const hideBtn = e.target.closest('[data-course-hide]');
+    if (hideBtn) {
+      const idx = Number(hideBtn.dataset.courseHide);
       const ev = tt.events[idx];
       if (!ev) return;
       ev.hidden = !ev.hidden;
       syncDirty();
-      renderScheduleEditor();
-    });
-  });
-  document.querySelectorAll('[data-course-fav]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const idx = Number(btn.dataset.courseFav);
+      refreshCourseListOnly();
+      return;
+    }
+    const favBtn = e.target.closest('[data-course-fav]');
+    if (favBtn) {
+      const idx = Number(favBtn.dataset.courseFav);
       const ev = tt.events[idx];
       if (!ev) return;
       const key = favoriteKey(ev, tt.id);
@@ -673,12 +689,12 @@ function bindCourseAndCustomActions(tt) {
       if (pos >= 0) scheduleState.favorites.splice(pos, 1);
       else scheduleState.favorites.push(key);
       syncDirty();
-      renderScheduleEditor();
-    });
-  });
-  document.querySelectorAll('[data-course-del]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const idx = Number(btn.dataset.courseDel);
+      refreshCourseListOnly();
+      return;
+    }
+    const delBtn = e.target.closest('[data-course-del]');
+    if (delBtn) {
+      const idx = Number(delBtn.dataset.courseDel);
       const ev = tt.events[idx];
       if (!ev || !confirm(`确定删除课程「${ev.title}」吗？`)) return;
       tt.events.splice(idx, 1);
@@ -686,17 +702,18 @@ function bindCourseAndCustomActions(tt) {
       syncDirty();
       renderScheduleSidebar();
       renderScheduleEditor();
-    });
+    }
   });
-  document.querySelectorAll('[data-custom-edit]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      editingCustomIndex = Number(btn.dataset.customEdit);
+  $('#schedCustomList')?.addEventListener('click', (e) => {
+    const editBtn = e.target.closest('[data-custom-edit]');
+    if (editBtn) {
+      editingCustomIndex = Number(editBtn.dataset.customEdit);
       renderScheduleEditor();
-    });
-  });
-  document.querySelectorAll('[data-custom-del]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const idx = Number(btn.dataset.customDel);
+      return;
+    }
+    const delBtn = e.target.closest('[data-custom-del]');
+    if (delBtn) {
+      const idx = Number(delBtn.dataset.customDel);
       const ev = tt.customEvents[idx];
       if (!ev || !confirm(`确定删除日程「${ev.title}」吗？`)) return;
       tt.customEvents.splice(idx, 1);
@@ -704,7 +721,7 @@ function bindCourseAndCustomActions(tt) {
       syncDirty();
       renderScheduleSidebar();
       renderScheduleEditor();
-    });
+    }
   });
 }
 
@@ -939,6 +956,10 @@ export async function loadSchedule() {
 }
 
 export async function saveSchedule() {
+  if (scheduleSaving) return;
+  const saveBtn = $('#btnSave');
+  scheduleSaving = true;
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '⏳ 保存中…'; }
   try {
     const res = await apiFetch(SCHEDULE_API, {
       method: 'PUT',
@@ -951,7 +972,7 @@ export async function saveSchedule() {
     const data = await res.json();
     if (!res.ok || data.error) {
       if (res.status === 409) {
-        toast('课表已被其他来源修改，请刷新后重试');
+        toast('课表已被其他来源修改，请点「↻ 刷新」获取最新后再保存');
         return;
       }
       toast(data.error || '保存失败');
@@ -961,9 +982,16 @@ export async function saveSchedule() {
     if (data.schedule) scheduleState = data.schedule;
     clearScheduleDirty();
     toast('课表与日程已保存（点击顶栏「发布」推送上线）');
+    ctx.refreshSyncStatus?.({ silent: true }).catch?.(() => {});
     await loadSchedule();
   } catch (err) {
     toast('保存失败: ' + err.message);
+  } finally {
+    scheduleSaving = false;
+    if (saveBtn) {
+      saveBtn.textContent = '保存 (Ctrl+S)';
+      saveBtn.disabled = !scheduleDirty;
+    }
   }
 }
 

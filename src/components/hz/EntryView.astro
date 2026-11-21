@@ -62,9 +62,14 @@ const pageDesc = isAdmin ? '管理员级文章。' : post.data.description;
     <script is:inline>
       (() => {
         try {
+          const root = document.querySelector('[data-entry-root]');
+          if (!root) return;
           if (localStorage.getItem('hz-entry-rail') === 'collapsed') {
-            const root = document.querySelector('[data-entry-root]');
-            if (root) root.setAttribute('data-rail-collapsed', 'true');
+            root.setAttribute('data-rail-collapsed', 'true');
+          }
+          const fs = localStorage.getItem('hz-entry-fontsize');
+          if (fs === 'sm' || fs === 'md' || fs === 'lg') {
+            root.setAttribute('data-font-size', fs);
           }
         } catch {
           /* ignore */
@@ -175,20 +180,35 @@ const pageDesc = isAdmin ? '管理员级文章。' : post.data.description;
 
             {!isAdmin && (
               <div class="hz-shortlink" data-shortlink>
-                <button class="hz-rail-btn" type="button" data-shortlink-generate>
+                <button class="hz-rail-btn" type="button" data-shortlink-generate aria-expanded="false">
                   <span>生成分享短链</span>
                   <span class="hz-mono" aria-hidden="true">LINK</span>
                 </button>
                 <div class="hz-shortlink__panel" data-shortlink-panel hidden>
                   <span class="hz-shortlink__title" data-shortlink-title>《{post.data.title}》</span>
-                  <code class="hz-shortlink__url" data-shortlink-url title="点击复制">{shortUrl}</code>
+                  <code
+                    class="hz-shortlink__url"
+                    data-shortlink-url
+                    role="button"
+                    tabindex="0"
+                    title="点击或按回车复制短链"
+                  >{shortUrl}</code>
                   <div class="hz-shortlink__foot">
                     <button class="hz-shortlink__copy hz-mono" type="button" data-shortlink-copy>COPY</button>
-                    <span class="hz-shortlink__hint hz-mono" data-shortlink-hint role="status"></span>
+                    <span class="hz-shortlink__hint hz-mono" data-shortlink-hint role="status" aria-live="polite"></span>
                   </div>
                 </div>
               </div>
             )}
+
+            <div class="hz-font-ctrl" role="group" aria-label="正文字号调节">
+              <span class="hz-mono hz-font-ctrl__label">TYPE</span>
+              <div class="hz-font-ctrl__btns">
+                <button type="button" data-entry-fontsize="sm" aria-pressed="false" title="紧凑字号">A-</button>
+                <button type="button" data-entry-fontsize="md" aria-pressed="true" title="标准字号">A</button>
+                <button type="button" data-entry-fontsize="lg" aria-pressed="false" title="舒展字号">A+</button>
+              </div>
+            </div>
 
             {!isAdmin && (
               <a class="hz-rail-btn" href="/private/">
@@ -261,6 +281,31 @@ const pageDesc = isAdmin ? '管理员级文章。' : post.data.description;
       </article>
     </div>
   </div>
+
+  <dialog class="hz-entry-viewer" id="hz-entry-viewer" aria-label="文章图片查看器">
+    <div class="hz-entry-viewer__shell">
+      <div class="hz-entry-viewer__top">
+        <div class="hz-entry-viewer__nav">
+          <button type="button" class="hz-mini-btn" data-ev-prev aria-label="上一张">← PREV</button>
+          <span class="hz-mono hz-entry-viewer__counter" data-ev-counter>01 / 01</span>
+          <button type="button" class="hz-mini-btn" data-ev-next aria-label="下一张">NEXT →</button>
+        </div>
+        <button type="button" class="hz-mini-btn" data-ev-close aria-label="关闭图片查看器">关闭 ✕</button>
+      </div>
+      <div class="hz-entry-viewer__media" data-ev-media>
+        <img data-ev-img alt="" draggable="false" />
+      </div>
+      <div class="hz-entry-viewer__tools">
+        <div class="hz-entry-viewer__zoom">
+          <span class="hz-mono">ZOOM</span>
+          <input type="range" min="100" max="400" step="1" value="100" data-ev-zoom aria-label="缩放比例" />
+          <b class="hz-mono" data-ev-zoom-val>100%</b>
+          <button type="button" class="hz-mini-btn" data-ev-reset>复位</button>
+        </div>
+        <p class="hz-entry-viewer__cap hz-mono" data-ev-cap></p>
+      </div>
+    </div>
+  </dialog>
 </BaseLayout>
 
 <script>

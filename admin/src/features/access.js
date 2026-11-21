@@ -7,6 +7,7 @@ import { apiFetch } from '../api/app-client.js';
 
 const PRIVATE_ACCESS_API = '/api/private-access';
 let privateAccessHash = '';
+let accessSaving = false;
 
 export async function loadPrivateAccess() {
   try {
@@ -21,12 +22,17 @@ export function renderPrivateAccess() {
   if (!container) return;
   container.innerHTML = `<div class="editor" style="max-width:640px"><div class="form-group"><label>管理员级文章密码</label><input id="fPrivatePassword" type="password" autocomplete="new-password" placeholder="输入新密码（至少 4 个字符）" /></div><button class="btn primary" id="btnPrivatePassword">保存密码</button><p style="color:var(--text-faint);font-size:11px;line-height:1.7;margin-top:12px">密码以 SHA-256 哈希保存。修改后需要重新构建并发布博客，线上私密文章页面才会使用新密码。</p></div>`;
   $('#btnPrivatePassword').onclick = savePrivateAccess;
+  $('#fPrivatePassword')?.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); savePrivateAccess(); } });
   loadPrivateAccess();
 }
 
 export async function savePrivateAccess() {
+  if (accessSaving) return;
   const password = $('#fPrivatePassword')?.value || '';
-  if (password.length < 4) { toast('密码至少需要 4 个字符'); return; }
+  if (password.length < 4) { toast('密码至少需要 4 个字符'); $('#fPrivatePassword')?.focus(); return; }
+  const btn = $('#btnPrivatePassword');
+  accessSaving = true;
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ 保存中…'; }
   try {
     const body = new URLSearchParams({ password, expectedHash: privateAccessHash });
     const res = await apiFetch(PRIVATE_ACCESS_API, { method: 'PUT', body, headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
@@ -40,4 +46,8 @@ export async function savePrivateAccess() {
     $('#fPrivatePassword').value = '';
     toast('私密文章密码已保存');
   } catch (e) { toast('保存失败: ' + e.message); }
+  finally {
+    accessSaving = false;
+    if (btn) { btn.disabled = false; btn.textContent = '保存密码'; }
+  }
 }

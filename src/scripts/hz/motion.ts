@@ -44,6 +44,7 @@ function initNavigationFeedback() {
     if (dir === 'forward' || dir === 'back' || dir === 'channel') {
       document.documentElement.dataset.vtDir = dir;
     }
+    sessionStorage.removeItem(VT_DIR_KEY);
   } catch {
     /* ignore */
   }
@@ -135,12 +136,14 @@ function initCosmosField() {
   let w = 0;
   let h = 0;
   let dpr = 1;
+  let heroHeight = hero ? Math.max(1, hero.offsetHeight) : 0;
   let isLight = document.documentElement.dataset.theme === 'light';
 
   const resize = () => {
     dpr = Math.min(window.devicePixelRatio || 1, 1.5);
     w = Math.max(1, window.innerWidth);
     h = Math.max(1, window.innerHeight);
+    if (hero) heroHeight = Math.max(1, hero.offsetHeight);
     canvas.width = Math.round(w * dpr);
     canvas.height = Math.round(h * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -163,7 +166,7 @@ function initCosmosField() {
     phase: number;
   }
 
-  const COUNT = 86;
+  const COUNT = w < 768 ? 42 : 76;
   const stars: Star[] = Array.from({ length: COUNT }, (_, i) => ({
     x: Math.random() * w,
     y: Math.random() * h,
@@ -200,6 +203,7 @@ function initCosmosField() {
   let lastScrollY = window.scrollY;
   let scrollVel = 0;
   let pulseEnergy = 0;
+  let lastCanvasOpacity = '';
 
   window.addEventListener(
     'pointerdown',
@@ -209,23 +213,48 @@ function initCosmosField() {
     { passive: true },
   );
 
-  const syncVisibilityFade = () => {
+  const syncVisibilityFade = (sy: number) => {
     if (!hero || hero.dataset.diskMode === 'fallback') {
-      canvas.style.opacity = '0.96';
+      if (lastCanvasOpacity !== '0.96') {
+        lastCanvasOpacity = '0.96';
+        canvas.style.opacity = '0.96';
+      }
       return 1;
     }
-    const hh = Math.max(1, hero.offsetHeight);
-    const ratio = 0.28 + 0.68 * Math.min(1, Math.max(0, window.scrollY / (hh * 0.65)));
-    canvas.style.opacity = ratio.toFixed(3);
+    const hh = heroHeight || 1;
+    const ratio = 0.28 + 0.68 * Math.min(1, Math.max(0, sy / (hh * 0.65)));
+    const nextOp = ratio.toFixed(2);
+    if (lastCanvasOpacity !== nextOp) {
+      lastCanvasOpacity = nextOp;
+      canvas.style.opacity = nextOp;
+    }
     return ratio;
   };
 
+  // 非首页背景星空以 ~30fps 运行，省电且视觉同样平滑；首页随滚动交互保持顺滑
+  const frameInterval = hero ? 16 : 32;
+  const DARK_TONES = ['#fff1d6', '#ff7638', '#8fb3ff'] as const;
+  const LIGHT_TONES = ['#0d0d10', '#e4430a', '#2f5bd3'] as const;
+
   let raf = 0;
   let lastT = performance.now();
+  let lastPaint = 0;
 
   const frame = (now: number) => {
     raf = 0;
     if (document.hidden) return;
+
+    // 模态灯箱打开时暂停背景重绘，让交互帧率完全归灯箱所有
+    if (document.querySelector('dialog[open]')) {
+      raf = requestAnimationFrame(frame);
+      return;
+    }
+
+    if (now - lastPaint < frameInterval) {
+      raf = requestAnimationFrame(frame);
+      return;
+    }
+    lastPaint = now;
 
     const dt = Math.min(0.05, Math.max(0.008, (now - lastT) * 0.001));
     lastT = now;
@@ -236,7 +265,7 @@ function initCosmosField() {
     scrollVel += (Math.max(-2200, Math.min(2200, rawVel)) - scrollVel) * 0.14;
     pulseEnergy *= Math.pow(0.08, dt);
 
-    const fade = syncVisibilityFade();
+    const fade = syncVisibilityFade(sy);
     if (fade <= 0.02) {
       raf = requestAnimationFrame(frame);
       return;
@@ -249,6 +278,7 @@ function initCosmosField() {
     const cy = h * 0.42 - sy * 0.04;
     const t = now * 0.00025;
     ctx.lineWidth = 0.85;
+    ctx.globalAlpha = 1;
     for (let ring = 0; ring < 3; ring++) {
       const radius = Math.min(w, h) * (0.28 + ring * 0.16);
       const start = t * (ring % 2 === 0 ? 1 : -0.7) + ring * 1.7;
@@ -266,6 +296,10 @@ function initCosmosField() {
     }
 
     const warpLen = Math.min(34, Math.abs(scrollVel) * 0.024 + pulseEnergy * 9);
+    const tones = isLight ? LIGHT_TONES : DARK_TONES;
+    const baseMul = isLight ? 0.52 : 0.85;
+    const maxR = 230;
+    const maxR2 = maxR * maxR;
 
     for (const s of stars) {
       s.x += s.vx * s.z * dt;
@@ -284,12 +318,10 @@ function initCosmosField() {
         const dx = drawX - px;
         const dy = drawY - py;
         const dist2 = dx * dx + dy * dy;
-        const maxR = 230;
-        if (dist2 < maxR * maxR && dist2 > 9) {
+        if (dist2 < maxR2 && dist2 > 9) {
           const dist = Math.sqrt(dist2);
           const pull = 1 - dist / maxR;
           boost = pull * 0.85;
-          // 切向引力偏折 + 轻微向外透镜推开
           const inv = 1 / dist;
           drawX += (dx * inv * 14 - dy * inv * 10) * pull;
           drawY += (dy * inv * 14 + dx * inv * 10) * pull;
@@ -297,25 +329,10 @@ function initCosmosField() {
       }
 
       const twinkle = 0.58 + 0.42 * Math.sin(now * 0.0022 + s.phase);
-      const alpha = Math.min(0.95, (0.22 + 0.42 * s.z) * twinkle + boost * 0.45 + pulseEnergy * 0.16);
+      const rawAlpha = Math.min(0.95, (0.22 + 0.42 * s.z) * twinkle + boost * 0.45 + pulseEnergy * 0.16);
+      ctx.globalAlpha = s.tone === 0 ? rawAlpha * baseMul : rawAlpha;
 
-      let color: string;
-      if (isLight) {
-        color =
-          s.tone === 1
-            ? `rgba(228, 67, 10, ${alpha.toFixed(3)})`
-            : s.tone === 2
-              ? `rgba(47, 91, 211, ${alpha.toFixed(3)})`
-              : `rgba(13, 13, 16, ${(alpha * 0.52).toFixed(3)})`;
-      } else {
-        color =
-          s.tone === 1
-            ? `rgba(255, 118, 56, ${alpha.toFixed(3)})`
-            : s.tone === 2
-              ? `rgba(143, 179, 255, ${alpha.toFixed(3)})`
-              : `rgba(255, 241, 214, ${(alpha * 0.85).toFixed(3)})`;
-      }
-
+      const color = tones[s.tone];
       if (warpLen > 1.8) {
         ctx.strokeStyle = color;
         ctx.lineWidth = s.r * (0.9 + boost * 0.6);
@@ -330,6 +347,7 @@ function initCosmosField() {
         ctx.fill();
       }
     }
+    ctx.globalAlpha = 1;
 
     raf = requestAnimationFrame(frame);
   };
@@ -593,9 +611,18 @@ function initSpotlightAndTilt() {
   let activeSpot: HTMLElement | null = null;
   let activeTilt: HTMLElement | null = null;
   let lastTilt: HTMLElement | null = null;
+  let spotRect: DOMRect | null = null;
+  let tiltRect: DOMRect | null = null;
   let lastX = 0;
   let lastY = 0;
   let raf = 0;
+
+  const invalidateRects = () => {
+    spotRect = null;
+    tiltRect = null;
+  };
+  window.addEventListener('scroll', invalidateRects, { passive: true });
+  window.addEventListener('resize', invalidateRects, { passive: true });
 
   const clearTilt = (el: HTMLElement | null) => {
     if (!el) return;
@@ -610,7 +637,8 @@ function initSpotlightAndTilt() {
       lastTilt = null;
     }
     if (activeSpot) {
-      const rect = activeSpot.getBoundingClientRect();
+      if (!spotRect) spotRect = activeSpot.getBoundingClientRect();
+      const rect = spotRect;
       if (rect.width > 0 && rect.height > 0) {
         const lx = lastX - rect.left;
         const ly = lastY - rect.top;
@@ -627,7 +655,8 @@ function initSpotlightAndTilt() {
         }
       }
     } else if (activeTilt) {
-      const rect = activeTilt.getBoundingClientRect();
+      if (!tiltRect) tiltRect = activeTilt.getBoundingClientRect();
+      const rect = tiltRect;
       if (rect.width > 0 && rect.height > 0) {
         const nx = Math.max(-1, Math.min(1, ((lastX - rect.left) / rect.width - 0.5) * 2));
         const ny = Math.max(-1, Math.min(1, ((lastY - rect.top) / rect.height - 0.5) * 2));
@@ -663,8 +692,14 @@ function initSpotlightAndTilt() {
       const spotHost = footWord || target?.closest<HTMLElement>('[data-hz-spot]') || null;
       const tiltHost = target?.closest<HTMLElement>('[data-hz-tilt]') || null;
 
-      activeSpot = spotHost;
-      activeTilt = tiltHost;
+      if (spotHost !== activeSpot) {
+        activeSpot = spotHost;
+        spotRect = null;
+      }
+      if (tiltHost !== activeTilt) {
+        activeTilt = tiltHost;
+        tiltRect = null;
+      }
       lastX = e.clientX;
       lastY = e.clientY;
 
@@ -682,6 +717,7 @@ function initSpotlightAndTilt() {
       if (!rel || !lastTilt.contains(rel)) {
         clearTilt(lastTilt);
         lastTilt = null;
+        tiltRect = null;
         if (activeTilt && !activeTilt.contains(rel)) activeTilt = null;
       }
     },
@@ -694,14 +730,22 @@ function initMagnetics() {
   const selector = '.hz-btn, .hz-foot__top';
 
   let activeBtn: HTMLElement | null = null;
+  let btnRect: DOMRect | null = null;
   let bx = 0;
   let by = 0;
   let raf = 0;
 
+  const invalidate = () => {
+    btnRect = null;
+  };
+  window.addEventListener('scroll', invalidate, { passive: true });
+  window.addEventListener('resize', invalidate, { passive: true });
+
   const paint = () => {
     raf = 0;
     if (!activeBtn) return;
-    const rect = activeBtn.getBoundingClientRect();
+    if (!btnRect) btnRect = activeBtn.getBoundingClientRect();
+    const rect = btnRect;
     if (rect.width <= 0 || rect.height <= 0) return;
     const dx = ((bx - (rect.left + rect.width * 0.5)) / Math.max(1, rect.width * 0.5)) * 5;
     const dy = ((by - (rect.top + rect.height * 0.5)) / Math.max(1, rect.height * 0.5)) * 4;
@@ -716,6 +760,7 @@ function initMagnetics() {
       if (activeBtn && activeBtn !== btn) {
         activeBtn.style.removeProperty('--mag-x');
         activeBtn.style.removeProperty('--mag-y');
+        btnRect = null;
       }
       activeBtn = btn;
       if (!activeBtn) return;
@@ -735,6 +780,7 @@ function initMagnetics() {
         activeBtn.style.removeProperty('--mag-x');
         activeBtn.style.removeProperty('--mag-y');
         activeBtn = null;
+        btnRect = null;
       }
     },
     { passive: true },
@@ -748,15 +794,17 @@ function initScrollTelemetry() {
 
   let scrollTimer = 0;
   let raf = 0;
+  let isScrollingFlag = false;
+  let cachedHeroH = hero ? Math.max(1, hero.offsetHeight) : 0;
+
+  const refreshMetrics = () => {
+    if (hero) cachedHeroH = Math.max(1, hero.offsetHeight);
+  };
 
   const sync = () => {
     raf = 0;
-    const maxScroll = Math.max(1, root.scrollHeight - window.innerHeight);
-    const p = Math.min(1, Math.max(0, window.scrollY / maxScroll));
-    root.style.setProperty('--hz-scroll-p', p.toFixed(4));
-
     if (hero && heroInner && !reduceMotion()) {
-      const hh = Math.max(1, hero.offsetHeight);
+      const hh = cachedHeroH || 1;
       const hp = Math.min(1, Math.max(0, window.scrollY / (hh * 0.85)));
       if (hp <= 0.002) {
         heroInner.style.removeProperty('transform');
@@ -769,18 +817,27 @@ function initScrollTelemetry() {
   };
 
   const onScroll = () => {
-    root.classList.add('is-scrolling');
+    if (!isScrollingFlag) {
+      isScrollingFlag = true;
+      root.classList.add('is-scrolling');
+    }
     window.clearTimeout(scrollTimer);
     scrollTimer = window.setTimeout(() => {
+      isScrollingFlag = false;
       root.classList.remove('is-scrolling');
     }, 180);
-    if (!raf) raf = requestAnimationFrame(sync);
+    if (hero && heroInner && !raf) raf = requestAnimationFrame(sync);
   };
 
   window.addEventListener('scroll', onScroll, { passive: true });
-  window.addEventListener('resize', () => {
-    if (!raf) raf = requestAnimationFrame(sync);
-  }, { passive: true });
+  window.addEventListener(
+    'resize',
+    () => {
+      refreshMetrics();
+      if (hero && heroInner && !raf) raf = requestAnimationFrame(sync);
+    },
+    { passive: true },
+  );
   sync();
 }
 
@@ -824,12 +881,16 @@ function initReveals() {
 
   if (candidates.length === 0) return;
 
+  const pending = new Set<HTMLElement>(candidates);
+
   const revealEl = (el: HTMLElement) => {
     el.classList.remove('is-pending');
     el.classList.add('is-revealed');
+    pending.delete(el);
   };
 
   if (typeof IntersectionObserver === 'function') {
+    let sweepRaf = 0;
     const io = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
@@ -837,36 +898,50 @@ function initReveals() {
           revealEl(entry.target as HTMLElement);
           io.unobserve(entry.target);
         }
+        cleanupIfDone();
       },
       { rootMargin: '110px 0px -8px 0px', threshold: 0.01 },
     );
-    candidates.forEach((el) => io.observe(el));
 
-    // 安全兜底：滚动经过或打印时确保任何已进入/经过视口的元素都显影
-    let sweepRaf = 0;
     const sweepPending = () => {
       sweepRaf = 0;
       const curVh = window.innerHeight || 900;
-      for (const el of candidates) {
-        if (!el.classList.contains('is-pending') || el.hidden) continue;
+      for (const el of pending) {
+        if (!el.classList.contains('is-pending')) {
+          pending.delete(el);
+          io.unobserve(el);
+          continue;
+        }
+        if (el.hidden) continue;
         const r = el.getBoundingClientRect();
         if (r.width > 0 && r.height > 0 && r.top < curVh * 1.04) {
           revealEl(el);
           io.unobserve(el);
         }
       }
+      cleanupIfDone();
     };
-    window.addEventListener(
-      'scroll',
-      () => {
-        if (!sweepRaf) sweepRaf = requestAnimationFrame(sweepPending);
-      },
-      { passive: true },
-    );
+
+    const onScrollSweep = () => {
+      if (!sweepRaf && pending.size > 0) sweepRaf = requestAnimationFrame(sweepPending);
+    };
+
+    const cleanupIfDone = () => {
+      if (pending.size > 0) return;
+      io.disconnect();
+      window.removeEventListener('scroll', onScrollSweep);
+    };
+
+    candidates.forEach((el) => io.observe(el));
+    window.addEventListener('scroll', onScrollSweep, { passive: true });
     window.addEventListener(
       'beforeprint',
       () => {
-        candidates.forEach(revealEl);
+        [...pending].forEach((el) => {
+          revealEl(el);
+          io.unobserve(el);
+        });
+        cleanupIfDone();
       },
       { once: true },
     );
@@ -953,8 +1028,12 @@ export function captureFlipRects(elements: Iterable<HTMLElement>): Map<HTMLEleme
 export function playFlipRects(
   elements: Iterable<HTMLElement>,
   firstRects: Map<HTMLElement, DOMRect>,
-  duration = 440,
+  durationOrOpts: number | { duration?: number } = 440,
 ) {
+  const duration =
+    typeof durationOrOpts === 'number'
+      ? durationOrOpts
+      : (typeof durationOrOpts?.duration === 'number' ? durationOrOpts.duration : 440);
   if (reduceMotion() || firstRects.size === 0) return;
   const moving: { el: HTMLElement; dx: number; dy: number }[] = [];
   for (const el of elements) {

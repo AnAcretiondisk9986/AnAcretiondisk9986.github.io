@@ -50,6 +50,9 @@ function initGate(root: HTMLElement) {
     box.classList.remove('is-error');
     void box.offsetWidth;
     box.classList.add('is-error');
+    const input = form.querySelector<HTMLInputElement>('input');
+    input?.focus();
+    input?.select();
   };
 
   if (mode === 'authorized') {

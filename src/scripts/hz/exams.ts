@@ -629,11 +629,13 @@ function initExamPage() {
   };
 
   /* ── 详情抽屉 ───────────────────────────────────────────────────────────── */
+  let drawerTrigger: HTMLElement | null = null;
   const openDrawer = (id: string) => {
     const e = exams.find((x) => x.id === id);
     const drawer = byId('hzExamDrawer');
     if (!e || !drawer) return;
 
+    drawerTrigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     activeDrawerId = id;
     const now = new Date();
     const st = examStatus(e, now);
@@ -687,6 +689,8 @@ function initExamPage() {
     if (drawer) drawer.setAttribute('aria-hidden', 'true');
     document.body.classList.remove('hz-drawer-open');
     activeDrawerId = null;
+    if (drawerTrigger && drawerTrigger.isConnected) drawerTrigger.focus({ preventScroll: true });
+    drawerTrigger = null;
   };
 
   /* ── 事件绑定 ───────────────────────────────────────────────────────────── */
@@ -788,14 +792,25 @@ function initExamPage() {
   });
 
   document.addEventListener('keydown', (ev) => {
-    const activeTag = document.activeElement?.tagName || '';
-    const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(activeTag);
+    const active = document.activeElement as HTMLElement | null;
+    const activeTag = active?.tagName || '';
+    const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(activeTag) || Boolean(active?.isContentEditable);
     if (ev.key === 'Escape') {
       if (activeDrawerId) closeDrawer();
-      else if (typing && document.activeElement instanceof HTMLElement) document.activeElement.blur();
+      else if (active === searchInput && searchInput) {
+        if (searchInput.value) {
+          searchInput.value = '';
+          state.query = '';
+          render();
+        } else {
+          searchInput.blur();
+        }
+      } else if (typing && active) {
+        active.blur();
+      }
       return;
     }
-    if (typing) return;
+    if (typing || ev.ctrlKey || ev.metaKey || ev.altKey) return;
     if (ev.key === '/') {
       ev.preventDefault();
       searchInput?.focus();
@@ -816,8 +831,25 @@ function initExamPage() {
   pickNext();
   paintNextCard();
   render();
-  tick();
-  window.setInterval(tick, 1000);
+
+  let tickTimer = 0;
+  const startTick = () => {
+    tick();
+    if (!tickTimer && !document.hidden) {
+      tickTimer = window.setInterval(tick, 1000);
+    }
+  };
+  const stopTick = () => {
+    if (tickTimer) {
+      window.clearInterval(tickTimer);
+      tickTimer = 0;
+    }
+  };
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) stopTick();
+    else startTick();
+  });
+  startTick();
 }
 
 initExamPage();

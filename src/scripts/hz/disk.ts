@@ -644,12 +644,15 @@ export function initBlackHole() {
   }
 
   const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  let dprCap = Math.min(window.devicePixelRatio || 1, 1.65);
+  const isFine = matchMedia('(pointer: fine)').matches;
+  let dprCap = Math.min(window.devicePixelRatio || 1, isFine ? 1.35 : 1.0);
   let width = 1;
   let height = 1;
+  let heroHeight = Math.max(1, hero.offsetHeight);
 
   const resize = () => {
     const rect = canvas.getBoundingClientRect();
+    heroHeight = Math.max(1, rect.height || hero.offsetHeight);
     width = Math.max(1, Math.round(rect.width * dprCap));
     height = Math.max(1, Math.round(rect.height * dprCap));
     if (canvas.width !== width || canvas.height !== height) {
@@ -662,7 +665,7 @@ export function initBlackHole() {
   window.addEventListener('resize', () => {
     resize();
     if (reduceMotion) renderOnce();
-  });
+  }, { passive: true });
 
   let mx = 0;
   let my = 0;
@@ -701,8 +704,7 @@ export function initBlackHole() {
   }
 
   const syncScroll = () => {
-    const h = Math.max(1, hero.offsetHeight);
-    scrollDepth = Math.min(1, Math.max(0, window.scrollY / h));
+    scrollDepth = Math.min(1, Math.max(0, window.scrollY / heroHeight));
   };
   window.addEventListener('scroll', syncScroll, { passive: true });
   syncScroll();
@@ -728,10 +730,10 @@ export function initBlackHole() {
     const dt = now - lastFrame;
     lastFrame = now;
 
-    if (!reduceMotion && dt > 42) {
+    if (!reduceMotion && dt > 36) {
       slowFrames += 1;
-      if (slowFrames > 18 && dprCap > 0.95) {
-        dprCap = 0.95;
+      if (slowFrames > 5 && dprCap > 0.75) {
+        dprCap = Math.max(0.75, +(dprCap * 0.8).toFixed(2));
         slowFrames = 0;
         resize();
       }
@@ -817,4 +819,7 @@ export function initBlackHole() {
   startLoop();
 }
 
-initBlackHole();
+// 延后到首帧文字渲染之后再编译 WebGL 着色器，避免阻塞首屏 DCL 与 LCP
+requestAnimationFrame(() => {
+  window.setTimeout(initBlackHole, 0);
+});

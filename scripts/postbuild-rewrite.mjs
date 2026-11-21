@@ -31,7 +31,9 @@ async function walk(dir, out = []) {
   for (const entry of entries) {
     const p = join(dir, entry.name);
     if (entry.isDirectory()) await walk(p, out);
-    else if (entry.name.endsWith('.html')) out.push(p);
+    else if (entry.name.endsWith('.html') || (p.includes(`${join(DIST, 'data')}`) && entry.name.endsWith('.json'))) {
+      out.push(p);
+    }
   }
   return out;
 }
@@ -65,18 +67,21 @@ async function main() {
     if (!html.includes('cdn.jsdelivr.net') && !html.includes('<img')) continue;
 
     const before = html;
+    const isHtml = file.endsWith('.html');
     let count = 0;
 
     // 1) meta 里的 og:image / twitter:image：需要站点绝对地址
-    const metas = [...html.matchAll(/(<meta[^>]+content=")https:\/\/cdn\.jsdelivr\.net\/gh\/AnAcretiondisk9986\/blog-images@main\/(image\/[^"]+)(")/g)];
-    for (const m of metas) {
-      const local = await resolveLocal(m[2]);
-      if (!local) continue;
-      html = html.split(m[0]).join(`${m[1]}${SITE}${local}${m[3]}`);
-      count += 1;
+    if (isHtml) {
+      const metas = [...html.matchAll(/(<meta[^>]+content=")https:\/\/cdn\.jsdelivr\.net\/gh\/AnAcretiondisk9986\/blog-images@main\/(image\/[^"]+)(")/g)];
+      for (const m of metas) {
+        const local = await resolveLocal(m[2]);
+        if (!local) continue;
+        html = html.split(m[0]).join(`${m[1]}${SITE}${local}${m[3]}`);
+        count += 1;
+      }
     }
 
-    // 2) 正文图片与缩略图
+    // 2) 正文图片与缩略图（HTML 与 dist/data/*.json 统一改写）
     const matches = [...html.matchAll(/https:\/\/cdn\.jsdelivr\.net\/gh\/AnAcretiondisk9986\/blog-images@main\/(image\/[^\s"'<>)]+)/g)];
     const seen = new Set();
     for (const m of matches) {
@@ -89,21 +94,26 @@ async function main() {
       count += hits;
     }
 
-    // 3) 加载策略
-    let index = 0;
-    html = html.replace(/<img\b[^>]*>/g, (tag) => {
-      let next = tag;
-      if (!/\bloading=/.test(next)) {
-        if (index === 0 && !/\bfetchpriority=/.test(next)) {
-          next = next.replace(/<img\b/, '<img fetchpriority="high"');
-        } else {
-          next = next.replace(/<img\b/, '<img loading="lazy"').replace(/<img\b/, '<img decoding="async"');
-          lazy += 1;
+    // 3) 加载策略（仅 HTML）
+    if (isHtml) {
+      let index = 0;
+      html = html.replace(/<img\b[^>]*>/g, (tag) => {
+        let next = tag;
+        if (!/\bloading=/.test(next)) {
+          if (index === 0 && !/\bfetchpriority=/.test(next)) {
+            next = next.replace(/<img\b/, '<img fetchpriority="high"');
+          } else {
+            next = next.replace(/<img\b/, '<img loading="lazy"');
+            lazy += 1;
+          }
         }
-      }
-      index += 1;
-      return next;
-    });
+        if (!/\bdecoding=/.test(next)) {
+          next = next.replace(/<img\b/, '<img decoding="async"');
+        }
+        index += 1;
+        return next;
+      });
+    }
 
     if (html !== before) {
       await writeFile(file, html, 'utf8');

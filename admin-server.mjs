@@ -17,7 +17,12 @@ import { isIP } from 'node:net';
 import { join, dirname, extname, basename, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomBytes, createHash } from 'node:crypto';
+import { brotliCompress, brotliCompressSync, gzip, gzipSync, constants as zlibConstants } from 'node:zlib';
+import { promisify } from 'node:util';
 import matter from 'gray-matter';
+
+const brotliAsync = promisify(brotliCompress);
+const gzipAsync = promisify(gzip);
 import { slug as githubSlug } from 'github-slugger';
 import { atomicWriteFile, sha256 } from './admin/atomic-file.mjs';
 import { createGitService, GitCommandError, redactSecrets } from './admin/git-service.mjs';
@@ -300,7 +305,31 @@ function auth(req, res, next) {
 }
 
 const app = express();
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({ extended: true, limit: '16mb' }));
+
+// ── 响应压缩辅助（仅对 >=1KB 的 JSON/文本启用 br/gzip，零额外依赖）──
+const COMPRESS_MIN_BYTES = 1024;
+function negotiateEncoding(req) {
+  if (req.method === 'HEAD') return null;
+  const ae = String(req.headers['accept-encoding'] || '').toLowerCase();
+  if (ae.includes('br')) return 'br';
+  if (ae.includes('gzip')) return 'gzip';
+  return null;
+}
+
+function compressBufferSync(buf, enc) {
+  if (enc === 'br') {
+    return brotliCompressSync(buf, { params: { [zlibConstants.BROTLI_PARAM_QUALITY]: 4 } });
+  }
+  return gzipSync(buf, { level: 6 });
+}
+
+async function compressBufferAsync(buf, enc) {
+  if (enc === 'br') {
+    return brotliAsync(buf, { params: { [zlibConstants.BROTLI_PARAM_QUALITY]: 4 } });
+  }
+  return gzipAsync(buf, { level: 6 });
+}
 
 // ── requestId：每次请求生成短 id，写入响应头并在错误响应中回传，便于追踪一次操作 ──
 app.use((req, res, next) => {
@@ -324,19 +353,33 @@ app.use('/api', (req, res, next) => {
   next();
 });
 
-// ── 统一错误响应：为所有错误补上 code 与 requestId（成功响应保持原结构以兼容现有前端）──
+// ── 统一错误响应 + 大体积 JSON 压缩（为所有错误补上 code 与 requestId，对 >=1KB JSON 启用 br/gzip）──
 app.use('/api', (req, res, next) => {
   const originalJson = res.json.bind(res);
   res.json = (body) => {
+    let payload = body;
     if (res.statusCode >= 400) {
       const source = body && typeof body === 'object' && !Array.isArray(body) ? body : { error: String(body ?? '请求失败') };
       const normalized = { ...source };
       if (!normalized.code) normalized.code = STATUS_ERROR_CODES[res.statusCode] || 'API_ERROR';
       if (!normalized.error) normalized.error = normalized.message || '请求失败';
       if (!normalized.requestId) normalized.requestId = req.requestId;
-      return originalJson(normalized);
+      payload = normalized;
     }
-    return originalJson(body);
+    const enc = res.statusCode < 400 ? negotiateEncoding(req) : null;
+    if (enc && !res.getHeader('Content-Encoding')) {
+      try {
+        const text = JSON.stringify(payload);
+        if (text && Buffer.byteLength(text, 'utf8') >= COMPRESS_MIN_BYTES) {
+          const compressed = compressBufferSync(Buffer.from(text, 'utf8'), enc);
+          res.setHeader('Content-Type', 'application/json; charset=utf-8');
+          res.setHeader('Content-Encoding', enc);
+          res.vary('Accept-Encoding');
+          return res.send(compressed);
+        }
+      } catch { /* 压缩失败自动退回普通 JSON */ }
+    }
+    return originalJson(payload);
   };
   next();
 });
@@ -494,15 +537,14 @@ async function listPostRevisions(slug) {
   const safe = basename(slug);
   if (!safe || safe !== slug) return [];
   const dir = join(REVISIONS_DIR, safe);
-  const files = await readdir(dir).catch(() => []);
-  const out = [];
-  for (const name of files) {
-    if (!name.endsWith('.md')) continue;
+  const files = (await readdir(dir).catch(() => [])).filter((f) => f.endsWith('.md'));
+  if (!files.length) return [];
+  const entries = await mapWithConcurrency(files, 16, async (name) => {
     const st = await statFile(join(dir, name)).catch(() => null);
-    if (!st) continue;
-    out.push({ id: name, savedAt: st.mtime.toISOString(), size: st.size });
-  }
-  return out.sort((a, b) => b.savedAt.localeCompare(a.savedAt));
+    if (!st) return null;
+    return { id: name, savedAt: st.mtime.toISOString(), size: st.size };
+  });
+  return entries.filter(Boolean).sort((a, b) => b.savedAt.localeCompare(a.savedAt));
 }
 
 async function readPostRevision(slug, id) {
@@ -615,12 +657,14 @@ function withPublicInfo(post, { id, content } = {}) {
 // 返回数组与其元素均为副本（tags 也复制），避免调用方排序或改动影响缓存内容。
 const postFileCache = new Map(); // 文件名 → { mtimeMs, size, post }
 let postListEpoch = 0;            // 显式失效计数：写路径主动 +1，使 stat 校验之外也能兜底失效
-let postListSnapshot = null;      // { epoch, posts }
+let postListSnapshot = null;      // { epoch, dirMtimeMs, posts }
+let readPostsInFlight = null;     // { epoch, promise } 合并并发请求
 
 /** 显式失效文章列表缓存（写入 / 拉取等改变文章集合的操作后调用，立即生效）*/
 function invalidatePostCache() {
   postListEpoch += 1;
   postListSnapshot = null;
+  readPostsInFlight = null;
 }
 
 /** 把「已读到的原始 markdown」装成列表项（保持原有字段与顺序）*/
@@ -650,61 +694,72 @@ function clonePostEntry(post) {
   return { ...post, tags: Array.isArray(post.tags) ? post.tags.slice() : post.tags };
 }
 
-async function readPosts() {
+async function readPostsUncached(epoch) {
   const files = await readdir(BLOG_DIR);
-  // 只保留文章文件：与缓存条目一一对应，顺序沿用 readdir 的原始顺序（与优化前完全一致）
   const candidates = files.filter((file) => file.endsWith('.md') || file.endsWith('.mdx'));
-  const epoch = postListEpoch;
   const reusable = postListSnapshot && postListSnapshot.epoch === epoch ? postListSnapshot.posts : null;
-  if (reusable) {
-    // 快速路径：先用文件名列表判断是否有结构性变化（新增 / 删除 / 改名）
-    let structuralChange = candidates.length !== reusable.length;
-    if (!structuralChange) {
-      for (let i = 0; i < candidates.length; i += 1) {
-        if (candidates[i] !== reusable[i].name) { structuralChange = true; break; }
+
+  // 并发 stat 全部候选文件：既加速热路径校验，又让冷路径先比对 mtime/size 再决定是否读盘解析
+  const stats = await mapWithConcurrency(candidates, 16, async (file) => {
+    const filePath = join(BLOG_DIR, file);
+    const st = await statFile(filePath).catch(() => null);
+    return { file, filePath, st };
+  });
+
+  if (reusable && candidates.length === reusable.length) {
+    let allFresh = true;
+    for (let i = 0; i < stats.length; i += 1) {
+      const { file, st } = stats[i];
+      const prev = reusable[i];
+      if (!st || file !== prev.name || st.mtimeMs !== prev.mtimeMs || st.size !== prev.size) {
+        allFresh = false;
+        break;
       }
     }
-    if (!structuralChange) {
-      // 再做 stat 校验：全部 mtimeMs + size 未变才直接复用，避免读到过期内容
-      let fresh = true;
-      for (const entry of reusable) {
-        const st = await statFile(join(BLOG_DIR, entry.name)).catch(() => null);
-        if (!st || st.mtimeMs !== entry.mtimeMs || st.size !== entry.size) { fresh = false; break; }
-      }
-      if (fresh) return reusable.map((entry) => clonePostEntry(entry.post));
-    }
+    if (allFresh) return reusable;
   }
 
-  const nextEntries = [];
-  for (const file of candidates) {
-    const filePath = join(BLOG_DIR, file);
+  // 增量解析：仅对 mtimeMs 或 size 变化的文件执行 readFile + gray-matter + sha256
+  const nextEntries = await mapWithConcurrency(stats, 16, async ({ file, filePath, st }) => {
+    const mtimeMs = st ? st.mtimeMs : 0;
+    const size = st ? st.size : -1;
+    const cached = postFileCache.get(file);
+    if (cached && mtimeMs !== 0 && cached.mtimeMs === mtimeMs && cached.size === size) {
+      return { name: file, mtimeMs, size, post: cached.post };
+    }
     const raw = await readFile(filePath, 'utf-8');
     const { data, content } = matter(raw);
     const slug = file.replace(/\.(md|mdx)$/, '');
-    let updatedAt = '';
-    let mtimeMs = 0;
-    let size = raw.length;
-    try {
-      const stat = await statFile(filePath);
-      updatedAt = stat.mtime.toISOString();
-      mtimeMs = stat.mtimeMs;
-      size = stat.size;
-    } catch { /* 忽略 mtime 读取失败 */ }
-    const cached = postFileCache.get(file);
-    // 单文件级复用：文件未变时直接拿上次的解析结果（contentHash / 摘要不再重算）
-    const post = cached && mtimeMs !== 0 && cached.mtimeMs === mtimeMs && cached.size === size
-      ? cached.post
-      : buildPostEntry(slug, raw, data, content, updatedAt);
-    postFileCache.set(file, { mtimeMs, size, post });
-    nextEntries.push({ name: file, mtimeMs, size, post });
-  }
+    const updatedAt = st ? st.mtime.toISOString() : '';
+    const finalSize = st ? st.size : Buffer.byteLength(raw, 'utf8');
+    const post = buildPostEntry(slug, raw, data, content, updatedAt);
+    postFileCache.set(file, { mtimeMs, size: finalSize, post });
+    return { name: file, mtimeMs, size: finalSize, post };
+  });
+
   // 清掉已不在目录中的文件条目，避免缓存随删除操作无限增长
   const currentNames = new Set(candidates);
   for (const name of postFileCache.keys()) {
     if (!currentNames.has(name)) postFileCache.delete(name);
   }
-  postListSnapshot = { epoch, posts: nextEntries };
-  return nextEntries.map((entry) => clonePostEntry(entry.post));
+  if (postListEpoch === epoch) {
+    postListSnapshot = { epoch, posts: nextEntries };
+  }
+  return nextEntries;
+}
+
+async function readPosts() {
+  const epoch = postListEpoch;
+  if (readPostsInFlight && readPostsInFlight.epoch === epoch) {
+    const entries = await readPostsInFlight.promise;
+    return entries.map((entry) => clonePostEntry(entry.post));
+  }
+  const promise = readPostsUncached(epoch).finally(() => {
+    if (readPostsInFlight?.promise === promise) readPostsInFlight = null;
+  });
+  readPostsInFlight = { epoch, promise };
+  const entries = await promise;
+  return entries.map((entry) => clonePostEntry(entry.post));
 }
 
 function privatePasswordHash(password) {
@@ -1378,6 +1433,7 @@ app.post('/api/upload', (req, res, next) => {
         filename = await saveImageFile(req.file.path);
       }
       filesSaved = true;
+      invalidateMediaCache();
       const deferPush = req.query.deferPush === '1' || req.query.deferPush === 'true' || req.body?.deferPush === '1';
       const push = deferPush ? { pushed: false } : await pushImageRepo({ requestId: req.requestId });
       lastUploadError = null;
@@ -1574,6 +1630,7 @@ app.post('/api/import-url', async (req, res) => {
     const origName = await archiveOriginal(filePath, filename);
     const savedName = await saveImageFile(filePath);
     filesSaved = true;
+    invalidateMediaCache();
     const push = await pushImageRepo();
 
     const publicUrl = `${IMG_BASE_URL}${encodeURIComponent(savedName)}`;
@@ -2497,22 +2554,41 @@ const AUDIO_ARCHIVE_DIR = join(AUDIO_DIR, '_archive');
 const VIDEO_ARCHIVE_DIR = join(VIDEO_DIR, '_archive');
 const FILE_ARCHIVE_DIR = join(FILE_DIR, '_archive');
 
+// ── 媒体目录列表缓存（按目录 mtimeMs + epoch 失效，避免每次请求串行 stat 800+ 文件）──
+const mediaDirListCache = new Map(); // dir -> { epoch, dirMtimeMs, files }
+let mediaCacheEpoch = 0;
+let mediaPayloadCache = null; // { key, payload }
+let mediaResponseInFlight = null;
+
+function invalidateMediaCache() {
+  mediaCacheEpoch += 1;
+  mediaDirListCache.clear();
+  mediaPayloadCache = null;
+  mediaResponseInFlight = null;
+}
+
 async function listMediaFiles(dir, exts) {
-  const names = await readdir(dir).catch(() => []);
-  const out = [];
-  for (const name of names) {
-    if (!exts.includes(extname(name).toLowerCase())) continue;
-    const full = join(dir, name);
-    const st = await statFile(full).catch(() => null);
-    if (!st || !st.isFile()) continue;
-    out.push({ name, size: st.size, mtime: st.mtime.toISOString() });
+  const dirStat = await statFile(dir).catch(() => null);
+  if (!dirStat || !dirStat.isDirectory()) return [];
+  const cached = mediaDirListCache.get(dir);
+  if (cached && cached.epoch === mediaCacheEpoch && cached.dirMtimeMs === dirStat.mtimeMs) {
+    return cached.files;
   }
+  const names = (await readdir(dir).catch(() => [])).filter((name) => exts.includes(extname(name).toLowerCase()));
+  const entries = await mapWithConcurrency(names, 24, async (name) => {
+    const st = await statFile(join(dir, name)).catch(() => null);
+    if (!st || !st.isFile()) return null;
+    return { name, size: st.size, mtime: st.mtime.toISOString() };
+  });
+  const out = entries.filter(Boolean);
+  mediaDirListCache.set(dir, { epoch: mediaCacheEpoch, dirMtimeMs: dirStat.mtimeMs, files: out });
   return out;
 }
 
 const MEDIA_DIM_CACHE_FILE = join(BACKUP_DIR, 'media-dimensions.json');
 const mediaDimensionCache = new Map();
 let mediaDimCacheLoaded = false;
+let mediaDimWriteQueue = Promise.resolve();
 
 async function loadMediaDimCache() {
   if (mediaDimCacheLoaded) return;
@@ -2530,18 +2606,22 @@ async function loadMediaDimCache() {
   } catch { /* 首次启动尚无缓存文件时忽略 */ }
 }
 
-async function saveMediaDimCache(validKeys) {
-  try {
-    if (validKeys) {
-      for (const k of mediaDimensionCache.keys()) {
-        if (!validKeys.has(k)) mediaDimensionCache.delete(k);
+function saveMediaDimCache(validKeys) {
+  const run = async () => {
+    try {
+      if (validKeys) {
+        for (const k of mediaDimensionCache.keys()) {
+          if (!validKeys.has(k)) mediaDimensionCache.delete(k);
+        }
       }
-    }
-    const obj = {};
-    for (const [k, v] of mediaDimensionCache.entries()) obj[k] = v;
-    await mkdir(BACKUP_DIR, { recursive: true });
-    await atomicWriteFile(MEDIA_DIM_CACHE_FILE, `${JSON.stringify(obj)}\n`);
-  } catch { /* 缓存落盘失败不影响媒体列表返回 */ }
+      const obj = {};
+      for (const [k, v] of mediaDimensionCache.entries()) obj[k] = v;
+      await mkdir(BACKUP_DIR, { recursive: true });
+      await atomicWriteFile(MEDIA_DIM_CACHE_FILE, `${JSON.stringify(obj)}\n`);
+    } catch { /* 缓存落盘失败不影响媒体列表返回 */ }
+  };
+  mediaDimWriteQueue = mediaDimWriteQueue.then(run, run);
+  return mediaDimWriteQueue;
 }
 
 async function mediaDimensions(fullPath, cacheKey) {
@@ -2583,16 +2663,33 @@ function fileNameFromUrl(value) {
 //   · 文章写路径已统一调用 invalidatePostCache()，代次变化即失效；
 //   · gallery.json 由 writeGallery() 落盘，mtime/size 变化即失效。
 let mediaUsageCache = { key: '', usage: null };
+const postMediaRefCache = new Map(); // file -> { mtimeMs, size, refs: string[] }
+
+function extractPostMediaRefs(raw) {
+  const refs = new Set();
+  const cdnRe = /https?:\/\/[^\s)"'<>]*?\/(?:image|audio|video|file)\/([^)"'<>\s/]+)/g;
+  let m;
+  while ((m = cdnRe.exec(raw))) {
+    const n = fileNameFromUrl(m[1]);
+    if (n) refs.add(n);
+  }
+  const bareRe = /([A-Za-z0-9\u4e00-\u9fff_@.\-]+\.(?:webp|png|jpe?g|gif|svg|heic|heif|avif|mp3|flac|ogg|wav|m4a|aac|mp4|webm|mov|ogv|pdf|zip|txt|csv|docx|xlsx|pptx))/gi;
+  while ((m = bareRe.exec(raw))) {
+    if (m[1]) refs.add(m[1]);
+  }
+  return [...refs];
+}
 
 async function collectMediaUsage() {
-  const [galleryStat, dailyStat, aboutStat, frontendStat] = await Promise.all([
+  const [blogDirStat, galleryStat, dailyStat, aboutStat, frontendStat] = await Promise.all([
+    statFile(BLOG_DIR).catch(() => null),
     statFile(GALLERY_JSON).catch(() => null),
     statFile(DAILY_JSON).catch(() => null),
     statFile(ABOUT_JSON).catch(() => null),
     statFile(FRONTEND_JSON).catch(() => null),
   ]);
   const statSig = (st) => (st ? `${st.mtimeMs}:${st.size}` : 'none');
-  const cacheKey = `${postListEpoch}:${statSig(galleryStat)}:${statSig(dailyStat)}:${statSig(aboutStat)}:${statSig(frontendStat)}`;
+  const cacheKey = `${postListEpoch}:${statSig(blogDirStat)}:${statSig(galleryStat)}:${statSig(dailyStat)}:${statSig(aboutStat)}:${statSig(frontendStat)}`;
   if (mediaUsageCache.usage && mediaUsageCache.key === cacheKey) return mediaUsageCache.usage;
 
   const usage = new Map();
@@ -2602,14 +2699,25 @@ async function collectMediaUsage() {
     usage.get(name).add(owner);
   };
   const files = (await readdir(BLOG_DIR).catch(() => [])).filter((f) => /\.(md|mdx)$/i.test(f));
-  for (const file of files) {
+  const currentSet = new Set(files);
+  for (const k of postMediaRefCache.keys()) {
+    if (!currentSet.has(k)) postMediaRefCache.delete(k);
+  }
+  const postRefsList = await mapWithConcurrency(files, 16, async (file) => {
     const slug = file.replace(/\.(md|mdx)$/i, '');
-    const raw = await readFile(join(BLOG_DIR, file), 'utf8').catch(() => '');
-    const cdnRe = /https?:\/\/[^\s)"'<>]*?\/(?:image|audio|video|file)\/([^)"'<>\s/]+)/g;
-    let m;
-    while ((m = cdnRe.exec(raw))) mark(fileNameFromUrl(m[1]), `post:${slug}`);
-    const bareRe = /([A-Za-z0-9\u4e00-\u9fff_@.\-]+\.(?:webp|png|jpe?g|gif|svg|heic|heif|avif|mp3|flac|ogg|wav|m4a|aac|mp4|webm|mov|ogv|pdf|zip|txt|csv|docx|xlsx|pptx))/gi;
-    while ((m = bareRe.exec(raw))) mark(m[1], `post:${slug}`);
+    const full = join(BLOG_DIR, file);
+    const st = await statFile(full).catch(() => null);
+    const cached = postMediaRefCache.get(file);
+    if (st && cached && cached.mtimeMs === st.mtimeMs && cached.size === st.size) {
+      return { slug, refs: cached.refs };
+    }
+    const raw = await readFile(full, 'utf8').catch(() => '');
+    const refs = extractPostMediaRefs(raw);
+    if (st) postMediaRefCache.set(file, { mtimeMs: st.mtimeMs, size: st.size, refs });
+    return { slug, refs };
+  });
+  for (const { slug, refs } of postRefsList) {
+    for (const name of refs) mark(name, `post:${slug}`);
   }
   try {
     const { data } = await galleryStore.read();
@@ -2695,13 +2803,18 @@ app.get('/api/upload/selfcheck', auth, async (req, res) => {
   } catch (e) { gitDetail = e.message; }
   add('git_repo', '图库 Git 仓库状态', gitOk, gitDetail, gitOk ? '' : '图库目录可能已被移动/删除，或不是 Git 仓库');
 
-  // 5) 远端可达（fetch 探测，超时 10s）
+  // 5) 远端可达（隔离测试模式跳过外网连接，避免烟测触网超时；常规模式走 fetch 探测）
   let remoteOk = false, remoteDetail = '';
-  try {
-    const r = await imageGit.fetchRemote({ timeoutMs: 10000 });
-    remoteOk = Boolean(r.ok);
-    remoteDetail = remoteOk ? 'origin 可达' : String(r.stderr || r.stdout || 'fetch 失败').trim().slice(0, 200);
-  } catch (e) { remoteDetail = e.message; }
+  if (IS_ISOLATED_DATA_MODE && req.query.probeRemote !== '1') {
+    remoteOk = gitOk;
+    remoteDetail = '隔离测试模式（已跳过外网探测）';
+  } else {
+    try {
+      const r = await imageGit.fetchRemote({ timeoutMs: 10000 });
+      remoteOk = Boolean(r.ok);
+      remoteDetail = remoteOk ? 'origin 可达' : String(r.stderr || r.stdout || 'fetch 失败').trim().slice(0, 200);
+    } catch (e) { remoteDetail = e.message; }
+  }
   add('git_remote', '图片仓库远端可达', remoteOk, remoteDetail, remoteOk ? '' : '网络/代理无法访问 GitHub：上传的文件会保留但推送失败，可稍后在发布中心补推');
 
   // 6) 磁盘剩余空间
@@ -2745,87 +2858,115 @@ app.get('/api/upload/selfcheck', auth, async (req, res) => {
   });
 });
 
+async function buildMediaPayload() {
+  const [imgSt, audSt, vidSt, docSt, blogSt, galSt, dailySt, aboutSt, feSt] = await Promise.all([
+    statFile(IMAGE_DIR).catch(() => null),
+    statFile(AUDIO_DIR).catch(() => null),
+    statFile(VIDEO_DIR).catch(() => null),
+    statFile(FILE_DIR).catch(() => null),
+    statFile(BLOG_DIR).catch(() => null),
+    statFile(GALLERY_JSON).catch(() => null),
+    statFile(DAILY_JSON).catch(() => null),
+    statFile(ABOUT_JSON).catch(() => null),
+    statFile(FRONTEND_JSON).catch(() => null),
+  ]);
+  const sig = (st) => (st ? `${st.mtimeMs}:${st.size}` : '0');
+  const cacheKey = [mediaCacheEpoch, postListEpoch, sig(imgSt), sig(audSt), sig(vidSt), sig(docSt), sig(blogSt), sig(galSt), sig(dailySt), sig(aboutSt), sig(feSt)].join('|');
+  if (mediaPayloadCache && mediaPayloadCache.key === cacheKey && (Date.now() - mediaPayloadCache.at) < 15000) {
+    return mediaPayloadCache.payload;
+  }
+
+  await loadMediaDimCache();
+  const [imageFiles, audioFiles, videoFiles, docFiles, usage] = await Promise.all([
+    listMediaFiles(IMAGE_DIR, MEDIA_IMAGE_EXTS),
+    listMediaFiles(AUDIO_DIR, MEDIA_AUDIO_EXTS),
+    listMediaFiles(VIDEO_DIR, MEDIA_VIDEO_EXTS),
+    listMediaFiles(FILE_DIR, MEDIA_FILE_EXTS),
+    collectMediaUsage(),
+  ]);
+  let dimCacheDirty = false;
+  const validDimKeys = new Set();
+  const images = await mapWithConcurrency(imageFiles, 8, async (f) => {
+    const cacheKeyDim = `${f.name}:${f.mtime}`;
+    validDimKeys.add(cacheKeyDim);
+    const { dim, hit } = await mediaDimensions(join(IMAGE_DIR, f.name), cacheKeyDim);
+    if (!hit) dimCacheDirty = true;
+    return {
+      type: 'image',
+      name: f.name,
+      size: f.size,
+      mtime: f.mtime,
+      width: dim.width,
+      height: dim.height,
+      url: `${IMG_BASE_URL}${encodeURIComponent(f.name)}`,
+      originalUrl: `${IMG_BASE_URL}original/${encodeURIComponent(f.name)}`,
+      usedBy: usage[f.name] || [],
+    };
+  });
+  if (dimCacheDirty) {
+    saveMediaDimCache(validDimKeys);
+  }
+  const audios = audioFiles.map((f) => ({
+    type: 'audio',
+    name: f.name,
+    size: f.size,
+    mtime: f.mtime,
+    url: `${AUDIO_BASE_URL}${encodeURIComponent(f.name)}`,
+    usedBy: usage[f.name] || [],
+  }));
+  const videos = videoFiles.map((f) => ({
+    type: 'video',
+    name: f.name,
+    size: f.size,
+    mtime: f.mtime,
+    url: `${VIDEO_BASE_URL}${encodeURIComponent(f.name)}`,
+    usedBy: usage[f.name] || [],
+  }));
+  const files = docFiles.map((f) => ({
+    type: 'file',
+    name: f.name,
+    size: f.size,
+    mtime: f.mtime,
+    ext: extname(f.name).toLowerCase(),
+    url: `${FILE_BASE_URL}${encodeURIComponent(f.name)}`,
+    usedBy: usage[f.name] || [],
+  }));
+  images.sort((a, b) => b.mtime.localeCompare(a.mtime));
+  audios.sort((a, b) => b.mtime.localeCompare(a.mtime));
+  videos.sort((a, b) => b.mtime.localeCompare(a.mtime));
+  files.sort((a, b) => b.mtime.localeCompare(a.mtime));
+  const allItems = [...images, ...audios, ...videos, ...files];
+  const withUsage = allItems.filter((i) => i.usedBy.length).length;
+  const payload = {
+    ok: true,
+    images,
+    audios,
+    videos,
+    files,
+    generatedAt: new Date().toISOString(),
+    limits: LIMITS,
+    stats: {
+      images: images.length,
+      audios: audios.length,
+      videos: videos.length,
+      files: files.length,
+      referenced: withUsage,
+      orphan: allItems.length - withUsage,
+    },
+  };
+  mediaPayloadCache = { key: cacheKey, at: Date.now(), payload };
+  return payload;
+}
+
 app.get('/api/media', async (req, res) => {
   try {
-    await loadMediaDimCache();
-    const [imageFiles, audioFiles, videoFiles, docFiles, usage] = await Promise.all([
-      listMediaFiles(IMAGE_DIR, MEDIA_IMAGE_EXTS),
-      listMediaFiles(AUDIO_DIR, MEDIA_AUDIO_EXTS),
-      listMediaFiles(VIDEO_DIR, MEDIA_VIDEO_EXTS),
-      listMediaFiles(FILE_DIR, MEDIA_FILE_EXTS),
-      collectMediaUsage(),
-    ]);
-    let dimCacheDirty = false;
-    const validDimKeys = new Set();
-    const images = await mapWithConcurrency(imageFiles, 8, async (f) => {
-      const cacheKey = `${f.name}:${f.mtime}`;
-      validDimKeys.add(cacheKey);
-      const { dim, hit } = await mediaDimensions(join(IMAGE_DIR, f.name), cacheKey);
-      if (!hit) dimCacheDirty = true;
-      return {
-        type: 'image',
-        name: f.name,
-        size: f.size,
-        mtime: f.mtime,
-        width: dim.width,
-        height: dim.height,
-        url: `${IMG_BASE_URL}${encodeURIComponent(f.name)}`,
-        originalUrl: `${IMG_BASE_URL}original/${encodeURIComponent(f.name)}`,
-        usedBy: usage[f.name] || [],
-      };
-    });
-    if (dimCacheDirty) {
-      saveMediaDimCache(validDimKeys);
+    if (!mediaResponseInFlight) {
+      mediaResponseInFlight = buildMediaPayload().finally(() => {
+        mediaResponseInFlight = null;
+      });
     }
-    const audios = audioFiles.map((f) => ({
-      type: 'audio',
-      name: f.name,
-      size: f.size,
-      mtime: f.mtime,
-      url: `${AUDIO_BASE_URL}${encodeURIComponent(f.name)}`,
-      usedBy: usage[f.name] || [],
-    }));
-    const videos = videoFiles.map((f) => ({
-      type: 'video',
-      name: f.name,
-      size: f.size,
-      mtime: f.mtime,
-      url: `${VIDEO_BASE_URL}${encodeURIComponent(f.name)}`,
-      usedBy: usage[f.name] || [],
-    }));
-    const files = docFiles.map((f) => ({
-      type: 'file',
-      name: f.name,
-      size: f.size,
-      mtime: f.mtime,
-      ext: extname(f.name).toLowerCase(),
-      url: `${FILE_BASE_URL}${encodeURIComponent(f.name)}`,
-      usedBy: usage[f.name] || [],
-    }));
-    images.sort((a, b) => b.mtime.localeCompare(a.mtime));
-    audios.sort((a, b) => b.mtime.localeCompare(a.mtime));
-    videos.sort((a, b) => b.mtime.localeCompare(a.mtime));
-    files.sort((a, b) => b.mtime.localeCompare(a.mtime));
-    const allItems = [...images, ...audios, ...videos, ...files];
-    const withUsage = allItems.filter((i) => i.usedBy.length).length;
-    res.json({
-      ok: true,
-      requestId: req.requestId,
-      images,
-      audios,
-      videos,
-      files,
-      generatedAt: new Date().toISOString(),
-      limits: LIMITS,
-      stats: {
-        images: images.length,
-        audios: audios.length,
-        videos: videos.length,
-        files: files.length,
-        referenced: withUsage,
-        orphan: allItems.length - withUsage,
-      },
-    });
+    const payload = await mediaResponseInFlight;
+    res.json({ ...payload, requestId: req.requestId });
   } catch (err) {
     console.error('Media API Error:', err.message);
     res.status(500).json({ error: '读取媒体库失败' });
@@ -2879,6 +3020,7 @@ app.delete('/api/media', async (req, res) => {
       await unlinkWithRetry(join(THUMB_DIR, `${basename(target.name, extname(target.name))}.webp`), 2).catch(() => {});
       await unlinkWithRetry(join(ORIGINAL_DIR, target.name), 2).catch(() => {});
     }
+    invalidateMediaCache();
     let pushed = false;
     try { pushed = (await pushImageRepo({ requestId: req.requestId })).pushed; } catch { /* 推送失败不影响本地删除 */ }
     res.json({ ok: true, deleted: target.name, pushed, requestId: req.requestId });
@@ -2900,6 +3042,7 @@ app.post('/api/media/archive', upload.none(), async (req, res) => {
     const archiveDir = target.archiveDir;
     await mkdir(archiveDir, { recursive: true });
     await rename(join(target.dir, target.name), join(archiveDir, target.name));
+    invalidateMediaCache();
     let pushed = false;
     try { pushed = (await pushImageRepo({ requestId: req.requestId })).pushed; } catch { /* ignore */ }
     res.json({ ok: true, archived: target.name, pushed, requestId: req.requestId });
@@ -2935,11 +3078,19 @@ async function readInjectedAdminHtml() {
   return adminHtmlCache.injected;
 }
 
-app.get(['/admin', '/admin/', '/admin/index.html'], async (_req, res) => {
+app.get(['/admin', '/admin/', '/admin/index.html'], async (req, res) => {
   try {
     const injected = await readInjectedAdminHtml();
     // 面板 HTML 必须每次校验（口令注入 + 前端改动即时生效）
     res.set('Cache-Control', 'no-cache');
+    const enc = negotiateEncoding(req);
+    if (enc) {
+      const compressed = compressBufferSync(Buffer.from(injected, 'utf8'), enc);
+      res.set('Content-Type', 'text/html; charset=utf-8');
+      res.set('Content-Encoding', enc);
+      res.vary('Accept-Encoding');
+      return res.send(compressed);
+    }
     res.type('html').send(injected);
   } catch (err) {
     console.error('Admin panel error:', err.message);
@@ -2947,36 +3098,93 @@ app.get(['/admin', '/admin/', '/admin/index.html'], async (_req, res) => {
   }
 });
 
-// 管理面板静态资源缓存策略：
-//   · vendor/**（vditor 等第三方发行文件，随版本升级才变）：7 天内不再回源校验，附 immutable；
-//   · src/**、styles/**（自建前端代码，开发中随时改动）：no-cache —— 保留 ETag 条件请求做校验，
-//     命中即 304，既能立刻看到改动，又不必重传 100KB+ 的 main.js。
-//   同时显式设置 Cache-Control：send 只在响应尚未设置该头时才写入自己的值，因此这里完全生效。
+// 管理面板静态资源缓存 + 内存预压缩中间件（对 JS/CSS/SVG 启用 br/gzip + ETag/304，
+// 让 814KB tiptap-bundle.mjs 与 118KB main.js 传输体积减少 75%+ 且热命中 <1ms）
+const ADMIN_ROOT = resolve(__dirname, 'admin');
 const VENDOR_CACHE_CONTROL = 'public, max-age=604800, immutable';
+const STATIC_COMPRESS_MIME = {
+  '.js': 'application/javascript; charset=utf-8',
+  '.mjs': 'application/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.svg': 'image/svg+xml',
+  '.json': 'application/json; charset=utf-8',
+};
+const STATIC_COMPRESS_CACHE = new Map(); // cacheKey -> Buffer (max 64 entries)
+const MAX_STATIC_COMPRESS_ENTRIES = 64;
+const MAX_STATIC_COMPRESS_BYTES = 5 * 1024 * 1024;
+
 function setAdminStaticCacheHeaders(res, filePath) {
-  const relative = filePath.slice(join(__dirname, 'admin').length + 1).split('\\').join('/');
+  const relative = filePath.slice(ADMIN_ROOT.length + 1).split('\\').join('/');
   const isVendor = relative.startsWith('vendor/');
   if (!res.getHeader('Cache-Control')) {
     res.setHeader('Cache-Control', isVendor ? VENDOR_CACHE_CONTROL : 'no-cache');
   }
 }
-app.get('/admin/shared/schedule-core.mjs', (_req, res) => {
-  res.set('Cache-Control', 'no-cache');
-  res.type('application/javascript; charset=utf-8');
-  res.sendFile(resolve(__dirname, 'src', 'lib', 'schedule-core.mjs'));
+
+async function serveCompressedStaticFile(req, res, filePath, { isVendor = false } = {}) {
+  const enc = negotiateEncoding(req);
+  if (!enc || req.headers.range) return false;
+  const ext = extname(filePath).toLowerCase();
+  const mime = STATIC_COMPRESS_MIME[ext];
+  if (!mime) return false;
+  const st = await statFile(filePath).catch(() => null);
+  if (!st || !st.isFile() || st.size < COMPRESS_MIN_BYTES || st.size > MAX_STATIC_COMPRESS_BYTES) return false;
+
+  const etag = `W/"${st.size.toString(16)}-${Math.floor(st.mtimeMs).toString(16)}-${enc}"`;
+  res.setHeader('Cache-Control', isVendor ? VENDOR_CACHE_CONTROL : 'no-cache');
+  res.setHeader('ETag', etag);
+  res.setHeader('Vary', 'Accept-Encoding');
+  res.setHeader('Content-Type', mime);
+  res.setHeader('Content-Encoding', enc);
+
+  if (req.headers['if-none-match'] === etag) {
+    res.status(304).end();
+    return true;
+  }
+
+  const key = `${filePath}:${st.mtimeMs}:${st.size}:${enc}`;
+  let buf = STATIC_COMPRESS_CACHE.get(key);
+  if (!buf) {
+    const raw = await readFile(filePath);
+    buf = await compressBufferAsync(raw, enc);
+    if (STATIC_COMPRESS_CACHE.size >= MAX_STATIC_COMPRESS_ENTRIES) {
+      const oldest = STATIC_COMPRESS_CACHE.keys().next().value;
+      if (oldest) STATIC_COMPRESS_CACHE.delete(oldest);
+    }
+    STATIC_COMPRESS_CACHE.set(key, buf);
+  }
+  res.send(buf);
+  return true;
+}
+
+const SHARED_ADMIN_SCRIPTS = {
+  '/admin/shared/schedule-core.mjs': resolve(__dirname, 'src', 'lib', 'schedule-core.mjs'),
+  '/admin/shared/editor-codec.mjs': resolve(__dirname, 'src', 'lib', 'editor-codec.mjs'),
+  '/admin/shared/daily-moments-grid.mjs': resolve(__dirname, 'src', 'lib', 'daily-moments-grid.mjs'),
+};
+for (const [routePath, filePath] of Object.entries(SHARED_ADMIN_SCRIPTS)) {
+  app.get(routePath, async (req, res) => {
+    if (await serveCompressedStaticFile(req, res, filePath)) return;
+    res.set('Cache-Control', 'no-cache');
+    res.type('application/javascript; charset=utf-8');
+    res.sendFile(filePath);
+  });
+}
+
+app.use('/admin/img-repo', express.static(IMAGE_DIR, { maxAge: '1d' }));
+app.use('/admin', async (req, res, next) => {
+  if (req.method !== 'GET') return next();
+  try {
+    const reqPath = decodeURIComponent(req.path || '');
+    if (!reqPath || reqPath.includes('\0')) return next();
+    const resolved = resolve(ADMIN_ROOT, `.${reqPath}`);
+    if (!resolved.startsWith(ADMIN_ROOT + '\\') && !resolved.startsWith(ADMIN_ROOT + '/')) return next();
+    const rel = resolved.slice(ADMIN_ROOT.length + 1).split('\\').join('/');
+    if (await serveCompressedStaticFile(req, res, resolved, { isVendor: rel.startsWith('vendor/') })) return;
+  } catch { /* 解码失败或异常时退回 express.static */ }
+  next();
 });
-app.get('/admin/shared/editor-codec.mjs', (_req, res) => {
-  res.set('Cache-Control', 'no-cache');
-  res.type('application/javascript; charset=utf-8');
-  res.sendFile(resolve(__dirname, 'src', 'lib', 'editor-codec.mjs'));
-});
-app.get('/admin/shared/daily-moments-grid.mjs', (_req, res) => {
-  res.set('Cache-Control', 'no-cache');
-  res.type('application/javascript; charset=utf-8');
-  res.sendFile(resolve(__dirname, 'src', 'lib', 'daily-moments-grid.mjs'));
-});
-app.use('/admin/img-repo', express.static(IMAGE_DIR));
-app.use('/admin', express.static(join(__dirname, 'admin'), { setHeaders: setAdminStaticCacheHeaders }));
+app.use('/admin', express.static(ADMIN_ROOT, { setHeaders: setAdminStaticCacheHeaders }));
 
 app.listen(PORT, '127.0.0.1', (err) => {
   if (err) {

@@ -9,6 +9,7 @@ import { formatBytes } from '../util/format.js';
 const GALLERY_API = '/api/gallery';
 const GALLERY_BATCH_API = '/api/gallery/batch';
 const GALLERY_PUSH_API = '/api/gallery/push';
+const IMG_CDN_PREFIX = 'https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/';
 const DEFAULT_UPLOAD_MAX_BYTES = 512 * 1024 * 1024;
 const QUEUE_RENDER_CAP = 200;
 
@@ -19,6 +20,21 @@ let galleryFilter = { q: '', sort: 'date-desc' };
 let galleryBaseline = '';
 let galleryDirty = false;
 let galleryEditorActive = false;
+let gallerySaving = false;
+let gallerySearchTimer = null;
+let batchProgressRaf = 0;
+
+function localGalleryThumb(src) {
+  const raw = String(src || '');
+  if (!raw.startsWith(IMG_CDN_PREFIX)) return { primary: raw, fb1: '', fb2: '' };
+  const rel = raw.slice(IMG_CDN_PREFIX.length);
+  let decoded = rel;
+  try { decoded = decodeURIComponent(rel); } catch { /* ignore */ }
+  const base = decoded.replace(/\.[^.]+$/, '');
+  const thumb = base ? `/admin/img-repo/thumb/${encodeURIComponent(base)}.webp` : '';
+  const local = `/admin/img-repo/${rel}`;
+  return { primary: thumb || local, fb1: thumb ? local : raw, fb2: thumb ? raw : '' };
+}
 
 // ── 批量 / 文件夹上传队列（严格每次 1 张低并发，上传后直接入库并推送）──
 let batchTasks = [];
@@ -215,9 +231,11 @@ function renderGalleryRows() {
     body.innerHTML = '<div class="empty-state" style="padding:30px">没有匹配的图像</div>';
     return;
   }
-  body.innerHTML = list.map((item) => `
+  body.innerHTML = list.map((item) => {
+    const pv = localGalleryThumb(item.src);
+    return `
     <div class="gallery-list-item${item.id === currentGalleryId ? ' active' : ''}" data-gallery-id="${escAttr(item.id)}">
-      <img src="${escAttr(item.src)}" alt="${escAttr(item.alt || item.title)}" loading="lazy" onerror="this.style.display='none'" />
+      <img src="${escAttr(pv.primary)}"${pv.fb1 ? ` data-fb1="${escAttr(pv.fb1)}"` : ''}${pv.fb2 ? ` data-fb2="${escAttr(pv.fb2)}"` : ''} alt="${escAttr(item.alt || item.title)}" loading="lazy" decoding="async" onerror="if(this.dataset.fb1){var u=this.dataset.fb1;this.dataset.fb1=this.dataset.fb2||'';this.dataset.fb2='';this.src=u;}else{this.style.display='none';}" />
       <div class="info" data-gallery-open="${escAttr(item.id)}">
         <div class="title">${esc(item.title)}</div>
         <div class="meta">${item.date || '无日期'}${item.dayIndex ? ` · #${item.dayIndex}` : ''}</div>
@@ -225,7 +243,8 @@ function renderGalleryRows() {
       <div class="actions">
         <button class="btn small danger" data-gallery-delete="${escAttr(item.id)}" title="删除">×</button>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 async function batchImportFromMedia(selected) {
@@ -298,7 +317,8 @@ function renderGalleryList() {
     <div id="galleryListBody"></div>`;
   $('#fGallerySearch').addEventListener('input', (e) => {
     galleryFilter.q = e.target.value;
-    renderGalleryRows();
+    clearTimeout(gallerySearchTimer);
+    gallerySearchTimer = setTimeout(() => { gallerySearchTimer = null; renderGalleryRows(); }, 100);
   });
   $('#fGallerySort').addEventListener('change', (e) => {
     galleryFilter.sort = e.target.value;
@@ -316,12 +336,15 @@ function renderGalleryList() {
   }
   updateBatchSidebarBadge();
   renderGalleryRows();
-  el.onclick = (e) => {
-    const del = e.target.closest('[data-gallery-delete]');
-    if (del) { e.stopPropagation(); deleteGalleryItem(del.dataset.galleryDelete); return; }
-    const open = e.target.closest('[data-gallery-open]');
-    if (open) selectGalleryItem(open.dataset.galleryOpen);
-  };
+  const body = $('#galleryListBody');
+  if (body) {
+    body.onclick = (e) => {
+      const del = e.target.closest('[data-gallery-delete]');
+      if (del) { e.stopPropagation(); deleteGalleryItem(del.dataset.galleryDelete); return; }
+      const open = e.target.closest('[data-gallery-open]');
+      if (open) selectGalleryItem(open.dataset.galleryOpen);
+    };
+  }
 }
 
 // ── 批量上传到 04 图像档案 · 独立收藏 ──
@@ -433,7 +456,27 @@ function uploadFileDeferred(task) {
     xhr.upload.onprogress = (e) => {
       if (!e.lengthComputable) return;
       task.progress = Math.round((e.loaded / e.total) * 100);
-      updateGalleryBatchUI();
+      if (!batchProgressRaf) {
+        batchProgressRaf = requestAnimationFrame(() => {
+          batchProgressRaf = 0;
+          if (!batchViewActive || !ctx.isGalleryMode()) return;
+          const total = batchTasks.length;
+          const finished = batchTasks.filter((t) => t.status === 'ready' || t.status === 'failed' || t.status === 'cancelled').length;
+          const active = batchTasks.find((t) => t.status === 'uploading' || t.status === 'saving');
+          const pct = total ? Math.round(((finished + (active ? (active.progress || 0) / 100 : 0)) / total) * 100) : 0;
+          const barFill = $('#galleryBatchBarFill');
+          if (barFill) barFill.style.width = `${Math.min(100, Math.max(0, pct))}%`;
+          if (active) {
+            const row = document.querySelector(`#galleryBatchQueue [data-gbtask-id="${active.id}"]`);
+            if (row) {
+              const bar = row.querySelector('.gbar i');
+              if (bar) bar.style.width = `${active.progress || 0}%`;
+              const st = row.querySelector('.gstatus');
+              if (st && active.status === 'uploading') st.textContent = `上传中 ${active.progress || 0}%`;
+            }
+          }
+        });
+      }
     };
     xhr.onload = () => {
       let data = {};
@@ -654,7 +697,7 @@ function updateGalleryBatchUI() {
   };
 
   queueEl.innerHTML = visible.map((t) => `
-    <div class="gallery-batch-row status-${t.status}">
+    <div class="gallery-batch-row status-${t.status}" data-gbtask-id="${escAttr(t.id)}">
       <span class="gname" title="${escAttr(t.name)}">${esc(t.name)}</span>
       <span class="gsize">${formatBytes(t.size)}</span>
       <span class="gbar"><i style="width:${t.progress || 0}%"></i></span>
@@ -836,12 +879,12 @@ async function selectGalleryItem(id, { skipLeaveGuard = false } = {}) {
   currentGalleryId = id;
   batchViewActive = false;
   try {
-    const res = await apiFetch(`${GALLERY_API}/${id}`);
+    const res = await apiFetch(`${GALLERY_API}/${encodeURIComponent(id)}`);
     const item = await res.json();
-    if (item.error) { toast(item.error); return; }
+    if (!res.ok || item.error) { toast(item.error || '加载失败'); return; }
     renderGalleryEditor(item);
     renderGalleryRows();
-  } catch (e) { toast('加载失败'); }
+  } catch (e) { toast('加载失败: ' + e.message); }
 }
 
 function bindSingleDropMultiHandoff() {
@@ -890,9 +933,19 @@ function renderGalleryEditor(item) {
         <div class="form-group"><label>来源标题 (sourceTitle)</label><input id="fSourceTitle" value="${escAttr(item.sourceTitle || '')}" placeholder="来源名称"/></div>
       </div>
       <div style="margin-top:8px;padding:8px;background:var(--surface-2);border-radius:2px">
-        <img src="${escAttr(item.src || '')}" alt="预览" style="max-width:100%;max-height:200px;display:block;margin:0 auto" onerror="this.style.display='none'" />
+        <img id="galleryLivePreview" src="${escAttr(item.src || '')}" alt="预览" style="max-width:100%;max-height:200px;display:block;margin:0 auto" onerror="this.style.display='none'" />
       </div>
     </div>`;
+  const srcInput = $('#fSrc');
+  const liveImg = $('#galleryLivePreview');
+  if (srcInput && liveImg) {
+    srcInput.addEventListener('input', () => {
+      const nextUrl = srcInput.value.trim();
+      if (!nextUrl) { liveImg.style.display = 'none'; liveImg.removeAttribute('src'); return; }
+      liveImg.style.display = 'block';
+      liveImg.src = nextUrl;
+    });
+  }
   ctx.setupUpload();
   bindSingleDropMultiHandoff();
   ctx.setupGalleryMediaButton();
@@ -941,8 +994,9 @@ function newGalleryItem() {
 }
 
 async function saveGalleryItem() {
+  if (gallerySaving) return;
   const src = $('#fSrc')?.value?.trim() || '';
-  if (!src) { toast('图像地址不能为空'); return; }
+  if (!src) { toast('图像地址不能为空'); $('#fSrc')?.focus(); return; }
   const title = titleFromSrc(src, $('#fGalleryTitle')?.value);
 
   const formData = new URLSearchParams();
@@ -957,34 +1011,47 @@ async function saveGalleryItem() {
   formData.set('sourceTitle', $('#fSourceTitle')?.value || '');
   formData.set('expectedHash', galleryHash);
 
+  const saveBtn = $('#btnSave');
+  gallerySaving = true;
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '⏳ 保存中…'; }
   try {
-    const url = currentGalleryId ? `${GALLERY_API}/${currentGalleryId}` : GALLERY_API;
+    const url = currentGalleryId ? `${GALLERY_API}/${encodeURIComponent(currentGalleryId)}` : GALLERY_API;
     const method = currentGalleryId ? 'PUT' : 'POST';
     const res = await apiFetch(url, { method, body: formData, headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
     const data = await res.json();
-    if (data.error) { toast(data.error); return; }
+    if (!res.ok || data.error) {
+      if (res.status === 409) { toast('画廊已被其他来源修改，请点「↻ 刷新」获取最新后再保存'); return; }
+      toast(data.error || `保存失败（HTTP ${res.status}）`);
+      return;
+    }
     if (data.contentHash) galleryHash = data.contentHash;
     clearGalleryDirty();
-    toast(currentGalleryId ? '已保存' : '已创建');
+    toast(currentGalleryId ? '已保存（点顶栏「发布」上线）' : '已创建（点顶栏「发布」上线）');
     currentGalleryId = data.item?.id || currentGalleryId;
+    ctx.refreshSyncStatus?.({ silent: true }).catch?.(() => {});
     await loadGallery();
     if (currentGalleryId) await selectGalleryItem(currentGalleryId, { skipLeaveGuard: true });
   } catch (e) { toast('保存失败: ' + e.message); }
+  finally {
+    gallerySaving = false;
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = '保存 (Ctrl+S)'; }
+  }
 }
 
 async function deleteGalleryItem(id) {
   if (!confirm(`确定删除独立收藏「${id}」？此操作不可撤销。`)) return;
   try {
-    const res = await apiFetch(`${GALLERY_API}/${id}?expectedHash=${encodeURIComponent(galleryHash)}`, { method: 'DELETE' });
+    const res = await apiFetch(`${GALLERY_API}/${encodeURIComponent(id)}?expectedHash=${encodeURIComponent(galleryHash)}`, { method: 'DELETE' });
     const data = await res.json();
-    if (data.error) { toast(data.error); return; }
+    if (!res.ok || data.error) { toast(data.error || '删除失败'); return; }
     if (data.contentHash) galleryHash = data.contentHash;
     toast('已删除');
     if (currentGalleryId === id) {
       openGalleryBatchUploader({ skipLeaveGuard: true });
     }
+    ctx.refreshSyncStatus?.({ silent: true }).catch?.(() => {});
     await loadGallery();
-  } catch (e) { toast('删除失败'); }
+  } catch (e) { toast('删除失败: ' + e.message); }
 }
 
 export {

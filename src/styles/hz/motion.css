@@ -2,7 +2,7 @@
    HORIZON · motion.css —— 全站光场、游标光学晕影、冲击波、3D 视差、聚光描边与入场编排
    ========================================================================== */
 
-/* —— 全站体积星云 / 底片光洗（固定背景层 z-index: 0） —— */
+/* —— 全站体积星云 / 底片光洗（固定背景层 z-index: 0，纯合成层避免滚动重绘） —— */
 .hz-aurora {
   position: fixed;
   inset: -12vmax;
@@ -12,13 +12,13 @@
   opacity: 0.92;
   background:
     radial-gradient(
-      48vmax 42vmax at calc(78% + var(--hz-scroll-p, 0) * -14%) calc(20% + var(--hz-scroll-p, 0) * 18%),
+      48vmax 42vmax at 74% 24%,
       rgb(255 90 26 / 0.16) 0%,
       rgb(255 179 107 / 0.06) 38%,
       transparent 70%
     ),
     radial-gradient(
-      44vmax 40vmax at calc(16% + var(--hz-scroll-p, 0) * 12%) calc(78% - var(--hz-scroll-p, 0) * 14%),
+      44vmax 40vmax at 20% 74%,
       rgb(143 179 255 / 0.13) 0%,
       rgb(77 107 254 / 0.04) 42%,
       transparent 72%
@@ -34,13 +34,13 @@
 :root[data-theme='light'] .hz-aurora {
   background:
     radial-gradient(
-      46vmax 40vmax at calc(78% + var(--hz-scroll-p, 0) * -14%) calc(18% + var(--hz-scroll-p, 0) * 18%),
+      46vmax 40vmax at 74% 22%,
       rgb(228 67 10 / 0.1) 0%,
       rgb(255 122 67 / 0.03) 40%,
       transparent 70%
     ),
     radial-gradient(
-      44vmax 40vmax at calc(16% + var(--hz-scroll-p, 0) * 12%) calc(78% - var(--hz-scroll-p, 0) * 14%),
+      44vmax 40vmax at 20% 74%,
       rgb(47 91 211 / 0.09) 0%,
       rgb(47 91 211 / 0.025) 42%,
       transparent 72%
@@ -234,10 +234,10 @@ html.is-navigating .hz-nav-tracer {
 /* —— 首屏 / 页头高对比曝光入场编排 —— */
 @keyframes hz-arrive {
   0% {
-    opacity: 0;
-    translate: 0 24px;
-    scale: 0.985;
-    filter: blur(7px) brightness(1.3);
+    opacity: 0.01;
+    translate: 0 20px;
+    scale: 0.988;
+    filter: blur(5px) brightness(1.22);
   }
   100% {
     opacity: 1;
@@ -248,8 +248,8 @@ html.is-navigating .hz-nav-tracer {
 }
 @keyframes hz-arrive-soft {
   0% {
-    opacity: 0;
-    translate: 0 14px;
+    opacity: 0.01;
+    translate: 0 12px;
     filter: blur(2px);
   }
   100% {
@@ -260,19 +260,19 @@ html.is-navigating .hz-nav-tracer {
 }
 
 .hz-hero__eyebrow {
-  animation: hz-arrive 660ms var(--e-out) 40ms both;
+  animation: hz-arrive 540ms var(--e-out) 0ms both;
 }
 .hz-hero__title {
-  animation: hz-arrive 780ms var(--e-out) 110ms both;
+  animation: hz-arrive 640ms var(--e-out) 0ms both;
 }
 .hz-hero__deck {
-  animation: hz-arrive 760ms var(--e-out) 190ms both;
+  animation: hz-arrive 640ms var(--e-out) 80ms both;
 }
 .hz-hero__tele {
-  animation: hz-arrive-soft 680ms var(--e-out) 260ms both;
+  animation: hz-arrive-soft 580ms var(--e-out) 140ms both;
 }
 .hz-hero__actions {
-  animation: hz-arrive-soft 680ms var(--e-out) 330ms both;
+  animation: hz-arrive-soft 580ms var(--e-out) 200ms both;
 }
 
 .hz-log-head,
@@ -470,5 +470,15 @@ html.is-navigating .hz-nav-tracer {
   }
   [data-hz-tilt] {
     transform: none !important;
+  }
+}
+
+@media print {
+  .hz-aurora,
+  .hz-cosmos-canvas,
+  .hz-cursor-aura,
+  .hz-shock-layer,
+  .hz-nav-tracer {
+    display: none !important;
   }
 }

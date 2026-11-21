@@ -1,10 +1,22 @@
 /**
  * HORIZON · spectrum.ts
- * /blog/ 光谱仪：光谱条与文章列表双向联动、谐波邻域联动、FLIP 排序动画、搜索（/ 快捷键）、标签筛选。
+ * /blog/ 光谱仪：光谱条与文章列表双向联动、谐波邻域联动、FLIP 排序动画、搜索（/ 快捷键 + 防抖）、
+ * 标签筛选、URL 状态双向同步（返回/刷新不丢条件）、元数据预解析消除热路径重复 JSON/Date 解析。
  */
 import { captureFlipRects, playFlipRects } from './motion';
 
 type SortKey = 'newest' | 'oldest' | 'mass';
+
+interface RowMeta {
+  el: HTMLElement;
+  id: string;
+  ts: number;
+  dayIndex: number;
+  pos: number;
+  mass: number;
+  search: string;
+  tags: string[];
+}
 
 export function initSpectrum() {
   const root = document.querySelector<HTMLElement>('[data-spectrum-root]');
@@ -22,6 +34,27 @@ export function initSpectrum() {
   const sortBtns = [...root.querySelectorAll<HTMLButtonElement>('[data-spec-sort]')];
   if (!list) return;
 
+  // 预解析行元数据，避免每次筛选/输入重复 Date.parse / JSON.parse
+  const metas: RowMeta[] = rows.map((el) => {
+    let tags: string[] = [];
+    try {
+      const parsed = JSON.parse(el.dataset.tags || '[]');
+      tags = Array.isArray(parsed) ? parsed.map(String) : [];
+    } catch {
+      tags = [];
+    }
+    return {
+      el,
+      id: el.dataset.id || '',
+      ts: Date.parse(el.dataset.date || '') || 0,
+      dayIndex: Number(el.dataset.dayIndex || '0'),
+      pos: Number(el.dataset.pos || '0'),
+      mass: Number(el.dataset.mass || '0'),
+      search: el.dataset.search || '',
+      tags,
+    };
+  });
+
   const barMap = new Map(bars.map((b) => [b.dataset.id || '', b]));
   const rowMap = new Map(rows.map((r) => [r.dataset.id || '', r]));
 
@@ -32,6 +65,7 @@ export function initSpectrum() {
   const params = new URLSearchParams(location.search);
   const initQ = params.get('q')?.trim() || '';
   const initTag = params.get('tag')?.trim() || '';
+  const initSort = params.get('sort')?.trim() || '';
   if (initQ && search) {
     search.value = initQ;
     query = initQ.toLowerCase();
@@ -39,6 +73,22 @@ export function initSpectrum() {
   if (initTag && tagBtns.some((b) => b.dataset.specTag === initTag)) {
     activeTag = initTag;
   }
+  if (initSort === 'newest' || initSort === 'oldest' || initSort === 'mass') {
+    sortKey = initSort;
+  }
+
+  const syncUrl = () => {
+    const next = new URLSearchParams();
+    const rawQ = search?.value.trim() || '';
+    if (rawQ) next.set('q', rawQ);
+    if (activeTag !== 'all') next.set('tag', activeTag);
+    if (sortKey !== 'newest') next.set('sort', sortKey);
+    const qs = next.toString();
+    const nextUrl = `${location.pathname}${qs ? `?${qs}` : ''}${location.hash}`;
+    if (nextUrl !== location.pathname + location.search + location.hash) {
+      history.replaceState(null, '', nextUrl);
+    }
+  };
 
   const fmtMass = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n));
 
@@ -78,61 +128,38 @@ export function initSpectrum() {
     updateReadout(id);
   };
 
-  const apply = (animate = false) => {
+  const apply = (animate = false, pushUrl = true) => {
     let shown = 0;
     let totalMass = 0;
     const firstRects = animate ? captureFlipRects(rows) : new Map<HTMLElement, DOMRect>();
 
-    const sorted = [...rows].sort((a, b) => {
-      const ta = Date.parse(a.dataset.date || '') || 0;
-      const tb = Date.parse(b.dataset.date || '') || 0;
-      const da = Number(a.dataset.dayIndex || '0');
-      const db = Number(b.dataset.dayIndex || '0');
-      const pa = Number(a.dataset.pos || '0');
-      const pb = Number(b.dataset.pos || '0');
-      const ma = Number(a.dataset.mass || '0');
-      const mb = Number(b.dataset.mass || '0');
-
+    const sorted = [...metas].sort((a, b) => {
       if (sortKey === 'oldest') {
-        return ta - tb || da - db || pb - pa;
+        return a.ts - b.ts || a.dayIndex - b.dayIndex || b.pos - a.pos;
       }
       if (sortKey === 'mass') {
-        return mb - ma || tb - ta || pa - pb;
+        return b.mass - a.mass || b.ts - a.ts || a.pos - b.pos;
       }
-      return tb - ta || db - da || pa - pb;
+      return b.ts - a.ts || b.dayIndex - a.dayIndex || a.pos - b.pos;
     });
 
     const frag = document.createDocumentFragment();
-    for (const row of sorted) {
-      const text = row.dataset.search || '';
-      let tags: string[] = [];
-      try {
-        tags = JSON.parse(row.dataset.tags || '[]');
-      } catch {
-        tags = [];
-      }
-      const matchQ = !query || text.includes(query);
-      const matchTag = activeTag === 'all' || tags.includes(activeTag);
+    for (const meta of sorted) {
+      const matchQ = !query || meta.search.includes(query);
+      const matchTag = activeTag === 'all' || meta.tags.includes(activeTag);
       const ok = matchQ && matchTag;
 
-      const wasHidden = row.hidden;
-      row.hidden = !ok;
-      if (animate && ok && wasHidden) {
-        row.classList.remove('hz-view-enter');
-        void row.offsetWidth;
-        row.classList.add('hz-view-enter');
-      }
-      const id = row.dataset.id || '';
-      barMap.get(id)?.classList.toggle('is-dimmed', !ok);
+      meta.el.hidden = !ok;
+      barMap.get(meta.id)?.classList.toggle('is-dimmed', !ok);
 
       if (ok) {
         shown += 1;
-        totalMass += Number(row.dataset.mass || '0');
+        totalMass += meta.mass;
       }
-      frag.append(row);
+      frag.append(meta.el);
     }
     list.append(frag);
-    if (animate) playFlipRects(rows, firstRects);
+    if (animate) playFlipRects(rows, firstRects, 360);
 
     if (countEl) {
       countEl.textContent = `${shown} / ${rows.length} RECORDS · ${fmtMass(totalMass)} CHARS`;
@@ -147,16 +174,29 @@ export function initSpectrum() {
     sortBtns.forEach((b) => {
       b.setAttribute('aria-pressed', String(b.dataset.specSort === sortKey));
     });
+
+    if (pushUrl) syncUrl();
   };
 
+  let searchTimer = 0;
   search?.addEventListener('input', () => {
-    query = search.value.trim().toLowerCase();
-    apply(true);
+    window.clearTimeout(searchTimer);
+    const nextQ = search.value.trim().toLowerCase();
+    if (!nextQ) {
+      query = '';
+      apply(false);
+      return;
+    }
+    searchTimer = window.setTimeout(() => {
+      query = nextQ;
+      apply(false);
+    }, 110);
   });
 
   tagBtns.forEach((btn) => {
     btn.addEventListener('click', () => {
-      activeTag = btn.dataset.specTag || 'all';
+      const clicked = btn.dataset.specTag || 'all';
+      activeTag = activeTag === clicked && clicked !== 'all' ? 'all' : clicked;
       apply(true);
     });
   });
@@ -165,6 +205,7 @@ export function initSpectrum() {
     btn.addEventListener('click', () => {
       const k = btn.dataset.specSort as SortKey;
       if (k === 'newest' || k === 'oldest' || k === 'mass') {
+        if (k === sortKey) return;
         sortKey = k;
         apply(true);
       }
@@ -176,6 +217,7 @@ export function initSpectrum() {
     activeTag = 'all';
     if (search) search.value = '';
     apply(true);
+    search?.focus();
   });
 
   bars.forEach((bar) => {
@@ -191,7 +233,7 @@ export function initSpectrum() {
         query = '';
         activeTag = 'all';
         if (search) search.value = '';
-        apply();
+        apply(false);
       }
       row.scrollIntoView({ behavior: 'smooth', block: 'center' });
       linkPair(id);
@@ -208,23 +250,26 @@ export function initSpectrum() {
   document.addEventListener('keydown', (e) => {
     if (!search) return;
     if (e.key === '/' && !e.metaKey && !e.ctrlKey && !e.altKey) {
-      const tag = (document.activeElement as HTMLElement | null)?.tagName;
-      if (tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'SELECT') {
+      const active = document.activeElement as HTMLElement | null;
+      const tag = active?.tagName;
+      if (tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'SELECT' && !active?.isContentEditable) {
         e.preventDefault();
         search.focus();
+        search.select();
       }
     } else if (e.key === 'Escape' && document.activeElement === search) {
       if (search.value) {
+        window.clearTimeout(searchTimer);
         search.value = '';
         query = '';
-        apply();
+        apply(false);
       } else {
         search.blur();
       }
     }
   });
 
-  apply();
+  apply(false, false);
 }
 
 initSpectrum();

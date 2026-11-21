@@ -57,17 +57,37 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? 'https://blog.acreti
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
     <link rel="preload" href="/fonts/anthropic-sans.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="/fonts/anthropic-mono.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="preload" href="/fonts/anthropic-serif-italic.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="preload" href="/fonts/unbounded-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="/fonts/cjk-slices.css" media="print" onload="this.media='all'" />
+    <noscript><link rel="stylesheet" href="/fonts/cjk-slices.css" /></noscript>
     <title>{fullTitle}</title>
     <script is:inline>
       (function () {
         var r = document.documentElement;
         var t = null;
         try { t = localStorage.getItem('theme'); } catch (e) {}
-        r.dataset.theme = t === 'light' || t === 'dark' ? t : (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+        var theme = t === 'light' || t === 'dark' ? t : (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+        r.dataset.theme = theme;
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute('content', theme === 'light' ? '#eae8e2' : '#08080b');
         r.classList.add('js');
       })();
+    </script>
+    <script type="speculationrules" is:inline>
+      {
+        "prefetch": [
+          {
+            "source": "document",
+            "where": {
+              "and": [
+                { "href_matches": "/*" },
+                { "not": { "href_matches": ["/api/*", "/write/*", "/s/*", "/admin*"] } },
+                { "not": { "selector_matches": "[download], [target='_blank']" } }
+              ]
+            },
+            "eagerness": "moderate"
+          }
+        ]
+      }
     </script>
   </head>
   <body class={bodyClass} data-page={page}>

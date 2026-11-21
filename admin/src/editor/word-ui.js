@@ -267,23 +267,50 @@ export function mountWordEditor({
   let typewriterOn = localStorage.getItem('admin-typewriter') === '1';
   let outlineOpen = localStorage.getItem('admin-outline') === '1';
   let previewTimer = null;
+  let outlineTimer = null;
+  let sourceDirtyTimer = null;
+  let caretRaf = 0;
+  let cachedDoc = null;
+  let cachedMarkdown = '';
+  let sourceMatches = [];
+  let sourceActiveIdx = 0;
+  let sourceCaseSensitive = false;
   let lastActiveColor = '#ff5a1a';
   let lastHighlightColor = HIGHLIGHT_COLORS[0];
+
+  function scheduleOutlineSync() {
+    if (outlinePane.hidden) return;
+    clearTimeout(outlineTimer);
+    outlineTimer = setTimeout(() => {
+      outlineTimer = null;
+      syncOutline();
+    }, 220);
+  }
+
+  function scheduleCaretCenter() {
+    if (!typewriterOn || currentView !== 'wysiwyg') return;
+    if (caretRaf) return;
+    caretRaf = requestAnimationFrame(() => {
+      caretRaf = 0;
+      centerCaretInViewport();
+    });
+  }
 
   const word = createWordEditor({
     element: proseHost,
     initialMarkdown,
     onUpdate: () => {
-      syncOutline();
+      cachedDoc = null;
+      scheduleOutlineSync();
       onDirty?.();
       onStatsChange?.();
-      if (typewriterOn) centerCaretInViewport();
+      scheduleCaretCenter();
     },
     onSelectionUpdate: () => {
       syncRibbonStates();
       syncBubbleMenu();
       syncTableBar();
-      if (typewriterOn) centerCaretInViewport();
+      scheduleCaretCenter();
     },
     onUploadImages,
     onImportExternalImages,
@@ -335,11 +362,16 @@ export function mountWordEditor({
 
   function getMarkdown() {
     if (currentView === 'sv' || currentView === 'source') return sourceInput.value;
-    return word.getMarkdown();
+    const doc = ed.state.doc;
+    if (cachedDoc === doc) return cachedMarkdown;
+    cachedMarkdown = word.getMarkdown();
+    cachedDoc = doc;
+    return cachedMarkdown;
   }
 
   function setMarkdown(md) {
     const val = String(md || '');
+    cachedDoc = null;
     if (currentView === 'sv' || currentView === 'source') {
       sourceInput.value = val;
       if (currentView === 'sv') renderPreview?.(livePreview, val);
@@ -358,6 +390,7 @@ export function mountWordEditor({
       sourceInput.dispatchEvent(new Event('input', { bubbles: true }));
       return;
     }
+    cachedDoc = null;
     word.insertMarkdownBlock(md);
     onDirty?.();
     onStatsChange?.();
@@ -368,8 +401,9 @@ export function mountWordEditor({
     const prev = currentView;
     if (prev !== target) {
       if (prev === 'wysiwyg' && (target === 'sv' || target === 'source')) {
-        sourceInput.value = word.getMarkdown();
+        sourceInput.value = getMarkdown();
       } else if ((prev === 'sv' || prev === 'source') && target === 'wysiwyg') {
+        cachedDoc = null;
         word.setMarkdown(sourceInput.value);
       }
     }
@@ -384,15 +418,34 @@ export function mountWordEditor({
       try { localStorage.setItem('admin-editor-view', target); } catch { /* ignore */ }
     }
     syncOutline();
+    if (!$('#findReplaceBar')?.hidden) runActiveSearch($('#fFindQuery')?.value || '', { selectActive: false });
     return true;
   }
 
   sourceInput.addEventListener('input', () => {
-    onDirty?.();
-    onStatsChange?.();
+    clearTimeout(sourceDirtyTimer);
+    sourceDirtyTimer = setTimeout(() => {
+      sourceDirtyTimer = null;
+      onDirty?.();
+      onStatsChange?.();
+    }, 120);
+    scheduleOutlineSync();
     if (currentView === 'sv') {
       clearTimeout(previewTimer);
-      previewTimer = setTimeout(() => renderPreview?.(livePreview, sourceInput.value), 160);
+      previewTimer = setTimeout(() => renderPreview?.(livePreview, sourceInput.value), 180);
+    }
+    if (!$('#findReplaceBar')?.hidden) {
+      runSourceSearch($('#fFindQuery')?.value || '', { selectActive: false });
+    }
+  });
+
+  sourceInput.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+      e.preventDefault();
+      onSaveShortcut?.();
+    } else if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'f' || e.key.toLowerCase() === 'h')) {
+      e.preventDefault();
+      toggleFindBar(true, e.key.toLowerCase() === 'h');
     }
   });
 
@@ -416,6 +469,19 @@ export function mountWordEditor({
           const domHeadings = proseHost.querySelectorAll('h1, h2, h3, h4, h5, h6');
           const el = domHeadings[idx];
           if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else {
+          const target = headings[idx];
+          if (target && typeof target.offset === 'number') {
+            sourceInput.focus();
+            sourceInput.setSelectionRange(target.offset, target.offset + target.rawLength);
+            const linesBefore = sourceInput.value.slice(0, target.offset).split('\n').length - 1;
+            const lineH = parseFloat(getComputedStyle(sourceInput).lineHeight) || 22;
+            sourceInput.scrollTop = Math.max(0, linesBefore * lineH - sourceInput.clientHeight * 0.3);
+          }
+          if (currentView === 'sv') {
+            const previewHeadings = livePreview.querySelectorAll('h1, h2, h3, h4, h5, h6');
+            previewHeadings[idx]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
         }
       };
     });
@@ -423,10 +489,16 @@ export function mountWordEditor({
 
   function extractOutlineFromSource(md) {
     const out = [];
-    String(md || '').split('\n').forEach((line) => {
-      const m = line.match(/^(#{1,4})\s+(.+)$/);
-      if (m) out.push({ level: m[1].length, text: m[2].replace(/<[^>]+>/g, '').trim() });
-    });
+    let offset = 0;
+    let inFence = false;
+    for (const line of String(md || '').split('\n')) {
+      if (/^\s*(?:```|~~~)/.test(line)) inFence = !inFence;
+      if (!inFence) {
+        const m = line.match(/^(#{1,4})\s+(.+)$/);
+        if (m) out.push({ level: m[1].length, text: m[2].replace(/<[^>]+>/g, '').trim(), offset, rawLength: line.length });
+      }
+      offset += line.length + 1;
+    }
     return out;
   }
 
@@ -564,7 +636,45 @@ export function mountWordEditor({
     });
   }
 
+  function wrapSourceSelection(before, after = before, placeholder = '文本') {
+    const start = sourceInput.selectionStart ?? sourceInput.value.length;
+    const end = sourceInput.selectionEnd ?? start;
+    const sel = sourceInput.value.slice(start, end) || placeholder;
+    const next = `${before}${sel}${after}`;
+    sourceInput.focus();
+    sourceInput.setRangeText(next, start, end, 'select');
+    sourceInput.setSelectionRange(start + before.length, start + before.length + sel.length);
+    sourceInput.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  function prefixSourceLines(prefix) {
+    const start = sourceInput.selectionStart ?? 0;
+    const end = sourceInput.selectionEnd ?? start;
+    const val = sourceInput.value;
+    const lineStart = val.lastIndexOf('\n', Math.max(0, start - 1)) + 1;
+    const lineEndIdx = val.indexOf('\n', end);
+    const lineEnd = lineEndIdx === -1 ? val.length : lineEndIdx;
+    const block = val.slice(lineStart, lineEnd).split('\n').map((l) => `${prefix}${l}`).join('\n');
+    sourceInput.focus();
+    sourceInput.setRangeText(block, lineStart, lineEnd, 'end');
+    sourceInput.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
   function runFormatCommand(cmd) {
+    if (currentView !== 'wysiwyg') {
+      if (cmd === 'undo' || cmd === 'redo') { sourceInput.focus(); try { document.execCommand(cmd); } catch { /* ignore */ } return; }
+      if (cmd === 'bold') return wrapSourceSelection('**');
+      if (cmd === 'italic') return wrapSourceSelection('*');
+      if (cmd === 'underline') return wrapSourceSelection('<u>', '</u>');
+      if (cmd === 'strike') return wrapSourceSelection('~~');
+      if (cmd === 'code') return wrapSourceSelection('`');
+      if (cmd === 'superscript') return wrapSourceSelection('<sup>', '</sup>');
+      if (cmd === 'subscript') return wrapSourceSelection('<sub>', '</sub>');
+      if (cmd === 'bulletList') return prefixSourceLines('- ');
+      if (cmd === 'orderedList') return prefixSourceLines('1. ');
+      if (cmd === 'taskList') return prefixSourceLines('- [ ] ');
+      return;
+    }
     if (cmd === 'undo') ed.chain().focus().undo().run();
     else if (cmd === 'redo') ed.chain().focus().redo().run();
     else if (cmd === 'bold') ed.chain().focus().toggleBold().run();
@@ -779,13 +889,62 @@ export function mountWordEditor({
     };
   });
 
-  // ── 查找与替换 ──
+  // ── 查找与替换（同时支持所见即所得 / 分屏 / 源码三视图） ──
+  function findSourceMatches(text, query, caseSensitive) {
+    const out = [];
+    if (!query) return out;
+    const hay = caseSensitive ? text : text.toLowerCase();
+    const needle = caseSensitive ? query : query.toLowerCase();
+    let idx = 0;
+    while ((idx = hay.indexOf(needle, idx)) !== -1) {
+      out.push({ from: idx, to: idx + query.length });
+      idx += Math.max(1, query.length);
+    }
+    return out;
+  }
+
+  function selectSourceMatch(index, { focusInput = false } = {}) {
+    if (!sourceMatches.length) return;
+    sourceActiveIdx = ((index % sourceMatches.length) + sourceMatches.length) % sourceMatches.length;
+    const hit = sourceMatches[sourceActiveIdx];
+    if (focusInput) sourceInput.focus();
+    sourceInput.setSelectionRange(hit.from, hit.to);
+    const linesBefore = sourceInput.value.slice(0, hit.from).split('\n').length - 1;
+    const lineH = parseFloat(getComputedStyle(sourceInput).lineHeight) || 22;
+    sourceInput.scrollTop = Math.max(0, linesBefore * lineH - sourceInput.clientHeight * 0.35);
+  }
+
+  function runSourceSearch(query, { selectActive = false } = {}) {
+    sourceMatches = findSourceMatches(sourceInput.value, query, sourceCaseSensitive);
+    if (sourceActiveIdx >= sourceMatches.length) sourceActiveIdx = 0;
+    if (selectActive && sourceMatches.length) selectSourceMatch(sourceActiveIdx);
+    updateSearchCounter();
+  }
+
+  function runActiveSearch(query, { caseSensitive, selectActive = false } = {}) {
+    if (typeof caseSensitive === 'boolean') sourceCaseSensitive = caseSensitive;
+    if (currentView === 'wysiwyg') {
+      ed.commands.setSearchTerm(query, { caseSensitive: sourceCaseSensitive });
+      updateSearchCounter();
+    } else {
+      runSourceSearch(query, { selectActive });
+    }
+  }
+
   function updateSearchCounter() {
-    const s = ed.storage.searchAndReplace;
-    const total = s.matches.length;
-    const cur = total ? s.activeIndex + 1 : 0;
+    let total = 0;
+    let cur = 0;
+    if (currentView === 'wysiwyg') {
+      const s = ed.storage.searchAndReplace;
+      total = s.matches.length;
+      cur = total ? s.activeIndex + 1 : 0;
+    } else {
+      total = sourceMatches.length;
+      cur = total ? sourceActiveIdx + 1 : 0;
+    }
     if ($('#findCount')) $('#findCount').textContent = `${cur}/${total}`;
   }
+
   function toggleFindBar(forceOpen, focusReplace = false) {
     const bar = $('#findReplaceBar');
     if (!bar) return;
@@ -795,36 +954,98 @@ export function mountWordEditor({
     if (open) {
       const qEl = $('#fFindQuery');
       if (qEl) {
-        const selText = ed.state.doc.textBetween(ed.state.selection.from, ed.state.selection.to, ' ');
+        const selText = currentView === 'wysiwyg'
+          ? ed.state.doc.textBetween(ed.state.selection.from, ed.state.selection.to, ' ')
+          : sourceInput.value.slice(sourceInput.selectionStart || 0, sourceInput.selectionEnd || 0);
         if (selText && selText.length < 60 && !qEl.value) qEl.value = selText;
-        ed.commands.setSearchTerm(qEl.value);
-        updateSearchCounter();
-        setTimeout(() => (focusReplace ? $('#fReplaceQuery') : qEl).focus(), 0);
+        runActiveSearch(qEl.value, { selectActive: false });
+        setTimeout(() => {
+          const target = focusReplace ? $('#fReplaceQuery') : qEl;
+          target?.focus();
+          target?.select?.();
+        }, 0);
       }
     } else {
+      sourceMatches = [];
+      sourceActiveIdx = 0;
       ed.commands.clearSearch();
       updateSearchCounter();
+      (currentView === 'wysiwyg' ? ed.commands.focus() : sourceInput.focus());
     }
   }
+
+  function stepFind(delta) {
+    if (currentView === 'wysiwyg') {
+      if (delta > 0) ed.commands.findNext();
+      else ed.commands.findPrev();
+      updateSearchCounter();
+      return;
+    }
+    if (!sourceMatches.length) runSourceSearch($('#fFindQuery')?.value || '', { selectActive: false });
+    if (!sourceMatches.length) return;
+    selectSourceMatch(sourceActiveIdx + delta);
+    updateSearchCounter();
+  }
+
+  function replaceOneMatch() {
+    if (currentView === 'wysiwyg') {
+      ed.commands.replaceCurrent();
+      updateSearchCounter();
+      return;
+    }
+    const query = $('#fFindQuery')?.value || '';
+    const rep = $('#fReplaceQuery')?.value ?? '';
+    if (!sourceMatches.length) runSourceSearch(query, { selectActive: false });
+    if (!sourceMatches.length) return;
+    const hit = sourceMatches[sourceActiveIdx] || sourceMatches[0];
+    sourceInput.setRangeText(rep, hit.from, hit.to, 'end');
+    sourceInput.dispatchEvent(new Event('input', { bubbles: true }));
+    runSourceSearch(query, { selectActive: true });
+  }
+
+  function replaceAllMatches() {
+    if (currentView === 'wysiwyg') {
+      const count = ed.storage.searchAndReplace.matches.length;
+      ed.commands.replaceAll();
+      updateSearchCounter();
+      toast(`已替换 ${count} 处`);
+      return;
+    }
+    const query = $('#fFindQuery')?.value || '';
+    const rep = $('#fReplaceQuery')?.value ?? '';
+    const hits = findSourceMatches(sourceInput.value, query, sourceCaseSensitive);
+    if (!hits.length) { toast('没有找到匹配项'); return; }
+    let nextVal = sourceInput.value;
+    for (let i = hits.length - 1; i >= 0; i -= 1) {
+      nextVal = nextVal.slice(0, hits[i].from) + rep + nextVal.slice(hits[i].to);
+    }
+    sourceInput.value = nextVal;
+    sourceInput.dispatchEvent(new Event('input', { bubbles: true }));
+    runSourceSearch(query, { selectActive: false });
+    toast(`已替换 ${hits.length} 处`);
+  }
+
   $('#btnFindReplace')?.addEventListener('click', () => toggleFindBar());
   $('#btnFindClose')?.addEventListener('click', () => toggleFindBar(false));
-  $('#fFindQuery')?.addEventListener('input', (e) => { ed.commands.setSearchTerm(e.target.value); updateSearchCounter(); });
+  $('#fFindQuery')?.addEventListener('input', (e) => { runActiveSearch(e.target.value, { selectActive: false }); });
+  $('#fFindQuery')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); stepFind(e.shiftKey ? -1 : 1); }
+    else if (e.key === 'Escape') { e.preventDefault(); toggleFindBar(false); }
+  });
   $('#fReplaceQuery')?.addEventListener('input', (e) => { ed.commands.setReplaceTerm(e.target.value); });
+  $('#fReplaceQuery')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); replaceOneMatch(); }
+    else if (e.key === 'Escape') { e.preventDefault(); toggleFindBar(false); }
+  });
   $('#btnFindCase')?.addEventListener('click', (e) => {
-    const next = !ed.storage.searchAndReplace.caseSensitive;
-    e.currentTarget.classList.toggle('active', next);
-    ed.commands.setSearchTerm($('#fFindQuery')?.value || '', { caseSensitive: next });
-    updateSearchCounter();
+    sourceCaseSensitive = !sourceCaseSensitive;
+    e.currentTarget.classList.toggle('active', sourceCaseSensitive);
+    runActiveSearch($('#fFindQuery')?.value || '', { caseSensitive: sourceCaseSensitive, selectActive: false });
   });
-  $('#btnFindNext')?.addEventListener('click', () => { ed.commands.findNext(); updateSearchCounter(); });
-  $('#btnFindPrev')?.addEventListener('click', () => { ed.commands.findPrev(); updateSearchCounter(); });
-  $('#btnReplaceOne')?.addEventListener('click', () => { ed.commands.replaceCurrent(); updateSearchCounter(); });
-  $('#btnReplaceAll')?.addEventListener('click', () => {
-    const count = ed.storage.searchAndReplace.matches.length;
-    ed.commands.replaceAll();
-    updateSearchCounter();
-    toast(`已替换 ${count} 处`);
-  });
+  $('#btnFindNext')?.addEventListener('click', () => stepFind(1));
+  $('#btnFindPrev')?.addEventListener('click', () => stepFind(-1));
+  $('#btnReplaceOne')?.addEventListener('click', replaceOneMatch);
+  $('#btnReplaceAll')?.addEventListener('click', replaceAllMatches);
 
   // ── 视图切换 / 大纲 / 打字机 / 专注 ──
   $('#viewSwitch')?.querySelectorAll('button').forEach((btn) => {
@@ -902,6 +1123,10 @@ export function mountWordEditor({
     },
     destroy: () => {
       clearTimeout(previewTimer);
+      clearTimeout(outlineTimer);
+      clearTimeout(sourceDirtyTimer);
+      if (caretRaf) cancelAnimationFrame(caretRaf);
+      cachedDoc = null;
       document.removeEventListener('click', onDocClickPop);
       word.destroy();
     },

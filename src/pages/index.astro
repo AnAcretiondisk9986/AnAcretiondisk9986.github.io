@@ -17,7 +17,11 @@ const recentPosts = posts.slice(0, 8);
 const totalChars = posts.reduce((sum, p) => sum + massOf(p.body ?? ''), 0);
 const latestMjd = posts[0] ? mjd(posts[0].data.pubDate).toFixed(1) : '—';
 
-const allGalleryPool = (standaloneGallery as GalleryImageBrief[]).map((img) => {
+const sortedGallery = sortNewestFirst(standaloneGallery as GalleryImageBrief[]);
+// 精选 32 幅均衡池供首屏随机轮换（避免把 400+ 幅全量 JSON 82KB 内联进首页 HTML）
+const poolStep = Math.max(1, Math.floor(sortedGallery.length / 32));
+const sampledGallery = sortedGallery.filter((_, idx) => idx % poolStep === 0).slice(0, 32);
+const allGalleryPool = sampledGallery.map((img) => {
   const thumb = img.thumb ?? thumbOf(img.src);
   return {
     id: img.id,
@@ -26,7 +30,7 @@ const allGalleryPool = (standaloneGallery as GalleryImageBrief[]).map((img) => {
     alt: img.alt || '',
   };
 });
-const galleryPlates = sortNewestFirst(standaloneGallery as GalleryImageBrief[])
+const galleryPlates = sortedGallery
   .slice(0, 4)
   .map((img) => {
     const thumb = img.thumb ?? thumbOf(img.src);

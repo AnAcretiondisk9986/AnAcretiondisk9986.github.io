@@ -59,6 +59,7 @@
     </div>
 
     <div class="topbar__session">
+      <button class="btn small ghost" id="btnShortcuts" title="键盘快捷键一览 (?)">⌨</button>
       <button class="btn small ghost" id="btnSite" title="打开博客网站">↗ 站点</button>
       <button class="btn small ghost" id="btnLock" title="锁定管理面板，需要重新输入口令">锁定</button>
       <button class="btn small ghost" id="btnLogout" title="退出并停止当前会话">退出</button>
@@ -126,6 +127,7 @@
       <div class="batch-bar" id="batchBar" hidden>
         <span id="batchCount">已选 0 项</span>
         <span class="batch-bar__spacer"></span>
+        <button class="btn small" data-batch="select-all" title="全选当前筛选出的文章">全选</button>
         <button class="btn small" data-batch="publish">发布</button>
         <button class="btn small" data-batch="unpublish">撤回</button>
         <button class="btn small" data-batch="archive">归档</button>
@@ -354,11 +356,14 @@
       <h3 id="mediaPickerTitle">选择媒体</h3>
       <div class="modal-body">
         <div class="media-toolbar">
+          <input id="fMediaPickerSearch" type="search" placeholder="搜索文件名…" autocomplete="off" style="min-width:160px;flex:1" />
           <input type="file" id="fMediaPickerUpload" multiple accept="image/*,audio/*" style="display:none" />
           <button class="btn small" id="btnMediaPickerUpload">上传新文件</button>
+          <span class="filter-count" id="mediaPickerCount"></span>
           <span class="field-hint">点击缩略图即选择；上传后自动刷新。</span>
         </div>
         <div class="media-picker-grid" id="mediaPickerGrid"></div>
+        <div id="mediaPickerMoreWrap" style="text-align:center;margin-top:8px"></div>
       </div>
       <div class="modal-actions">
         <button class="btn" id="mediaPickerClose">取消</button>
@@ -478,6 +483,30 @@
       <div class="modal-actions">
         <button class="btn" type="button" id="btnBookmarkCancel">取消</button>
         <button class="btn primary" type="button" id="btnBookmarkInsert">插入书签</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 键盘快捷键一览 -->
+  <div class="modal-mask" id="shortcutsModal" style="display:none">
+    <div class="modal">
+      <h3>键盘快捷键</h3>
+      <div class="modal-body">
+        <div class="shortcuts-grid">
+          <div class="shortcut-row"><kbd>Ctrl / Cmd + S</kbd><span>保存当前文章或模块配置</span></div>
+          <div class="shortcut-row"><kbd>Ctrl / Cmd + K</kbd><span>聚焦当前模块搜索框（非输入态按 <kbd>/</kbd> 同效）</span></div>
+          <div class="shortcut-row"><kbd>Ctrl / Cmd + F</kbd><span>编辑器内查找文本（支持所见即所得 / 分屏 / 源码）</span></div>
+          <div class="shortcut-row"><kbd>Ctrl / Cmd + H</kbd><span>编辑器内查找并替换</span></div>
+          <div class="shortcut-row"><kbd>Ctrl + Shift + N</kbd><span>在文章 / 日常 / 画廊模块快速新建</span></div>
+          <div class="shortcut-row"><kbd>Ctrl + Shift + F</kbd><span>切换专注模式（隐藏/展开左侧栏）</span></div>
+          <div class="shortcut-row"><kbd>Ctrl + Shift + P</kbd><span>打开内容推送预览</span></div>
+          <div class="shortcut-row"><kbd>Alt + 1 ~ 8</kbd><span>快速切换 01 文章 ～ 08 日程模块</span></div>
+          <div class="shortcut-row"><kbd>Esc</kbd><span>关闭当前弹窗或查找栏</span></div>
+          <div class="shortcut-row"><kbd>?</kbd><span>打开本快捷键说明（非输入态）</span></div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn primary" type="button" id="btnShortcutsClose">关闭</button>
       </div>
     </div>
   </div>

@@ -108,10 +108,12 @@
     text-wrap: pretty;
   }
   code,
-  kbd,
   samp,
   pre {
     font-family: var(--f-code);
+  }
+  kbd {
+    font-family: var(--f-mono);
   }
   hr {
     border: 0;

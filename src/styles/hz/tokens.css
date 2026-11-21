@@ -40,7 +40,7 @@
   /* —— 字 —— */
   --f-sans: 'Anthropic Sans', 'Noto Sans SC', 'Source Han Sans SC', system-ui, sans-serif;
   --f-serif: 'Anthropic Serif', 'Noto Serif SC', 'Source Han Serif SC', Georgia, serif;
-  --f-mono: 'Anthropic Mono', 'JetBrains Mono', ui-monospace, monospace;
+  --f-mono: 'Anthropic Mono', ui-monospace, monospace;
   --f-code: 'JetBrains Mono', 'Anthropic Mono', ui-monospace, Consolas, monospace;
   /* 纪念碑宽体仅限品牌字标、页脚大字与纯数字序号，不用于长句与混排正文标题 */
   --f-display: 'Unbounded', 'Anthropic Sans', 'Noto Sans SC', sans-serif;

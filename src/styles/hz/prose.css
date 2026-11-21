@@ -401,6 +401,14 @@
   border-radius: 12px;
   background: var(--hz-void);
 }
+.hz-prose img[data-zoomable='1'] {
+  cursor: zoom-in;
+  transition: border-color var(--d-2) var(--e-out), box-shadow var(--d-2) var(--e-out);
+}
+.hz-prose img[data-zoomable='1']:hover {
+  border-color: color-mix(in oklab, var(--hz-hot) 55%, var(--hz-line-2));
+  box-shadow: 0 12px 32px -18px rgb(255 90 26 / 0.45);
+}
 .hz-prose figure {
   margin-block: 2em;
 }

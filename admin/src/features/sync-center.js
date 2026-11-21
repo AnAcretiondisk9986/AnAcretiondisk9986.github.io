@@ -30,6 +30,8 @@ const SYNC_STATE_LABELS = {
 const FILE_STATUS_LABELS = { added: '新增', modified: '修改', deleted: '删除', renamed: '重命名', untracked: '未跟踪', conflicted: '冲突', 'type-changed': '类型变更' };
 let syncStatusCache = null;
 let syncBusy = false;
+let syncStatusInFlight = null;
+let lastSyncCheckAt = 0;
 
 function reloadActiveModule() {
   const mode = ctx.getMode();
@@ -60,24 +62,43 @@ function renderSyncCard(status) {
   bits.push(`待提交 ${cur.dirtyCount ?? 0}`);
   if (cur.autoPull) bits.push('自动同步已开启');
   $('#syncMeta').innerHTML = bits.map(b => `<b>${esc(b)}</b>`).join(' · ');
+
+  const pushBtn = $('#btnPush');
+  if (pushBtn && !syncBusy) {
+    const pending = (cur.dirtyCount || 0) + (cur.ahead || 0);
+    pushBtn.innerHTML = pending > 0 ? `发布<span class="btn-badge">${pending}</span>` : '发布';
+  }
 }
 
 async function refreshSyncStatus({ fetchRemote = false, silent = false } = {}) {
-  try {
-    const res = await apiFetch(`/api/sync/status${fetchRemote ? '?fetch=1' : ''}`);
-    const data = await res.json();
-    renderSyncCard(data);
-    if (!res.ok) {
-      if (!silent) toast(data.error || '同步状态检查失败');
+  if (syncStatusInFlight && !fetchRemote) return syncStatusInFlight;
+  const run = (async () => {
+    const refreshBtn = $('#btnSyncRefresh');
+    if (fetchRemote && refreshBtn) refreshBtn.disabled = true;
+    try {
+      const res = await apiFetch(`/api/sync/status${fetchRemote ? '?fetch=1' : ''}`);
+      const data = await res.json();
+      lastSyncCheckAt = Date.now();
+      renderSyncCard(data);
+      if (!res.ok) {
+        if (!silent) toast(data.error || '同步状态检查失败');
+        return data;
+      }
+      if (data.fetchError && !silent) toast('远端检查失败：' + data.fetchError);
       return data;
+    } catch (e) {
+      renderSyncCard({ state: 'sync-error', stateLabel: '同步检查失败', error: e.message });
+      if (!silent) toast('同步状态检查失败: ' + e.message);
+      return null;
+    } finally {
+      if (fetchRemote && refreshBtn) refreshBtn.disabled = false;
     }
-    if (data.fetchError && !silent) toast('远端检查失败：' + data.fetchError);
-    return data;
-  } catch (e) {
-    renderSyncCard({ state: 'sync-error', stateLabel: '同步检查失败', error: e.message });
-    if (!silent) toast('同步状态检查失败: ' + e.message);
-    return null;
+  })();
+  if (!fetchRemote) {
+    syncStatusInFlight = run.finally(() => { syncStatusInFlight = null; });
+    return syncStatusInFlight;
   }
+  return run;
 }
 
 async function loadOperations(limit = 12) {
@@ -364,6 +385,7 @@ async function runSyncPush(kind) {
     btn.textContent = original;
     btn.disabled = false;
     syncBusy = false;
+    renderSyncCard();
   }
 }
 
@@ -418,6 +440,7 @@ async function runSyncPull() {
     btn.textContent = original;
     btn.disabled = false;
     syncBusy = false;
+    renderSyncCard();
   }
 }
 
@@ -436,7 +459,16 @@ export function initSyncCenter(options = {}) {
   const modal = $('#syncModal');
   if (modal) modal.addEventListener('click', (e) => { if (e.target === modal) closeSyncModal(); });
   refreshSyncStatus({ silent: true });
-  setInterval(() => { if (!syncBusy && $('#syncModal') && $('#syncModal').style.display === 'none') refreshSyncStatus({ silent: true }); }, 60000);
+  setInterval(() => {
+    if (!document.hidden && !syncBusy && $('#syncModal') && $('#syncModal').style.display === 'none') {
+      refreshSyncStatus({ silent: true });
+    }
+  }, 60000);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && !syncBusy && Date.now() - lastSyncCheckAt > 45000) {
+      refreshSyncStatus({ silent: true });
+    }
+  });
 }
 
 export function isSyncModalOpen() { return isModalOpen($('#syncModal')); }

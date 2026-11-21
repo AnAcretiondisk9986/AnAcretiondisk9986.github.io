@@ -1,19 +1,33 @@
-/** 模态框：显隐、aria 标注与键盘焦点锁定。 */
+/** 模态框：显隐、aria 标注、触发焦点恢复与键盘焦点锁定。 */
+const previousFocusMap = new WeakMap();
+
 export function openModal(el) {
   if (!el) return;
+  const active = document.activeElement;
+  if (active && active instanceof HTMLElement && !el.contains(active)) {
+    previousFocusMap.set(el, active);
+  }
   el.style.display = 'flex';
   el.setAttribute('role', 'dialog');
   el.setAttribute('aria-modal', 'true');
   el.dataset.open = '1';
   const focusable = el.querySelector('[autofocus], input:not([type="hidden"]):not([disabled]), textarea:not([disabled]), select:not([disabled])')
     || el.querySelector('button:not([disabled]), [href], [tabindex]:not([tabindex="-1"])');
-  if (focusable) setTimeout(() => focusable.focus(), 0);
+  if (focusable) setTimeout(() => { if (isModalOpen(el)) focusable.focus(); }, 0);
 }
 
 export function closeModal(el) {
   if (!el) return;
   el.style.display = 'none';
+  el.removeAttribute('aria-modal');
   delete el.dataset.open;
+  const prev = previousFocusMap.get(el);
+  previousFocusMap.delete(el);
+  if (prev && prev.isConnected && !openModals().length) {
+    setTimeout(() => {
+      try { prev.focus({ preventScroll: true }); } catch { /* ignore */ }
+    }, 0);
+  }
 }
 
 export function isModalOpen(el) {

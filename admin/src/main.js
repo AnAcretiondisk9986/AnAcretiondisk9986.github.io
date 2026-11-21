@@ -37,6 +37,11 @@
     let postDraftStorageWarned = false;
     let postSaving = false;
     const POST_DRAFT_PREFIX = 'admin-post-draft:';
+    const POST_LIST_PAGE = 120;
+    let postListLimit = POST_LIST_PAGE;
+    let postBodyUpdateTimer = null;
+    let postSearchTimer = null;
+    let deletingPostSlug = null;
     let postUploadTarget = 'content';
     let appUploadMaxBytes = 512 * 1024 * 1024;
 
@@ -49,8 +54,16 @@
           renderListError(data.error || `加载失败（HTTP ${res.status}）`);
           return;
         }
-        posts = await res.json();
-        if (!Array.isArray(posts)) { store.set({ page: 'error' }); renderListError('返回数据格式不正确'); return; }
+        const loaded = await res.json();
+        if (!Array.isArray(loaded)) { store.set({ page: 'error' }); renderListError('返回数据格式不正确'); return; }
+        posts = loaded.map((p) => ({
+          ...p,
+          _hay: `${p.title || ''}\n${p.description || ''}\n${p.slug || ''}\n${p.excerpt || ''}\n${(p.tags || []).join(',')}`.toLowerCase(),
+        }));
+        const slugSet = new Set(posts.map((p) => p.slug));
+        for (const s of [...selectedSlugs]) {
+          if (!slugSet.has(s)) selectedSlugs.delete(s);
+        }
         store.set({ page: posts.length ? 'ready' : 'empty' });
         refreshTagOptions();
         renderList();
@@ -129,7 +142,7 @@
         if (prefs.from && (p.pubDate || '') < prefs.from) return false;
         if (prefs.to && (p.pubDate || '') > prefs.to) return false;
         if (q) {
-          const hay = `${p.title || ''}\n${p.description || ''}\n${p.slug || ''}\n${p.excerpt || ''}\n${(p.tags || []).join(',')}`.toLowerCase();
+          const hay = p._hay || `${p.title || ''}\n${p.description || ''}\n${p.slug || ''}\n${p.excerpt || ''}\n${(p.tags || []).join(',')}`.toLowerCase();
           if (!hay.includes(q)) return false;
         }
         return true;
@@ -147,8 +160,26 @@
       return list.sort(compare);
     }
 
+    function updateFilterButtonBadge() {
+      const btn = $('#btnToggleFilters');
+      if (!btn) return;
+      const activeCount = [listPrefs.status, listPrefs.access, listPrefs.tag, listPrefs.from, listPrefs.to].filter(Boolean).length;
+      btn.innerHTML = activeCount ? `筛选<span class="btn-badge">${activeCount}</span>` : '筛选';
+      btn.classList.toggle('primary', listPrefs.filtersOpen || activeCount > 0);
+    }
+
+    function updateActivePostItem() {
+      const el = $('#postList');
+      if (!el || currentMode !== 'posts') return;
+      el.querySelectorAll('.post-item.active, .post-card.active').forEach((n) => n.classList.remove('active'));
+      if (!currentSlug) return;
+      const target = [...el.querySelectorAll('.post-item, .post-card')].find((n) => n.dataset.slug === currentSlug);
+      if (target) target.classList.add('active');
+    }
+
     function renderList() {
       const el = $('#postList');
+      updateFilterButtonBadge();
       if (!posts.length) {
         el.innerHTML = '<div class="empty-state" style="padding:30px">暂无文章</div>';
         $('#postCountHint').textContent = '';
@@ -161,7 +192,15 @@
         updateBatchBar();
         return;
       }
-      el.innerHTML = list.map((p) => (listPrefs.view === 'card' ? renderPostCard(p) : renderPostRow(p))).join('');
+      const visible = list.slice(0, postListLimit);
+      const remaining = list.length - visible.length;
+      const rowsHtml = visible.map((p) => (listPrefs.view === 'card' ? renderPostCard(p) : renderPostRow(p))).join('');
+      const moreHtml = remaining > 0
+        ? `<div style="padding:10px;text-align:center"><button type="button" class="btn small" id="btnPostListMore">加载更多（剩余 ${remaining} 篇）</button></div>`
+        : '';
+      el.innerHTML = rowsHtml + moreHtml;
+      const moreBtn = $('#btnPostListMore');
+      if (moreBtn) moreBtn.onclick = () => { postListLimit += POST_LIST_PAGE; renderList(); };
       updateBatchBar();
     }
 
@@ -187,22 +226,32 @@
       $('#listFilters').hidden = !listPrefs.filtersOpen;
       $('#btnToggleFilters').classList.toggle('primary', listPrefs.filtersOpen);
 
-      search.addEventListener('input', () => { listPrefs.q = search.value; saveListPrefs(); renderList(); });
-      $('#fPostStatus').addEventListener('change', (e) => { listPrefs.status = e.target.value; saveListPrefs(); renderList(); });
-      $('#fPostAccess').addEventListener('change', (e) => { listPrefs.access = e.target.value; saveListPrefs(); renderList(); });
-      $('#fPostTag').addEventListener('change', (e) => { listPrefs.tag = e.target.value; saveListPrefs(); renderList(); });
-      $('#fPostFrom').addEventListener('change', (e) => { listPrefs.from = e.target.value; saveListPrefs(); renderList(); });
-      $('#fPostTo').addEventListener('change', (e) => { listPrefs.to = e.target.value; saveListPrefs(); renderList(); });
-      $('#fPostSort').addEventListener('change', (e) => { listPrefs.sort = e.target.value; saveListPrefs(); renderList(); });
+      search.addEventListener('input', () => {
+        listPrefs.q = search.value;
+        postListLimit = POST_LIST_PAGE;
+        clearTimeout(postSearchTimer);
+        postSearchTimer = setTimeout(() => {
+          postSearchTimer = null;
+          saveListPrefs();
+          renderList();
+        }, 100);
+      });
+      $('#fPostStatus').addEventListener('change', (e) => { listPrefs.status = e.target.value; postListLimit = POST_LIST_PAGE; saveListPrefs(); renderList(); });
+      $('#fPostAccess').addEventListener('change', (e) => { listPrefs.access = e.target.value; postListLimit = POST_LIST_PAGE; saveListPrefs(); renderList(); });
+      $('#fPostTag').addEventListener('change', (e) => { listPrefs.tag = e.target.value; postListLimit = POST_LIST_PAGE; saveListPrefs(); renderList(); });
+      $('#fPostFrom').addEventListener('change', (e) => { listPrefs.from = e.target.value; postListLimit = POST_LIST_PAGE; saveListPrefs(); renderList(); });
+      $('#fPostTo').addEventListener('change', (e) => { listPrefs.to = e.target.value; postListLimit = POST_LIST_PAGE; saveListPrefs(); renderList(); });
+      $('#fPostSort').addEventListener('change', (e) => { listPrefs.sort = e.target.value; postListLimit = POST_LIST_PAGE; saveListPrefs(); renderList(); });
       $('#fPostView').addEventListener('change', (e) => { listPrefs.view = e.target.value; saveListPrefs(); renderList(); });
       $('#btnToggleFilters').addEventListener('click', () => {
         listPrefs.filtersOpen = !listPrefs.filtersOpen;
         saveListPrefs();
         $('#listFilters').hidden = !listPrefs.filtersOpen;
-        $('#btnToggleFilters').classList.toggle('primary', listPrefs.filtersOpen);
+        updateFilterButtonBadge();
       });
       $('#btnClearFilters').addEventListener('click', () => {
         listPrefs = { ...LIST_PREF_DEFAULTS, view: listPrefs.view, filtersOpen: listPrefs.filtersOpen };
+        postListLimit = POST_LIST_PAGE;
         saveListPrefs();
         search.value = '';
         $('#fPostStatus').value = '';
@@ -244,7 +293,8 @@
         const res = await apiFetch(`${API}/${encodeURIComponent(slug)}`);
         const post = await res.json();
         if (!res.ok || post.error) { toast(post.error || `加载失败（HTTP ${res.status}）`); return; }
-        renderEditor(post); renderList();
+        renderEditor(post);
+        updateActivePostItem();
       } catch(e) { toast('加载失败: ' + e.message) }
     }
 
@@ -471,6 +521,8 @@
     function resetPostEditorTracking() {
       clearTimeout(postDraftTimer);
       postDraftTimer = null;
+      clearTimeout(postBodyUpdateTimer);
+      postBodyUpdateTimer = null;
       if (wordController) {
         try { wordController.destroy(); } catch { /* ignore */ }
         wordController = null;
@@ -758,8 +810,50 @@
       initWordEditorController(value.content || '');
       setupMediaInsertButton();
       finalizePostEditorInit();
-      renderList();
+      updateActivePostItem();
       if (isNew) $('#fTitle')?.focus();
+    }
+
+    function schedulePostBodyUpdate() {
+      if (postHydrating || currentMode !== 'posts') return;
+      if (!postDirty && postBaselineSnapshot) {
+        postDirty = true;
+        updatePostEditorStatus();
+      }
+      clearTimeout(postBodyUpdateTimer);
+      postBodyUpdateTimer = setTimeout(() => {
+        postBodyUpdateTimer = null;
+        if (postHydrating || currentMode !== 'posts') return;
+        syncPostCoverPreview();
+        markPostDirty();
+        updatePostValidation();
+      }, 150);
+    }
+
+    function focusFirstPostValidationError(errors) {
+      const fieldOrder = [
+        ['title', '#fTitle'],
+        ['slug', '#fSlug'],
+        ['pubDate', '#fPubDate'],
+        ['dayIndex', '#fDayIndex'],
+        ['tags', '#fTags'],
+      ];
+      for (const [key, sel] of fieldOrder) {
+        if (!errors[key]) continue;
+        const input = $(sel);
+        if (!input) continue;
+        const section = input.closest('.form-section');
+        if (section?.classList.contains('collapsed')) {
+          section.classList.remove('collapsed');
+          if (section.dataset.section) {
+            editorSectionPrefs[section.dataset.section] = true;
+            saveEditorSectionPrefs();
+          }
+        }
+        input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        input.focus();
+        break;
+      }
     }
 
     function renderEditor(post) {
@@ -773,10 +867,16 @@
 
     async function savePost() {
       if (postSaving) return;
+      clearTimeout(postBodyUpdateTimer);
+      postBodyUpdateTimer = null;
       const state = readPostFormState();
       const errors = updatePostValidation();
       const errorList = Object.values(errors);
-      if (errorList.length) { toast('请先修正：' + errorList.join('；')); return; }
+      if (errorList.length) {
+        focusFirstPostValidationError(errors);
+        toast('请先修正：' + errorList.join('；'));
+        return;
+      }
       if (!postDirty) { toast('没有未保存修改'); return; }
       if (currentSlug && !/^[a-f0-9]{64}$/.test(currentPostHash)) {
         toast('当前文章版本未知，请重新加载后再保存');
@@ -790,6 +890,7 @@
       if (currentSlug) formData.set('expectedHash', currentPostHash);
 
       const isExistingPost = Boolean(currentSlug);
+      const prevDraftKey = postDraftKey;
       postSaving = true;
       updatePostEditorStatus();
       try {
@@ -806,10 +907,17 @@
           }
           throw new Error(data.error || `HTTP ${res.status}`);
         }
-        clearPostDraft();
-        postDirty = false;
-        postBaselineSnapshot = '';
+        clearPostDraft(prevDraftKey);
         currentSlug = data.slug;
+        currentPostHash = data.contentHash || currentPostHash;
+        postDraftKey = data.slug;
+        const slugInput = $('#fSlug');
+        if (slugInput && slugInput.value !== data.slug) slugInput.value = data.slug;
+        $('#editorTitle').textContent = '编辑：' + (state.title || data.slug);
+        $('#btnDelete').style.display = '';
+        $('#templateChips')?.remove();
+        postBaselineSnapshot = serializePostForm(readPostFormState());
+        postDirty = false;
         // 刷新同步状态，让「未发布」判定基于最新工作区，并在提示里给出下一步
         try { await refreshSyncStatus({ silent: true }); } catch { /* 状态刷新失败不影响保存结果 */ }
         const published = (store.get()?.syncStatus?.dirtyCount ?? 0) === 0;
@@ -819,7 +927,9 @@
           toast(`${isExistingPost ? '已保存到本地' : '已创建'} · 未发布（点顶栏「发布」上线）`);
         }
         await loadPosts();
-        await selectPost(data.slug, { skipLeaveGuard: true });
+        const savedSummary = posts.find((p) => p.slug === data.slug) || null;
+        setupShareInfo(savedSummary);
+        updateActivePostItem();
       } catch(e) {
         setPostEditorStatus('保存失败', 'error');
         store.set({ editor: { status: 'save-error', dirty: true, saving: false, lastError: e.message } });
@@ -831,15 +941,19 @@
     }
 
     async function deletePost(slug) {
+      if (deletingPostSlug === slug) return;
       if(!confirm(`确定删除「${slug}」？此操作不可撤销。`)) return;
+      deletingPostSlug = slug;
       try {
-        const res = await apiFetch(`${API}/${slug}`, { method:'DELETE' });
+        const res = await apiFetch(`${API}/${encodeURIComponent(slug)}`, { method:'DELETE' });
         const data = await res.json();
-        if(data.error){toast(uploadErrorText(data));return}
+        if(!res.ok || data.error){toast(uploadErrorText(data));return}
         toast('已删除');
         if(currentSlug===slug){clearPostDraft();currentSlug=null;resetPostEditorTracking();$('#editorContainer').innerHTML='<div class="empty-state">← 从左侧列表选择文章，或点击「新建」</div>';$('#btnDelete').style.display='none';$('#btnSave').disabled=true;$('#editorTitle').textContent='选择或创建一篇文章'}
         await loadPosts();
-      } catch(e) { toast('删除失败') }
+        refreshSyncStatus({ silent: true }).catch(() => {});
+      } catch(e) { toast('删除失败: ' + e.message) }
+      finally { deletingPostSlug = null; }
     }
 
     function toggleDraft() {
@@ -882,12 +996,18 @@
       const bodyCover = firstPostImage(getEditorMarkdown() || '');
       const url = customCover || bodyCover;
       source.textContent = customCover ? '自定义封面' : bodyCover ? '正文首图' : '无封面';
-      empty.hidden = Boolean(url);
-      image.hidden = !url;
       if (!url) {
+        empty.hidden = false;
+        empty.textContent = '上传封面（可截选）';
+        image.hidden = true;
+        delete image.dataset.previewUrl;
         image.removeAttribute('src');
         return;
       }
+      if (image.dataset.previewUrl === url) return;
+      image.dataset.previewUrl = url;
+      empty.hidden = true;
+      image.hidden = false;
       image.onload = () => { image.hidden = false; empty.hidden = true; };
       image.onerror = () => { image.hidden = true; empty.hidden = false; empty.textContent = '图片不可用'; source.textContent = '检查地址'; };
       image.src = url;
@@ -933,8 +1053,12 @@
       document.onpaste = async e => {
         // 编辑器已接管粘贴时会先 preventDefault，此处跳过，避免同一张图上传两次
         if (e.defaultPrevented) return;
+        const canAcceptPaste = (currentMode === 'posts' && Boolean(wordController))
+          || (currentMode === 'gallery' && Boolean($('#fSrc')))
+          || (currentMode === 'about' && Boolean($('#fAvatar')));
+        if (!canAcceptPaste) return;
         const items = e.clipboardData?.items ? [...e.clipboardData.items] : [];
-        const audioItem = items.find(i => i.type.startsWith('audio/'));
+        const audioItem = currentMode === 'posts' ? items.find(i => i.type.startsWith('audio/')) : null;
         const imgItem = items.find(i => i.type.startsWith('image/'));
         const item = audioItem || imgItem;
         if (item) {
@@ -1228,8 +1352,8 @@
           const aEl=$('#fMusicArtist'); if(aEl) aEl.value=data.artist||'';
           const cEl=$('#fMusicCover'); if(cEl) cEl.value=data.coverUrl||'';
           const st=$('#musicProbe'); if(st) st.hidden=true;
-          modal.style.display='flex';
-          $('#fMusicTitle')?.focus();
+          openModal(modal);
+          setTimeout(()=>$('#fMusicTitle')?.focus(),0);
           toast('未能解析歌曲信息，请手动填写');
         }else{
           toast('上传失败：编辑器未就绪');
@@ -1350,8 +1474,8 @@
         container: host,
         initialMarkdown: String(content || ''),
         renderPreview: renderMarkdownPreviewInto,
-        onDirty: () => { syncPostCoverPreview(); markPostDirty(); updatePostValidation(); },
-        onStatsChange: () => { updatePostValidation(); },
+        onDirty: schedulePostBodyUpdate,
+        onStatsChange: null,
         onUploadImages: (files) => uploadMultipleImagesToEditor(files),
         onImportExternalImages: (urls) => rehostExternalImages(urls),
         onOpenMediaPicker: (opts) => openMediaPicker(opts),
@@ -2054,18 +2178,97 @@
     function mdAttr(s){return mdEscapeAttr(String(s).replace(/&amp;/g,'&'))}
 
 
+    function isTypingTarget(el) {
+      if (!el || !(el instanceof HTMLElement)) return false;
+      const tag = el.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
+      if (el.isContentEditable || el.closest?.('[contenteditable="true"]')) return true;
+      return false;
+    }
+
+    function focusActiveSearch() {
+      const candidates = {
+        posts: '#fPostSearch',
+        daily: '#dailySearch',
+        gallery: '#fGallerySearch',
+        media: '#fMediaSearch',
+        schedule: '#fCourseSearch',
+      };
+      const input = $(candidates[currentMode]);
+      if (input) {
+        input.focus();
+        input.select?.();
+        return true;
+      }
+      return false;
+    }
+
+    const MODE_SHORTCUT_ORDER = ['posts', 'daily', 'gallery', 'media', 'about', 'frontend', 'access', 'schedule'];
+
     document.addEventListener('keydown', e => {
-      if((e.ctrlKey||e.metaKey)&&e.key==='s'){
+      const mod = e.ctrlKey || e.metaKey;
+      const key = (e.key || '').toLowerCase();
+
+      if (mod && !e.shiftKey && key === 's') {
         e.preventDefault();
         // 各模块只处理自己可保存的内容；媒体/画廊列表等无「保存」语义的模块不应落到文章保存上
-        // （此前 media 缺失分支，Ctrl+S 会误报「没有未保存修改」）
-        if(currentMode==='daily') saveDailyItem();
-        else if(currentMode==='gallery') saveGalleryItem();
-        else if(currentMode==='about') saveAbout();
-        else if(currentMode==='frontend') saveFrontend();
-        else if(currentMode==='schedule') saveSchedule();
-        else if(currentMode==='access') savePrivateAccess();
-        else if(currentMode==='posts') savePost();
+        if (currentMode === 'daily') saveDailyItem();
+        else if (currentMode === 'gallery') saveGalleryItem();
+        else if (currentMode === 'about') saveAbout();
+        else if (currentMode === 'frontend') saveFrontend();
+        else if (currentMode === 'schedule') saveSchedule();
+        else if (currentMode === 'access') savePrivateAccess();
+        else if (currentMode === 'posts') savePost();
+        return;
+      }
+
+      if (isModalOpen($('#lockOverlay'))) return;
+
+      if (mod && !e.shiftKey && key === 'k') {
+        if (focusActiveSearch()) e.preventDefault();
+        return;
+      }
+
+      if (mod && e.shiftKey && key === 'n') {
+        if (['posts', 'daily', 'gallery'].includes(currentMode) && !document.querySelector('.modal-mask[data-open="1"]')) {
+          e.preventDefault();
+          $('#btnNew')?.click();
+        }
+        return;
+      }
+
+      if (mod && e.shiftKey && key === 'f') {
+        if (currentMode === 'posts' && $('#btnFocusMode')) {
+          e.preventDefault();
+          $('#btnFocusMode').click();
+        }
+        return;
+      }
+
+      if (mod && e.shiftKey && key === 'p') {
+        if (!document.querySelector('.modal-mask[data-open="1"]')) {
+          e.preventDefault();
+          $('#btnPush')?.click();
+        }
+        return;
+      }
+
+      if (e.altKey && !mod && /^[1-8]$/.test(e.key)) {
+        const targetMode = MODE_SHORTCUT_ORDER[Number(e.key) - 1];
+        if (targetMode && targetMode !== currentMode && !document.querySelector('.modal-mask[data-open="1"]')) {
+          e.preventDefault();
+          switchMode(targetMode);
+        }
+        return;
+      }
+
+      if (!mod && !e.altKey && !isTypingTarget(e.target) && !document.querySelector('.modal-mask[data-open="1"]')) {
+        if (e.key === '/') {
+          if (focusActiveSearch()) e.preventDefault();
+        } else if (e.key === '?') {
+          e.preventDefault();
+          openModal($('#shortcutsModal'));
+        }
       }
     });
 
@@ -2121,16 +2324,19 @@
       insertMarkdownBlock,
       insertImageIntoEditor,
     });
-    initAbout({ setupUpload, openMediaPicker, closeMediaPicker, onDirtyChange: updateSubModuleDirtyStatus });
+    initAbout({ setupUpload, openMediaPicker, closeMediaPicker, onDirtyChange: updateSubModuleDirtyStatus, refreshSyncStatus });
     fetchHealth();
     initFrontend({
       onDirtyChange: updateSubModuleDirtyStatus,
+      refreshSyncStatus,
     });
     initSchedule({
       onDirtyChange: updateSubModuleDirtyStatus,
+      refreshSyncStatus,
     });
     initPosts({
       getPosts: () => posts,
+      getFilteredSlugs: () => getFilteredPosts().map((p) => p.slug),
       getSelection: () => selectedSlugs,
       getCurrentSlug: () => currentSlug,
       isPostDirty: () => postDirty,
@@ -2139,6 +2345,7 @@
       selectPost: (slug, options) => selectPost(slug, options),
       resetEditor: () => resetPostEditorTracking(),
       renderList: () => renderList(),
+      refreshSyncStatus,
     });
     initListControls();
     loadPosts();
@@ -2276,8 +2483,12 @@
     $('#mediaUsageClose').onclick = () => closeModal($('#mediaUsageModal'));
     $('#mediaUsageModal').addEventListener('click', (e) => { if (e.target === $('#mediaUsageModal')) closeModal($('#mediaUsageModal')); });
     $('#previewModal').addEventListener('click', (e) => { if (e.target === $('#previewModal')) closePostPreview(); });
+    $('#btnShortcuts')?.addEventListener('click', () => openModal($('#shortcutsModal')));
+    $('#btnShortcutsClose')?.addEventListener('click', () => closeModal($('#shortcutsModal')));
+    $('#shortcutsModal')?.addEventListener('click', (e) => { if (e.target === $('#shortcutsModal')) closeModal($('#shortcutsModal')); });
     document.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape') return;
+      if (isModalOpen($('#lockOverlay'))) return;
       if (isModalOpen($('#conflictModal'))) closeModal($('#conflictModal'));
       else if (isModalOpen($('#coverCropModal'))) closeCoverCrop();
       else if (isModalOpen($('#mediaPickerModal'))) closeMediaPicker();
@@ -2294,6 +2505,8 @@
       else if (isModalOpen($('#bookmarkModal'))) closeModal($('#bookmarkModal'));
       else if (isModalOpen($('#imgSizeModal'))) { closeModal($('#imgSizeModal')); imgSizeTarget = null; }
       else if (isModalOpen($('#schedGithubModal'))) closeModal($('#schedGithubModal'));
+      else if (isModalOpen($('#shortcutsModal'))) closeModal($('#shortcutsModal'));
+      else if ($('#findReplaceBar') && !$('#findReplaceBar').hidden) wordController?.toggleFindBar?.(false);
     });
     $('#btnSite').onclick = () => window.open('https://blog.acretiondisk.top/', '_blank');
 
@@ -2312,22 +2525,25 @@
     function lockPanel() {
       const overlay = $('#lockOverlay');
       if (!overlay) return;
-      overlay.style.display = 'flex';
       const input = $('#lockInput');
-      if (input) { input.value = ''; setTimeout(() => input.focus(), 0); }
+      if (input) input.value = '';
+      openModal(overlay);
     }
 
     async function unlockPanel() {
       const value = $('#lockInput')?.value?.trim() || '';
       if (!value) { toast('请输入管理口令'); return; }
+      const unlockBtn = $('#btnUnlock');
+      if (unlockBtn) unlockBtn.disabled = true;
       try {
         const res = await fetch('/api/health', { headers: { 'x-admin-token': value } });
         if (!res.ok) { toast('口令不正确'); return; }
         setToken(value);
-        $('#lockOverlay').style.display = 'none';
+        closeModal($('#lockOverlay'));
         toast('已解锁');
         await refreshSyncStatus({ silent: true });
       } catch (e) { toast('验证失败: ' + e.message); }
+      finally { if (unlockBtn) unlockBtn.disabled = false; }
     }
 
     function logoutPanel() {

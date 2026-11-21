@@ -8,7 +8,8 @@
  * - 覆盖前先备份到 backupDir，便于误改后回滚。
  * - 读取返回 contentHash，写入可携带 expectedHash；不一致时抛 VersionConflictError。
  */
-import { copyFile, mkdir, readFile, readdir, unlink } from 'node:fs/promises';
+import { copyFile, mkdir, readFile, readdir, stat, unlink } from 'node:fs/promises';
+import { randomBytes } from 'node:crypto';
 import { basename, join } from 'node:path';
 import { atomicWriteFile, sha256 } from './atomic-file.mjs';
 
@@ -52,6 +53,8 @@ export function createJsonStore({
 } = {}) {
   if (!filePath) throw new Error('createJsonStore 需要 filePath');
 
+  let readCache = null; // { mtimeMs, size, data, contentHash }
+
   async function readRaw() {
     try {
       return await readFile(filePath, 'utf8');
@@ -62,15 +65,39 @@ export function createJsonStore({
   }
 
   async function read() {
+    let st = null;
+    try {
+      st = await stat(filePath);
+    } catch (err) {
+      if (err.code === 'ENOENT') {
+        readCache = null;
+        return { data: readDefault(), contentHash: null, exists: false };
+      }
+      throw err;
+    }
+    if (readCache && readCache.mtimeMs === st.mtimeMs && readCache.size === st.size) {
+      return { data: structuredClone(readCache.data), contentHash: readCache.contentHash, exists: true };
+    }
     const raw = await readRaw();
-    if (raw === null) return { data: readDefault(), contentHash: null, exists: false };
+    if (raw === null) {
+      readCache = null;
+      return { data: readDefault(), contentHash: null, exists: false };
+    }
     let parsed;
     try {
       parsed = JSON.parse(raw);
     } catch (err) {
+      readCache = null;
       throw new InvalidDataError(`${label} 文件不是合法 JSON：${err.message}`);
     }
-    return { data: parsed, contentHash: sha256(raw), exists: true };
+    const contentHash = sha256(raw);
+    const afterStat = await stat(filePath).catch(() => st);
+    if (afterStat && afterStat.size === Buffer.byteLength(raw, 'utf8')) {
+      readCache = { mtimeMs: afterStat.mtimeMs, size: afterStat.size, data: parsed, contentHash };
+    } else {
+      readCache = null;
+    }
+    return { data: structuredClone(parsed), contentHash, exists: true };
   }
 
   async function pruneBackups() {
@@ -87,7 +114,7 @@ export function createJsonStore({
   async function backupCurrent() {
     if (!backupDir) return null;
     const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const target = join(backupDir, `${label}.${stamp}.json`);
+    const target = join(backupDir, `${label}.${stamp}-${randomBytes(2).toString('hex')}.json`);
     try {
       await mkdir(backupDir, { recursive: true });
       await copyFile(filePath, target);
@@ -109,12 +136,16 @@ export function createJsonStore({
     const currentRaw = await readRaw();
     const currentHash = currentRaw === null ? null : sha256(currentRaw);
     if (expectedHash !== null && String(expectedHash) !== String(currentHash ?? '')) {
+      readCache = null;
       throw new VersionConflictError(`${label} 已被其他来源修改，请刷新后再保存`, currentHash);
     }
     if (currentRaw !== null) await backupCurrent();
     const text = serializeJson(normalized);
     await atomicWriteFile(filePath, text);
-    return { data: normalized, contentHash: sha256(text) };
+    const contentHash = sha256(text);
+    const st = await stat(filePath).catch(() => null);
+    readCache = st ? { mtimeMs: st.mtimeMs, size: st.size, data: structuredClone(normalized), contentHash } : null;
+    return { data: normalized, contentHash };
   }
 
   let writeQueue = Promise.resolve();

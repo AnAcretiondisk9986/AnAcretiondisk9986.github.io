@@ -30,6 +30,7 @@ let dailyEditorActive = false;
 let dailyPublishing = false;
 let gridCtrl = null;
 let imageModalEl = null;
+let dailySearchTimer = null;
 
 let ctx = {
   openMediaPicker: null,
@@ -374,7 +375,8 @@ function renderDailyList() {
 
   $('#dailySearch')?.addEventListener('input', (e) => {
     dailyFilter.q = e.target.value || '';
-    renderDailyRows();
+    clearTimeout(dailySearchTimer);
+    dailySearchTimer = setTimeout(() => { dailySearchTimer = null; renderDailyRows(); }, 100);
   });
   $('#dailyFilterType')?.addEventListener('change', (e) => {
     dailyFilter.type = e.target.value || 'all';

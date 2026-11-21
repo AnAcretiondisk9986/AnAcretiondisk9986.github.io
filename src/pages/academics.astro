@@ -87,6 +87,12 @@ const badgeText = (c: PackedCourse) => {
       </div>
     </header>
 
+    <div class="hz-empty" data-acad-empty hidden>
+      <p class="hz-mono">NO COURSES MATCH CURRENT FILTER</p>
+      <p>当前筛选条件下没有匹配的课程，试试清空搜索词或切换状态。</p>
+      <button type="button" class="hz-btn" data-acad-reset>重置全部筛选</button>
+    </div>
+
     <div class="hz-acad-wall">
       {walls.map((wall, idx) => (
         <>

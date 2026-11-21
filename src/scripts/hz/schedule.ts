@@ -531,15 +531,23 @@ function initSchedulePage() {
       favBtn.textContent = fav ? '★ 已收藏' : '☆ 收藏';
     }
 
+    const wasOpen = document.body.classList.contains('hz-drawer-open');
+    if (!wasOpen) {
+      drawerTrigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    }
     document.body.classList.add('hz-drawer-open');
     const drawer = byId('hzDrawer');
     if (drawer) drawer.setAttribute('aria-hidden', 'false');
+    if (!wasOpen) byId<HTMLButtonElement>('hzDrawerClose')?.focus();
   };
 
+  let drawerTrigger: HTMLElement | null = null;
   const closeDrawer = () => {
     document.body.classList.remove('hz-drawer-open');
     const drawer = byId('hzDrawer');
     if (drawer) drawer.setAttribute('aria-hidden', 'true');
+    if (drawerTrigger && drawerTrigger.isConnected) drawerTrigger.focus({ preventScroll: true });
+    drawerTrigger = null;
   };
 
   const bindEventTriggers = (scope: Document | HTMLElement = document) => {
@@ -856,15 +864,26 @@ function initSchedulePage() {
 
   document.addEventListener('keydown', (e) => {
     const target = e.target as HTMLElement | null;
-    const inInput = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT');
-    if (e.key === '/' && !inInput) {
+    const inInput = Boolean(
+      target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable),
+    );
+    if (e.key === '/' && !inInput && !e.ctrlKey && !e.metaKey && !e.altKey) {
       e.preventDefault();
       searchInput?.focus();
+      searchInput?.select();
       return;
     }
     if (e.key === 'Escape') {
       if (document.body.classList.contains('hz-drawer-open')) {
         closeDrawer();
+      } else if (target === searchInput && searchInput) {
+        if (searchInput.value) {
+          state.query = '';
+          searchInput.value = '';
+          renderAll();
+        } else {
+          searchInput.blur();
+        }
       } else if (state.query && searchInput) {
         state.query = '';
         searchInput.value = '';
@@ -872,7 +891,7 @@ function initSchedulePage() {
       }
       return;
     }
-    if (!inInput && !document.body.classList.contains('hz-drawer-open') && (state.view === 'schedule' || state.view === 'month')) {
+    if (!inInput && !e.ctrlKey && !e.metaKey && !e.altKey && !document.body.classList.contains('hz-drawer-open') && (state.view === 'schedule' || state.view === 'month')) {
       if (e.key === 'ArrowLeft') {
         glideStep(-1);
       } else if (e.key === 'ArrowRight') {
@@ -970,7 +989,24 @@ function initSchedulePage() {
   }
 
   renderAll();
-  window.setInterval(updateNowIndicator, 15000);
+  let nowTimer = 0;
+  const startNowTimer = () => {
+    updateNowIndicator();
+    if (!nowTimer && !document.hidden) {
+      nowTimer = window.setInterval(updateNowIndicator, 15000);
+    }
+  };
+  const stopNowTimer = () => {
+    if (nowTimer) {
+      window.clearInterval(nowTimer);
+      nowTimer = 0;
+    }
+  };
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) stopNowTimer();
+    else startNowTimer();
+  });
+  startNowTimer();
 }
 
 initSchedulePage();
