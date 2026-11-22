@@ -654,7 +654,26 @@ export function createGitService({
         return { committed: false, pushed: false, message: '没有需要推送的更改', preview };
       }
     } else {
-      await run(['add', '-A', '--', ...paths]);
+      const normP = (p) => String(p || '').replace(/\\/g, '/').replace(/\/$/, '');
+      const activePaths = [];
+      for (const p of paths) {
+        if (p === '.' || p.startsWith(':')) {
+          activePaths.push(p);
+          continue;
+        }
+        const np = normP(p);
+        const inPreview = preview.files.some((f) => {
+          const fp = normP(f.path);
+          return fp === np || fp.startsWith(`${np}/`);
+        });
+        if (inPreview) {
+          activePaths.push(p);
+          continue;
+        }
+        const existsOnDisk = await access(resolve(cwd, p)).then(() => true, () => false);
+        if (existsOnDisk) activePaths.push(p);
+      }
+      if (activePaths.length) await run(['add', '-A', '--', ...activePaths]);
       const staged = await run(['diff', '--cached', '--quiet'], { allowFailure: true });
       if (staged.code === 0) {
         if (!autoSync || initialStatus.ahead === 0) {

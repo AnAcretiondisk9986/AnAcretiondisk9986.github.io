@@ -9,6 +9,7 @@ src/content/blog/.obsidian/
 .reasonix/
 .ssh-keys/
 .admin-token
+.interact-local.json
 .ai-quota.keys.json
 .tmp-probe/
 .admin-backups/

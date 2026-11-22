@@ -10,6 +10,7 @@ export interface PostMeta {
   cover: string;
   dayIndex?: number | '';
   tags: string[];
+  categories: string[];
   draft: boolean;
   archived: boolean;
   scheduledAt: string;
@@ -44,6 +45,7 @@ export function parsePostFile(raw: string): { meta: PostMeta; content: string } 
     cover: '',
     dayIndex: '',
     tags: [],
+    categories: [],
     draft: false,
     archived: false,
     scheduledAt: '',
@@ -62,9 +64,9 @@ export function parsePostFile(raw: string): { meta: PostMeta; content: string } 
   for (const line of lines) {
     if (!line.trim() || line.trim().startsWith('#')) continue;
     const listItem = line.match(/^\s+-\s+(.*)$/);
-    if (listItem && activeListKey === 'tags') {
-      const tag = unquoteYaml(listItem[1]);
-      if (tag) meta.tags.push(tag);
+    if (listItem && (activeListKey === 'tags' || activeListKey === 'categories')) {
+      const valItem = unquoteYaml(listItem[1]);
+      if (valItem) meta[activeListKey].push(valItem);
       continue;
     }
     activeListKey = '';
@@ -73,13 +75,13 @@ export function parsePostFile(raw: string): { meta: PostMeta; content: string } 
     const [, key, rawVal] = kv;
     const val = rawVal.trim();
 
-    if (key === 'tags') {
+    if (key === 'tags' || key === 'categories') {
       if (val.startsWith('[') && val.endsWith(']')) {
-        meta.tags = val.slice(1, -1).split(',').map((t) => unquoteYaml(t)).filter(Boolean);
+        meta[key] = val.slice(1, -1).split(',').map((t) => unquoteYaml(t)).filter(Boolean);
       } else if (!val) {
-        activeListKey = 'tags';
+        activeListKey = key;
       } else {
-        meta.tags = val.split(/[,，]/).map((t) => unquoteYaml(t)).filter(Boolean);
+        meta[key] = val.split(/[,，]/).map((t) => unquoteYaml(t)).filter(Boolean);
       }
     } else if (key === 'title') meta.title = unquoteYaml(val);
     else if (key === 'description') meta.description = unquoteYaml(val);
@@ -119,6 +121,11 @@ export function serializePostFile(meta: PostMeta, content: string): string {
   if (tags.length) {
     lines.push('tags:');
     tags.forEach((t) => lines.push(`  - ${yamlStr(t)}`));
+  }
+  const categories = [...new Set((meta.categories || []).map((c) => c.trim()).filter(Boolean))];
+  if (categories.length) {
+    lines.push('categories:');
+    categories.forEach((c) => lines.push(`  - ${yamlStr(c)}`));
   }
   lines.push(`draft: ${Boolean(meta.draft)}`);
   lines.push(`access: ${meta.access || 'public'}`);

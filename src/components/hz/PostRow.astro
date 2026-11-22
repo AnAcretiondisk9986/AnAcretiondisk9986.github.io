@@ -1,6 +1,7 @@
 ---
 import type { CollectionEntry } from 'astro:content';
 import { coverOf, fmtMass, mjd, readingMinutes, redshift, massOf } from '../../lib/horizon';
+import { normalizePostCategories } from '../../lib/categories';
 
 interface Props {
   post: CollectionEntry<'blog'>;
@@ -29,6 +30,7 @@ const mjdVal = mjd(post.data.pubDate);
 const rs = redshift(post.data.pubDate);
 const cover = coverOf(post);
 const isAuth = post.data.access === 'authorized';
+const categories = normalizePostCategories(post.data.categories);
 const Heading = headingLevel === 2 ? 'h2' : 'h3';
 ---
 
@@ -42,8 +44,9 @@ const Heading = headingLevel === 2 ? 'h2' : 'h3';
   data-pos={index}
   data-mass={mass}
   data-z={rs.z.toFixed(4)}
+  data-categories={JSON.stringify(categories)}
   data-tags={JSON.stringify(post.data.tags)}
-  data-search={`${post.data.title} ${post.data.description} ${post.data.tags.join(' ')}`.toLowerCase()}
+  data-search={`${post.data.title} ${post.data.description} ${categories.join(' ')} ${post.data.tags.join(' ')}`.toLowerCase()}
   data-lens-thumb={cover.thumb || undefined}
   data-lens-orig={cover.original || undefined}
   data-lens-label={folioCode}
@@ -74,10 +77,11 @@ const Heading = headingLevel === 2 ? 'h2' : 'h3';
       <a class="hz-row__link" href={href}>{post.data.title}</a>
     </Heading>
     {post.data.description && <p class="hz-row__desc">{post.data.description}</p>}
-    {(post.data.tags.length > 0 || isAuth || isPrivate) && (
+    {(categories.length > 0 || post.data.tags.length > 0 || isAuth || isPrivate) && (
       <div class="hz-row__tags">
         {isPrivate && <span class="hz-tag hz-tag--hot">DARKROOM</span>}
         {!isPrivate && isAuth && <span class="hz-tag hz-tag--hot">AUTH</span>}
+        {categories.map((cat) => <span class="hz-tag hz-tag--cat">{cat}</span>)}
         {post.data.tags.map((tag) => <span class="hz-tag">{tag}</span>)}
       </div>
     )}

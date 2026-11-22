@@ -1,0 +1,42 @@
+[
+  {
+    "id": "cat-tech",
+    "name": "技术工程",
+    "slug": "tech",
+    "description": "系统架构、前后端工程、桌面端打包、性能优化与项目复盘",
+    "color": "#ff5a1a",
+    "order": 1
+  },
+  {
+    "id": "cat-ai",
+    "name": "AI 与工作流",
+    "slug": "ai",
+    "description": "Agent 协作、终端驾驶舱、RAG 知识库、提示词与算力观察",
+    "color": "#8fb3ff",
+    "order": 2
+  },
+  {
+    "id": "cat-medical",
+    "name": "医学与学业",
+    "slug": "medical",
+    "description": "临床医学课程笔记、见习记录、转专业轨迹与医疗政策观察",
+    "color": "#5ce0a8",
+    "order": 3
+  },
+  {
+    "id": "cat-life",
+    "name": "生活与日常",
+    "slug": "life",
+    "description": "旅行游记、城市随拍、生活片段与年度节点记录",
+    "color": "#f6c177",
+    "order": 4
+  },
+  {
+    "id": "cat-culture",
+    "name": "影视与观察",
+    "slug": "culture",
+    "description": "剧集评述、动画音乐感受、社会议题与阅读思考",
+    "color": "#d48cff",
+    "order": 5
+  }
+]

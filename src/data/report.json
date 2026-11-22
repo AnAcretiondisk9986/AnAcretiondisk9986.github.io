@@ -1,0 +1,78 @@
+{
+  "activeReportId": "2026-annual",
+  "reports": [
+    {
+      "id": "2026-annual",
+      "title": "2026 年度观测报告",
+      "subtitle": "从信息管理与信息系统跨轨至临床医学，在代码、终端、课堂与快门之间记录一次轨道转移。",
+      "periodLabel": "ANNUAL REPORT · 2026",
+      "dateStart": "2026-01-01",
+      "dateEnd": "2026-12-31",
+      "summary": "2026 年是个人学习轨迹与工程实践同时剧烈扩张的一年：上半年完成多款工具开发与转专业准备，9 月正式转入五年制临床医学轨道；下半年将个人博客推翻重塑为 HORIZON v5.0.0 黑洞观测仪器，并把日常微片段、课程拼贴墙与 WMU 课表系统性纳入同一座站点。",
+      "keywords": [
+        "转专业变轨",
+        "HORIZON v5.0",
+        "临床医学",
+        "Agent 驾驶舱",
+        "RAG 知识库",
+        "WMU 课表"
+      ],
+      "milestones": [
+        {
+          "date": "2026.08",
+          "title": "WMU 综测与课表工具链成型",
+          "detail": "陆续交付 WMU 综测计算器、DSH 桌面版与个人博客架构复盘，确立纯前端零依赖与静态托管工程风格。",
+          "link": "/blog/wmu综测计算器技术栈总结与开发复盘/"
+        },
+        {
+          "date": "2026.09",
+          "title": "轨道转移：转入临床医学（五年制）",
+          "detail": "完成从信息管理与信息系统到临床医学的转专业变轨，完成 14 门课程学分互认并开启大一医学课程。",
+          "link": "/academics/"
+        },
+        {
+          "date": "2026.10",
+          "title": "Folio → HORIZON 全站视觉重写起步",
+          "detail": "建立 @layer 令牌体系、全站性能基准优化，以及 WezTerm / ClinMedAgent-RAG 等工程探索。",
+          "link": "/blog/horizon-视界全站重构技术复盘/"
+        },
+        {
+          "date": "2026.11",
+          "title": "v5.0.0：Tiptap 工作台、03 日常与 /write/ PWA",
+          "detail": "上线 X TimeLine 样式的日常频道、99 门课学业拼贴墙、/schedule/exams/ 与手机直发 PWA。",
+          "link": "/daily/"
+        }
+      ],
+      "featuredPosts": [
+        "horizon-视界全站重构技术复盘",
+        "clinmedagent-rag-multi-agent-optimization-report",
+        "wezterm-终端推荐与使用说明-agent-cli-时代的终端驾驶舱",
+        "dsh桌面版开发复盘"
+      ],
+      "featuredDailies": [],
+      "outroQuote": "忠实记录此刻所见，也允许未来的自己重新修订。",
+      "published": true,
+      "order": 1
+    },
+    {
+      "id": "all-time",
+      "title": "全周期观测总览",
+      "subtitle": "自建站以来的全部公开手记、日常碎片、图像档案与造物工程累积遥测。",
+      "periodLabel": "ALL-TIME TELEMETRY",
+      "dateStart": "",
+      "dateEnd": "",
+      "summary": "汇总全站自第一篇观测记录至今的全部公开内容输出密度、标签光谱分布与日常影像累积。",
+      "keywords": [
+        "全站归档",
+        "写作质量",
+        "时间光谱"
+      ],
+      "milestones": [],
+      "featuredPosts": [],
+      "featuredDailies": [],
+      "outroQuote": "写下来，是为了更清楚地看见自己。",
+      "published": true,
+      "order": 2
+    }
+  ]
+}

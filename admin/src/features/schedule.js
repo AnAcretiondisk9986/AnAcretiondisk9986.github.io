@@ -24,6 +24,7 @@ import {
 } from '/admin/shared/schedule-core.mjs';
 
 const SCHEDULE_API = '/api/schedule';
+const EXAMS_API = '/api/exams';
 const GITHUB_SYNC_PREFS_KEY = 'blog_admin_sched_gh_sync_v1';
 const DEFAULT_GITHUB_SYNC_REPO = 'AnAcretiondisk9986/wmu-timetable-sync';
 const COLOR_OPTIONS = [
@@ -35,6 +36,7 @@ const COLOR_OPTIONS = [
   ['violet', '紫灰'],
 ];
 
+let subTab = 'timetable'; // 'timetable' | 'exams'
 let scheduleState = {
   version: 2,
   timetables: [],
@@ -44,6 +46,14 @@ let scheduleState = {
   hideEmptyWeekends: false,
   updatedAt: 0,
 };
+let examsState = {
+  year: '',
+  term: 1,
+  termLabel: '',
+  campus: '滨海校区',
+  sourceLabel: '',
+  exams: [],
+};
 let selectedTimetableId = null;
 let courseFilterText = '';
 let courseFilterDay = '';
@@ -52,6 +62,9 @@ let editingCustomIndex = -1;
 let scheduleHash = '';
 let scheduleBaseline = '';
 let scheduleDirty = false;
+let examsHash = '';
+let examsBaseline = '';
+let examsDirty = false;
 let scheduleActive = false;
 let scheduleSaving = false;
 let courseSearchTimer = null;
@@ -67,11 +80,13 @@ export function initSchedule(options = {}) {
   bindGithubSyncModal();
 }
 export function isScheduleDirty() {
-  return scheduleDirty;
+  return scheduleDirty || examsDirty;
 }
 export function clearScheduleDirty() {
   scheduleDirty = false;
   scheduleBaseline = '';
+  examsDirty = false;
+  examsBaseline = '';
   scheduleActive = false;
   ctx.onDirtyChange(false);
 }
@@ -107,6 +122,8 @@ function markBaseline() {
   scheduleActive = true;
   scheduleBaseline = currentSnapshot();
   scheduleDirty = false;
+  examsBaseline = JSON.stringify(examsState);
+  examsDirty = false;
   ctx.onDirtyChange(false);
   const btn = $('#btnSave');
   if (btn) btn.disabled = true;
@@ -114,11 +131,12 @@ function markBaseline() {
 
 function syncDirty() {
   if (!scheduleActive) return;
-  const next = currentSnapshot() !== scheduleBaseline;
-  scheduleDirty = next;
-  ctx.onDirtyChange(next);
+  scheduleDirty = currentSnapshot() !== scheduleBaseline;
+  examsDirty = JSON.stringify(examsState) !== examsBaseline;
+  const anyDirty = scheduleDirty || examsDirty;
+  ctx.onDirtyChange(anyDirty);
   const btn = $('#btnSave');
-  if (btn) btn.disabled = !next;
+  if (btn) btn.disabled = !anyDirty;
 }
 
 function selectedTimetable() {
@@ -174,6 +192,36 @@ function weeksToEditText(weeks) {
 function renderScheduleSidebar() {
   const listEl = $('#postList');
   if (!listEl) return;
+  const subSwitcher = `
+    <div style="padding:10px 14px;border-bottom:1px solid var(--border);display:flex;gap:6px">
+      <button type="button" class="btn small${subTab === 'timetable' ? ' primary' : ''}" id="btnSchedTabTt" style="flex:1">📚 课程表</button>
+      <button type="button" class="btn small${subTab === 'exams' ? ' primary' : ''}" id="btnSchedTabExams" style="flex:1">📝 期末考试 (${(examsState.exams || []).length})</button>
+    </div>`;
+
+  if (subTab === 'exams') {
+    const examCards = (examsState.exams || []).length
+      ? examsState.exams.map((ex, i) => `
+        <div class="post-card" data-exam-scroll="${i}">
+          <div class="title">${esc(ex.course)} ${ex.tag ? `<span class="badge">${esc(ex.tag)}</span>` : ''}</div>
+          <div class="meta">${esc(ex.date)} ${esc(ex.start)}–${esc(ex.end)} · ${esc(ex.room || '待公布')}</div>
+        </div>`).join('')
+      : '<div class="empty-state" style="padding:20px">暂无期末考试安排</div>';
+    listEl.innerHTML = `
+      ${subSwitcher}
+      <div style="padding:12px 14px;border-bottom:1px solid var(--border);font-size:11px;color:var(--text-faint);line-height:1.8">
+        <div style="color:var(--accent);margin-bottom:4px">08.1 · 期末考试日程 (exams.json)</div>
+        <div>对应主站 <code>/schedule/exams/</code>，在右侧增删改考试时间、地点与备注。</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">
+          <button class="btn small primary" type="button" id="btnExamNewSide">＋ 新增考试</button>
+        </div>
+      </div>
+      ${examCards}`;
+    $('#btnSchedTabTt')?.addEventListener('click', () => { subTab = 'timetable'; renderScheduleSidebar(); renderScheduleEditor(); });
+    $('#btnSchedTabExams')?.addEventListener('click', () => { subTab = 'exams'; renderScheduleSidebar(); renderExamsEditor(); });
+    $('#btnExamNewSide')?.addEventListener('click', () => { addExamRow(); });
+    return;
+  }
+
   const tts = scheduleState.timetables;
   const rows = tts.length
     ? tts.map((tt) => {
@@ -191,8 +239,9 @@ function renderScheduleSidebar() {
     : '<div class="empty-state" style="padding:20px">暂无课表，请点击上方导入 PDF 或新建课表</div>';
 
   listEl.innerHTML = `
+    ${subSwitcher}
     <div style="padding:12px 14px;border-bottom:1px solid var(--border);font-size:11px;color:var(--text-faint);line-height:1.8">
-      <div style="color:var(--accent);margin-bottom:4px">07 · 日程与课表（对应主站 06 日程）</div>
+      <div style="color:var(--accent);margin-bottom:4px">08 · 日程与课表（对应主站 07 日程）</div>
       <div>课程表与自定义日程由后台维护，保存后点击顶栏「发布」推送到主站。</div>
       <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px">
         <button class="btn small primary" type="button" id="btnSchedPdf">⤓ 导入 WMU PDF</button>
@@ -205,6 +254,9 @@ function renderScheduleSidebar() {
       <input type="file" id="fSchedJsonInput" accept="application/json" style="display:none" />
     </div>
     ${rows}`;
+
+  $('#btnSchedTabTt')?.addEventListener('click', () => { subTab = 'timetable'; renderScheduleSidebar(); renderScheduleEditor(); });
+  $('#btnSchedTabExams')?.addEventListener('click', () => { subTab = 'exams'; renderScheduleSidebar(); renderExamsEditor(); });
 
   $('#btnSchedPdf')?.addEventListener('click', () => $('#fSchedPdfInput')?.click());
   $('#btnSchedGithubImport')?.addEventListener('click', () => openGithubSyncModal());
@@ -933,9 +985,117 @@ function exportScheduleJson() {
   URL.revokeObjectURL(url);
 }
 
+function addExamRow() {
+  if (!Array.isArray(examsState.exams)) examsState.exams = [];
+  examsState.exams.push({
+    year: examsState.year || '2026-2027',
+    term: Number(examsState.term) || 1,
+    course: '新考试科目',
+    date: toIso(new Date()),
+    start: '14:00',
+    end: '16:00',
+    room: '待公布',
+    campus: examsState.campus || '滨海校区',
+    college: '',
+    dept: '',
+    tag: '',
+  });
+  syncDirty();
+  renderScheduleSidebar();
+  renderExamsEditor();
+}
+
+function renderExamsEditor() {
+  $('#editorTitle').textContent = `期末考试日程 (${(examsState.exams || []).length} 场)`;
+  const host = $('#editorContainer');
+  if (!host) return;
+  const rows = (examsState.exams || []).map((ex, i) => `
+    <div class="panel exam-edit-row" data-exam-idx="${i}" style="border:1px solid var(--border);padding:10px;border-radius:4px;background:var(--surface-2);display:flex;flex-direction:column;gap:8px">
+      <div class="form-row">
+        <div class="form-group" style="flex:2"><label>科目名称 *</label><input class="ex-course" value="${escAttr(ex.course || '')}" /></div>
+        <div class="form-group" style="flex:1.1"><label>日期 (YYYY-MM-DD)</label><input class="ex-date" type="date" value="${escAttr(ex.date || '')}" /></div>
+        <div class="form-group" style="max-width:105px"><label>开始</label><input class="ex-start" value="${escAttr(ex.start || '')}" placeholder="18:30" /></div>
+        <div class="form-group" style="max-width:105px"><label>结束</label><input class="ex-end" value="${escAttr(ex.end || '')}" placeholder="20:00" /></div>
+        <div class="form-group" style="display:flex;justify-content:flex-end;align-items:flex-end"><button class="btn small danger" type="button" data-exam-del="${i}">删除</button></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>考场</label><input class="ex-room" value="${escAttr(ex.room || '')}" /></div>
+        <div class="form-group"><label>校区</label><input class="ex-campus" value="${escAttr(ex.campus || '')}" /></div>
+        <div class="form-group"><label>学院</label><input class="ex-college" value="${escAttr(ex.college || '')}" /></div>
+        <div class="form-group"><label>教研室</label><input class="ex-dept" value="${escAttr(ex.dept || '')}" /></div>
+        <div class="form-group" style="max-width:120px"><label>标签 (如 实验考核)</label><input class="ex-tag" value="${escAttr(ex.tag || '')}" /></div>
+      </div>
+    </div>`).join('');
+
+  host.innerHTML = `
+    <div class="editor">
+      <section class="frontend-section">
+        <h3>考试周全局元信息</h3>
+        <div class="form-row">
+          <div class="form-group"><label>学年 (year)</label><input id="fExYear" value="${escAttr(examsState.year || '')}" placeholder="2026-2027" /></div>
+          <div class="form-group" style="max-width:90px"><label>学期 (term)</label><input id="fExTerm" type="number" min="1" max="3" value="${Number(examsState.term) || 1}" /></div>
+          <div class="form-group" style="flex:1.6"><label>学期展示名 (termLabel)</label><input id="fExTermLabel" value="${escAttr(examsState.termLabel || '')}" placeholder="2026–2027 学年第一学期" /></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>默认校区 (campus)</label><input id="fExCampus" value="${escAttr(examsState.campus || '')}" /></div>
+          <div class="form-group" style="flex:2"><label>数据来源标注 (sourceLabel)</label><input id="fExSource" value="${escAttr(examsState.sourceLabel || '')}" /></div>
+        </div>
+      </section>
+
+      <section class="frontend-section">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <h3>场次明细 (${(examsState.exams || []).length})</h3>
+          <button type="button" class="btn small primary" id="btnExamAddMain">＋ 新增场次</button>
+        </div>
+        <div id="examRowsList" style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+          ${rows || '<div class="empty-state" style="padding:20px">暂无场次，点击右上方「＋ 新增场次」</div>'}
+        </div>
+      </section>
+    </div>`;
+
+  const applyFromDom = () => {
+    examsState.year = $('#fExYear')?.value?.trim() || '';
+    examsState.term = Number($('#fExTerm')?.value || 1) || 1;
+    examsState.termLabel = $('#fExTermLabel')?.value?.trim() || '';
+    examsState.campus = $('#fExCampus')?.value?.trim() || '滨海校区';
+    examsState.sourceLabel = $('#fExSource')?.value?.trim() || '';
+    examsState.exams = [...document.querySelectorAll('#examRowsList .exam-edit-row')].map((row) => ({
+      year: examsState.year,
+      term: examsState.term,
+      course: row.querySelector('.ex-course')?.value?.trim() || '',
+      date: row.querySelector('.ex-date')?.value?.trim() || '',
+      start: row.querySelector('.ex-start')?.value?.trim() || '',
+      end: row.querySelector('.ex-end')?.value?.trim() || '',
+      room: row.querySelector('.ex-room')?.value?.trim() || '待公布',
+      campus: row.querySelector('.ex-campus')?.value?.trim() || examsState.campus,
+      college: row.querySelector('.ex-college')?.value?.trim() || '',
+      dept: row.querySelector('.ex-dept')?.value?.trim() || '',
+      tag: row.querySelector('.ex-tag')?.value?.trim() || '',
+    }));
+    syncDirty();
+  };
+
+  const ed = host.querySelector('.editor');
+  ed?.addEventListener('input', applyFromDom);
+  ed?.addEventListener('change', () => { applyFromDom(); renderScheduleSidebar(); });
+  $('#btnExamAddMain')?.addEventListener('click', addExamRow);
+  $('#examRowsList')?.addEventListener('click', (e) => {
+    const del = e.target.closest('[data-exam-del]');
+    if (!del) return;
+    const idx = Number(del.dataset.examDel);
+    examsState.exams.splice(idx, 1);
+    syncDirty();
+    renderScheduleSidebar();
+    renderExamsEditor();
+  });
+}
+
 export async function loadSchedule() {
   try {
-    const res = await apiFetch(SCHEDULE_API);
+    const [res, exRes] = await Promise.all([
+      apiFetch(SCHEDULE_API),
+      apiFetch(EXAMS_API).catch(() => null),
+    ]);
     const data = await res.json();
     if (!res.ok || data.error) {
       toast(data.error || `加载课表失败（HTTP ${res.status}）`);
@@ -944,11 +1104,27 @@ export async function loadSchedule() {
     scheduleHash = data.contentHash || '';
     const normalized = normalizeSchedulePayload(data);
     if (normalized) scheduleState = normalized;
+    if (exRes && exRes.ok) {
+      const exData = await exRes.json().catch(() => null);
+      if (exData && !exData.error) {
+        const { contentHash: h, ...rest } = exData;
+        examsState = {
+          year: rest.year || '',
+          term: rest.term || 1,
+          termLabel: rest.termLabel || '',
+          campus: rest.campus || '滨海校区',
+          sourceLabel: rest.sourceLabel || '',
+          exams: Array.isArray(rest.exams) ? rest.exams : [],
+        };
+        examsHash = h || '';
+      }
+    }
     selectedTimetableId = scheduleState.activeId || scheduleState.timetables[0]?.id || null;
     editingCourseIndex = -1;
     editingCustomIndex = -1;
     renderScheduleSidebar();
-    renderScheduleEditor();
+    if (subTab === 'exams') renderExamsEditor();
+    else renderScheduleEditor();
     markBaseline();
   } catch (err) {
     toast('加载课表失败: ' + err.message);
@@ -961,27 +1137,44 @@ export async function saveSchedule() {
   scheduleSaving = true;
   if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '⏳ 保存中…'; }
   try {
-    const res = await apiFetch(SCHEDULE_API, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ...scheduleState,
-        expectedHash: scheduleHash,
-      }),
-    });
-    const data = await res.json();
-    if (!res.ok || data.error) {
-      if (res.status === 409) {
-        toast('课表已被其他来源修改，请点「↻ 刷新」获取最新后再保存');
+    const saveTt = scheduleDirty || !examsDirty;
+    if (saveTt && scheduleDirty) {
+      const res = await apiFetch(SCHEDULE_API, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...scheduleState,
+          expectedHash: scheduleHash,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        toast(res.status === 409 ? '课表已被其他来源修改，请点「↻ 刷新」获取最新后再保存' : (data.error || '课表保存失败'));
         return;
       }
-      toast(data.error || '保存失败');
-      return;
+      scheduleHash = data.contentHash || scheduleHash;
+      if (data.schedule) scheduleState = data.schedule;
     }
-    scheduleHash = data.contentHash || scheduleHash;
-    if (data.schedule) scheduleState = data.schedule;
+    if (examsDirty) {
+      const res = await apiFetch(EXAMS_API, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...examsState,
+          expectedHash: examsHash,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        toast(res.status === 409 ? '考试日程已被修改，请点「↻ 刷新」获取最新后再保存' : (data.error || '考试日程保存失败'));
+        return;
+      }
+      examsHash = data.contentHash || examsHash;
+      if (data.exams) examsState = data.exams;
+    }
+    const savedExamsOnly = examsDirty && !scheduleDirty;
     clearScheduleDirty();
-    toast('课表与日程已保存（点击顶栏「发布」推送上线）');
+    toast(savedExamsOnly ? '期末考试日程已保存' : '日程与考试配置已保存（点击顶栏「发布」推送上线）');
     ctx.refreshSyncStatus?.({ silent: true }).catch?.(() => {});
     await loadSchedule();
   } catch (err) {
@@ -990,7 +1183,7 @@ export async function saveSchedule() {
     scheduleSaving = false;
     if (saveBtn) {
       saveBtn.textContent = '保存 (Ctrl+S)';
-      saveBtn.disabled = !scheduleDirty;
+      saveBtn.disabled = !(scheduleDirty || examsDirty);
     }
   }
 }

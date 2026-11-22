@@ -22,6 +22,7 @@ const channels = [
   { href: '/academics/', label: '学业', en: 'TRAJECTORY' },
   { href: '/schedule/', label: '日程', en: 'EPHEMERIS' },
   { href: '/ai-quota/', label: '额度', en: 'FLUX' },
+  { href: '/projects/', label: '造物', en: 'LAB' },
 ];
 const isActive = (href: string) => (href === '/' ? pathname === '/' : pathname.startsWith(href));
 ---
@@ -49,6 +50,10 @@ const isActive = (href: string) => (href === '/' ? pathname === '/' : pathname.s
   </nav>
 
   <div class="hz-tools">
+    <button class="hz-cmdk-btn" type="button" data-cmdk-open title="全站搜索命令面板 (Ctrl/Cmd + K)" aria-label="打开全站搜索命令面板">
+      <span class="hz-mono">SEARCH</span>
+      <kbd class="hz-mono" aria-hidden="true">⌘K</kbd>
+    </button>
     <button class="hz-theme" type="button" data-theme-toggle aria-label="切换明暗：VOID 暗色 / PLATE 底片">
       <span class="hz-theme__opt" data-opt="dark">VOID</span>
       <span class="hz-theme__sep" aria-hidden="true">/</span>
@@ -91,5 +96,23 @@ const isActive = (href: string) => (href === '/' ? pathname === '/' : pathname.s
       </a>
     ))}
   </nav>
+  <div class="hz-menu__sublinks hz-mono">
+    <a href="/blog/report/">观测年报 · REPORT ↗</a>
+    <a href="/rss.xml">RSS 订阅 · FEED ↗</a>
+  </div>
   <a class="hz-menu__private" href="/private/">私密文章 · PRIVATE · <span lang="ja">暗室書庫</span> →</a>
 </div>
+
+<dialog class="hz-cmdk" id="hz-cmdk" aria-label="全站命令搜索面板">
+  <div class="hz-cmdk__box">
+    <header class="hz-cmdk__head">
+      <input type="search" data-cmdk-input placeholder="搜索文章、大类、造物、日常或课程…" autocomplete="off" />
+      <button type="button" class="hz-mono hz-cmdk__close" data-cmdk-close>ESC</button>
+    </header>
+    <div class="hz-cmdk__list" data-cmdk-list role="listbox" aria-label="搜索结果"></div>
+    <footer class="hz-cmdk__foot hz-mono">
+      <span data-cmdk-status>CHANNELS · CTRL/CMD+K</span>
+      <span>HORIZON COMMAND PALETTE</span>
+    </footer>
+  </div>
+</dialog>

@@ -49,7 +49,7 @@ page.on('console', (m) => {
   // 这类「外部资源」失败与应用无关，只把本地（127.0.0.1:4322）资源失败视为错误。
   const url = m.location()?.url || '';
   if (!url.includes('127.0.0.1:4322') && /Failed to load resource|ERR_/.test(t)) return;
-  errors.push('console: ' + t);
+  errors.push('console: ' + t + (url ? ` [${url}]` : ''));
 });
 page.on('requestfailed', (r) => {
   if (r.url().includes('127.0.0.1:4322')) errors.push('requestfailed: ' + r.url());
@@ -74,9 +74,11 @@ page.on('request', (req) => {
 await page.goto(base, { waitUntil: 'networkidle2' });
 await sleep(1500);
 
-// ── 1. 留言模块已移除、包含日程共 7 个模块 ──
+// ── 1. 留言模块已移除、包含造物/年报/学业共 11 个模块 ──
 const modes = await page.$$eval('.mode-tab', (els) => els.map((e) => ({ mode: e.dataset.mode, text: e.textContent.trim() })));
-check(`导航共 7 个模块（实际 ${modes.length}：${modes.map((m) => m.text).join('/')}）`, modes.length === 7);
+const expectedModes = ['posts', 'daily', 'gallery', 'media', 'about', 'frontend', 'access', 'schedule', 'projects', 'report', 'academics'];
+check(`导航共 11 个模块（实际 ${modes.length}：${modes.map((m) => m.text).join('/')}）`,
+  modes.length === 11 && expectedModes.every((m) => modes.some((x) => x.mode === m)));
 check('导航无「留言」模块', !modes.some((m) => m.mode === 'guestbook' || m.text.includes('留言')));
 
 // ── 2. 发布中心总览可打开 ──
@@ -148,11 +150,11 @@ await sleep(2000);
 const frontendInfo = await page.evaluate(() => ({
   preview: Boolean(document.querySelector('#frontendHeroPreview')),
   removed: ['#fFluidHeroImage', '#fStillHeroImage', '#fDisplayFont', '#fHeroRainbowEnabled', '#fStillAccent', '#fFluidPrimary', '#fGlassBlur'].filter((s) => document.querySelector(s)),
-  kept: ['#fSiteName', '#fSiteTagline', '#fHeroEyebrow', '#fHeroTitleLine1', '#fHeroTitleLine2', '#fHeroDescription', '#fPrimaryCtaLabel', '#fPrimaryCtaHref'].filter((s) => document.querySelector(s)),
+  kept: ['#fSiteName', '#fSiteTagline', '#fHeroEyebrow', '#fHeroTitleLine1', '#fHeroTitleLine2', '#fHeroDescription', '#fPrimaryCtaLabel', '#fPrimaryCtaHref', '#fInteractEndpoint'].filter((s) => document.querySelector(s)),
 }));
 check('外观：HORIZON 首屏预览卡片存在', frontendInfo.preview);
 check(`外观：旧版失效主题字段已清理${frontendInfo.removed.length ? '（残留 ' + frontendInfo.removed.join(',') + '）' : ''}`, frontendInfo.removed.length === 0);
-check(`外观：HORIZON 生效字段完整保留（${frontendInfo.kept.length}/8）`, frontendInfo.kept.length === 8);
+check(`外观：HORIZON 与互动端点字段完整保留（${frontendInfo.kept.length}/9）`, frontendInfo.kept.length === 9);
 
 const previewSync = await page.evaluate(() => {
   const input = document.querySelector('#fHeroTitleLine1');
@@ -172,6 +174,33 @@ const apiFields = await page.evaluate(async () => {
   return Object.keys(data.frontend || data || {});
 });
 check(`外观：服务端契约已同步 HORIZON（${apiFields.length} 个字段）`, !apiFields.some((k) => /stillHero|fluid|Rainbow|glassBlur|cardRadius|displayFont|defaultVisualTheme/i.test(k)));
+
+// ── 5.5 新后台模块可视化表单渲染（08 日程期末考试 / 09 造物 / 10 年报 / 11 学业 / 文章大类管理）──
+await page.evaluate(() => document.querySelector('.mode-tab[data-mode="schedule"]')?.click());
+await sleep(1000);
+await page.click('#btnSchedTabExams');
+await sleep(500);
+check('日程模块「期末考试」子页签渲染考试场次编辑器', Boolean(await page.$('#examRowsList')));
+
+await page.evaluate(() => document.querySelector('.mode-tab[data-mode="projects"]')?.click());
+await sleep(1000);
+check('09 造物模块渲染项目名称与关联文章多选', Boolean(await page.$('#fProjName')) && Boolean(await page.$('#projPostChoices')));
+
+await page.evaluate(() => document.querySelector('.mode-tab[data-mode="report"]')?.click());
+await sleep(1000);
+check('10 年报模块渲染报告周期与里程碑编辑器', Boolean(await page.$('#fRepTitle')) && Boolean(await page.$('#repMilestonesList')));
+
+await page.evaluate(() => document.querySelector('.mode-tab[data-mode="academics"]')?.click());
+await sleep(1000);
+check('11 学业模块渲染课程列表与转专业编辑表单', Boolean(await page.$('#fAcadTitle')) && Boolean(await page.$('#acadTransferPosts')));
+
+await page.evaluate(() => document.querySelector('.mode-tab[data-mode="posts"]')?.click());
+await sleep(1000);
+await page.click('#btnToggleFilters');
+await page.click('#btnOpenCategoryManager');
+await sleep(400);
+check('01 文章：打开文章大类管理弹窗', await page.$eval('#categoryManagerModal', (el) => getComputedStyle(el).display !== 'none'));
+await page.click('#btnCatMgrClose');
 
 // ── 6. 无运行时报错 ──
 check(`无浏览器运行时报错${errors.length ? '：' + errors.join(' | ') : ''}`, errors.length === 0);

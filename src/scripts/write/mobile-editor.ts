@@ -281,6 +281,7 @@ export function initMobileWriteApp() {
     cover: '',
     dayIndex: '',
     tags: [],
+    categories: [],
     draft: false,
     archived: false,
     scheduledAt: '',
@@ -391,9 +392,10 @@ export function initMobileWriteApp() {
   function syncMetaSummary() {
     const accessLabel = meta.access === 'admin' ? '私密' : meta.access === 'authorized' ? '授权' : '公开';
     const stateLabel = meta.draft ? '草稿' : '发布';
+    const catLabel = meta.categories?.length ? ` · ${meta.categories[0]}` : '';
     const tagsLabel = meta.tags.length ? ` · ${meta.tags.slice(0, 2).join(', ')}` : '';
     const chip = $('#mwMetaSummary');
-    if (chip) chip.textContent = `${accessLabel} · ${stateLabel}${tagsLabel} ▾`;
+    if (chip) chip.textContent = `${accessLabel} · ${stateLabel}${catLabel}${tagsLabel} ▾`;
   }
 
   function syncToolbarActive() {
@@ -577,11 +579,23 @@ export function initMobileWriteApp() {
   document.querySelectorAll('[data-close-sheet]').forEach((b) => b.addEventListener('click', closeSheets));
 
   // 元数据表单读写
+  function syncCategoryPills() {
+    const host = $('#mwCategoriesBox');
+    if (!host) return;
+    const active = new Set((meta.categories || []).map((c) => c.trim()).filter(Boolean));
+    host.querySelectorAll<HTMLInputElement>('input[type="checkbox"]').forEach((cb) => {
+      const hit = active.has(cb.value.trim());
+      cb.checked = hit;
+      cb.closest('.mw-cat-pill')?.classList.toggle('is-checked', hit);
+    });
+  }
+
   function fillMetaForm() {
     const set = (id: string, v: string) => { const el = $(id) as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement | null; if (el) el.value = v; };
     set('#mwSlug', currentFilename ? currentFilename.replace(/\.(md|mdx)$/i, '') : slugifyTitle(titleInput.value));
     set('#mwDesc', meta.description || '');
     set('#mwTags', meta.tags.join(', '));
+    syncCategoryPills();
     set('#mwDate', meta.pubDate || localToday());
     set('#mwAccess', meta.access || 'public');
     set('#mwCover', meta.cover || '');
@@ -596,6 +610,12 @@ export function initMobileWriteApp() {
     meta.title = titleInput.value.trim();
     meta.description = val('#mwDesc');
     meta.tags = val('#mwTags').split(/[,，]/).map((t) => t.trim()).filter(Boolean);
+    const catBox = $('#mwCategoriesBox');
+    if (catBox) {
+      meta.categories = Array.from(catBox.querySelectorAll<HTMLInputElement>('input[type="checkbox"]:checked'))
+        .map((cb) => cb.value.trim())
+        .filter(Boolean);
+    }
     meta.pubDate = val('#mwDate') || localToday();
     meta.access = (val('#mwAccess') as PostMeta['access']) || 'public';
     meta.cover = val('#mwCover');
@@ -607,6 +627,12 @@ export function initMobileWriteApp() {
   $('#mwSlug')?.addEventListener('input', () => { currentSlugEdited = true; markDirty(); });
   ['#mwDesc', '#mwTags', '#mwDate', '#mwAccess', '#mwCover', '#mwDraftCheck'].forEach((id) => {
     $(id)?.addEventListener('change', () => { readMetaForm(); markDirty(); });
+  });
+  $('#mwCategoriesBox')?.addEventListener('change', (e) => {
+    const target = e.target as HTMLInputElement | null;
+    target?.closest('.mw-cat-pill')?.classList.toggle('is-checked', Boolean(target.checked));
+    readMetaForm();
+    markDirty();
   });
 
   // 封面传图
@@ -635,7 +661,7 @@ export function initMobileWriteApp() {
     currentSlugEdited = false;
     meta = {
       title: '', description: '', pubDate: localToday(), cover: '', dayIndex: '',
-      tags: [], draft: false, archived: false, scheduledAt: '', access: 'public', extra: {},
+      tags: [], categories: [], draft: false, archived: false, scheduledAt: '', access: 'public', extra: {},
     };
     titleInput.value = '';
     setBodyMarkdown('');

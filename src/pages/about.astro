@@ -84,7 +84,10 @@ const normW = (w: number) =>
 
         {(about.projects || []).length > 0 && (
           <section class="hz-ledger-box" aria-labelledby="about-projects">
-            <h2 id="about-projects">{about.projectsTitle || '我的项目'} <span class="hz-about-ja" lang="ja">開発計画</span></h2>
+            <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap">
+              <h2 id="about-projects">{about.projectsTitle || '我的项目'} <span class="hz-about-ja" lang="ja">開発計画</span></h2>
+              <a class="hz-mono" style="font-size:0.74rem;color:var(--hz-hot-ink)" href="/projects/">进入完整造物实验室 /projects/ →</a>
+            </div>
             <ol class="hz-ledger-list">
               {(about.projects || []).map((item) => {
                 const href = safeLink(item.url);

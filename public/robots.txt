@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /private/
+Disallow: /write/
+Disallow: /s/
+
+Sitemap: https://blog.acretiondisk.top/sitemap.xml

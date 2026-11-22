@@ -64,7 +64,8 @@
 .topbar__nav {
   display: flex;
   align-items: center;
-  gap: var(--sp-5);
+  flex-wrap: wrap;
+  gap: var(--sp-2) var(--sp-4);
   flex: 1 1 auto;
   min-width: 0;
 }
@@ -72,7 +73,9 @@
 .nav-group {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: var(--sp-1);
+  max-width: 100%;
 }
 
 .nav-group__label {
@@ -234,8 +237,9 @@
 .batch-bar {
   flex: 0 0 auto;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--sp-2);
+  gap: var(--sp-1) var(--sp-2);
   padding: var(--sp-2) var(--sp-3);
   background: var(--accent-soft);
   border-bottom: 1px solid var(--accent-line);

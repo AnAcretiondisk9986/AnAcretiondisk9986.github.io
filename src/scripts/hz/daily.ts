@@ -7,6 +7,13 @@
  *   4. 1~9 张图像的高清灯箱查看器（缩略图条、滚轮/滑块/双指缩放、拖拽平移、键盘与触控滑动切图）
  */
 import { captureFlipRects, playFlipRects } from './motion';
+import {
+  fetchDailyCounts,
+  loadTargetComments,
+  renderCommentListInto,
+  submitTargetComment,
+  toggleDailyResonance,
+} from './interact';
 
 type TabKey = 'all' | 'media' | 'text' | 'bookmarked';
 type SortKey = 'newest' | 'oldest';
@@ -403,6 +410,7 @@ export function initDailyTimeline() {
 
   const likes = readStorageSet(LIKE_KEY);
   const bookmarks = readStorageSet(BOOKMARK_KEY);
+  const remoteCounts: Record<string, number> = {};
   const viewer = initDailyViewer();
   const tagsMap = new Map<HTMLElement, string[]>(tweets.map((el) => [el, parseTagsAttr(el)]));
 
@@ -450,8 +458,15 @@ export function initDailyTimeline() {
       const likeBtn = tweet.querySelector<HTMLButtonElement>('[data-tl-like]');
       const likeLabel = tweet.querySelector<HTMLElement>('[data-tl-like-label]');
       const liked = likes.has(id);
+      const count = remoteCounts[id] ?? (liked ? 1 : 0);
       if (likeBtn) likeBtn.setAttribute('aria-pressed', String(liked));
-      if (likeLabel) likeLabel.textContent = liked ? '已共鸣 1' : '共鸣';
+      if (likeLabel) {
+        likeLabel.textContent = liked
+          ? `已共鸣${count > 0 ? ` ${count}` : ''}`
+          : count > 0
+            ? `共鸣 ${count}`
+            : '共鸣';
+      }
 
       const bmBtn = tweet.querySelector<HTMLButtonElement>('[data-tl-bookmark]');
       const bmLabel = tweet.querySelector<HTMLElement>('[data-tl-bookmark-label]');
@@ -696,10 +711,81 @@ export function initDailyTimeline() {
     if (likeBtn) {
       const id = likeBtn.dataset.tlLike || '';
       if (!id) return;
-      if (likes.has(id)) likes.delete(id);
+      const wasLiked = likes.has(id);
+      if (wasLiked) likes.delete(id);
       else likes.add(id);
+      const curCount = remoteCounts[id] ?? (wasLiked ? 1 : 0);
+      remoteCounts[id] = wasLiked ? Math.max(0, curCount - 1) : curCount + 1;
       writeStorageSet(LIKE_KEY, likes);
       syncInteractionUI();
+      toggleDailyResonance(id, wasLiked ? 'unlike' : 'like', curCount).then((serverCount) => {
+        remoteCounts[id] = serverCount;
+        syncInteractionUI();
+      });
+      return;
+    }
+
+    const cmtBtn = target.closest<HTMLButtonElement>('[data-tl-cmt-btn]');
+    if (cmtBtn) {
+      const id = cmtBtn.dataset.tlCmtBtn || '';
+      const tweet = cmtBtn.closest<HTMLElement>('[data-tl-tweet]');
+      const box = tweet?.querySelector<HTMLElement>(`[data-tl-cmtbox="${CSS.escape(id)}"]`);
+      if (!id || !box) return;
+      const opening = box.hidden;
+      box.hidden = !opening;
+      cmtBtn.setAttribute('aria-expanded', String(opening));
+      if (!opening) return;
+
+      const cmtTarget = `/daily/${id}`;
+      if (box.dataset.ready !== '1') {
+        box.dataset.ready = '1';
+        box.innerHTML = `
+          <div class="hz-cmt__list" data-box-list></div>
+          <form class="hz-tl-cmtbox__form" data-box-form>
+            <div class="hz-tl-cmtbox__row">
+              <input type="text" name="author" maxlength="40" placeholder="署名（可选）" style="max-width:130px" />
+              <input type="text" name="body" maxlength="300" placeholder="留下一句回应…" required />
+              <input type="text" name="website" tabindex="-1" autocomplete="off" class="hz-cmt__trap" />
+              <button type="submit" class="hz-cmt__btn hz-mono">发送</button>
+            </div>
+            <span class="hz-cmt__status hz-mono" data-box-status></span>
+          </form>`;
+        const listEl = box.querySelector<HTMLElement>('[data-box-list]')!;
+        const formEl = box.querySelector<HTMLFormElement>('[data-box-form]')!;
+        const statusEl = box.querySelector<HTMLElement>('[data-box-status]');
+        const cmtLabel = cmtBtn.querySelector<HTMLElement>('[data-tl-cmt-label]');
+
+        loadTargetComments(cmtTarget).then(({ comments }) => {
+          renderCommentListInto(listEl, comments);
+          if (cmtLabel) cmtLabel.textContent = comments.length ? `回应 ${comments.length}` : '回应';
+        });
+
+        formEl.addEventListener('submit', async (ev) => {
+          ev.preventDefault();
+          const authorIn = formEl.querySelector<HTMLInputElement>('input[name="author"]');
+          const bodyIn = formEl.querySelector<HTMLInputElement>('input[name="body"]');
+          const trapIn = formEl.querySelector<HTMLInputElement>('input[name="website"]');
+          const bodyText = bodyIn?.value.trim() || '';
+          if (!bodyText) return;
+          if (statusEl) statusEl.textContent = '发送中…';
+          const res = await submitTargetComment({
+            target: cmtTarget,
+            author: authorIn?.value || '',
+            body: bodyText,
+            website: trapIn?.value || '',
+          });
+          if (!res.ok) {
+            if (statusEl) statusEl.textContent = res.error || '发送失败';
+            return;
+          }
+          if (bodyIn) bodyIn.value = '';
+          if (res.comments) {
+            renderCommentListInto(listEl, res.comments);
+            if (cmtLabel) cmtLabel.textContent = res.comments.length ? `回应 ${res.comments.length}` : '回应';
+          }
+          if (statusEl) statusEl.textContent = res.remote ? '已发送 ✓' : '已本地暂存 ✓';
+        });
+      }
       return;
     }
 
@@ -785,6 +871,18 @@ export function initDailyTimeline() {
 
   syncInteractionUI();
   apply(false, false);
+
+  const ids = tweets.map((t) => t.dataset.id || '').filter(Boolean);
+  fetchDailyCounts(ids).then((counts) => {
+    let changed = false;
+    for (const [k, v] of Object.entries(counts)) {
+      if (Number.isFinite(v) && v >= 0) {
+        remoteCounts[k] = v;
+        changed = true;
+      }
+    }
+    if (changed) syncInteractionUI();
+  });
 
   // 支持 #id 锚点高亮定位
   const hashId = decodeURIComponent(location.hash.replace(/^#/, ''));

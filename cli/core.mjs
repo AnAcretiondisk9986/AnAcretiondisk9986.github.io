@@ -35,7 +35,19 @@ export class CliError extends Error {
 }
 
 export const ACCESS_LEVELS = ['public', 'authorized', 'admin'];
-export const CONTENT_PUSH_PATHS = ['src/content/blog/', 'src/data/gallery.json', 'src/data/about.json', 'src/data/frontend.json'];
+export const CONTENT_PUSH_PATHS = [
+  'src/content/blog/',
+  'src/data/daily.json',
+  'src/data/gallery.json',
+  'src/data/about.json',
+  'src/data/frontend.json',
+  'src/data/schedule.json',
+  'src/data/categories.json',
+  'src/data/projects.json',
+  'src/data/report.json',
+  'src/data/academics.json',
+  'src/data/exams.json',
+];
 export const FULL_PUSH_PATHS = ['.', ':(exclude)reasonix.toml'];
 export const IMG_BASE_URL = 'https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/';
 const MAX_REVISIONS_PER_POST = 20;
@@ -195,6 +207,7 @@ const FIELD_RULES = {
   updatedDate: { type: 'date', emptyDeletes: true },
   dayIndex: { type: 'int', emptyDeletes: true },
   tags: { type: 'list' },
+  categories: { type: 'list' },
   draft: { type: 'bool' },
   archived: { type: 'bool' },
   access: { type: 'enum', values: ACCESS_LEVELS },
@@ -279,6 +292,7 @@ export function summarize(slug, raw, mtime) {
     pubDate: safeDate(data.pubDate),
     dayIndex: Number.isInteger(data.dayIndex) ? data.dayIndex : null,
     tags: Array.isArray(data.tags) ? data.tags.map(String) : [],
+    categories: Array.isArray(data.categories) ? data.categories.map(String) : [],
     draft: data.draft === true,
     archived: data.archived === true,
     access: ACCESS_LEVELS.includes(data.access) ? data.access : 'public',

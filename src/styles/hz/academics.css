@@ -704,3 +704,125 @@
     transition: none;
   }
 }
+
+/* —— 轨线遥测条与卡片关联笔记 —— */
+.hz-acad-tele {
+  border: 1px solid var(--hz-line-2);
+  border-radius: 12px;
+  background: var(--hz-bg-2);
+  margin-bottom: var(--s-5);
+  overflow: hidden;
+}
+.hz-acad-tele__sum {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 11px 16px;
+  font-size: var(--t-micro);
+  color: var(--hz-hot-ink);
+  cursor: pointer;
+  user-select: none;
+}
+.hz-acad-tele__body {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--s-4);
+  padding: 0 16px 14px;
+  border-top: 1px solid var(--hz-line);
+  padding-top: 12px;
+}
+.hz-acad-tele__cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-3);
+}
+.hz-acad-tcard {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--hz-line);
+  border-radius: 9px;
+  background: var(--hz-void);
+}
+.hz-acad-tcard > span {
+  font-size: 0.65rem;
+  color: var(--hz-ink-3);
+}
+.hz-acad-tcard > b {
+  font-size: 1.15rem;
+  color: var(--hz-ink);
+}
+.hz-acad-tcard > b small {
+  font-size: 0.72rem;
+  color: var(--hz-ink-2);
+  font-weight: 400;
+}
+.hz-acad-tcard > small {
+  font-size: 0.7rem;
+  color: var(--hz-hot-ink);
+}
+.hz-acad-curve {
+  min-width: 240px;
+  display: grid;
+  gap: 4px;
+  padding: 8px 12px;
+  border: 1px solid var(--hz-line);
+  border-radius: 9px;
+  background: var(--hz-void);
+}
+.hz-acad-curve__k {
+  font-size: 0.62rem;
+  color: var(--hz-ink-3);
+}
+.hz-acad-curve svg {
+  width: 100%;
+  height: 70px;
+  color: var(--hz-ink-2);
+}
+.hz-tile__face--back {
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.hz-tile__note-txt {
+  font-size: 0.68rem;
+  color: var(--tile-ink-2);
+  line-height: 1.35;
+}
+.hz-tile__posts {
+  display: grid;
+  gap: 3px;
+  padding-top: 4px;
+  border-top: 1px dashed hsl(var(--sem-hue) 40% 55% / 0.3);
+}
+.hz-tile__posts a {
+  font-size: 0.68rem;
+  color: var(--tile-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hz-transfer-posts {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-left: 10px;
+}
+.hz-transfer-posts a {
+  padding: 2px 9px;
+  border: 1px solid rgb(255 90 26 / 0.45);
+  border-radius: 999px;
+  font-size: 0.72rem;
+  color: var(--hz-hot-ink);
+}
+@media (max-width: 820px) {
+  .hz-acad-tele__body {
+    grid-template-columns: 1fr;
+  }
+  .hz-acad-tele__cards {
+    grid-template-columns: 1fr;
+  }
+}

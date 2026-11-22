@@ -1,0 +1,259 @@
+---
+/**
+ * HORIZON · 年度 / 阶段观测报告 (/blog/report/)
+ * 自动从公开博文、分类体系、日常时间线、图像档案汇总量化遥测，
+ * 并结合 src/data/report.json 的阶段叙事、里程碑与精选作品呈献可读年报。
+ */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getPublicPosts } from '../../lib/posts';
+import { normalizeCategoryList, UNCATEGORIZED_ID, UNCATEGORIZED_LABEL } from '../../lib/categories';
+import { computePeriodTelemetry, normalizeReportPayload } from '../../lib/report';
+import { fmtMass } from '../../lib/horizon';
+import reportRaw from '../../data/report.json';
+import dailyRaw from '../../data/daily.json';
+import galleryRaw from '../../data/gallery.json';
+import categoriesRaw from '../../data/categories.json';
+import '../../styles/hz/report.css';
+
+const reportData = normalizeReportPayload(reportRaw);
+const catColorMap = new Map(normalizeCategoryList(categoriesRaw).map((c) => [c.name, c.color]));
+const publishedReports = reportData.reports.filter((r) => r.published);
+const allPosts = (await getPublicPosts()).filter((p) => !p.data.access || p.data.access === 'public');
+const dailies = Array.isArray(dailyRaw) ? dailyRaw : [];
+const gallery = Array.isArray(galleryRaw) ? galleryRaw : [];
+
+const computed = publishedReports.map((rep) => {
+  const telemetry = computePeriodTelemetry({
+    dateStart: rep.dateStart,
+    dateEnd: rep.dateEnd,
+    posts: allPosts,
+    dailies,
+    gallery,
+  });
+  const postMap = new Map(allPosts.map((p) => [p.id, p]));
+  const pickedPosts = rep.featuredPosts
+    .map((id) => postMap.get(id))
+    .filter((x): x is (typeof allPosts)[number] => Boolean(x));
+  const dailyMap = new Map(dailies.map((d: { id: string }) => [d.id, d]));
+  const pickedDailies = rep.featuredDailies
+    .map((id) => dailyMap.get(id))
+    .filter(Boolean) as Array<{ id: string; text?: string; date?: string }>;
+  return { rep, telemetry, pickedPosts, pickedDailies };
+});
+
+const defaultId = reportData.activeReportId && computed.some((c) => c.rep.id === reportData.activeReportId)
+  ? reportData.activeReportId
+  : (computed[0]?.rep.id || '');
+---
+
+<BaseLayout title="年度观测报告" description="Acretiondisk 的年度与阶段性写作、图像、日常观测统计报告与重要里程碑。" page="report">
+  <div class="hz-wrap hz-rep" data-report-root data-default-report={defaultId}>
+    <header class="hz-rep-head">
+      <div class="hz-rep-head__top">
+        <div>
+          <p class="hz-mono hz-rep-head__kicker">EMISSION REPORT // 02.1 · <span lang="ja">観測年次報告</span></p>
+          <h1 class="hz-rep-head__title">年度 / 阶段观测报告</h1>
+        </div>
+        <a class="hz-mini-btn" href="/blog/">← 返回文章光谱</a>
+      </div>
+
+      {computed.length > 1 && (
+        <div class="hz-rep-tabs" role="tablist" aria-label="切换观测期数">
+          {computed.map(({ rep }) => (
+            <button
+              type="button"
+              role="tab"
+              data-rep-tab={rep.id}
+              aria-selected={rep.id === defaultId ? 'true' : 'false'}
+            >
+              <span class="hz-mono">{rep.periodLabel || rep.id}</span>
+              <b>{rep.title}</b>
+            </button>
+          ))}
+        </div>
+      )}
+    </header>
+
+    {computed.length === 0 ? (
+      <div class="hz-empty">
+        <p class="hz-mono">NO PUBLISHED OBSERVATION REPORT</p>
+        <p>暂未发布公开观测报告。</p>
+      </div>
+    ) : computed.map(({ rep, telemetry, pickedPosts, pickedDailies }) => {
+      const maxMonthChars = Math.max(1, ...telemetry.months.map((m) => m.chars + m.dailies * 200));
+      const maxCatCount = Math.max(1, ...telemetry.topCategories.map((c) => c.count));
+      const readingHours = Math.max(0.1, telemetry.totalChars / 18000).toFixed(1);
+      return (
+        <section
+          class="hz-rep-panel"
+          data-rep-panel={rep.id}
+          hidden={rep.id !== defaultId}
+        >
+          <div class="hz-rep-hero">
+            <div class="hz-rep-hero__meta hz-mono">
+              <span>{rep.periodLabel || 'REPORT'}</span>
+              <span>{rep.dateStart || 'ARCHIVE START'} → {rep.dateEnd || 'PRESENT'}</span>
+              <span>MJD {telemetry.mjdSpan}</span>
+            </div>
+            <h2>{rep.title}</h2>
+            {rep.subtitle && <p class="hz-rep-hero__sub">{rep.subtitle}</p>}
+            {rep.summary && <p class="hz-rep-hero__sum">{rep.summary}</p>}
+            {rep.keywords.length > 0 && (
+              <div class="hz-rep-keywords hz-mono">
+                {rep.keywords.map((k) => <span>#{k}</span>)}
+              </div>
+            )}
+          </div>
+
+          <div class="hz-rep-kpi">
+            <article>
+              <span class="hz-mono">PUBLISHED POSTS</span>
+              <b>{telemetry.postCount}</b>
+              <small>篇长文发射</small>
+            </article>
+            <article>
+              <span class="hz-mono">TOTAL MASS</span>
+              <b>{fmtMass(telemetry.totalChars)}</b>
+              <small>字创作体量（约 {readingHours} 小时阅读）</small>
+            </article>
+            <article>
+              <span class="hz-mono">DAILY FRAMES</span>
+              <b>{telemetry.dailyCount} / {telemetry.frameCount}</b>
+              <small>条日常 / 枚附图</small>
+            </article>
+            <article>
+              <span class="hz-mono">LENSING PLATES</span>
+              <b>{telemetry.galleryCount}</b>
+              <small>张入选透镜底片</small>
+            </article>
+          </div>
+
+          <div class="hz-rep-two">
+            <section class="hz-rep-box">
+              <header class="hz-rep-box__head">
+                <h3 class="hz-mono">CATEGORY SPECTRUM // 大类分布</h3>
+                <a class="hz-mono" href="/blog/">FILTER /BLOG/ →</a>
+              </header>
+              <div class="hz-rep-bars">
+                {telemetry.topCategories.map((cat) => {
+                  const color = catColorMap.get(cat.name) || '#ff5a1a';
+                  const href = cat.name === UNCATEGORIZED_LABEL ? `/blog/?cat=${UNCATEGORIZED_ID}` : `/blog/?cat=${encodeURIComponent(cat.name)}`;
+                  return (
+                    <a class="hz-rep-bar-row" href={href}>
+                      <span class="hz-rep-bar-name">
+                        <i style={`background:${color}`}></i>
+                        {cat.name}
+                      </span>
+                      <span class="hz-rep-bar-track">
+                        <i style={`width:${Math.max(4, Math.round((cat.count / maxCatCount) * 100))}%;background:${color}`}></i>
+                      </span>
+                      <span class="hz-rep-bar-val hz-mono">{cat.count} 篇 · {fmtMass(cat.chars)}</span>
+                    </a>
+                  );
+                })}
+              </div>
+            </section>
+
+            <section class="hz-rep-box">
+              <header class="hz-rep-box__head">
+                <h3 class="hz-mono">MONTHLY ACTIVITY // 发射节奏</h3>
+                <span class="hz-mono">{telemetry.months.length} MONTHS</span>
+              </header>
+              {telemetry.months.length === 0 ? (
+                <p class="hz-rep-empty-note">当前时间窗口内暂无按月分布数据。</p>
+              ) : (
+                <div class="hz-rep-months">
+                  {telemetry.months.map((m) => {
+                    const ratio = Math.min(100, Math.max(8, Math.round(((m.chars + m.dailies * 200) / maxMonthChars) * 100)));
+                    return (
+                      <div class="hz-rep-month" title={`${m.month} · ${m.posts} 篇 (${m.chars} 字) · ${m.dailies} 日常`}>
+                        <span class="hz-rep-month__col"><i style={`height:${ratio}%`}></i></span>
+                        <span class="hz-rep-month__lbl hz-mono">{m.month.slice(2)}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              {telemetry.topTags.length > 0 && (
+                <div class="hz-rep-tags">
+                  <span class="hz-mono">TOP TAGS:</span>
+                  {telemetry.topTags.slice(0, 8).map((t) => (
+                    <a href={`/blog/?tag=${encodeURIComponent(t.name)}`}>#{t.name} ({t.count})</a>
+                  ))}
+                </div>
+              )}
+            </section>
+          </div>
+
+          {rep.milestones.length > 0 && (
+            <section class="hz-rep-box">
+              <header class="hz-rep-box__head">
+                <h3 class="hz-mono">ORBIT MILESTONES // 关键节点</h3>
+                <span class="hz-mono">{rep.milestones.length} EVENTS</span>
+              </header>
+              <ol class="hz-rep-milestones">
+                {rep.milestones.map((ms) => (
+                  <li>
+                    <time class="hz-mono">{ms.date || '—'}</time>
+                    <div>
+                      <strong>
+                        {ms.link ? (
+                          <a href={ms.link}>{ms.title} ↗</a>
+                        ) : ms.title}
+                      </strong>
+                      {ms.detail && <p>{ms.detail}</p>}
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </section>
+          )}
+
+          {(pickedPosts.length > 0 || telemetry.longestPost || pickedDailies.length > 0) && (
+            <section class="hz-rep-box">
+              <header class="hz-rep-box__head">
+                <h3 class="hz-mono">SELECTED DISPATCHES // 代表作与碎片</h3>
+                {telemetry.longestPost && (
+                  <a class="hz-mono" href={`/blog/${encodeURI(telemetry.longestPost.id)}/`}>
+                    LONGEST: {telemetry.longestPost.title} ({fmtMass(telemetry.longestPost.chars)}) →
+                  </a>
+                )}
+              </header>
+              {pickedPosts.length > 0 && (
+                <div class="hz-rep-picks">
+                  {pickedPosts.map((p) => (
+                    <a class="hz-rep-pick" href={`/blog/${encodeURI(p.id)}/`}>
+                      <span class="hz-mono">{p.data.pubDate.toISOString().split('T')[0]}</span>
+                      <strong>{p.data.title}</strong>
+                      {p.data.description && <small>{p.data.description}</small>}
+                    </a>
+                  ))}
+                </div>
+              )}
+              {pickedDailies.length > 0 && (
+                <div class="hz-rep-dailies">
+                  {pickedDailies.map((d) => (
+                    <a class="hz-rep-daily" href={`/daily/#${encodeURIComponent(d.id)}`}>
+                      <time class="hz-mono">{d.date || d.id}</time>
+                      <p>{(d.text || '').slice(0, 120) || '查看完整图像动态 ↗'}</p>
+                    </a>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
+
+          {rep.outroQuote && (
+            <blockquote class="hz-rep-outro">
+              <p>「{rep.outroQuote}」</p>
+            </blockquote>
+          )}
+        </section>
+      );
+    })}
+  </div>
+</BaseLayout>
+
+<script>
+  import '../../scripts/hz/report';
+</script>

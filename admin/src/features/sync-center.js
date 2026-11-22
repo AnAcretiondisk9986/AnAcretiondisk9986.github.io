@@ -19,6 +19,9 @@ let ctx = {
   reloadAbout: () => {},
   reloadFrontend: () => {},
   reloadSchedule: () => {},
+  reloadProjects: () => {},
+  reloadReport: () => {},
+  reloadAcademics: () => {},
   fetchHealth: async () => null,
 };
 
@@ -40,6 +43,9 @@ function reloadActiveModule() {
   else if (mode === 'about') ctx.reloadAbout();
   else if (mode === 'frontend') ctx.reloadFrontend();
   else if (mode === 'schedule') ctx.reloadSchedule();
+  else if (mode === 'projects') ctx.reloadProjects();
+  else if (mode === 'report') ctx.reloadReport();
+  else if (mode === 'academics') ctx.reloadAcademics();
   else if (mode === 'posts') ctx.reloadPosts();
 }
 

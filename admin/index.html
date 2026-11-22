@@ -41,6 +41,9 @@
         <button class="mode-tab" data-mode="frontend">06 外观</button>
         <button class="mode-tab" data-mode="access">07 权限</button>
         <button class="mode-tab" data-mode="schedule">08 日程</button>
+        <button class="mode-tab" data-mode="projects">09 造物</button>
+        <button class="mode-tab" data-mode="report">10 年报</button>
+        <button class="mode-tab" data-mode="academics">11 学业</button>
       </div>
     </nav>
 
@@ -95,6 +98,10 @@
             </select>
           </div>
           <div class="filter-row">
+            <select id="fPostCategory" title="文章大类"><option value="">全部分类</option><option value="__uncategorized__">未归类</option></select>
+            <button class="btn small" type="button" id="btnOpenCategoryManager" title="增删改文章大类">⚙ 分类</button>
+          </div>
+          <div class="filter-row">
             <select id="fPostTag" title="标签"><option value="">全部标签</option></select>
           </div>
           <div class="filter-row">
@@ -128,6 +135,7 @@
         <span id="batchCount">已选 0 项</span>
         <span class="batch-bar__spacer"></span>
         <button class="btn small" data-batch="select-all" title="全选当前筛选出的文章">全选</button>
+        <button class="btn small primary" data-batch="categorize" title="批量为选中文章设置/增减大类">归类…</button>
         <button class="btn small" data-batch="publish">发布</button>
         <button class="btn small" data-batch="unpublish">撤回</button>
         <button class="btn small" data-batch="archive">归档</button>
@@ -487,6 +495,51 @@
     </div>
   </div>
 
+  <!-- 文章大类管理弹窗 -->
+  <div class="modal-mask" id="categoryManagerModal" style="display:none">
+    <div class="modal modal--wide">
+      <h3>文章大类管理</h3>
+      <div class="modal-body">
+        <div class="modal-hint" style="margin:0">修改大类名称或删除分类时，将自动级联同步所有关联文章的 Markdown frontmatter 并留存修订快照。</div>
+        <div id="catManagerList" style="display:flex;flex-direction:column;gap:8px;max-height:46vh;overflow-y:auto"></div>
+        <div style="border-top:1px solid var(--border);padding-top:10px;display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+          <input id="fNewCatColor" type="color" value="#ff5a1a" title="色标" style="width:40px;padding:2px" />
+          <input id="fNewCatName" placeholder="新分类名称（如：临床笔记）" style="flex:1;min-width:120px" />
+          <input id="fNewCatSlug" placeholder="slug（可选）" style="width:110px" />
+          <input id="fNewCatDesc" placeholder="简介（可选）" style="flex:1.2;min-width:130px" />
+          <button class="btn small primary" type="button" id="btnCatCreate">＋ 新建分类</button>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn primary" type="button" id="btnCatMgrClose">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 批量文章归类弹窗 -->
+  <div class="modal-mask" id="batchCategoryModal" style="display:none">
+    <div class="modal">
+      <h3>批量文章归类</h3>
+      <div class="modal-body">
+        <div class="field-hint" id="batchCatSummary"></div>
+        <div style="display:flex;flex-wrap:wrap;gap:12px;font-size:12px">
+          <label class="toggle-row" style="cursor:pointer"><input type="radio" name="batchCatOp" value="add-categories" checked /><span>追加分类</span></label>
+          <label class="toggle-row" style="cursor:pointer"><input type="radio" name="batchCatOp" value="set-categories" /><span>覆盖重设</span></label>
+          <label class="toggle-row" style="cursor:pointer"><input type="radio" name="batchCatOp" value="remove-categories" /><span>移出所选分类</span></label>
+        </div>
+        <div class="post-cat-pills" id="batchCatCheckList"></div>
+        <div class="url-import-bar" style="margin-top:4px">
+          <input id="fQuickNewCategory" placeholder="快捷创建新分类并勾选…" />
+          <button class="btn small" type="button" id="btnQuickAddCat">＋ 新建并勾选</button>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn" type="button" id="btnBatchCatCancel">取消</button>
+        <button class="btn primary" type="button" id="btnBatchCatApply">应用归类</button>
+      </div>
+    </div>
+  </div>
+
   <!-- 键盘快捷键一览 -->
   <div class="modal-mask" id="shortcutsModal" style="display:none">
     <div class="modal">
@@ -497,10 +550,10 @@
           <div class="shortcut-row"><kbd>Ctrl / Cmd + K</kbd><span>聚焦当前模块搜索框（非输入态按 <kbd>/</kbd> 同效）</span></div>
           <div class="shortcut-row"><kbd>Ctrl / Cmd + F</kbd><span>编辑器内查找文本（支持所见即所得 / 分屏 / 源码）</span></div>
           <div class="shortcut-row"><kbd>Ctrl / Cmd + H</kbd><span>编辑器内查找并替换</span></div>
-          <div class="shortcut-row"><kbd>Ctrl + Shift + N</kbd><span>在文章 / 日常 / 画廊模块快速新建</span></div>
+          <div class="shortcut-row"><kbd>Ctrl + Shift + N</kbd><span>在文章 / 日常 / 画廊 / 造物模块快速新建</span></div>
           <div class="shortcut-row"><kbd>Ctrl + Shift + F</kbd><span>切换专注模式（隐藏/展开左侧栏）</span></div>
           <div class="shortcut-row"><kbd>Ctrl + Shift + P</kbd><span>打开内容推送预览</span></div>
-          <div class="shortcut-row"><kbd>Alt + 1 ~ 8</kbd><span>快速切换 01 文章 ～ 08 日程模块</span></div>
+          <div class="shortcut-row"><kbd>Alt + 1 ~ 9</kbd><span>快速切换 01 文章 ～ 09 造物模块</span></div>
           <div class="shortcut-row"><kbd>Esc</kbd><span>关闭当前弹窗或查找栏</span></div>
           <div class="shortcut-row"><kbd>?</kbd><span>打开本快捷键说明（非输入态）</span></div>
         </div>

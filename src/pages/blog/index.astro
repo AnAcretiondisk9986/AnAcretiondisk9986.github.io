@@ -2,11 +2,14 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import PostRow from '../../components/hz/PostRow.astro';
 import { getPublicPosts } from '../../lib/posts';
+import { buildCategoryStats, normalizeCategoryList, UNCATEGORIZED_ID, UNCATEGORIZED_LABEL } from '../../lib/categories';
+import categoriesRaw from '../../data/categories.json';
 import { fmtDot, fmtMass, folioCodes, massOf, redshift } from '../../lib/horizon';
 import '../../styles/hz/log.css';
 
 const posts = await getPublicPosts();
 const folioFor = folioCodes(posts);
+const catSummary = buildCategoryStats(normalizeCategoryList(categoriesRaw), posts);
 
 const tagMap = new Map<string, number>();
 for (const post of posts) {
@@ -113,8 +116,40 @@ const newestDate = posts.length > 0 ? fmtDot(posts[0].data.pubDate) : '—';
           <button type="button" data-spec-sort="mass" aria-pressed="false">按字数</button>
         </div>
 
-        <a class="hz-mini-btn" href="/private/">暗房私密 →</a>
+        <div class="hz-log-actions">
+          <a class="hz-mini-btn" href="/blog/report/">观测年报 ↗</a>
+          <a class="hz-mini-btn" href="/rss.xml">RSS</a>
+          <a class="hz-mini-btn" href="/private/">暗房私密 →</a>
+        </div>
       </div>
+
+      {(catSummary.buckets.length > 0 || catSummary.uncategorizedCount > 0) && (
+        <div class="hz-cats-rail" role="group" aria-label="按大类筛选">
+          <span class="hz-mono hz-cats-rail__k">CLASS //</span>
+          <button type="button" class="hz-cat-pill" data-spec-cat="all" aria-pressed="true">
+            全部大类 ({posts.length})
+          </button>
+          {catSummary.buckets.map((cat) => (
+            <button
+              type="button"
+              class="hz-cat-pill"
+              data-spec-cat={cat.name}
+              aria-pressed="false"
+              title={cat.description || cat.name}
+            >
+              <i class="hz-cat-dot" style={`background:${cat.color}`} aria-hidden="true"></i>
+              <span>{cat.name}</span>
+              <small>({cat.count})</small>
+            </button>
+          ))}
+          {catSummary.uncategorizedCount > 0 && (
+            <button type="button" class="hz-cat-pill" data-spec-cat={UNCATEGORIZED_ID} aria-pressed="false">
+              <span>{UNCATEGORIZED_LABEL}</span>
+              <small>({catSummary.uncategorizedCount})</small>
+            </button>
+          )}
+        </div>
+      )}
 
       {allTags.length > 0 && (
         <div class="hz-tags-rail" role="group" aria-label="按标签筛选">

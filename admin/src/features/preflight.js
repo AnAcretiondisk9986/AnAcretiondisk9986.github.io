@@ -59,6 +59,12 @@ export function runPreflight({ form = {}, content = '', posts = [], currentSlug 
   if (!tags.length) push('warn', '标签', '未设置标签，不利于分类与检索');
   else push('ok', '标签', `${tags.length} 个标签`);
 
+  const categories = Array.isArray(form.categories)
+    ? form.categories.filter(Boolean)
+    : String(form.categories || '').split(/[,，]/).map((c) => c.trim()).filter(Boolean);
+  if (!categories.length) push('warn', '大类', '未指定文章大类，将归入「未归类」');
+  else push('ok', '大类', categories.join(' / '));
+
   const imgs = [...md.matchAll(/!\[([^\]]*)\]\(([^)\s]+)/g)];
   const htmlImgs = [...md.matchAll(/<img\b[^>]*>/gi)];
   const imageCount = imgs.length + htmlImgs.length;

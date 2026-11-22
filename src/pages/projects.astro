@@ -1,0 +1,170 @@
+---
+/**
+ * HORIZON · 造物 / 实验室 (/projects/)
+ */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { getPublicPosts } from '../lib/posts';
+import {
+  matchProjectPosts,
+  normalizeProjects,
+  PROJECT_KIND_LABELS,
+  PROJECT_STATUS_LABELS,
+} from '../lib/projects';
+import projectsRaw from '../data/projects.json';
+import '../styles/hz/projects.css';
+
+const projects = normalizeProjects(projectsRaw);
+const posts = (await getPublicPosts()).filter((p) => !p.data.access || p.data.access === 'public');
+
+const statusCounts = new Map<string, number>();
+const kindCounts = new Map<string, number>();
+for (const p of projects) {
+  statusCounts.set(p.status, (statusCounts.get(p.status) ?? 0) + 1);
+  kindCounts.set(p.kind, (kindCounts.get(p.kind) ?? 0) + 1);
+}
+
+const activeCount = statusCounts.get('active') ?? 0;
+---
+
+<BaseLayout title="造物实验室" description="Acretiondisk 的开源项目、Agent 工作流、浏览器扩展与站内工程造物记录。" page="projects">
+  <div class="hz-wrap hz-lab" data-lab-root>
+    <header class="hz-lab-head">
+      <div class="hz-lab-head__top">
+        <div>
+          <p class="hz-mono hz-lab-head__kicker">CRAFT &amp; LAB // 09 · <span lang="ja">造物実験室</span></p>
+          <h1 class="hz-lab-head__title">造物与实验</h1>
+        </div>
+        <div class="hz-lab-stats hz-mono">
+          <span><b>{projects.length}</b> ARTIFACTS</span>
+          <span><b>{activeCount}</b> ACTIVE</span>
+          <a href="/blog/">SPECTRUM →</a>
+        </div>
+      </div>
+      <p class="hz-lab-head__deck">
+        把折腾过的工具、Agent 实验、课程计算器、桌面编辑器与站点基础设施整理成可溯源的造物档案。每件造物都直接挂接相关的构建笔记与代码仓库。
+      </p>
+    </header>
+
+    <section class="hz-lab-controls" aria-label="造物筛选">
+      <label class="hz-search">
+        <span class="hz-mono" aria-hidden="true">SEARCH</span>
+        <input type="search" data-lab-search placeholder="搜索项目名、技术栈或说明…" autocomplete="off" />
+        <kbd aria-hidden="true">/</kbd>
+      </label>
+
+      <div class="hz-lab-filters" role="group" aria-label="按状态筛选">
+        <button type="button" data-lab-status="all" aria-pressed="true">全部 ({projects.length})</button>
+        {Object.entries(PROJECT_STATUS_LABELS).map(([k, label]) => {
+          const count = statusCounts.get(k) ?? 0;
+          return count > 0 ? (
+            <button type="button" data-lab-status={k} aria-pressed="false">{label} ({count})</button>
+          ) : null;
+        })}
+      </div>
+
+      <div class="hz-lab-filters" role="group" aria-label="按形态筛选">
+        <button type="button" data-lab-kind="all" aria-pressed="true">ALL TYPES</button>
+        {Object.entries(PROJECT_KIND_LABELS).map(([k, label]) => {
+          const count = kindCounts.get(k) ?? 0;
+          return count > 0 ? (
+            <button type="button" data-lab-kind={k} aria-pressed="false">{label} ({count})</button>
+          ) : null;
+        })}
+      </div>
+    </section>
+
+    <div class="hz-lab-grid" data-lab-grid>
+      {projects.map((proj, idx) => {
+        const linkedPosts = matchProjectPosts(proj, posts);
+        const searchStr = `${proj.name} ${proj.tagline} ${proj.description} ${proj.stack.join(' ')}`.toLowerCase();
+        return (
+          <article
+            id={proj.id}
+            class:list={['hz-proj', { 'hz-proj--featured': proj.featured }]}
+            data-lab-card
+            data-status={proj.status}
+            data-kind={proj.kind}
+            data-search={searchStr}
+          >
+            {proj.cover && (
+              <div class="hz-proj__cover">
+                <img src={proj.cover} alt={proj.name} loading="lazy" decoding="async" />
+              </div>
+            )}
+
+            <div class="hz-proj__body">
+              <div class="hz-proj__meta hz-mono">
+                <span>LAB-{String(idx + 1).padStart(2, '0')}</span>
+                <span class={`hz-proj__status hz-proj__status--${proj.status}`}>
+                  {PROJECT_STATUS_LABELS[proj.status]}
+                </span>
+                <span>{PROJECT_KIND_LABELS[proj.kind]}</span>
+                {proj.featured && <span class="hz-proj__feat">★ FEATURED</span>}
+              </div>
+
+              <h2 class="hz-proj__title">{proj.name}</h2>
+              {proj.tagline && <p class="hz-proj__tagline">{proj.tagline}</p>}
+              {proj.description && <p class="hz-proj__desc">{proj.description}</p>}
+
+              {proj.highlights.length > 0 && (
+                <ul class="hz-proj__highlights">
+                  {proj.highlights.map((h) => <li>{h}</li>)}
+                </ul>
+              )}
+
+              {proj.stack.length > 0 && (
+                <div class="hz-proj__stack hz-mono">
+                  {proj.stack.map((tech) => <span>{tech}</span>)}
+                </div>
+              )}
+
+              {linkedPosts.length > 0 && (
+                <div class="hz-proj__posts">
+                  <span class="hz-mono hz-proj__posts-k">ASSOCIATED LOGS · 相关记录</span>
+                  <ul>
+                    {linkedPosts.slice(0, 4).map((post) => (
+                      <li>
+                        <a href={`/blog/${encodeURI(post.id)}/`}>
+                          <span>{post.data.title}</span>
+                          <time class="hz-mono">{post.data.pubDate.toISOString().split('T')[0]}</time>
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <div class="hz-proj__links hz-mono">
+                {proj.demoUrl && (
+                  <a
+                    class="hz-proj__btn hz-proj__btn--primary"
+                    href={proj.demoUrl}
+                    target={proj.demoUrl.startsWith('/') ? undefined : '_blank'}
+                    rel={proj.demoUrl.startsWith('/') ? undefined : 'noopener noreferrer'}
+                  >
+                    在线访问 / LAUNCH ↗
+                  </a>
+                )}
+                {proj.repoUrl && (
+                  <a class="hz-proj__btn" href={proj.repoUrl} target="_blank" rel="noopener noreferrer">
+                    源码仓库 / SOURCE ↗
+                  </a>
+                )}
+              </div>
+            </div>
+          </article>
+        );
+      })}
+    </div>
+
+    <div class="hz-empty" data-lab-empty hidden>
+      <p class="hz-mono">NO ARTIFACTS MATCH CURRENT QUERY</p>
+      <p>当前筛选下没有匹配的造物项目。</p>
+      <button type="button" class="hz-btn" data-lab-reset>重置筛选</button>
+    </div>
+  </div>
+</BaseLayout>
+
+<script>
+  import '../scripts/hz/projects';
+</script>

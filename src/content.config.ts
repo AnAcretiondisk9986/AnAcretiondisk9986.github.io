@@ -19,6 +19,7 @@ const blog = defineCollection({
     // 同一天内的发表顺序，1 = 当天第一篇；缺省时按文件名顺序兜底
     dayIndex: z.number().int().min(1).optional(),
     tags: z.array(z.string()).default([]),
+    categories: z.array(z.string()).default([]),
     draft: z.boolean().default(false),
     archived: z.boolean().default(false),
     scheduledAt: z.coerce.date().optional(),

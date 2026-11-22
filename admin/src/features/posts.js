@@ -43,6 +43,7 @@ export function initPosts(options = {}) { ctx = { ...ctx, ...options }; }
       }
       const slugs = [...selection()];
       if (!slugs.length) return;
+      if (kind === 'categorize') { ctx.openBatchCategoryModal?.(); return; }
       if (kind === 'clear') { selection().clear(); updateBatchBar(); ctx.renderList(); return; }
       const labels = { publish: '发布', unpublish: '撤回', archive: '归档', delete: '删除' };
       if (!confirm(`对选中的 ${slugs.length} 篇文章执行「${labels[kind]}」？`)) return;
@@ -296,6 +297,7 @@ export function initPosts(options = {}) { ctx = { ...ctx, ...options }; }
         fd.set('pubDate', `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`);
         fd.set('dayIndex', '');
         fd.set('tags', (post.tags || []).join(','));
+        fd.set('categories', (post.categories || []).join(','));
         fd.set('draft', 'true');
         fd.set('archived', 'false');
         fd.set('scheduledAt', '');
@@ -328,6 +330,7 @@ export function initPosts(options = {}) { ctx = { ...ctx, ...options }; }
         fd.set('pubDate', post.pubDate || '');
         fd.set('dayIndex', post.dayIndex || '');
         fd.set('tags', (post.tags || []).join(','));
+        fd.set('categories', (post.categories || []).join(','));
         fd.set('draft', post.draft ? 'true' : 'false');
         fd.set('archived', nextArchived ? 'true' : 'false');
         fd.set('access', post.access || 'public');
@@ -374,6 +377,7 @@ export function initPosts(options = {}) { ctx = { ...ctx, ...options }; }
         fd.set('pubDate', post.pubDate || '');
         fd.set('dayIndex', post.dayIndex || '');
         fd.set('tags', (post.tags || []).join(','));
+        fd.set('categories', (post.categories || []).join(','));
         fd.set('draft', String(nextDraft));
         fd.set('archived', post.archived ? 'true' : 'false');
         fd.set('scheduledAt', nextDraft ? (post.scheduledAt || '') : '');
@@ -402,6 +406,7 @@ export function initPosts(options = {}) { ctx = { ...ctx, ...options }; }
       fd.set('pubDate', merged.pubDate || '');
       fd.set('dayIndex', merged.dayIndex || '');
       fd.set('tags', (merged.tags || []).join(','));
+      fd.set('categories', (merged.categories || []).join(','));
       fd.set('draft', merged.draft ? 'true' : 'false');
       fd.set('archived', merged.archived ? 'true' : 'false');
       fd.set('scheduledAt', merged.scheduledAt || '');

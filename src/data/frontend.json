@@ -30,5 +30,6 @@
     "#ff6bd6"
   ],
   "heroRainbowMix": 82,
-  "heroRainbowSheen": 4
+  "heroRainbowSheen": 4,
+  "interactEndpoint": "https://blog-interact.anacretiondisk.workers.dev"
 }

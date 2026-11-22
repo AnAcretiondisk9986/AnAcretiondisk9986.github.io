@@ -277,6 +277,115 @@ try {
   const pdfjsRes = await fetch(`${base}/admin/vendor/pdfjs/build/pdf.min.mjs`);
   check('后台 PDF.js 解析资源可访问', pdfjsRes.status === 200 && (pdfjsRes.headers.get('content-type') || '').includes('javascript'));
 
+  // ── 文章大类 CRUD、级联重命名、批量归类 ──
+  const cat0 = await (await api('/api/categories')).json();
+  check('分类 GET 返回数组', Array.isArray(cat0.categories) && typeof cat0.contentHash === 'string');
+  const catCreate = await api('/api/categories', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: '冒烟分类', slug: 'smoke-cat', color: '#ff5a1a', expectedHash: cat0.contentHash || '' }),
+  });
+  const catCreated = await catCreate.json();
+  check('分类 POST 创建成功并返回 contentHash', catCreate.status === 201 && catCreated.item?.name === '冒烟分类' && HASH_RE.test(catCreated.contentHash || ''));
+
+  const catTestSlug = 'cat-smoke-post';
+  await apiForm('/api/posts', 'POST', { slug: catTestSlug, title: '分类冒烟文章', pubDate: '2026-11-22', content: '测试分类级联正文' });
+
+  const batchCatRes = await api('/api/posts/batch', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'add-categories', slugs: [catTestSlug], categories: ['冒烟分类'] }),
+  });
+  check('批量归类 add-categories 成功', batchCatRes.status === 200 && (await batchCatRes.json()).okCount === 1);
+
+  const gotWithCat = await (await api(`/api/posts/${catTestSlug}`)).json();
+  check('文章 GET 包含 categories 数组', Array.isArray(gotWithCat.categories) && gotWithCat.categories.includes('冒烟分类'));
+
+  const catRenameRes = await api(`/api/categories/${encodeURIComponent(catCreated.item.id)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: '冒烟分类改名', expectedHash: catCreated.contentHash }),
+  });
+  const catRenamed = await catRenameRes.json();
+  const gotAfterRename = await (await api(`/api/posts/${catTestSlug}`)).json();
+  check('分类重命名级联同步到文章 frontmatter', catRenameRes.status === 200 && gotAfterRename.categories.includes('冒烟分类改名'));
+
+  const catDelRes = await api(`/api/categories/${encodeURIComponent(catCreated.item.id)}?expectedHash=${encodeURIComponent(catRenamed.contentHash)}`, {
+    method: 'DELETE',
+  });
+  const gotAfterDelCat = await (await api(`/api/posts/${catTestSlug}`)).json();
+  check('分类删除级联清理文章 frontmatter', catDelRes.status === 200 && !gotAfterDelCat.categories.includes('冒烟分类改名'));
+
+  // ── 造物 / 年报 / 学业 / 考试 CRUD 与版本冲突 ──
+  const proj0 = await (await api('/api/projects')).json();
+  const projCreate = await api('/api/projects', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: 'Smoke Lab', tagline: 'Test Tool', status: 'active', kind: 'cli', postSlugs: [catTestSlug], expectedHash: proj0.contentHash || '' }),
+  });
+  const projCreated = await projCreate.json();
+  check('造物 POST 创建成功', projCreate.status === 201 && projCreated.item?.name === 'Smoke Lab');
+  const projConflict = await api(`/api/projects/${encodeURIComponent(projCreated.item.id)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: 'Conflict Lab', expectedHash: '0'.repeat(64) }),
+  });
+  check('造物旧 hash 修改返回 409', projConflict.status === 409);
+
+  const rep0 = await (await api('/api/reports')).json();
+  const repCreate = await api('/api/reports', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title: '2026 Smoke Report', dateStart: '2026-01-01', dateEnd: '2026-12-31', expectedHash: rep0.contentHash || '' }),
+  });
+  const repCreated = await repCreate.json();
+  check('观测报告 POST 创建成功', repCreate.status === 201 && repCreated.item?.title === '2026 Smoke Report');
+
+  const acad0 = await (await api('/api/academics')).json();
+  check('学业 GET 返回 tracks/semesters/courses', Array.isArray(acad0.courses) && acad0.tracks != null);
+  const acadPut = await api('/api/academics', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      ...acad0,
+      courses: [{ id: 'smk-c1', code: 'S1', name: '测试课程', credits: 2, dept: '教务', nature: '必修', semesterId: 's1', track: 'clin', status: 'completed', gpa: 4.5, posts: [catTestSlug] }],
+      expectedHash: acad0.contentHash || '',
+    }),
+  });
+  check('学业 PUT 保存成功', acadPut.status === 200 && (await acadPut.json()).academics?.courses?.length === 1);
+  await api(`/api/posts/${catTestSlug}`, { method: 'DELETE' });
+
+  const ex0 = await (await api('/api/exams')).json();
+  const exPut = await api('/api/exams', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      year: '2026-2027',
+      term: 1,
+      termLabel: 'Test Term',
+      exams: [{ course: '生理学', date: '2027-01-12', start: '09:00', end: '11:00', room: '101' }],
+      expectedHash: ex0.contentHash || '',
+    }),
+  });
+  check('期末考试 PUT 保存成功', exPut.status === 200 && (await exPut.json()).exams?.exams?.length === 1);
+
+  // ── 本地跨访客互动 API（无需 admin token 读写，删除需 auth） ──
+  const interactHealth = await (await fetch(`${base}/api/interact/health`)).json();
+  check('本地互动健康接口返回 ok', interactHealth.ok === true);
+  const likePost = await fetch(`${base}/api/interact/daily/smoke-d1/like`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'like' }),
+  });
+  check('本地互动点赞接口匿名可写并返回最新计数', likePost.status === 200 && (await likePost.json()).count === 1);
+  const cmtPost = await fetch(`${base}/api/interact/comments`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ target: '/blog/smoke', nick: 'TestVisitor', body: 'Nice article!' }),
+  });
+  const cmtSaved = await cmtPost.json();
+  check('本地互动评论发表并持久化', cmtPost.status === 201 && Boolean(cmtSaved.comment?.id) && cmtSaved.total === 1);
+
   // ── 媒体引用扫描覆盖 about:avatar 与 gallery ──
   const existingMedia = await (await api('/api/media')).json();
   const sampleImg = (existingMedia.images || [])[0];

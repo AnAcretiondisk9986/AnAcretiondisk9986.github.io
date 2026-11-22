@@ -1,0 +1,24 @@
+# 轻量跨访客互动代理（Cloudflare Worker + KV）：日常共鸣点赞与文章/日常留言
+#
+# 部署步骤：
+#   1. npx wrangler login
+#   2. npx wrangler kv namespace create INTERACT_KV --config deploy/interact-worker/wrangler.toml
+#      将返回的 id 填入下方 [[kv_namespaces]] 的 id 字段
+#   3. npx wrangler secret put ADMIN_SECRET --config deploy/interact-worker/wrangler.toml
+#   4. npx wrangler deploy --config deploy/interact-worker/wrangler.toml
+name = "blog-interact"
+main = "../../scripts/interact-worker.js"
+compatibility_date = "2026-01-01"
+
+[vars]
+ALLOWED_ORIGIN = "https://blog.acretiondisk.top,http://127.0.0.1:4321,http://localhost:4321"
+
+# KV Namespace 已绑定（线上持久化）：
+[[kv_namespaces]]
+binding = "INTERACT_KV"
+id = "efa4e0100b6c4038ab0a7184931fede5"
+
+# 同源路由示例（建议挂载在主域名 /api/interact/*）：
+# routes = [
+#   { pattern = "blog.acretiondisk.top/api/interact/*", zone_name = "acretiondisk.top" }
+# ]

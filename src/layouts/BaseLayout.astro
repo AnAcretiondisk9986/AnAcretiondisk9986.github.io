@@ -23,6 +23,10 @@ interface Props {
   bleed?: boolean;
   /** 不渲染页脚 */
   noFoot?: boolean;
+  /** 分享预览图路径或 URL（默认 /og-default.png） */
+  ogImage?: string;
+  /** Open Graph 内容类型 */
+  ogType?: 'website' | 'article';
 }
 
 const {
@@ -32,12 +36,19 @@ const {
   page = '',
   bleed = false,
   noFoot = false,
+  ogImage = '/og-default.png',
+  ogType = 'website',
 } = Astro.props;
 
 const siteName = frontend.siteName || 'Acretiondisk';
 const siteTagline = frontend.siteTagline || '记录想法与生活';
 const fullTitle = title === 'Acretiondisk' || title === siteName ? siteName : `${title} · ${siteName}`;
-const canonical = new URL(Astro.url.pathname, Astro.site ?? 'https://blog.acretiondisk.top').href;
+const siteOrigin = (Astro.site?.origin ?? 'https://blog.acretiondisk.top').replace(/\/$/, '');
+const canonical = new URL(Astro.url.pathname, siteOrigin).href;
+const resolvedOgImage = /^https?:\/\//i.test(ogImage)
+  ? ogImage
+  : new URL(ogImage.startsWith('/') ? ogImage : `/${ogImage}`, siteOrigin).href;
+const interactEndpoint = (frontend as Record<string, string>).interactEndpoint || '';
 ---
 
 <!doctype html>
@@ -48,10 +59,18 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? 'https://blog.acreti
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
     <meta name="description" content={description} />
     <meta name="theme-color" content="#08080b" />
+    <meta property="og:site_name" content={siteName} />
     <meta property="og:title" content={fullTitle} />
     <meta property="og:description" content={description} />
-    <meta property="og:type" content="website" />
+    <meta property="og:type" content={ogType} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={resolvedOgImage} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={fullTitle} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={resolvedOgImage} />
     <link rel="canonical" href={canonical} />
+    <link rel="alternate" type="application/rss+xml" title={`${siteName} · RSS`} href="/rss.xml" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
@@ -90,7 +109,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? 'https://blog.acreti
       }
     </script>
   </head>
-  <body class={bodyClass} data-page={page}>
+  <body class={bodyClass} data-page={page} data-interact-endpoint={interactEndpoint || undefined}>
     <div class="hz-aurora" aria-hidden="true"></div>
     <canvas class="hz-cosmos-canvas" data-hz-cosmos aria-hidden="true"></canvas>
     <a class="hz-skip" href="#main">跳到正文</a>
@@ -102,6 +121,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? 'https://blog.acreti
     <script>
       import '../scripts/hz/shell';
       import '../scripts/hz/motion';
+      import '../scripts/hz/command-palette';
       import '../scripts/cdn-fallback';
     </script>
   </body>

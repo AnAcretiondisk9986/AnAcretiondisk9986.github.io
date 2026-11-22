@@ -665,3 +665,109 @@ export function formatCourseGrade(course: Pick<AcademicCourse, 'grade' | 'gpa'>)
     hasScore: false,
   };
 }
+
+export interface SemesterGpaPoint {
+  id: string;
+  label: string;
+  shortLabel: string;
+  hue: number;
+  avgGpa: number;
+  scoredCredits: number;
+  scoredCount: number;
+}
+
+export interface AcademicTelemetry {
+  origTotalCredits: number;
+  origCompletedCredits: number;
+  clinTotalCredits: number;
+  clinLitCredits: number;
+  clinCompletedCredits: number;
+  clinActiveCredits: number;
+  overallWeightedGpa: number | null;
+  scoredCourseCount: number;
+  scoredCreditsTotal: number;
+  linkedPostCourseCount: number;
+  semesterCurve: SemesterGpaPoint[];
+}
+
+export function computeAcademicTelemetry(data: AcademicData): AcademicTelemetry {
+  const creditCourses = data.courses.filter((c) => c.kind !== 'milestone');
+  const orig = creditCourses.filter((c) => c.track === 'orig');
+  const clin = creditCourses.filter((c) => c.track === 'clin');
+  const sumCr = (arr: AcademicCourse[]) => arr.reduce((s, c) => s + c.credits, 0);
+
+  const scored = creditCourses.filter((c) => typeof c.gpa === 'number' && Number.isFinite(c.gpa) && c.credits > 0);
+  const scoredCreditsTotal = sumCr(scored);
+  const overallWeightedGpa = scoredCreditsTotal > 0
+    ? Number((scored.reduce((s, c) => s + (c.gpa as number) * c.credits, 0) / scoredCreditsTotal).toFixed(2))
+    : null;
+
+  const semGpaMap = new Map<string, { wSum: number; cr: number; count: number }>();
+  for (const c of scored) {
+    const prev = semGpaMap.get(c.semesterId) ?? { wSum: 0, cr: 0, count: 0 };
+    prev.wSum += (c.gpa as number) * c.credits;
+    prev.cr += c.credits;
+    prev.count += 1;
+    semGpaMap.set(c.semesterId, prev);
+  }
+
+  const semesterCurve: SemesterGpaPoint[] = data.semesters
+    .map((sem) => {
+      const bucket = semGpaMap.get(sem.id);
+      if (!bucket || bucket.cr <= 0) return null;
+      return {
+        id: sem.id,
+        label: sem.label,
+        shortLabel: compactAxisLabel(sem.label),
+        hue: sem.hue,
+        avgGpa: Number((bucket.wSum / bucket.cr).toFixed(2)),
+        scoredCredits: bucket.cr,
+        scoredCount: bucket.count,
+      };
+    })
+    .filter((x): x is SemesterGpaPoint => Boolean(x));
+
+  const linkedPostCourseCount = data.courses.filter((c) => Array.isArray(c.posts) && c.posts.length > 0).length;
+
+  return {
+    origTotalCredits: sumCr(orig),
+    origCompletedCredits: sumCr(orig.filter((c) => c.status === 'completed')),
+    clinTotalCredits: sumCr(clin),
+    clinLitCredits: sumCr(clin.filter((c) => c.status !== 'planned')),
+    clinCompletedCredits: sumCr(clin.filter((c) => c.status === 'completed')),
+    clinActiveCredits: sumCr(clin.filter((c) => c.status === 'active')),
+    overallWeightedGpa,
+    scoredCourseCount: scored.length,
+    scoredCreditsTotal,
+    linkedPostCourseCount,
+    semesterCurve,
+  };
+}
+
+export interface LinkedAcademicPost {
+  id: string;
+  title: string;
+  href: string;
+}
+
+export function resolveCoursePosts(
+  slugs: string[] | undefined,
+  postsById: Map<string, { id: string; title: string }>,
+): LinkedAcademicPost[] {
+  if (!Array.isArray(slugs) || slugs.length === 0) return [];
+  const out: LinkedAcademicPost[] = [];
+  const seen = new Set<string>();
+  for (const raw of slugs) {
+    const key = String(raw || '').trim().toLowerCase();
+    if (!key) continue;
+    const hit = postsById.get(key);
+    if (!hit || seen.has(hit.id)) continue;
+    seen.add(hit.id);
+    out.push({
+      id: hit.id,
+      title: hit.title,
+      href: `/blog/${encodeURI(hit.id)}/`,
+    });
+  }
+  return out;
+}

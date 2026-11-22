@@ -139,9 +139,48 @@ try {
   check('按 Escape 关闭移动端菜单并将焦点恢复到触发按钮', menuClosed.hidden === true && menuClosed.focusedBack === true);
   await page.setViewport({ width: 1280, height: 900 });
 
-  // ── 3. 文章光谱（/blog/） ──
+  // ── 2.5 全站新功能产物与路由回归（RSS / Sitemap / OG / Command Palette / 09 造物 / 02.1 年报 / 06 遥测 / 大类过滤）──
+  const [rssStat, sitemapStat, searchIdxStat, ogPngStat] = await Promise.all([
+    stat(join(DIST, 'rss.xml')),
+    stat(join(DIST, 'sitemap.xml')),
+    stat(join(DIST, 'data', 'search-index.json')),
+    stat(join(DIST, 'og-default.png')),
+  ]);
+  check('已构建 /rss.xml、/sitemap.xml、/data/search-index.json 与 /og-default.png',
+    rssStat.size > 200 && sitemapStat.size > 200 && searchIdxStat.size > 500 && ogPngStat.size > 1000);
+
+  const ogMeta = await page.evaluate(() => ({
+    ogImage: document.querySelector('meta[property="og:image"]')?.getAttribute('content') || '',
+    twitterCard: document.querySelector('meta[name="twitter:card"]')?.getAttribute('content') || '',
+    rssAlt: document.querySelector('link[rel="alternate"][type="application/rss+xml"]')?.getAttribute('href') || '',
+  }));
+  check('BaseLayout 注入 og:image、twitter:card 与 RSS alternate',
+    ogMeta.ogImage.length > 0 && ogMeta.twitterCard === 'summary_large_image' && ogMeta.rssAlt === '/rss.xml',
+    JSON.stringify(ogMeta));
+
+  // 测试全站命令搜索面板 (Ctrl/Cmd + K)
+  await page.click('[data-cmdk-open]');
+  await wait(250);
+  await page.keyboard.type('ClinMedAgent');
+  await wait(200);
+  const cmdkCheck = await page.evaluate(() => ({
+    open: document.getElementById('hz-cmdk')?.open === true,
+    hitCount: document.querySelectorAll('[data-cmdk-idx]').length,
+  }));
+  check('全站搜索命令面板打开并检索到匹配条目', cmdkCheck.open === true && cmdkCheck.hitCount > 0, `${cmdkCheck.hitCount} 条命中`);
+  await page.keyboard.press('Escape');
+  // ── 3. 文章光谱（/blog/）与大类筛选 + 02.1 观测报告 + 09 造物实验室 ──
   await page.goto(`http://127.0.0.1:${PORT}/blog/`, { waitUntil: 'load' });
   await wait(300);
+  const hasCatRail = await page.evaluate(() => document.querySelectorAll('[data-spec-cat]').length >= 2);
+  check('/blog/ 显示文章大类筛选轨道 (包含 未归类/全部大类)', hasCatRail === true);
+
+  await page.click('[data-spec-cat="uncategorized"]');
+  await wait(160);
+  const catFilterUrl = await page.evaluate(() => location.search);
+  check('/blog/ 点击大类同步 URL ?cat=uncategorized', catFilterUrl.includes('cat=uncategorized'), catFilterUrl);
+  await page.click('[data-spec-cat="all"]');
+  await wait(120);
   await page.keyboard.press('/');
   const searchFocused = await page.evaluate(() => document.activeElement?.hasAttribute('data-spec-search'));
   check('/blog/ 按 `/` 键聚焦搜索框', searchFocused === true);
@@ -305,6 +344,27 @@ try {
   await wait(150);
   const acadReset = await page.evaluate(() => document.querySelector('[data-acad-empty]')?.hidden === true);
   check('/academics/ 点击重置筛选恢复全部课程', acadReset === true);
+
+  // ── 7.5 /projects/ 造物实验室、/blog/report/ 年度观测报告、/academics/ 遥测面板 ──
+  await page.goto(`http://127.0.0.1:${PORT}/projects/`, { waitUntil: 'load' });
+  await wait(200);
+  const projCheck = await page.evaluate(() => ({
+    cards: document.querySelectorAll('[data-lab-card]').length,
+    title: document.querySelector('.hz-lab-head__title')?.textContent || '',
+  }));
+  check('/projects/ 造物实验室正常渲染项目卡片', projCheck.cards >= 5 && projCheck.title.includes('造物'), `${projCheck.cards} 项`);
+
+  await page.goto(`http://127.0.0.1:${PORT}/blog/report/`, { waitUntil: 'load' });
+  await wait(200);
+  const repCheck = await page.evaluate(() => ({
+    panels: document.querySelectorAll('[data-rep-panel]').length,
+    kpis: document.querySelectorAll('.hz-rep-kpi article').length,
+  }));
+  check('/blog/report/ 年度观测报告正常渲染周期与量化 KPI', repCheck.panels >= 1 && repCheck.kpis >= 4);
+
+  const acadTeleCheck = await page.goto(`http://127.0.0.1:${PORT}/academics/`, { waitUntil: 'load' })
+    .then(() => page.evaluate(() => Boolean(document.querySelector('.hz-acad-tele'))));
+  check('/academics/ 渲染轨线遥测条与学分 GPA 统计', acadTeleCheck === true);
 
   // ── 8. 全程零脚本错误 ──
   check('全站巡检零未捕获脚本错误', pageErrors.length === 0, pageErrors.join(' | ') || '0 errors');

@@ -1,11 +1,14 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import { getPublicPosts } from '../lib/posts';
 import {
   computeAcademicStats,
+  computeAcademicTelemetry,
   fmtCredit,
   formatCourseGrade,
   packAcademics,
   packTrackWall,
+  resolveCoursePosts,
   type AcademicData,
   type AxisSegment,
   type PackedCourse,
@@ -16,10 +19,24 @@ import '../styles/hz/academics.css';
 
 const data = rawData as AcademicData;
 const stats = computeAcademicStats(data);
+const telemetry = computeAcademicTelemetry(data);
+const publicPosts = (await getPublicPosts()).filter((p) => !p.data.access || p.data.access === 'public');
+const postMap = new Map(publicPosts.map((p) => [p.id.toLowerCase(), { id: p.id, title: p.data.title }]));
+const transferPosts = resolveCoursePosts(data.transfer?.posts, postMap);
 const packedSemesters = packAcademics(data);
 
 const origWall = packTrackWall(packedSemesters.filter((s) => s.track === 'orig'));
 const clinWall = packTrackWall(packedSemesters.filter((s) => s.track === 'clin'));
+
+// GPA 折线图 SVG 点位计算
+const curvePoints = telemetry.semesterCurve;
+const curveCoords = curvePoints.map((s, idx) => {
+  const x = curvePoints.length === 1 ? 140 : Math.round(16 + (idx / (curvePoints.length - 1)) * 248);
+  const gpa = Math.max(0, Math.min(5, s.avgGpa));
+  const y = Math.round(64 - (gpa / 5) * 52);
+  return { ...s, x, y };
+});
+const curvePolyline = curveCoords.map((p) => `${p.x},${p.y}`).join(' ');
 
 const litTotal = stats.completedCount + stats.activeCount;
 
@@ -87,6 +104,54 @@ const badgeText = (c: PackedCourse) => {
       </div>
     </header>
 
+    <details class="hz-acad-tele" open>
+      <summary class="hz-acad-tele__sum hz-mono">
+        <span>ORBITAL TELEMETRY // 轨线遥测</span>
+        <span>
+          已修 {fmtCredit(telemetry.origCompletedCredits + telemetry.clinCompletedCredits)} CR
+          {telemetry.overallWeightedGpa !== null ? ` · 综合加权绩点 ${telemetry.overallWeightedGpa.toFixed(2)} / 5.0` : ''}
+          · 在修 {fmtCredit(telemetry.clinActiveCredits)} CR
+        </span>
+      </summary>
+      <div class="hz-acad-tele__body">
+        <div class="hz-acad-tele__cards">
+          <div class="hz-acad-tcard">
+            <span class="hz-mono">TRACK 01 · {data.tracks.orig.name}</span>
+            <b>{fmtCredit(telemetry.origCompletedCredits)} <small>/ {fmtCredit(telemetry.origTotalCredits)} CR</small></b>
+            <small class="hz-mono">
+              已记绩 {telemetry.origCompletedCredits > 0 ? '完成转轨学分互认' : '准备中'}
+            </small>
+          </div>
+          <div class="hz-acad-tcard">
+            <span class="hz-mono">TRACK 02 · {data.tracks.clin.name}</span>
+            <b>{fmtCredit(telemetry.clinLitCredits)} <small>/ {fmtCredit(telemetry.clinTotalCredits)} CR</small></b>
+            <small class="hz-mono">
+              已修 {fmtCredit(telemetry.clinCompletedCredits)} CR · 在修 {fmtCredit(telemetry.clinActiveCredits)} CR
+              {telemetry.overallWeightedGpa !== null ? ` · 加权绩点 ${telemetry.overallWeightedGpa.toFixed(2)} (${telemetry.scoredCourseCount} 门)` : ''}
+            </small>
+          </div>
+        </div>
+        {curveCoords.length > 0 && (
+          <div class="hz-acad-curve">
+            <span class="hz-mono hz-acad-curve__k">SEMESTER GPA TRAJECTORY</span>
+            <svg viewBox="0 0 280 76" role="img" aria-label="各学期加权绩点趋势图">
+              <line x1="12" y1="64" x2="268" y2="64" stroke="currentColor" stroke-opacity="0.2" />
+              {curveCoords.length > 1 && (
+                <polyline fill="none" stroke="var(--hz-hot)" stroke-width="2" points={curvePolyline} />
+              )}
+              {curveCoords.map((pt) => (
+                <g>
+                  <circle cx={pt.x} cy={pt.y} r="3.8" fill="var(--hz-hot)" />
+                  <text x={pt.x} y={pt.y - 7} text-anchor="middle" font-size="8" fill="currentColor">{pt.avgGpa.toFixed(2)}</text>
+                  <text x={pt.x} y="74" text-anchor="middle" font-size="7" fill="currentColor" opacity="0.65">{pt.shortLabel}</text>
+                </g>
+              ))}
+            </svg>
+          </div>
+        )}
+      </div>
+    </details>
+
     <div class="hz-empty" data-acad-empty hidden>
       <p class="hz-mono">NO COURSES MATCH CURRENT FILTER</p>
       <p>当前筛选条件下没有匹配的课程，试试清空搜索词或切换状态。</p>
@@ -123,6 +188,7 @@ const badgeText = (c: PackedCourse) => {
               const isMilestone = c.kind === 'milestone';
               const milestoneTier = isMilestone ? (c.milestoneSpan && c.milestoneSpan >= 4 ? 'internship' : 'clerkship') : undefined;
               const gradeInfo = formatCourseGrade(c);
+              const linkedPosts = resolveCoursePosts(c.posts, postMap);
               const fullTitle = c.subTags.length > 0 ? `${c.mainTitle}（${c.subTags.join('·')}）` : c.mainTitle;
               return (
                 <button
@@ -136,7 +202,7 @@ const badgeText = (c: PackedCourse) => {
                   data-hero={c.desktop.h > 1 ? 'true' : undefined}
                   data-milestone={isMilestone ? 'true' : undefined}
                   data-milestone-tier={milestoneTier}
-                  data-search={`${c.name} ${c.mainTitle} ${c.subTags.join(' ')} ${c.en || ''} ${c.dept}`.toLowerCase()}
+                  data-search={`${c.name} ${c.mainTitle} ${c.subTags.join(' ')} ${c.en || ''} ${c.dept} ${c.note || ''}`.toLowerCase()}
                   style={tileStyle(c)}
                   aria-pressed="false"
                   aria-label={`${fullTitle}${c.en ? ` (${c.en})` : ''}，${badgeText(c)}，开课部门：${c.dept}，${gradeInfo.label}：${gradeInfo.ariaText}`}
@@ -169,6 +235,7 @@ const badgeText = (c: PackedCourse) => {
                       </span>
                       <span class="hz-tile__cr">
                         {c.early && <span class="hz-tile__early" aria-hidden="true">⚡</span>}
+                        {linkedPosts.length > 0 && <span class="hz-tile__note-ind" title={`关联 ${linkedPosts.length} 篇博文`} aria-hidden="true">📝</span>}
                         <span>{badgeText(c)}</span>
                       </span>
                     </span>
@@ -188,6 +255,16 @@ const badgeText = (c: PackedCourse) => {
                           {gradeInfo.scale && <span class="hz-tile__scale"> {gradeInfo.scale}</span>}
                         </span>
                       </span>
+                      {c.note && (
+                        <span class="hz-tile__note-txt">{c.note}</span>
+                      )}
+                      {linkedPosts.length > 0 && (
+                        <span class="hz-tile__posts">
+                          {linkedPosts.slice(0, 2).map((p) => (
+                            <a href={`/blog/${encodeURI(p.id)}/`}>{p.title} ↗</a>
+                          ))}
+                        </span>
+                      )}
                     </span>
                   </span>
                 </button>
@@ -198,6 +275,13 @@ const badgeText = (c: PackedCourse) => {
           {idx === 0 && (
             <div class="hz-transfer-line" role="separator" aria-label="转专业">
               <span>转专业 · <span lang="ja">転科軌道修正</span></span>
+              {transferPosts.length > 0 && (
+                <span class="hz-transfer-posts">
+                  {transferPosts.map((p) => (
+                    <a href={`/blog/${encodeURI(p.id)}/`}>{p.title} ↗</a>
+                  ))}
+                </span>
+              )}
             </div>
           )}
         </>

@@ -54,6 +54,16 @@ const DAILY_JSON = resolve(DATA_DIR, 'daily.json');
 const ABOUT_JSON = resolve(DATA_DIR, 'about.json');
 const FRONTEND_JSON = resolve(DATA_DIR, 'frontend.json');
 const SCHEDULE_JSON = resolve(DATA_DIR, 'schedule.json');
+const CATEGORIES_JSON = resolve(DATA_DIR, 'categories.json');
+const PROJECTS_JSON = resolve(DATA_DIR, 'projects.json');
+const REPORT_JSON = resolve(DATA_DIR, 'report.json');
+const ACADEMICS_JSON = resolve(DATA_DIR, 'academics.json');
+const EXAMS_JSON = resolve(DATA_DIR, 'exams.json');
+const INTERACT_LOCAL_JSON = process.env.ADMIN_INTERACT_FILE
+  ? resolve(process.env.ADMIN_INTERACT_FILE)
+  : process.env.ADMIN_DATA_DIR
+    ? resolve(DATA_DIR, '.interact-local.json')
+    : resolve(__dirname, '.interact-local.json');
 const PORT = parseInt(process.env.PORT, 10) || 4322;
 const SERVER_STARTED_AT = new Date().toISOString();
 const TOKEN_FILE = resolve(__dirname, '.admin-token');
@@ -121,12 +131,216 @@ function validateDailyData(value) {
   return value;
 }
 
+function validateCategoriesData(value) {
+  if (!Array.isArray(value)) throw new InvalidDataError('文章分类必须是数组');
+  const seenIds = new Set();
+  const seenNames = new Set();
+  return value.map((item, index) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) throw new InvalidDataError(`分类第 ${index + 1} 项不是对象`);
+    const name = String(item.name || '').trim().slice(0, 40);
+    if (!name) throw new InvalidDataError(`分类第 ${index + 1} 项缺少名称`);
+    if (seenNames.has(name)) throw new InvalidDataError(`分类名称「${name}」重复`);
+    const id = (String(item.id || `cat-${index + 1}`).trim().replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 48)) || `cat-${index + 1}`;
+    if (id === 'uncategorized') throw new InvalidDataError('分类 id 不能使用保留值 uncategorized');
+    if (seenIds.has(id)) throw new InvalidDataError(`分类 id「${id}」重复`);
+    seenIds.add(id);
+    seenNames.add(name);
+    const color = /^#[0-9a-f]{6}$/i.test(String(item.color || '').trim()) ? String(item.color).trim() : '#ff5a1a';
+    const order = Number.isFinite(Number(item.order)) ? Math.round(Number(item.order)) : index + 1;
+    return {
+      id,
+      name,
+      slug: String(item.slug || id).trim().slice(0, 48) || id,
+      description: String(item.description || '').trim().slice(0, 200),
+      color,
+      order,
+    };
+  }).sort((a, b) => a.order - b.order || a.name.localeCompare(b.name, 'zh-Hans-CN'));
+}
+
+function validateProjectsData(value) {
+  if (!Array.isArray(value)) throw new InvalidDataError('造物项目必须是数组');
+  const seenIds = new Set();
+  const validStatus = new Set(['active', 'maintaining', 'experiment', 'archived']);
+  const validKind = new Set(['web', 'app', 'cli', 'extension', 'ai', 'other']);
+  const cleanArr = (arr, max = 20, maxLen = 140) => [...new Set(
+    (Array.isArray(arr) ? arr : String(arr || '').split(/[,，\n]/))
+      .map((s) => String(s || '').trim().slice(0, maxLen))
+      .filter(Boolean),
+  )].slice(0, max);
+
+  return value.map((item, index) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) throw new InvalidDataError(`项目第 ${index + 1} 项不是对象`);
+    const name = String(item.name || '').trim().slice(0, 80);
+    if (!name) throw new InvalidDataError(`项目第 ${index + 1} 项缺少名称`);
+    const id = (String(item.id || `proj-${index + 1}`).trim().replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 60)) || `proj-${index + 1}`;
+    if (seenIds.has(id)) throw new InvalidDataError(`项目 id「${id}」重复`);
+    seenIds.add(id);
+    for (const urlField of ['repoUrl', 'demoUrl']) {
+      const rawUrl = String(item[urlField] || '').trim();
+      if (rawUrl && safeLink(rawUrl) === null) {
+        throw new InvalidDataError(`项目「${name}」的 ${urlField} 链接不合法`);
+      }
+    }
+    return {
+      id,
+      name,
+      tagline: String(item.tagline || '').trim().slice(0, 140),
+      description: String(item.description || '').trim().slice(0, 1200),
+      status: validStatus.has(item.status) ? item.status : 'maintaining',
+      kind: validKind.has(item.kind) ? item.kind : 'other',
+      stack: cleanArr(item.stack, 12, 32),
+      repoUrl: String(item.repoUrl || '').trim().slice(0, 500),
+      demoUrl: String(item.demoUrl || '').trim().slice(0, 500),
+      cover: String(item.cover || '').trim().slice(0, 500),
+      featured: Boolean(item.featured),
+      order: Number.isFinite(Number(item.order)) ? Math.round(Number(item.order)) : index + 1,
+      postSlugs: cleanArr(item.postSlugs, 20, 140),
+      postTags: cleanArr(item.postTags, 12, 40),
+      highlights: cleanArr(item.highlights, 8, 120),
+    };
+  }).sort((a, b) => Number(b.featured) - Number(a.featured) || a.order - b.order);
+}
+
+function validateReportData(value) {
+  requirePlainObject(value, '观测报告数据');
+  const rawReports = Array.isArray(value.reports) ? value.reports : [];
+  const seen = new Set();
+  const reports = rawReports.map((item, index) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) throw new InvalidDataError(`报告第 ${index + 1} 项不是对象`);
+    const id = (String(item.id || `report-${index + 1}`).trim().replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 60)) || `report-${index + 1}`;
+    if (seen.has(id)) throw new InvalidDataError(`报告 id「${id}」重复`);
+    seen.add(id);
+    const title = String(item.title || '').trim().slice(0, 120);
+    if (!title) throw new InvalidDataError(`报告第 ${index + 1} 项缺少标题`);
+    const milestones = (Array.isArray(item.milestones) ? item.milestones : []).slice(0, 30).map((m) => {
+      if (!m || typeof m !== 'object') return null;
+      const mt = String(m.title || '').trim().slice(0, 120);
+      if (!mt) return null;
+      const link = String(m.link || '').trim().slice(0, 400);
+      if (link && safeLink(link) === null) throw new InvalidDataError(`里程碑「${mt}」链接不合法`);
+      return {
+        date: String(m.date || '').trim().slice(0, 32),
+        title: mt,
+        detail: String(m.detail || '').trim().slice(0, 320),
+        ...(link ? { link } : {}),
+      };
+    }).filter(Boolean);
+    const strArr = (arr) => [...new Set((Array.isArray(arr) ? arr : String(arr || '').split(/[,，]/)).map((s) => String(s || '').trim().slice(0, 140)).filter(Boolean))].slice(0, 20);
+    return {
+      id,
+      title,
+      subtitle: String(item.subtitle || '').trim().slice(0, 240),
+      periodLabel: String(item.periodLabel || '').trim().slice(0, 60),
+      dateStart: String(item.dateStart || '').trim().slice(0, 10),
+      dateEnd: String(item.dateEnd || '').trim().slice(0, 10),
+      summary: String(item.summary || '').trim().slice(0, 2000),
+      keywords: strArr(item.keywords),
+      milestones,
+      featuredPosts: strArr(item.featuredPosts),
+      featuredDailies: strArr(item.featuredDailies),
+      outroQuote: String(item.outroQuote || '').trim().slice(0, 300),
+      published: item.published !== false,
+      order: Number.isFinite(Number(item.order)) ? Math.round(Number(item.order)) : index + 1,
+    };
+  }).sort((a, b) => a.order - b.order);
+  const activeReportId = reports.some((r) => r.id === value.activeReportId) ? value.activeReportId : (reports[0]?.id || '');
+  return { activeReportId, reports };
+}
+
+function validateAcademicsData(value) {
+  requirePlainObject(value, '学业数据');
+  if (!value.tracks || typeof value.tracks !== 'object') throw new InvalidDataError('学业数据缺少 tracks');
+  if (!Array.isArray(value.semesters)) throw new InvalidDataError('学业数据 semesters 必须是数组');
+  if (!Array.isArray(value.courses)) throw new InvalidDataError('学业数据 courses 必须是数组');
+  const seenIds = new Set();
+  const validStatus = new Set(['completed', 'active', 'planned']);
+  const validTrack = new Set(['orig', 'clin']);
+  const courses = value.courses.map((c, idx) => {
+    if (!c || typeof c !== 'object') throw new InvalidDataError(`课程第 ${idx + 1} 项不是对象`);
+    const id = String(c.id || '').trim();
+    const name = String(c.name || '').trim();
+    if (!id || !name) throw new InvalidDataError(`课程第 ${idx + 1} 项缺少 id 或名称`);
+    if (seenIds.has(id)) throw new InvalidDataError(`课程 id「${id}」重复`);
+    seenIds.add(id);
+    const credits = Number(c.credits);
+    const gpaRaw = c.gpa === '' || c.gpa === null || c.gpa === undefined ? null : Number(c.gpa);
+    return {
+      ...c,
+      id,
+      code: String(c.code || '').trim(),
+      name,
+      en: String(c.en || '').trim() || undefined,
+      credits: Number.isFinite(credits) && credits >= 0 ? credits : 0,
+      dept: String(c.dept || '').trim(),
+      nature: String(c.nature || '').trim(),
+      semesterId: String(c.semesterId || '').trim(),
+      track: validTrack.has(c.track) ? c.track : 'clin',
+      status: validStatus.has(c.status) ? c.status : 'planned',
+      early: Boolean(c.early),
+      earlyNote: String(c.earlyNote || '').trim() || undefined,
+      recognizedNote: String(c.recognizedNote || '').trim() || undefined,
+      grade: String(c.grade || '').trim(),
+      gpa: gpaRaw !== null && Number.isFinite(gpaRaw) ? Number(gpaRaw.toFixed(2)) : null,
+      note: String(c.note || '').trim(),
+      posts: Array.isArray(c.posts) ? [...new Set(c.posts.map((s) => String(s || '').trim()).filter(Boolean))] : [],
+      linkedIds: Array.isArray(c.linkedIds) ? [...new Set(c.linkedIds.map((s) => String(s || '').trim()).filter(Boolean))] : [],
+    };
+  });
+  return {
+    ...value,
+    courses,
+  };
+}
+
+function validateExamsData(value) {
+  requirePlainObject(value, '考试日程数据');
+  if (!Array.isArray(value.exams)) throw new InvalidDataError('考试日程 exams 必须是数组');
+  const exams = value.exams.map((e, idx) => {
+    if (!e || typeof e !== 'object') throw new InvalidDataError(`考试第 ${idx + 1} 项不是对象`);
+    const course = String(e.course || '').trim();
+    const date = String(e.date || '').trim();
+    const start = String(e.start || '').trim();
+    const end = String(e.end || '').trim();
+    if (!course) throw new InvalidDataError(`考试第 ${idx + 1} 项缺少课程名`);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new InvalidDataError(`考试「${course}」日期须为 YYYY-MM-DD`);
+    if (!/^\d{2}:\d{2}$/.test(start) || !/^\d{2}:\d{2}$/.test(end)) throw new InvalidDataError(`考试「${course}」时间须为 HH:MM`);
+    const tag = String(e.tag || '').trim();
+    return {
+      year: String(e.year || value.year || '').trim(),
+      term: Number.isFinite(Number(e.term)) ? Number(e.term) : (Number(value.term) || 1),
+      course,
+      date,
+      start,
+      end,
+      room: String(e.room || '待公布').trim(),
+      campus: String(e.campus || value.campus || '滨海校区').trim(),
+      college: String(e.college || '').trim(),
+      dept: String(e.dept || '').trim(),
+      ...(tag ? { tag } : {}),
+    };
+  }).sort((a, b) => `${a.date} ${a.start}`.localeCompare(`${b.date} ${b.start}`));
+  return {
+    year: String(value.year || '').trim(),
+    term: Number.isFinite(Number(value.term)) ? Number(value.term) : 1,
+    termLabel: String(value.termLabel || '').trim(),
+    campus: String(value.campus || '滨海校区').trim(),
+    sourceLabel: String(value.sourceLabel || '').trim(),
+    exams,
+  };
+}
+
 const galleryStore = createJsonStore({ filePath: GALLERY_JSON, label: 'gallery', readDefault: () => [], validate: validateGalleryData, backupDir: BACKUP_DIR });
 const dailyStore = createJsonStore({ filePath: DAILY_JSON, label: 'daily', readDefault: () => [], validate: validateDailyData, backupDir: BACKUP_DIR });
 const aboutStore = createJsonStore({ filePath: ABOUT_JSON, label: 'about', readDefault: () => ({}), validate: (value) => requirePlainObject(value, '关于页数据'), backupDir: BACKUP_DIR });
 const frontendStore = createJsonStore({ filePath: FRONTEND_JSON, label: 'frontend', readDefault: () => ({}), validate: (value) => requirePlainObject(value, '前端定制数据'), backupDir: BACKUP_DIR });
 const scheduleStore = createJsonStore({ filePath: SCHEDULE_JSON, label: 'schedule', readDefault: () => ({ ...SCHEDULE_DEFAULT }), validate: validateScheduleData, backupDir: BACKUP_DIR });
 const privateAccessStore = createJsonStore({ filePath: PRIVATE_ACCESS_FILE, label: 'private-access', readDefault: () => ({}), validate: validatePrivateAccessData, backupDir: BACKUP_DIR });
+const categoriesStore = createJsonStore({ filePath: CATEGORIES_JSON, label: 'categories', readDefault: () => [], validate: validateCategoriesData, backupDir: BACKUP_DIR });
+const projectsStore = createJsonStore({ filePath: PROJECTS_JSON, label: 'projects', readDefault: () => [], validate: validateProjectsData, backupDir: BACKUP_DIR });
+const reportStore = createJsonStore({ filePath: REPORT_JSON, label: 'report', readDefault: () => ({ activeReportId: '', reports: [] }), validate: validateReportData, backupDir: BACKUP_DIR });
+const academicsStore = createJsonStore({ filePath: ACADEMICS_JSON, label: 'academics', readDefault: () => ({ meta: {}, tracks: { orig: {}, clin: {} }, transfer: { posts: [] }, tools: [], semesters: [], courses: [] }), validate: validateAcademicsData, backupDir: BACKUP_DIR });
+const examsStore = createJsonStore({ filePath: EXAMS_JSON, label: 'exams', readDefault: () => ({ year: '', term: 1, termLabel: '', campus: '滨海校区', sourceLabel: '', exams: [] }), validate: validateExamsData, backupDir: BACKUP_DIR });
 
 /** 校验请求携带的 expectedHash，返回 null 表示通过（无冲突需要传递的值在 eh 中）*/
 function readExpectedHash(res, raw, { required = true } = {}) {
@@ -177,8 +391,20 @@ function isAutoPullEnabled() {
   if (process.env.ADMIN_AUTO_PULL === '1') return true;
   return !IS_ISOLATED_DATA_MODE;
 }
-// 内容推送范围：文章 / 日常 / 画廊 / 关于 / 前端定制 / 日程课表数据
-const CONTENT_PUSH_PATHS = ['src/content/blog/', 'src/data/daily.json', 'src/data/gallery.json', 'src/data/about.json', 'src/data/frontend.json', 'src/data/schedule.json'];
+// 内容推送范围：文章 / 日常 / 画廊 / 关于 / 前端定制 / 日程 / 分类 / 造物 / 报告 / 学业 / 考试数据
+const CONTENT_PUSH_PATHS = [
+  'src/content/blog/',
+  'src/data/daily.json',
+  'src/data/gallery.json',
+  'src/data/about.json',
+  'src/data/frontend.json',
+  'src/data/schedule.json',
+  'src/data/categories.json',
+  'src/data/projects.json',
+  'src/data/report.json',
+  'src/data/academics.json',
+  'src/data/exams.json',
+];
 // 全量推送范围：除 reasonix.toml（本机配置，不提交）外的全部改动
 const FULL_PUSH_PATHS = ['.', ':(exclude)reasonix.toml'];
 
@@ -667,6 +893,15 @@ function invalidatePostCache() {
   readPostsInFlight = null;
 }
 
+function normalizeStrList(raw) {
+  const arr = Array.isArray(raw)
+    ? raw
+    : typeof raw === 'string'
+      ? raw.split(/[,，]/)
+      : [];
+  return [...new Set(arr.map((s) => String(s ?? '').trim()).filter(Boolean))];
+}
+
 /** 把「已读到的原始 markdown」装成列表项（保持原有字段与顺序）*/
 function buildPostEntry(slug, raw, data, content, updatedAt) {
   return {
@@ -678,6 +913,7 @@ function buildPostEntry(slug, raw, data, content, updatedAt) {
     pubDate: safeDate(data.pubDate),
     updatedDate: safeDate(data.updatedDate) || undefined,
     tags: data.tags || [],
+    categories: normalizeStrList(data.categories),
     draft: data.draft ?? false,
     access: ['public', 'authorized', 'admin'].includes(data.access) ? data.access : 'public',
     archived: data.archived ?? false,
@@ -689,9 +925,13 @@ function buildPostEntry(slug, raw, data, content, updatedAt) {
   };
 }
 
-/** 返回缓存条目的副本（含 tags 数组），保证缓存不被外部改动污染 */
+/** 返回缓存条目的副本（含 tags/categories 数组），保证缓存不被外部改动污染 */
 function clonePostEntry(post) {
-  return { ...post, tags: Array.isArray(post.tags) ? post.tags.slice() : post.tags };
+  return {
+    ...post,
+    tags: Array.isArray(post.tags) ? post.tags.slice() : post.tags,
+    categories: Array.isArray(post.categories) ? post.categories.slice() : [],
+  };
 }
 
 async function readPostsUncached(epoch) {
@@ -877,7 +1117,7 @@ function withPostWriteLock(operation) {
 
 const MANAGED_POST_KEYS = new Set([
   'title', 'description', 'pubDate', 'dayIndex', 'cover',
-  'tags', 'draft', 'access', 'archived', 'scheduledAt', 'updatedDate',
+  'tags', 'categories', 'draft', 'access', 'archived', 'scheduledAt', 'updatedDate',
 ]);
 
 function serializeExtraFrontmatterField(key, value) {
@@ -905,6 +1145,9 @@ function buildPostMarkdown(body, allPosts, { excludeSlug = '', existingData = nu
   const cover = body.cover || '';
   const pubDate = body.pubDate || new Date().toISOString().split('T')[0];
   const tags = String(body.tags || '').split(/[,，]/).map(t => t.trim()).filter(Boolean);
+  const categories = body.categories !== undefined
+    ? normalizeStrList(body.categories)
+    : normalizeStrList(existingData?.categories);
   const relevantPosts = excludeSlug ? allPosts.filter(p => p.slug !== excludeSlug) : allPosts;
   const dayIndex = parseDayIndex(body.dayIndex);
   const fm = [
@@ -922,6 +1165,10 @@ function buildPostMarkdown(body, allPosts, { excludeSlug = '', existingData = nu
   if (tags.length) {
     fm.push('tags:');
     tags.forEach(tag => fm.push(`  - ${yamlStr(tag)}`));
+  }
+  if (categories.length) {
+    fm.push('categories:');
+    categories.forEach(cat => fm.push(`  - ${yamlStr(cat)}`));
   }
   fm.push(`draft: ${body.draft === 'true'}`);
   fm.push(`access: ${['public', 'authorized', 'admin'].includes(body.access) ? body.access : 'public'}`);
@@ -960,6 +1207,110 @@ app.get('/api/ai-quota', async (req, res) => {
     });
   }
 });
+
+// ── 本地跨访客互动接口（模拟 Cloudflare Worker + KV 契约，供本地预览与测试使用）──
+let interactWriteQueue = Promise.resolve();
+function withInteractLock(op) {
+  const next = interactWriteQueue.then(op, op);
+  interactWriteQueue = next.catch(() => {});
+  return next;
+}
+
+async function readInteractLocal() {
+  try {
+    const raw = await readFile(INTERACT_LOCAL_JSON, 'utf8');
+    const parsed = JSON.parse(raw);
+    return {
+      likes: parsed?.likes && typeof parsed.likes === 'object' ? parsed.likes : {},
+      comments: parsed?.comments && typeof parsed.comments === 'object' ? parsed.comments : {},
+    };
+  } catch {
+    return { likes: {}, comments: {} };
+  }
+}
+
+async function writeInteractLocal(data) {
+  await atomicWriteFile(INTERACT_LOCAL_JSON, `${JSON.stringify(data, null, 2)}\n`);
+}
+
+function normalizeInteractTarget(raw) {
+  const s = String(raw || '').trim();
+  if (!s || s.length > 240 || !s.startsWith('/')) return '';
+  return s.replace(/[\r\n\t]/g, '');
+}
+
+app.get('/api/interact/health', (_req, res) => {
+  res.json({ ok: true, mode: 'local' });
+});
+
+app.get('/api/interact/daily', async (req, res) => {
+  const ids = String(req.query.ids || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => /^[A-Za-z0-9_-]{1,80}$/.test(s))
+    .slice(0, 200);
+  const store = await readInteractLocal();
+  const counts = {};
+  for (const id of ids) {
+    const n = Number(store.likes[id] || 0);
+    if (n > 0) counts[id] = n;
+  }
+  res.json({ ok: true, counts });
+});
+
+app.post('/api/interact/daily/:id/like', express.json(), async (req, res) => withInteractLock(async () => {
+  const id = String(req.params.id || '').trim();
+  if (!/^[A-Za-z0-9_-]{1,80}$/.test(id)) return res.status(400).json({ ok: false, error: '无效的日常 ID' });
+  const action = req.body?.action === 'unlike' ? 'unlike' : 'like';
+  const store = await readInteractLocal();
+  const cur = Math.max(0, Number(store.likes[id] || 0));
+  const next = action === 'unlike' ? Math.max(0, cur - 1) : cur + 1;
+  if (next > 0) store.likes[id] = next;
+  else delete store.likes[id];
+  await writeInteractLocal(store);
+  res.json({ ok: true, id, count: next });
+}));
+
+app.get('/api/interact/comments', async (req, res) => {
+  const target = normalizeInteractTarget(req.query.target);
+  if (!target) return res.status(400).json({ ok: false, error: '缺少有效 target' });
+  const store = await readInteractLocal();
+  const comments = Array.isArray(store.comments[target]) ? store.comments[target] : [];
+  res.json({ ok: true, target, comments });
+});
+
+app.post('/api/interact/comments', express.json(), async (req, res) => withInteractLock(async () => {
+  if (String(req.body?.website || '').trim()) return res.json({ ok: true, comment: null });
+  const target = normalizeInteractTarget(req.body?.target);
+  const text = String(req.body?.body || '').replace(/\r\n?/g, '\n').trim();
+  const nick = String(req.body?.nick || req.body?.author || '').trim().slice(0, 30) || '匿名观测者';
+  if (!target) return res.status(400).json({ ok: false, error: '目标路径无效' });
+  if (!text) return res.status(400).json({ ok: false, error: '留言内容不能为空' });
+  if (text.length > 300) return res.status(400).json({ ok: false, error: '留言不能超过 300 字' });
+
+  const store = await readInteractLocal();
+  const existing = Array.isArray(store.comments[target]) ? store.comments[target] : [];
+  const comment = {
+    id: `c-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
+    nick,
+    body: text,
+    createdAt: new Date().toISOString(),
+  };
+  store.comments[target] = [comment, ...existing].slice(0, 120);
+  await writeInteractLocal(store);
+  res.status(201).json({ ok: true, target, comment, total: store.comments[target].length });
+}));
+
+app.delete('/api/interact/comments', auth, async (req, res) => withInteractLock(async () => {
+  const target = normalizeInteractTarget(req.query.target);
+  const id = String(req.query.id || '').trim();
+  if (!target || !id) return res.status(400).json({ ok: false, error: '缺少 target 或 id' });
+  const store = await readInteractLocal();
+  const existing = Array.isArray(store.comments[target]) ? store.comments[target] : [];
+  store.comments[target] = existing.filter((c) => c.id !== id);
+  await writeInteractLocal(store);
+  res.json({ ok: true, target, remaining: store.comments[target].length });
+}));
 
 // Auth for all API routes
 app.use('/api', auth);
@@ -1009,7 +1360,11 @@ app.route('/api/posts')
 app.post('/api/posts/batch', express.json(), upload.none(), async (req, res) => withPostWriteLock(async () => {
   try {
     const action = String(req.body?.action || '').trim();
-    if (!['publish', 'unpublish', 'archive', 'unarchive', 'delete'].includes(action)) {
+    const VALID_BATCH_ACTIONS = [
+      'publish', 'unpublish', 'archive', 'unarchive', 'delete',
+      'set-categories', 'add-categories', 'remove-categories',
+    ];
+    if (!VALID_BATCH_ACTIONS.includes(action)) {
       return res.status(400).json({ error: '无效的批量操作类型' });
     }
     const rawSlugs = Array.isArray(req.body?.slugs)
@@ -1017,6 +1372,12 @@ app.post('/api/posts/batch', express.json(), upload.none(), async (req, res) => 
       : String(req.body?.slugs || '').split(/[,，]/).map((s) => s.trim()).filter(Boolean);
     const slugs = [...new Set(rawSlugs.map((s) => String(s || '').trim()).filter(Boolean))];
     if (!slugs.length) return res.status(400).json({ error: '请选择至少一篇文章' });
+
+    const isCatAction = action === 'set-categories' || action === 'add-categories' || action === 'remove-categories';
+    const targetCats = isCatAction ? normalizeStrList(req.body?.categories) : [];
+    if ((action === 'add-categories' || action === 'remove-categories') && !targetCats.length) {
+      return res.status(400).json({ error: '请选择至少一个文章分类' });
+    }
 
     const allPosts = await readPosts();
     let okCount = 0;
@@ -1035,6 +1396,12 @@ app.post('/api/posts/batch', express.json(), upload.none(), async (req, res) => 
           continue;
         }
         const { data, content } = matter(raw);
+        const currentCats = normalizeStrList(data.categories);
+        let nextCats = currentCats;
+        if (action === 'set-categories') nextCats = targetCats;
+        else if (action === 'add-categories') nextCats = [...new Set([...currentCats, ...targetCats])];
+        else if (action === 'remove-categories') nextCats = currentCats.filter((c) => !targetCats.includes(c));
+
         const body = {
           title: data.title || '',
           description: data.description || '',
@@ -1042,6 +1409,7 @@ app.post('/api/posts/batch', express.json(), upload.none(), async (req, res) => 
           pubDate: safeDate(data.pubDate),
           dayIndex: data.dayIndex || '',
           tags: Array.isArray(data.tags) ? data.tags.join(',') : '',
+          categories: nextCats,
           draft: String(action === 'unpublish' ? true : action === 'publish' ? false : Boolean(data.draft)),
           archived: String(action === 'archive' ? true : action === 'unarchive' ? false : Boolean(data.archived)),
           scheduledAt: action === 'publish' ? '' : safeIso(data.scheduledAt),
@@ -1087,6 +1455,7 @@ app.route('/api/posts/:slug')
         updatedDate: safeDate(data.updatedDate) || undefined,
         dayIndex: data.dayIndex || undefined,
         tags: data.tags || [],
+        categories: normalizeStrList(data.categories),
         draft: data.draft ?? false,
         access: ['public', 'authorized', 'admin'].includes(data.access) ? data.access : 'public',
         archived: data.archived ?? false,
@@ -2447,6 +2816,7 @@ const FRONTEND_DEFAULTS = {
   heroDescription: '下滑以查看近期文章、我推荐的图片',
   primaryCtaLabel: '浏览文章',
   primaryCtaHref: '/blog/',
+  interactEndpoint: '',
 };
 
 function pickHorizonFrontend(raw) {
@@ -2492,6 +2862,8 @@ app.route('/api/frontend')
       const body = req.body || {};
       const primaryCtaHref = body.primaryCtaHref == null ? prev.primaryCtaHref : safeLink(body.primaryCtaHref);
       if (primaryCtaHref === null) return res.status(400).json({ error: 'Invalid CTA URL' });
+      const interactEndpoint = body.interactEndpoint == null ? prev.interactEndpoint : safeLink(body.interactEndpoint);
+      if (interactEndpoint === null) return res.status(400).json({ error: 'Invalid interact endpoint URL' });
       const strField = (key, max = 1000) => body[key] == null
         ? prev[key]
         : cleanAboutStr(body[key], max);
@@ -2504,6 +2876,7 @@ app.route('/api/frontend')
         heroDescription: strField('heroDescription', 300),
         primaryCtaLabel: strField('primaryCtaLabel', 40),
         primaryCtaHref,
+        interactEndpoint: String(interactEndpoint || '').slice(0, 300),
       };
       const written = await frontendStore.write(next, { expectedHash: hashCheck.hash });
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -2539,6 +2912,381 @@ app.route('/api/schedule')
       res.json({ success: true, schedule: written.data, contentHash: written.contentHash });
     } catch (err) {
       respondStoreError(res, err, 'Schedule API');
+    }
+  });
+
+// ── 文章大类分类 API（支持增删改并级联更新文章 frontmatter）──
+async function cascadeCategoryPosts(oldName, newName) {
+  if (!oldName || oldName === newName) return 0;
+  return withPostWriteLock(async () => {
+    const allPosts = await readPosts();
+    const files = (await readdir(BLOG_DIR).catch(() => [])).filter((f) => /\.(md|mdx)$/i.test(f));
+    let updatedPosts = 0;
+    for (const file of files) {
+      const slug = file.replace(/\.(md|mdx)$/i, '');
+      const fullPath = join(BLOG_DIR, file);
+      const raw = await readFile(fullPath, 'utf-8');
+      const { data, content } = matter(raw);
+      const currentCats = normalizeStrList(data.categories);
+      if (!currentCats.includes(oldName)) continue;
+      const nextCats = newName
+        ? [...new Set(currentCats.map((c) => (c === oldName ? newName : c)))]
+        : currentCats.filter((c) => c !== oldName);
+      await savePostRevision(slug, raw);
+      const body = {
+        title: data.title || '',
+        description: data.description || '',
+        cover: data.cover || '',
+        pubDate: safeDate(data.pubDate),
+        dayIndex: data.dayIndex || '',
+        tags: Array.isArray(data.tags) ? data.tags.join(',') : '',
+        categories: nextCats,
+        draft: String(Boolean(data.draft)),
+        archived: String(Boolean(data.archived)),
+        scheduledAt: safeIso(data.scheduledAt),
+        access: ['public', 'authorized', 'admin'].includes(data.access) ? data.access : 'public',
+        content: content.trim(),
+      };
+      const markdown = buildPostMarkdown(body, allPosts, { excludeSlug: slug, existingData: data });
+      await atomicWriteFile(fullPath, markdown);
+      updatedPosts += 1;
+    }
+    if (updatedPosts > 0) invalidatePostCache();
+    return updatedPosts;
+  });
+}
+
+function makeSlugId(prefix, raw, existingIds) {
+  const cleaned = String(raw || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 42);
+  let base = cleaned || `${prefix}-${Date.now().toString(36)}`;
+  if (!existingIds.has(base)) return base;
+  for (let i = 2; ; i += 1) {
+    const cand = `${base}-${i}`;
+    if (!existingIds.has(cand)) return cand;
+  }
+}
+
+app.route('/api/categories')
+  .get(async (_req, res) => {
+    try {
+      const doc = await categoriesStore.read();
+      res.json({ categories: doc.data, contentHash: doc.contentHash || '' });
+    } catch (err) {
+      respondStoreError(res, err, 'Categories API');
+    }
+  })
+  .post(express.json(), async (req, res) => {
+    try {
+      const body = req.body || {};
+      const hashCheck = readExpectedHash(res, body.expectedHash);
+      if (!hashCheck.ok) return;
+      const doc = await categoriesStore.read();
+      const list = Array.isArray(doc.data) ? doc.data.slice() : [];
+      const existingIds = new Set(list.map((c) => c.id));
+      const id = String(body.id || '').trim() || makeSlugId('cat', body.slug || body.name, existingIds);
+      const item = {
+        id,
+        name: String(body.name || '').trim(),
+        slug: String(body.slug || id).trim(),
+        description: String(body.description || '').trim(),
+        color: String(body.color || '#ff5a1a').trim(),
+        order: Number.isFinite(Number(body.order)) ? Math.round(Number(body.order)) : (list.reduce((m, c) => Math.max(m, Number(c.order) || 0), 0) + 1),
+      };
+      const written = await categoriesStore.write([...list, item], { expectedHash: hashCheck.hash });
+      const saved = written.data.find((c) => c.id === item.id) || item;
+      res.status(201).json({ success: true, item: saved, categories: written.data, contentHash: written.contentHash });
+    } catch (err) {
+      respondStoreError(res, err, 'Categories API');
+    }
+  })
+  .put(express.json(), async (req, res) => {
+    try {
+      const body = req.body || {};
+      const hashCheck = readExpectedHash(res, body.expectedHash);
+      if (!hashCheck.ok) return;
+      const candidate = Array.isArray(body.categories) ? body.categories : body;
+      const written = await categoriesStore.write(candidate, { expectedHash: hashCheck.hash });
+      res.json({ success: true, categories: written.data, contentHash: written.contentHash });
+    } catch (err) {
+      respondStoreError(res, err, 'Categories API');
+    }
+  });
+
+app.route('/api/categories/:id')
+  .put(express.json(), async (req, res) => {
+    try {
+      const targetId = String(req.params.id || '').trim();
+      const body = req.body || {};
+      const hashCheck = readExpectedHash(res, body.expectedHash);
+      if (!hashCheck.ok) return;
+      const doc = await categoriesStore.read();
+      const list = Array.isArray(doc.data) ? doc.data.slice() : [];
+      const idx = list.findIndex((c) => c.id === targetId);
+      if (idx === -1) return res.status(404).json({ error: '分类不存在' });
+      const prev = list[idx];
+      list[idx] = {
+        ...prev,
+        name: body.name != null ? String(body.name).trim() : prev.name,
+        slug: body.slug != null ? String(body.slug).trim() : prev.slug,
+        description: body.description != null ? String(body.description).trim() : prev.description,
+        color: body.color != null ? String(body.color).trim() : prev.color,
+        order: body.order != null ? Number(body.order) : prev.order,
+      };
+      const written = await categoriesStore.write(list, { expectedHash: hashCheck.hash });
+      const saved = written.data.find((c) => c.id === targetId) || list[idx];
+      let updatedPosts = 0;
+      if (prev.name !== saved.name) {
+        updatedPosts = await cascadeCategoryPosts(prev.name, saved.name);
+      }
+      res.json({ success: true, item: saved, categories: written.data, contentHash: written.contentHash, updatedPosts });
+    } catch (err) {
+      respondStoreError(res, err, 'Categories API');
+    }
+  })
+  .delete(async (req, res) => {
+    try {
+      const targetId = String(req.params.id || '').trim();
+      const hashCheck = readExpectedHash(res, req.body?.expectedHash ?? req.query?.expectedHash);
+      if (!hashCheck.ok) return;
+      const doc = await categoriesStore.read();
+      const list = Array.isArray(doc.data) ? doc.data.slice() : [];
+      const target = list.find((c) => c.id === targetId);
+      if (!target) return res.status(404).json({ error: '分类不存在' });
+      const next = list.filter((c) => c.id !== targetId);
+      const written = await categoriesStore.write(next, { expectedHash: hashCheck.hash });
+      let updatedPosts = 0;
+      if (req.query?.cascade !== '0') {
+        updatedPosts = await cascadeCategoryPosts(target.name, '');
+      }
+      res.json({ success: true, removed: target, categories: written.data, contentHash: written.contentHash, updatedPosts });
+    } catch (err) {
+      respondStoreError(res, err, 'Categories API');
+    }
+  });
+
+// ── 09 造物 / 实验室 API（src/data/projects.json）──
+app.route('/api/projects')
+  .get(async (_req, res) => {
+    try {
+      const doc = await projectsStore.read();
+      res.json({ projects: doc.data, contentHash: doc.contentHash || '' });
+    } catch (err) {
+      respondStoreError(res, err, 'Projects API');
+    }
+  })
+  .post(express.json({ limit: '2mb' }), async (req, res) => {
+    try {
+      const body = req.body || {};
+      const hashCheck = readExpectedHash(res, body.expectedHash);
+      if (!hashCheck.ok) return;
+      const doc = await projectsStore.read();
+      const list = Array.isArray(doc.data) ? doc.data.slice() : [];
+      const existingIds = new Set(list.map((p) => p.id));
+      const id = String(body.id || '').trim() || makeSlugId('proj', body.name, existingIds);
+      const nextItem = {
+        ...body,
+        id,
+        order: Number.isFinite(Number(body.order)) ? Math.round(Number(body.order)) : (list.reduce((m, p) => Math.max(m, Number(p.order) || 0), 0) + 1),
+      };
+      delete nextItem.expectedHash;
+      const written = await projectsStore.write([...list, nextItem], { expectedHash: hashCheck.hash });
+      const saved = written.data.find((p) => p.id === id) || nextItem;
+      res.status(201).json({ success: true, item: saved, projects: written.data, contentHash: written.contentHash });
+    } catch (err) {
+      respondStoreError(res, err, 'Projects API');
+    }
+  })
+  .put(express.json({ limit: '2mb' }), async (req, res) => {
+    try {
+      const body = req.body || {};
+      const hashCheck = readExpectedHash(res, body.expectedHash);
+      if (!hashCheck.ok) return;
+      const candidate = Array.isArray(body.projects) ? body.projects : body;
+      const written = await projectsStore.write(candidate, { expectedHash: hashCheck.hash });
+      res.json({ success: true, projects: written.data, contentHash: written.contentHash });
+    } catch (err) {
+      respondStoreError(res, err, 'Projects API');
+    }
+  });
+
+app.route('/api/projects/:id')
+  .put(express.json({ limit: '2mb' }), async (req, res) => {
+    try {
+      const targetId = String(req.params.id || '').trim();
+      const body = req.body || {};
+      const hashCheck = readExpectedHash(res, body.expectedHash);
+      if (!hashCheck.ok) return;
+      const doc = await projectsStore.read();
+      const list = Array.isArray(doc.data) ? doc.data.slice() : [];
+      const idx = list.findIndex((p) => p.id === targetId);
+      if (idx === -1) return res.status(404).json({ error: '造物项目不存在' });
+      const { expectedHash: _h, id: _i, ...patch } = body;
+      list[idx] = { ...list[idx], ...patch, id: targetId };
+      const written = await projectsStore.write(list, { expectedHash: hashCheck.hash });
+      const saved = written.data.find((p) => p.id === targetId) || list[idx];
+      res.json({ success: true, item: saved, projects: written.data, contentHash: written.contentHash });
+    } catch (err) {
+      respondStoreError(res, err, 'Projects API');
+    }
+  })
+  .delete(async (req, res) => {
+    try {
+      const targetId = String(req.params.id || '').trim();
+      const hashCheck = readExpectedHash(res, req.body?.expectedHash ?? req.query?.expectedHash);
+      if (!hashCheck.ok) return;
+      const doc = await projectsStore.read();
+      const list = Array.isArray(doc.data) ? doc.data.slice() : [];
+      const target = list.find((p) => p.id === targetId);
+      if (!target) return res.status(404).json({ error: '造物项目不存在' });
+      const written = await projectsStore.write(list.filter((p) => p.id !== targetId), { expectedHash: hashCheck.hash });
+      res.json({ success: true, removed: target, projects: written.data, contentHash: written.contentHash });
+    } catch (err) {
+      respondStoreError(res, err, 'Projects API');
+    }
+  });
+
+// ── 10 年度 / 阶段观测报告 API（src/data/report.json）──
+app.route('/api/reports')
+  .get(async (_req, res) => {
+    try {
+      const doc = await reportStore.read();
+      res.json({ ...doc.data, contentHash: doc.contentHash || '' });
+    } catch (err) {
+      respondStoreError(res, err, 'Reports API');
+    }
+  })
+  .post(express.json({ limit: '2mb' }), async (req, res) => {
+    try {
+      const body = req.body || {};
+      const hashCheck = readExpectedHash(res, body.expectedHash);
+      if (!hashCheck.ok) return;
+      const doc = await reportStore.read();
+      const cur = doc.data || { activeReportId: '', reports: [] };
+      const list = Array.isArray(cur.reports) ? cur.reports.slice() : [];
+      const existingIds = new Set(list.map((r) => r.id));
+      const id = String(body.id || '').trim() || makeSlugId('report', body.title, existingIds);
+      const { expectedHash: _h, setActive, ...itemBody } = body;
+      const nextItem = {
+        ...itemBody,
+        id,
+        order: Number.isFinite(Number(body.order)) ? Math.round(Number(body.order)) : (list.reduce((m, r) => Math.max(m, Number(r.order) || 0), 0) + 1),
+      };
+      const written = await reportStore.write({
+        activeReportId: setActive ? id : (cur.activeReportId || id),
+        reports: [...list, nextItem],
+      }, { expectedHash: hashCheck.hash });
+      const saved = written.data.reports.find((r) => r.id === id) || nextItem;
+      res.status(201).json({ success: true, item: saved, ...written.data, contentHash: written.contentHash });
+    } catch (err) {
+      respondStoreError(res, err, 'Reports API');
+    }
+  })
+  .put(express.json({ limit: '2mb' }), async (req, res) => {
+    try {
+      const body = req.body || {};
+      const hashCheck = readExpectedHash(res, body.expectedHash);
+      if (!hashCheck.ok) return;
+      const { expectedHash: _h, contentHash: _c, ...candidate } = body;
+      const written = await reportStore.write(candidate, { expectedHash: hashCheck.hash });
+      res.json({ success: true, ...written.data, contentHash: written.contentHash });
+    } catch (err) {
+      respondStoreError(res, err, 'Reports API');
+    }
+  });
+
+app.route('/api/reports/:id')
+  .put(express.json({ limit: '2mb' }), async (req, res) => {
+    try {
+      const targetId = String(req.params.id || '').trim();
+      const body = req.body || {};
+      const hashCheck = readExpectedHash(res, body.expectedHash);
+      if (!hashCheck.ok) return;
+      const doc = await reportStore.read();
+      const cur = doc.data || { activeReportId: '', reports: [] };
+      const list = Array.isArray(cur.reports) ? cur.reports.slice() : [];
+      const idx = list.findIndex((r) => r.id === targetId);
+      if (idx === -1) return res.status(404).json({ error: '观测报告不存在' });
+      const { expectedHash: _h, id: _i, setActive, ...patch } = body;
+      list[idx] = { ...list[idx], ...patch, id: targetId };
+      const written = await reportStore.write({
+        activeReportId: setActive ? targetId : (cur.activeReportId || targetId),
+        reports: list,
+      }, { expectedHash: hashCheck.hash });
+      const saved = written.data.reports.find((r) => r.id === targetId) || list[idx];
+      res.json({ success: true, item: saved, ...written.data, contentHash: written.contentHash });
+    } catch (err) {
+      respondStoreError(res, err, 'Reports API');
+    }
+  })
+  .delete(async (req, res) => {
+    try {
+      const targetId = String(req.params.id || '').trim();
+      const hashCheck = readExpectedHash(res, req.body?.expectedHash ?? req.query?.expectedHash);
+      if (!hashCheck.ok) return;
+      const doc = await reportStore.read();
+      const cur = doc.data || { activeReportId: '', reports: [] };
+      const list = Array.isArray(cur.reports) ? cur.reports.slice() : [];
+      const target = list.find((r) => r.id === targetId);
+      if (!target) return res.status(404).json({ error: '观测报告不存在' });
+      const nextReports = list.filter((r) => r.id !== targetId);
+      const written = await reportStore.write({
+        activeReportId: cur.activeReportId === targetId ? (nextReports[0]?.id || '') : cur.activeReportId,
+        reports: nextReports,
+      }, { expectedHash: hashCheck.hash });
+      res.json({ success: true, removed: target, ...written.data, contentHash: written.contentHash });
+    } catch (err) {
+      respondStoreError(res, err, 'Reports API');
+    }
+  });
+
+// ── 11 学业轨迹 API（src/data/academics.json）──
+app.route('/api/academics')
+  .get(async (_req, res) => {
+    try {
+      const doc = await academicsStore.read();
+      res.json({ ...doc.data, contentHash: doc.contentHash || '' });
+    } catch (err) {
+      respondStoreError(res, err, 'Academics API');
+    }
+  })
+  .put(express.json({ limit: '4mb' }), async (req, res) => {
+    try {
+      const body = req.body || {};
+      const hashCheck = readExpectedHash(res, body.expectedHash);
+      if (!hashCheck.ok) return;
+      const { expectedHash: _h, contentHash: _c, ...candidate } = body;
+      const written = await academicsStore.write(candidate, { expectedHash: hashCheck.hash });
+      res.json({ success: true, academics: written.data, contentHash: written.contentHash });
+    } catch (err) {
+      respondStoreError(res, err, 'Academics API');
+    }
+  });
+
+// ── 期末考试日程 API（src/data/exams.json）──
+app.route('/api/exams')
+  .get(async (_req, res) => {
+    try {
+      const doc = await examsStore.read();
+      res.json({ ...doc.data, contentHash: doc.contentHash || '' });
+    } catch (err) {
+      respondStoreError(res, err, 'Exams API');
+    }
+  })
+  .put(express.json({ limit: '4mb' }), async (req, res) => {
+    try {
+      const body = req.body || {};
+      const hashCheck = readExpectedHash(res, body.expectedHash);
+      if (!hashCheck.ok) return;
+      const { expectedHash: _h, contentHash: _c, ...candidate } = body;
+      const written = await examsStore.write(candidate, { expectedHash: hashCheck.hash });
+      res.json({ success: true, exams: written.data, contentHash: written.contentHash });
+    } catch (err) {
+      respondStoreError(res, err, 'Exams API');
     }
   });
 
@@ -2681,15 +3429,16 @@ function extractPostMediaRefs(raw) {
 }
 
 async function collectMediaUsage() {
-  const [blogDirStat, galleryStat, dailyStat, aboutStat, frontendStat] = await Promise.all([
+  const [blogDirStat, galleryStat, dailyStat, aboutStat, frontendStat, projectsStat] = await Promise.all([
     statFile(BLOG_DIR).catch(() => null),
     statFile(GALLERY_JSON).catch(() => null),
     statFile(DAILY_JSON).catch(() => null),
     statFile(ABOUT_JSON).catch(() => null),
     statFile(FRONTEND_JSON).catch(() => null),
+    statFile(PROJECTS_JSON).catch(() => null),
   ]);
   const statSig = (st) => (st ? `${st.mtimeMs}:${st.size}` : 'none');
-  const cacheKey = `${postListEpoch}:${statSig(blogDirStat)}:${statSig(galleryStat)}:${statSig(dailyStat)}:${statSig(aboutStat)}:${statSig(frontendStat)}`;
+  const cacheKey = `${postListEpoch}:${statSig(blogDirStat)}:${statSig(galleryStat)}:${statSig(dailyStat)}:${statSig(aboutStat)}:${statSig(frontendStat)}:${statSig(projectsStat)}`;
   if (mediaUsageCache.usage && mediaUsageCache.key === cacheKey) return mediaUsageCache.usage;
 
   const usage = new Map();
@@ -2749,6 +3498,14 @@ async function collectMediaUsage() {
       mark(fileNameFromUrl(data.stillHeroImage), 'frontend:hero');
     }
   } catch { /* 外观配置读取失败时忽略 */ }
+  try {
+    const { data } = await projectsStore.read();
+    if (Array.isArray(data)) {
+      for (const item of data) {
+        if (item?.cover) mark(fileNameFromUrl(item.cover), `project:${item.id}`);
+      }
+    }
+  } catch { /* 造物项目读取失败时忽略 */ }
   const plain = {};
   for (const [name, owners] of usage) plain[name] = [...owners];
   mediaUsageCache = { key: cacheKey, usage: plain };
@@ -3171,6 +3928,24 @@ for (const [routePath, filePath] of Object.entries(SHARED_ADMIN_SCRIPTS)) {
   });
 }
 
+app.get('/admin/img-repo/thumb/:file', async (req, res, next) => {
+  try {
+    const file = basename(String(req.params.file || ''));
+    if (!file || file !== req.params.file) return next();
+    const thumbPath = join(THUMB_DIR, file);
+    if (await fileAccess(thumbPath).then(() => true, () => false)) {
+      return res.sendFile(thumbPath);
+    }
+    const base = file.replace(/\.[^.]+$/, '');
+    for (const ext of ['.webp', '.jpg', '.jpeg', '.png', '.gif', '.avif', '.svg']) {
+      const cand = join(IMAGE_DIR, `${base}${ext}`);
+      if (await fileAccess(cand).then(() => true, () => false)) {
+        return res.sendFile(cand);
+      }
+    }
+  } catch { /* fallthrough */ }
+  next();
+});
 app.use('/admin/img-repo', express.static(IMAGE_DIR, { maxAge: '1d' }));
 app.use('/admin', async (req, res, next) => {
   if (req.method !== 'GET') return next();

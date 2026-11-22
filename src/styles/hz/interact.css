@@ -1,0 +1,202 @@
+/* ==========================================================================
+   HORIZON · interact.css —— 文章留言箱与日常片段互动面板
+   ========================================================================== */
+.hz-cmt {
+  margin-top: var(--s-7);
+  padding: var(--s-5);
+  border: 1px solid var(--hz-line-2);
+  border-radius: 14px;
+  background: var(--hz-bg-2);
+  display: grid;
+  gap: var(--s-4);
+}
+
+.hz-cmt__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: var(--s-3);
+  padding-bottom: var(--s-3);
+  border-bottom: 1px solid var(--hz-line);
+}
+
+.hz-cmt__heading {
+  font-size: var(--t-small);
+  color: var(--hz-hot-ink);
+  letter-spacing: 0.08em;
+}
+
+.hz-cmt__sub {
+  margin-top: 4px;
+  font-size: var(--t-micro);
+  color: var(--hz-ink-3);
+}
+
+.hz-cmt__meta {
+  display: flex;
+  gap: 10px;
+  font-size: 0.68rem;
+  color: var(--hz-ink-3);
+}
+
+.hz-cmt__meta b {
+  color: var(--hz-hot-ink);
+}
+
+.hz-cmt__form {
+  display: grid;
+  gap: var(--s-2);
+}
+
+.hz-cmt__inputs {
+  display: flex;
+  gap: var(--s-2);
+}
+
+.hz-cmt__form input[type='text'],
+.hz-cmt__form textarea {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid var(--hz-line-2);
+  border-radius: 9px;
+  background: var(--hz-void);
+  color: var(--hz-ink);
+  font-size: var(--t-small);
+  outline: none;
+  transition: border-color var(--d-1);
+}
+
+.hz-cmt__form input[type='text']:focus,
+.hz-cmt__form textarea:focus {
+  border-color: var(--hz-hot);
+}
+
+.hz-cmt__trap {
+  position: absolute !important;
+  left: -9999px !important;
+  width: 1px !important;
+  height: 1px !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+.hz-cmt__bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--s-3);
+}
+
+.hz-cmt__status {
+  font-size: 0.72rem;
+  color: var(--hz-ink-3);
+}
+
+.hz-cmt__btn {
+  padding: 7px 15px;
+  border: 1px solid rgb(255 90 26 / 0.55);
+  border-radius: 8px;
+  background: rgb(255 90 26 / 0.14);
+  color: var(--hz-hot-ink);
+  font-size: var(--t-micro);
+  letter-spacing: 0.06em;
+  transition: background-color var(--d-1), border-color var(--d-1);
+}
+
+.hz-cmt__btn:hover:not(:disabled) {
+  background: var(--hz-hot);
+  color: #08080b;
+}
+
+.hz-cmt__list {
+  display: grid;
+  gap: var(--s-3);
+}
+
+.hz-cmt__empty {
+  padding: var(--s-4);
+  text-align: center;
+  color: var(--hz-ink-3);
+  font-size: var(--t-micro);
+  border: 1px dashed var(--hz-line);
+  border-radius: 8px;
+}
+
+.hz-cmt__item {
+  display: grid;
+  gap: 5px;
+  padding: var(--s-3) var(--s-4);
+  border: 1px solid var(--hz-line);
+  border-radius: 10px;
+  background: var(--hz-void);
+}
+
+.hz-cmt__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.8rem;
+}
+
+.hz-cmt__head time {
+  font-size: 0.68rem;
+  color: var(--hz-ink-3);
+}
+
+.hz-cmt__local {
+  padding: 1px 6px;
+  border: 1px solid var(--hz-line-2);
+  border-radius: 4px;
+  font-size: 0.6rem;
+  color: var(--hz-hot-ink);
+}
+
+.hz-cmt__body {
+  font-size: var(--t-small);
+  color: var(--hz-ink-2);
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* 日常卡片内嵌展开评论屉 */
+.hz-tl-cmtbox {
+  margin-top: var(--s-3);
+  padding: var(--s-3);
+  border: 1px solid var(--hz-line);
+  border-radius: 10px;
+  background: var(--hz-void);
+  display: grid;
+  gap: var(--s-3);
+}
+
+.hz-tl-cmtbox[hidden] {
+  display: none;
+}
+
+.hz-tl-cmtbox__form {
+  display: grid;
+  gap: 6px;
+}
+
+.hz-tl-cmtbox__row {
+  display: flex;
+  gap: 6px;
+}
+
+.hz-tl-cmtbox__row input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 10px;
+  border: 1px solid var(--hz-line-2);
+  border-radius: 7px;
+  background: var(--hz-bg-2);
+  color: var(--hz-ink);
+  font-size: 0.8rem;
+  outline: none;
+}
+
+.hz-tl-cmtbox__row input:focus {
+  border-color: var(--hz-hot);
+}

@@ -119,7 +119,10 @@ function initAcademics() {
   };
 
   tiles.forEach((tile) => {
-    tile.addEventListener('click', () => toggleFlip(tile));
+    tile.addEventListener('click', (e) => {
+      if ((e.target as Element | null)?.closest('a')) return;
+      toggleFlip(tile);
+    });
   });
 
   if (matchMedia('(pointer: fine)').matches && !matchMedia('(prefers-reduced-motion: reduce)').matches) {

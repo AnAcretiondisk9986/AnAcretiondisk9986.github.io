@@ -2,10 +2,14 @@
 import { render, type CollectionEntry } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import Gate from './Gate.astro';
+import InteractPanel from './InteractPanel.astro';
+import { getPublicPosts } from '../../lib/posts';
+import { normalizePostCategories } from '../../lib/categories';
 import { shortIdForPath } from '../../lib/shortlink';
-import { fmtMass, fmtMinute, massOf, mjd, readingMinutes, redshift } from '../../lib/horizon';
+import { coverOf, fmtMass, fmtMinute, massOf, mjd, readingMinutes, redshift } from '../../lib/horizon';
 import '../../styles/hz/prose.css';
 import '../../styles/hz/entry.css';
+import '../../styles/hz/interact.css';
 
 interface NavBrief {
   id: string;
@@ -47,9 +51,49 @@ const printUrl = JSON.stringify(
 );
 const pageTitle = isAdmin ? `私密文章｜${post.data.title}` : post.data.title;
 const pageDesc = isAdmin ? '管理员级文章。' : post.data.description;
+const categories = normalizePostCategories(post.data.categories);
+const postCover = mode === 'public' ? coverOf(post) : null;
+const rawOgImage = postCover?.original || postCover?.thumb || '/og-default.png';
+
+let relatedPosts: Array<{ id: string; title: string; date: string; sharedLabel: string }> = [];
+if (mode === 'public') {
+  const candidates = (await getPublicPosts()).filter(
+    (p) => p.id !== post.id && (!p.data.access || p.data.access === 'public'),
+  );
+  const myCats = new Set(categories);
+  const myTags = new Set(post.data.tags || []);
+  relatedPosts = candidates
+    .map((p) => {
+      const pCats = normalizePostCategories(p.data.categories);
+      const sharedCat = pCats.find((c) => myCats.has(c));
+      const sharedTag = (p.data.tags || []).find((t) => myTags.has(t));
+      const catHits = pCats.filter((c) => myCats.has(c)).length;
+      const tagHits = (p.data.tags || []).filter((t) => myTags.has(t)).length;
+      return {
+        post: p,
+        score: catHits * 3 + tagHits,
+        sharedLabel: sharedCat ? `大类 · ${sharedCat}` : sharedTag ? `#${sharedTag}` : '',
+      };
+    })
+    .filter((x) => x.score > 0)
+    .sort((a, b) => b.score - a.score || b.post.data.pubDate.getTime() - a.post.data.pubDate.getTime())
+    .slice(0, 4)
+    .map(({ post: p, sharedLabel }) => ({
+      id: p.id,
+      title: p.data.title,
+      date: p.data.pubDate.toISOString().split('T')[0],
+      sharedLabel,
+    }));
+}
 ---
 
-<BaseLayout title={pageTitle} description={pageDesc} page={isAdmin ? 'darkroom' : 'entry'}>
+<BaseLayout
+  title={pageTitle}
+  description={pageDesc}
+  page={isAdmin ? 'darkroom' : 'entry'}
+  ogImage={rawOgImage}
+  ogType={mode === 'public' ? 'article' : 'website'}
+>
   <div class="hz-progress" aria-hidden="true"><span data-reading-bar></span></div>
 
   <div
@@ -142,11 +186,16 @@ const pageDesc = isAdmin ? '管理员级文章。' : post.data.description;
             )}
           </div>
 
-          {(post.data.tags.length > 0 || mode !== 'public') && (
+          {(categories.length > 0 || post.data.tags.length > 0 || mode !== 'public') && (
             <div class="hz-entry__tags">
               {mode === 'admin' && <span class="hz-tag hz-tag--hot">DARKROOM</span>}
               {mode === 'authorized' && <span class="hz-tag hz-tag--hot">AUTHORIZED</span>}
-              {post.data.tags.map((tag) => <span class="hz-tag">{tag}</span>)}
+              {categories.map((cat) => (
+                <a class="hz-tag hz-tag--cat" href={`/blog/?cat=${encodeURIComponent(cat)}`}>{cat}</a>
+              ))}
+              {post.data.tags.map((tag) => (
+                <a class="hz-tag" href={`/blog/?tag=${encodeURIComponent(tag)}`}>{tag}</a>
+              ))}
             </div>
           )}
         </div>
@@ -223,6 +272,7 @@ const pageDesc = isAdmin ? '管理员级文章。' : post.data.description;
             <div><dt>儒略日</dt><dd>{mjdVal.toFixed(2)}</dd></div>
             <div><dt>红移</dt><dd>z = {rs.z.toFixed(4)}</dd></div>
             <div><dt>质量</dt><dd>{mass.toLocaleString('zh-CN')} 字</dd></div>
+            <div><dt>大类</dt><dd>{categories.length ? categories.join(' / ') : '未归类'}</dd></div>
             <div><dt>作者</dt><dd>Acretiondisk</dd></div>
             <div>
               <dt>密级</dt>
@@ -278,6 +328,22 @@ const pageDesc = isAdmin ? '管理员级文章。' : post.data.description;
             ) : <span class="hz-pager__empty" aria-hidden="true"></span>}
           </nav>
         )}
+
+        {relatedPosts.length > 0 && (
+          <section class="hz-related" aria-label="延伸阅读">
+            <p class="hz-mono hz-related__head">RELATED SIGNALS // 同频延伸阅读</p>
+            <div class="hz-related__grid">
+              {relatedPosts.map((rp) => (
+                <a class="hz-related__card" href={`/blog/${encodeURI(rp.id)}/`}>
+                  <span class="hz-mono hz-related__meta">{rp.date}{rp.sharedLabel ? ` · ${rp.sharedLabel}` : ''}</span>
+                  <strong>{rp.title}</strong>
+                </a>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {mode === 'public' && <InteractPanel target={`/blog/${post.id}`} />}
       </article>
     </div>
   </div>

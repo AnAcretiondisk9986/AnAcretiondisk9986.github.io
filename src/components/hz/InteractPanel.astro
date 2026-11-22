@@ -1,0 +1,66 @@
+---
+/**
+ * 轻量跨访客文字留言区（Cloudflare Worker + KV 驱动，离线/未配置静默退回本地）。
+ * 仅用于公开文章（EntryView mode === 'public'）与特定公开页面。
+ */
+interface Props {
+  target: string;
+  heading?: string;
+}
+
+const { target, heading = 'SIGNAL COMMENTS // 留信箱' } = Astro.props;
+---
+
+<section class="hz-cmt" data-interact-panel data-target={target} aria-label="评论互动区">
+  <header class="hz-cmt__top">
+    <div>
+      <h2 class="hz-mono hz-cmt__heading">{heading}</h2>
+      <p class="hz-cmt__sub">欢迎留下想法与勘误；仅支持纯文本，无需登录。</p>
+    </div>
+    <div class="hz-cmt__meta hz-mono">
+      <span data-interact-mode>READY</span>
+      <span><b data-interact-count>0</b> REPLIES</span>
+    </div>
+  </header>
+
+  <form class="hz-cmt__form" data-interact-form>
+    <div class="hz-cmt__inputs">
+      <input
+        type="text"
+        name="author"
+        maxlength="40"
+        placeholder="署名（可选，默认匿名访客）"
+        data-interact-author
+      />
+      <input
+        type="text"
+        name="website"
+        tabindex="-1"
+        autocomplete="off"
+        aria-hidden="true"
+        class="hz-cmt__trap"
+        data-interact-trap
+      />
+    </div>
+    <textarea
+      name="body"
+      rows="3"
+      maxlength="300"
+      placeholder="写下你的回应（≤ 300 字）…"
+      required
+      data-interact-body
+    ></textarea>
+    <div class="hz-cmt__bar">
+      <span class="hz-mono hz-cmt__status" data-interact-status role="status" aria-live="polite"></span>
+      <button type="submit" class="hz-cmt__btn hz-mono" data-interact-submit>TRANSMIT // 发送</button>
+    </div>
+  </form>
+
+  <div class="hz-cmt__list" data-interact-list>
+    <p class="hz-cmt__empty hz-mono">NO SIGNALS YET · 写下第一条回应</p>
+  </div>
+</section>
+
+<script>
+  import '../../scripts/hz/interact';
+</script>

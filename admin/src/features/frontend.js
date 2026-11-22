@@ -30,10 +30,13 @@ const FRONTEND_FIELD_SELECTORS = {
   heroDescription: '#fHeroDescription',
   primaryCtaLabel: '#fPrimaryCtaLabel',
   primaryCtaHref: '#fPrimaryCtaHref',
+  interactEndpoint: '#fInteractEndpoint',
 };
 
 const QUICK_ROUTES = [
   ['/blog/', '文章光谱'],
+  ['/blog/report/', '观测报告'],
+  ['/projects/', '造物实验'],
   ['/gallery/', '图像档案'],
   ['/about/', '关于档案'],
   ['/academics/', '学业轨迹'],
@@ -147,6 +150,15 @@ function renderFrontendEditor(data) {
             </div>
           </div>
         </div>
+      </section>
+
+      <section class="frontend-section">
+        <h3>跨访客互动服务（Cloudflare Worker + KV）</h3>
+        <div class="form-group">
+          <label>互动 Worker 端点 URL (interactEndpoint，可选)</label>
+          <input id="fInteractEndpoint" value="${escAttr(data.interactEndpoint || '')}" placeholder="留空表示同源 /api/interact（本地预览）；线上部署 Worker 后填 https://interact.acretiondisk.top" />
+        </div>
+        <div class="field-hint">驱动公开文章轻量评论与 /daily/ 真实跨访客共鸣计数；若未部署或访客离线，主站会自动静默回退到本地状态，不会报错或阻塞浏览。</div>
       </section>
     </div>`;
 

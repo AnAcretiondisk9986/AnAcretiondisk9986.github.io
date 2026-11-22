@@ -11,6 +11,10 @@
     import { initAbout, renderAboutList, loadAbout, saveAbout, refreshAvatarPreview, isAboutDirty, clearAboutDirty, syncAboutDirty } from './features/about.js';
     import { initFrontend, renderFrontendList, loadFrontend, saveFrontend, syncFrontendPreview, isFrontendDirty, clearFrontendDirty, syncFrontendDirty } from './features/frontend.js';
     import { initSchedule, renderScheduleSidebar, loadSchedule, saveSchedule, isScheduleDirty, clearScheduleDirty } from './features/schedule.js';
+    import { initCategories, loadCategories, getCategories, renderPostCategoryPills, readPostCategorySelection, applyPostCategorySelection, openCategoryManagerModal, openBatchCategoryModal, bindCategoryModals } from './features/categories.js';
+    import { initProjects, renderProjectsSidebar, loadProjects, newProjectItem, saveProjectItem, deleteProjectItem, getCurrentProjectId, isProjectsDirty, clearProjectsDirty, syncProjectsDirty } from './features/projects.js';
+    import { initReport, renderReportSidebar, loadReports, newReportItem, saveReportItem, deleteReportItem, getCurrentReportId, isReportDirty, clearReportDirty } from './features/report.js';
+    import { initAcademics, renderAcademicsSidebar, loadAcademics, saveAcademics, isAcademicsDirty, clearAcademicsDirty } from './features/academics.js';
     import { initPosts, updateBatchBar, setupBatchControls, showRevisionHistory, previewPostBySlug, copyPostLink, duplicatePost, quickToggleDraft, toggleArchive, closePostPreview, putPostFields, restoreRevision, renderLineDiff, renderMarkdownPreviewInto } from './features/posts.js';
     import { initDaily, loadDaily, newDailyItem, saveDailyItem, deleteDailyItem, getCurrentDailyId, resetDailySelection, isDailyDirty, clearDailyDirty, isDailyBusy } from './features/daily.js';
     import { initGallery, loadGallery, newGalleryItem, saveGalleryItem, deleteGalleryItem, getCurrentGalleryId, resetGallerySelection, isGalleryDirty, clearGalleryDirty, syncGalleryDirty, openGalleryBatchUploader, isGalleryBatchBusy } from './features/gallery.js';
@@ -23,7 +27,7 @@
     let currentPostHash = '';
     // 文章列表：搜索 / 筛选 / 排序 / 视图偏好（本地持久化）
     const LIST_PREFS_KEY = 'admin-list-prefs';
-    const LIST_PREF_DEFAULTS = { q: '', status: '', access: '', tag: '', from: '', to: '', sort: 'date-desc', view: 'compact', filtersOpen: false };
+    const LIST_PREF_DEFAULTS = { q: '', status: '', access: '', category: '', tag: '', from: '', to: '', sort: 'date-desc', view: 'compact', filtersOpen: false };
     let listPrefs = { ...LIST_PREF_DEFAULTS };
     try { Object.assign(listPrefs, JSON.parse(localStorage.getItem(LIST_PREFS_KEY) || '{}')); } catch { /* 忽略损坏的本地偏好 */ }
     function saveListPrefs() { try { localStorage.setItem(LIST_PREFS_KEY, JSON.stringify(listPrefs)); } catch { /* 忽略写入失败 */ } }
@@ -58,13 +62,15 @@
         if (!Array.isArray(loaded)) { store.set({ page: 'error' }); renderListError('返回数据格式不正确'); return; }
         posts = loaded.map((p) => ({
           ...p,
-          _hay: `${p.title || ''}\n${p.description || ''}\n${p.slug || ''}\n${p.excerpt || ''}\n${(p.tags || []).join(',')}`.toLowerCase(),
+          categories: Array.isArray(p.categories) ? p.categories : [],
+          _hay: `${p.title || ''}\n${p.description || ''}\n${p.slug || ''}\n${p.excerpt || ''}\n${(p.tags || []).join(',')}\n${(p.categories || []).join(',')}`.toLowerCase(),
         }));
         const slugSet = new Set(posts.map((p) => p.slug));
         for (const s of [...selectedSlugs]) {
           if (!slugSet.has(s)) selectedSlugs.delete(s);
         }
         store.set({ page: posts.length ? 'ready' : 'empty' });
+        refreshCategoryOptions();
         refreshTagOptions();
         renderList();
       } catch(e) { store.set({ page: 'error' }); renderListError(e.message); }
@@ -88,7 +94,8 @@
     function postBadges(p) {
       const scheduled = p.scheduledAt && new Date(p.scheduledAt).getTime() > Date.now()
         ? `<span class="badge scheduled">定时 ${new Date(p.scheduledAt).toLocaleString('zh-CN', { hour12: false, month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>` : '';
-      return `${scheduled}${p.archived ? '<span class="badge archived">已归档</span>' : ''}${p.draft ? '<span class="badge draft">草稿</span>' : ''}${p.access && p.access !== 'public' ? `<span class="badge ${p.access}">${p.access === 'admin' ? '管理员' : '授权'}</span>` : ''}`;
+      const catBadges = (p.categories || []).slice(0, 2).map((c) => `<span class="badge cat">${esc(c)}</span>`).join('');
+      return `${catBadges}${scheduled}${p.archived ? '<span class="badge archived">已归档</span>' : ''}${p.draft ? '<span class="badge draft">草稿</span>' : ''}${p.access && p.access !== 'public' ? `<span class="badge ${p.access}">${p.access === 'admin' ? '管理员' : '授权'}</span>` : ''}`;
     }
 
     function postActionButtons(p, { labels = false } = {}) {
@@ -138,6 +145,13 @@
         if (prefs.status === 'published' && (p.draft || p.archived)) return false;
         if (prefs.status === 'archived' && !p.archived) return false;
         if (prefs.access && p.access !== prefs.access) return false;
+        if (prefs.category) {
+          if (prefs.category === '__uncategorized__') {
+            if ((p.categories || []).length > 0) return false;
+          } else if (!(p.categories || []).includes(prefs.category)) {
+            return false;
+          }
+        }
         if (prefs.tag && !(p.tags || []).includes(prefs.tag)) return false;
         if (prefs.from && (p.pubDate || '') < prefs.from) return false;
         if (prefs.to && (p.pubDate || '') > prefs.to) return false;
@@ -163,7 +177,7 @@
     function updateFilterButtonBadge() {
       const btn = $('#btnToggleFilters');
       if (!btn) return;
-      const activeCount = [listPrefs.status, listPrefs.access, listPrefs.tag, listPrefs.from, listPrefs.to].filter(Boolean).length;
+      const activeCount = [listPrefs.status, listPrefs.access, listPrefs.category, listPrefs.tag, listPrefs.from, listPrefs.to].filter(Boolean).length;
       btn.innerHTML = activeCount ? `筛选<span class="btn-badge">${activeCount}</span>` : '筛选';
       btn.classList.toggle('primary', listPrefs.filtersOpen || activeCount > 0);
     }
@@ -204,6 +218,20 @@
       updateBatchBar();
     }
 
+    function refreshCategoryOptions() {
+      const select = $('#fPostCategory');
+      if (!select) return;
+      const fromRegistry = getCategories().map((c) => c.name);
+      const fromPosts = posts.flatMap((p) => p.categories || []);
+      const merged = [...new Set([...fromRegistry, ...fromPosts])];
+      select.innerHTML = '<option value="">全部分类</option><option value="__uncategorized__">未归类</option>'
+        + merged.map((c) => `<option value="${escAttr(c)}">${esc(c)}</option>`).join('');
+      if (listPrefs.category && listPrefs.category !== '__uncategorized__' && !merged.includes(listPrefs.category)) {
+        listPrefs.category = '';
+      }
+      select.value = listPrefs.category;
+    }
+
     function refreshTagOptions() {
       const select = $('#fPostTag');
       if (!select) return;
@@ -238,6 +266,8 @@
       });
       $('#fPostStatus').addEventListener('change', (e) => { listPrefs.status = e.target.value; postListLimit = POST_LIST_PAGE; saveListPrefs(); renderList(); });
       $('#fPostAccess').addEventListener('change', (e) => { listPrefs.access = e.target.value; postListLimit = POST_LIST_PAGE; saveListPrefs(); renderList(); });
+      $('#fPostCategory')?.addEventListener('change', (e) => { listPrefs.category = e.target.value; postListLimit = POST_LIST_PAGE; saveListPrefs(); renderList(); });
+      $('#btnOpenCategoryManager')?.addEventListener('click', () => openCategoryManagerModal());
       $('#fPostTag').addEventListener('change', (e) => { listPrefs.tag = e.target.value; postListLimit = POST_LIST_PAGE; saveListPrefs(); renderList(); });
       $('#fPostFrom').addEventListener('change', (e) => { listPrefs.from = e.target.value; postListLimit = POST_LIST_PAGE; saveListPrefs(); renderList(); });
       $('#fPostTo').addEventListener('change', (e) => { listPrefs.to = e.target.value; postListLimit = POST_LIST_PAGE; saveListPrefs(); renderList(); });
@@ -256,6 +286,7 @@
         search.value = '';
         $('#fPostStatus').value = '';
         $('#fPostAccess').value = '';
+        if ($('#fPostCategory')) $('#fPostCategory').value = '';
         $('#fPostTag').value = '';
         $('#fPostFrom').value = '';
         $('#fPostTo').value = '';
@@ -334,6 +365,7 @@
         pubDate: $('#fPubDate')?.value || '',
         dayIndex: $('#fDayIndex')?.value || '',
         tags: $('#fTags')?.value || '',
+        categories: readPostCategorySelection(),
         content: getEditorMarkdown(),
         draft: !$('#fDraftToggle')?.classList.contains('on'),
         archived: $('#fArchived')?.value === 'true',
@@ -453,6 +485,12 @@
           input.addEventListener('input', () => { markPostDirty(); updatePostValidation(); });
           input.addEventListener('change', () => { markPostDirty(); updatePostValidation(); });
         });
+      root.querySelector('#fPostCategories')?.addEventListener('change', (e) => {
+        const cb = e.target.closest('input[type="checkbox"]');
+        if (cb) cb.closest('.cat-check-pill')?.classList.toggle('is-checked', cb.checked);
+        markPostDirty();
+        updatePostValidation();
+      });
     }
 
     function applyPostFormState(state) {
@@ -469,6 +507,7 @@
         setValue('#fPubDate', state.pubDate);
         setValue('#fDayIndex', state.dayIndex);
         setValue('#fTags', state.tags);
+        applyPostCategorySelection(state.categories || []);
         setValue('#fAccess', state.access || 'public');
         const archivedEl = $('#fArchived');
         if (archivedEl) archivedEl.value = state.archived ? 'true' : 'false';
@@ -725,7 +764,7 @@
     function renderPostEditor(post, { isNew = false } = {}) {
       const value = {
         slug: '', title: '', description: '', cover: '', pubDate: localToday(),
-        dayIndex: '', tags: [], draft: false, access: 'public', content: '', contentHash: '', ...post,
+        dayIndex: '', tags: [], categories: [], draft: false, access: 'public', content: '', contentHash: '', ...post,
       };
       currentSlug = isNew ? null : (value.slug || null);
       currentPostHash = isNew ? '' : (value.contentHash || '');
@@ -764,6 +803,13 @@
                 <div class="form-group"><label>同日序号</label><input id="fDayIndex" type="number" min="1" value="${value.dayIndex||''}" placeholder="自动" title="同一天内的发表顺序，1 = 当天第一篇；留空自动推导"/><span class="field-error" id="errDayIndex"></span></div>
                 <div class="form-group"><label>标签 (逗号分隔)</label><input id="fTags" value="${escAttr((value.tags||[]).join(', '))}" placeholder="博客, Astro"/><span class="field-error" id="errTags"></span></div>
               </div>
+              <div class="form-group">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+                  <label>文章大类（可多选，支持后台批量归类）</label>
+                  <button type="button" class="btn small" id="btnManagePostCategories">⚙ 管理分类</button>
+                </div>
+                <div class="post-cat-pills" id="fPostCategories"></div>
+              </div>
               <div class="form-row" style="align-items:flex-start">
                 <div class="toggle-row" style="flex:1">
                   <div class="toggle${value.draft?'':' on'}" id="fDraftToggle" onclick="toggleDraft()"></div>
@@ -799,6 +845,8 @@
         </div>`;
       setupUpload();
       setupPostCover();
+      renderPostCategoryPills(value.categories || []);
+      $('#btnManagePostCategories')?.addEventListener('click', () => openCategoryManagerModal());
       setupPostDirtyTracking();
       setupFormSections();
       setupSlugAutogen();
@@ -885,7 +933,8 @@
 
       const formData = new URLSearchParams();
       Object.entries(state).forEach(([key, value]) => {
-        formData.set(key, key === 'draft' ? String(value) : String(value ?? ''));
+        if (key === 'categories') formData.set(key, Array.isArray(value) ? value.join(',') : String(value ?? ''));
+        else formData.set(key, key === 'draft' ? String(value) : String(value ?? ''));
       });
       if (currentSlug) formData.set('expectedHash', currentPostHash);
 
@@ -2161,6 +2210,14 @@
           const avatarInput = $('#fAvatar');
           if (avatarInput) { avatarInput.value = data.url; avatarInput.focus(); refreshAvatarPreview(); syncAboutDirty(); }
           toast('已上传头像: ' + data.url);
+        } else if (currentMode === 'projects') {
+          const projCover = $('#fProjCover');
+          if (projCover) {
+            projCover.value = data.url;
+            projCover.dispatchEvent(new Event('input'));
+            syncProjectsDirty();
+          }
+          toast('已上传项目封面: ' + data.url);
         } else {
           insertImageIntoEditor(data.url, file.name.replace(/\.[^.]+$/, ''));
           toast('已上传: '+data.url);
@@ -2193,6 +2250,8 @@
         gallery: '#fGallerySearch',
         media: '#fMediaSearch',
         schedule: '#fCourseSearch',
+        projects: '#fProjSearch',
+        academics: '#fAcadSearch',
       };
       const input = $(candidates[currentMode]);
       if (input) {
@@ -2203,7 +2262,7 @@
       return false;
     }
 
-    const MODE_SHORTCUT_ORDER = ['posts', 'daily', 'gallery', 'media', 'about', 'frontend', 'access', 'schedule'];
+    const MODE_SHORTCUT_ORDER = ['posts', 'daily', 'gallery', 'media', 'about', 'frontend', 'access', 'schedule', 'projects', 'report', 'academics'];
 
     document.addEventListener('keydown', e => {
       const mod = e.ctrlKey || e.metaKey;
@@ -2217,6 +2276,9 @@
         else if (currentMode === 'about') saveAbout();
         else if (currentMode === 'frontend') saveFrontend();
         else if (currentMode === 'schedule') saveSchedule();
+        else if (currentMode === 'projects') saveProjectItem();
+        else if (currentMode === 'report') saveReportItem();
+        else if (currentMode === 'academics') saveAcademics();
         else if (currentMode === 'access') savePrivateAccess();
         else if (currentMode === 'posts') savePost();
         return;
@@ -2230,7 +2292,7 @@
       }
 
       if (mod && e.shiftKey && key === 'n') {
-        if (['posts', 'daily', 'gallery'].includes(currentMode) && !document.querySelector('.modal-mask[data-open="1"]')) {
+        if (['posts', 'daily', 'gallery', 'projects', 'report'].includes(currentMode) && !document.querySelector('.modal-mask[data-open="1"]')) {
           e.preventDefault();
           $('#btnNew')?.click();
         }
@@ -2253,7 +2315,7 @@
         return;
       }
 
-      if (e.altKey && !mod && /^[1-8]$/.test(e.key)) {
+      if (e.altKey && !mod && /^[1-9]$/.test(e.key)) {
         const targetMode = MODE_SHORTCUT_ORDER[Number(e.key) - 1];
         if (targetMode && targetMode !== currentMode && !document.querySelector('.modal-mask[data-open="1"]')) {
           e.preventDefault();
@@ -2280,6 +2342,7 @@
     bindBookmarkModal();
     bindCoverCropModal();
     bindConflictModal();
+    bindCategoryModals();
     setupMediaPicker();
     setupGlobalFileInput();
     installFocusTrap();
@@ -2298,6 +2361,9 @@
       reloadAbout: () => loadAbout(),
       reloadFrontend: () => loadFrontend(),
       reloadSchedule: () => loadSchedule(),
+      reloadProjects: () => loadProjects(),
+      reloadReport: () => loadReports(),
+      reloadAcademics: () => loadAcademics(),
       fetchHealth,
     });
     initDaily({
@@ -2334,6 +2400,34 @@
       onDirtyChange: updateSubModuleDirtyStatus,
       refreshSyncStatus,
     });
+    initCategories({
+      getPosts: () => posts,
+      getSelection: () => selectedSlugs,
+      getCurrentSlug: () => currentSlug,
+      isPostDirty: () => postDirty,
+      loadPosts: () => loadPosts(),
+      selectPost: (slug, options) => selectPost(slug, options),
+      renderList: () => renderList(),
+      updateBatchBar,
+      refreshSyncStatus,
+      onCategoriesLoaded: () => { refreshCategoryOptions(); },
+    });
+    initProjects({
+      getPosts: () => posts,
+      openMediaPicker,
+      onDirtyChange: updateSubModuleDirtyStatus,
+      refreshSyncStatus,
+    });
+    initReport({
+      getPosts: () => posts,
+      onDirtyChange: updateSubModuleDirtyStatus,
+      refreshSyncStatus,
+    });
+    initAcademics({
+      getPosts: () => posts,
+      onDirtyChange: updateSubModuleDirtyStatus,
+      refreshSyncStatus,
+    });
     initPosts({
       getPosts: () => posts,
       getFilteredSlugs: () => getFilteredPosts().map((p) => p.slug),
@@ -2345,9 +2439,11 @@
       selectPost: (slug, options) => selectPost(slug, options),
       resetEditor: () => resetPostEditorTracking(),
       renderList: () => renderList(),
+      openBatchCategoryModal,
       refreshSyncStatus,
     });
     initListControls();
+    loadCategories({ silent: true });
     loadPosts();
 
     // ── 模式切换 ──
@@ -2364,6 +2460,9 @@
       if (currentMode === 'about' && isAboutDirty()) return confirm('当前关于页面有未保存修改，确定离开？');
       if (currentMode === 'frontend' && isFrontendDirty()) return confirm('当前外观配置有未保存修改，确定离开？');
       if (currentMode === 'schedule' && isScheduleDirty()) return confirm('当前日程课表有未保存修改，确定离开？');
+      if (currentMode === 'projects' && isProjectsDirty()) return confirm('当前造物项目有未保存修改，确定离开？');
+      if (currentMode === 'report' && isReportDirty()) return confirm('当前观测报告有未保存修改，确定离开？');
+      if (currentMode === 'academics' && isAcademicsDirty()) return confirm('当前学业数据有未保存修改，确定离开？');
       return true;
     }
 
@@ -2375,6 +2474,9 @@
       if (mode !== 'about') clearAboutDirty();
       if (mode !== 'frontend') clearFrontendDirty();
       if (mode !== 'schedule') clearScheduleDirty();
+      if (mode !== 'projects') clearProjectsDirty();
+      if (mode !== 'report') clearReportDirty();
+      if (mode !== 'academics') clearAcademicsDirty();
       setPostEditorStatus('');
       currentMode = mode;
       store.set({ mode });
@@ -2451,6 +2553,41 @@
         $('#editorContainer').innerHTML = '<div class="empty-state">加载课表数据…</div>';
         renderScheduleSidebar();
         loadSchedule();
+      } else if (mode === 'projects') {
+        currentSlug = null;
+        resetGallerySelection();
+        $('#editorTitle').textContent = '造物 / 实验室';
+        $('#btnNew').textContent = '＋ 新建';
+        $('#btnNew').style.display = '';
+        $('#btnDelete').style.display = 'none';
+        $('#btnSave').style.display = '';
+        $('#btnSave').disabled = false;
+        $('#editorContainer').innerHTML = '<div class="empty-state">加载造物项目…</div>';
+        renderProjectsSidebar();
+        loadProjects();
+      } else if (mode === 'report') {
+        currentSlug = null;
+        resetGallerySelection();
+        $('#editorTitle').textContent = '年度 / 阶段观测报告';
+        $('#btnNew').textContent = '＋ 新建';
+        $('#btnNew').style.display = '';
+        $('#btnDelete').style.display = 'none';
+        $('#btnSave').style.display = '';
+        $('#btnSave').disabled = false;
+        $('#editorContainer').innerHTML = '<div class="empty-state">加载观测报告…</div>';
+        renderReportSidebar();
+        loadReports();
+      } else if (mode === 'academics') {
+        currentSlug = null;
+        resetGallerySelection();
+        $('#editorTitle').textContent = '学业轨迹可视化编辑';
+        $('#btnNew').style.display = 'none';
+        $('#btnDelete').style.display = 'none';
+        $('#btnSave').style.display = '';
+        $('#btnSave').disabled = false;
+        $('#editorContainer').innerHTML = '<div class="empty-state">加载学业数据…</div>';
+        renderAcademicsSidebar();
+        loadAcademics();
       } else if (mode === 'access') {
         currentSlug = null; resetGallerySelection();
         $('#editorTitle').textContent = '访问控制'; $('#btnNew').style.display = 'none'; $('#btnDelete').style.display = 'none'; $('#btnSave').style.display = 'none';
@@ -2469,11 +2606,11 @@
     }
 
     // ── 按钮分发 ──
-    $('#btnNew').onclick = () => currentMode === 'media' ? triggerMediaUpload() : currentMode === 'daily' ? newDailyItem() : currentMode === 'gallery' ? newGalleryItem() : newPost();
-    $('#btnRefresh').onclick = () => currentMode === 'daily' ? loadDaily() : currentMode === 'gallery' ? loadGallery() : currentMode === 'media' ? loadMedia() : currentMode === 'about' ? loadAbout() : currentMode === 'frontend' ? loadFrontend() : currentMode === 'schedule' ? loadSchedule() : currentMode === 'access' ? renderPrivateAccess() : loadPosts();
-    $('#btnSave').onclick = () => currentMode === 'daily' ? saveDailyItem() : currentMode === 'gallery' ? saveGalleryItem() : currentMode === 'about' ? saveAbout() : currentMode === 'frontend' ? saveFrontend() : currentMode === 'schedule' ? saveSchedule() : savePost();
+    $('#btnNew').onclick = () => currentMode === 'media' ? triggerMediaUpload() : currentMode === 'daily' ? newDailyItem() : currentMode === 'gallery' ? newGalleryItem() : currentMode === 'projects' ? newProjectItem() : currentMode === 'report' ? newReportItem() : newPost();
+    $('#btnRefresh').onclick = () => currentMode === 'daily' ? loadDaily() : currentMode === 'gallery' ? loadGallery() : currentMode === 'media' ? loadMedia() : currentMode === 'about' ? loadAbout() : currentMode === 'frontend' ? loadFrontend() : currentMode === 'schedule' ? loadSchedule() : currentMode === 'projects' ? loadProjects() : currentMode === 'report' ? loadReports() : currentMode === 'academics' ? loadAcademics() : currentMode === 'access' ? renderPrivateAccess() : loadPosts();
+    $('#btnSave').onclick = () => currentMode === 'daily' ? saveDailyItem() : currentMode === 'gallery' ? saveGalleryItem() : currentMode === 'about' ? saveAbout() : currentMode === 'frontend' ? saveFrontend() : currentMode === 'schedule' ? saveSchedule() : currentMode === 'projects' ? saveProjectItem() : currentMode === 'report' ? saveReportItem() : currentMode === 'academics' ? saveAcademics() : savePost();
     $('#btnPreflight').onclick = showPreflight;
-    $('#btnDelete').onclick = () => currentMode === 'daily' ? (getCurrentDailyId() && deleteDailyItem(getCurrentDailyId())) : currentMode === 'gallery' ? (getCurrentGalleryId() && deleteGalleryItem(getCurrentGalleryId())) : (currentSlug && deletePost(currentSlug));
+    $('#btnDelete').onclick = () => currentMode === 'daily' ? (getCurrentDailyId() && deleteDailyItem(getCurrentDailyId())) : currentMode === 'gallery' ? (getCurrentGalleryId() && deleteGalleryItem(getCurrentGalleryId())) : currentMode === 'projects' ? (getCurrentProjectId() && deleteProjectItem(getCurrentProjectId())) : currentMode === 'report' ? (getCurrentReportId() && deleteReportItem(getCurrentReportId())) : (currentSlug && deletePost(currentSlug));
     $('#previewClose').onclick = closePostPreview;
     $('#preflightClose').onclick = () => closeModal($('#preflightModal'));
     $('#preflightModal').addEventListener('click', (e) => { if (e.target === $('#preflightModal')) closeModal($('#preflightModal')); });
@@ -2505,6 +2642,8 @@
       else if (isModalOpen($('#bookmarkModal'))) closeModal($('#bookmarkModal'));
       else if (isModalOpen($('#imgSizeModal'))) { closeModal($('#imgSizeModal')); imgSizeTarget = null; }
       else if (isModalOpen($('#schedGithubModal'))) closeModal($('#schedGithubModal'));
+      else if (isModalOpen($('#categoryManagerModal'))) closeModal($('#categoryManagerModal'));
+      else if (isModalOpen($('#batchCategoryModal'))) closeModal($('#batchCategoryModal'));
       else if (isModalOpen($('#shortcutsModal'))) closeModal($('#shortcutsModal'));
       else if ($('#findReplaceBar') && !$('#findReplaceBar').hidden) wordController?.toggleFindBar?.(false);
     });

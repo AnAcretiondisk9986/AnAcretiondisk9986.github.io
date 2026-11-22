@@ -15,6 +15,7 @@ interface RowMeta {
   pos: number;
   mass: number;
   search: string;
+  categories: string[];
   tags: string[];
 }
 
@@ -30,45 +31,51 @@ export function initSpectrum() {
   const countEl = root.querySelector<HTMLElement>('[data-spec-count]');
   const emptyEl = root.querySelector<HTMLElement>('[data-spec-empty]');
   const resetBtn = root.querySelector<HTMLButtonElement>('[data-spec-reset]');
+  const catBtns = [...root.querySelectorAll<HTMLButtonElement>('[data-spec-cat]')];
   const tagBtns = [...root.querySelectorAll<HTMLButtonElement>('[data-spec-tag]')];
   const sortBtns = [...root.querySelectorAll<HTMLButtonElement>('[data-spec-sort]')];
   if (!list) return;
 
   // 预解析行元数据，避免每次筛选/输入重复 Date.parse / JSON.parse
-  const metas: RowMeta[] = rows.map((el) => {
-    let tags: string[] = [];
+  const parseArr = (raw: string | undefined) => {
     try {
-      const parsed = JSON.parse(el.dataset.tags || '[]');
-      tags = Array.isArray(parsed) ? parsed.map(String) : [];
+      const parsed = JSON.parse(raw || '[]');
+      return Array.isArray(parsed) ? parsed.map(String) : [];
     } catch {
-      tags = [];
+      return [];
     }
-    return {
-      el,
-      id: el.dataset.id || '',
-      ts: Date.parse(el.dataset.date || '') || 0,
-      dayIndex: Number(el.dataset.dayIndex || '0'),
-      pos: Number(el.dataset.pos || '0'),
-      mass: Number(el.dataset.mass || '0'),
-      search: el.dataset.search || '',
-      tags,
-    };
-  });
+  };
+  const metas: RowMeta[] = rows.map((el) => ({
+    el,
+    id: el.dataset.id || '',
+    ts: Date.parse(el.dataset.date || '') || 0,
+    dayIndex: Number(el.dataset.dayIndex || '0'),
+    pos: Number(el.dataset.pos || '0'),
+    mass: Number(el.dataset.mass || '0'),
+    search: el.dataset.search || '',
+    categories: parseArr(el.dataset.categories),
+    tags: parseArr(el.dataset.tags),
+  }));
 
   const barMap = new Map(bars.map((b) => [b.dataset.id || '', b]));
   const rowMap = new Map(rows.map((r) => [r.dataset.id || '', r]));
 
+  let activeCategory = 'all';
   let activeTag = 'all';
   let sortKey: SortKey = 'newest';
   let query = '';
 
   const params = new URLSearchParams(location.search);
   const initQ = params.get('q')?.trim() || '';
+  const initCat = params.get('cat')?.trim() || '';
   const initTag = params.get('tag')?.trim() || '';
   const initSort = params.get('sort')?.trim() || '';
   if (initQ && search) {
     search.value = initQ;
     query = initQ.toLowerCase();
+  }
+  if (initCat && catBtns.some((b) => b.dataset.specCat === initCat)) {
+    activeCategory = initCat;
   }
   if (initTag && tagBtns.some((b) => b.dataset.specTag === initTag)) {
     activeTag = initTag;
@@ -81,6 +88,7 @@ export function initSpectrum() {
     const next = new URLSearchParams();
     const rawQ = search?.value.trim() || '';
     if (rawQ) next.set('q', rawQ);
+    if (activeCategory !== 'all') next.set('cat', activeCategory);
     if (activeTag !== 'all') next.set('tag', activeTag);
     if (sortKey !== 'newest') next.set('sort', sortKey);
     const qs = next.toString();
@@ -146,8 +154,12 @@ export function initSpectrum() {
     const frag = document.createDocumentFragment();
     for (const meta of sorted) {
       const matchQ = !query || meta.search.includes(query);
+      const matchCat = activeCategory === 'all'
+        || (activeCategory === 'uncategorized'
+          ? meta.categories.length === 0
+          : meta.categories.includes(activeCategory));
       const matchTag = activeTag === 'all' || meta.tags.includes(activeTag);
-      const ok = matchQ && matchTag;
+      const ok = matchQ && matchCat && matchTag;
 
       meta.el.hidden = !ok;
       barMap.get(meta.id)?.classList.toggle('is-dimmed', !ok);
@@ -168,6 +180,9 @@ export function initSpectrum() {
       emptyEl.hidden = shown > 0;
     }
 
+    catBtns.forEach((b) => {
+      b.setAttribute('aria-pressed', String(b.dataset.specCat === activeCategory));
+    });
     tagBtns.forEach((b) => {
       b.setAttribute('aria-pressed', String(b.dataset.specTag === activeTag));
     });
@@ -193,6 +208,14 @@ export function initSpectrum() {
     }, 110);
   });
 
+  catBtns.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const clicked = btn.dataset.specCat || 'all';
+      activeCategory = activeCategory === clicked && clicked !== 'all' ? 'all' : clicked;
+      apply(true);
+    });
+  });
+
   tagBtns.forEach((btn) => {
     btn.addEventListener('click', () => {
       const clicked = btn.dataset.specTag || 'all';
@@ -214,6 +237,7 @@ export function initSpectrum() {
 
   resetBtn?.addEventListener('click', () => {
     query = '';
+    activeCategory = 'all';
     activeTag = 'all';
     if (search) search.value = '';
     apply(true);
@@ -231,6 +255,7 @@ export function initSpectrum() {
       if (!row) return;
       if (row.hidden) {
         query = '';
+        activeCategory = 'all';
         activeTag = 'all';
         if (search) search.value = '';
         apply(false);

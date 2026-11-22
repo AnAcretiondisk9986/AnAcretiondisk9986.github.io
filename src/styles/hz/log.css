@@ -126,6 +126,11 @@
 .hz-tag--hot {
   color: var(--hz-hot-ink);
 }
+.hz-tag--cat {
+  color: var(--hz-hot-ink);
+  border-color: rgb(255 90 26 / 0.42);
+  background: rgb(255 90 26 / 0.1);
+}
 
 .hz-row__stat {
   display: grid;
@@ -485,6 +490,53 @@
   grid-template-columns: minmax(220px, 1fr) auto auto;
   gap: var(--s-3);
   align-items: center;
+}
+.hz-log-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+.hz-cats-rail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s-2);
+}
+.hz-cats-rail__k {
+  font-size: 0.68rem;
+  color: var(--hz-ink-3);
+  margin-right: 4px;
+}
+.hz-cat-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border: 1px solid var(--hz-line-2);
+  border-radius: 999px;
+  background: var(--hz-bg-2);
+  font-size: var(--t-micro);
+  color: var(--hz-ink);
+  white-space: nowrap;
+  transition: border-color var(--d-1), background-color var(--d-1), color var(--d-1);
+}
+.hz-cat-pill:hover {
+  border-color: var(--hz-hot);
+}
+.hz-cat-pill[aria-pressed='true'] {
+  border-color: var(--hz-hot);
+  background: rgb(255 90 26 / 0.16);
+  color: var(--hz-hot-ink);
+}
+.hz-cat-pill small {
+  font-family: var(--f-mono);
+  opacity: 0.72;
+}
+.hz-cat-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 .hz-search {
   display: flex;

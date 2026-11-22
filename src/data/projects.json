@@ -1,0 +1,203 @@
+[
+  {
+    "id": "horizon-blog",
+    "name": "个人博客 · HORIZON",
+    "tagline": "Astro 静态架构 × WebGL 史瓦西黑洞观测仪器 × 本地/移动端双端工作台",
+    "description": "基于 Astro 构建的全自托管个人站，包含 HORIZON（视界）全站设计系统、Tiptap v3 本地管理后台、Electron 桌面端、CLI/TUI 管理工具与手机端 /write/ 发文 PWA。",
+    "status": "active",
+    "kind": "web",
+    "stack": ["Astro", "TypeScript", "WebGL", "Tiptap", "Express", "Electron"],
+    "repoUrl": "https://github.com/AnAcretiondisk9986/AnAcretiondisk9986.github.io",
+    "demoUrl": "https://blog.acretiondisk.top/",
+    "cover": "/images/horizon-rewrite/cover.webp",
+    "featured": true,
+    "order": 1,
+    "postSlugs": [
+      "horizon-视界全站重构技术复盘",
+      "博客图片压缩优化"
+    ],
+    "postTags": ["Astro", "博客搭建", "WebGL", "设计系统"],
+    "highlights": [
+      "112 步光线步进史瓦西黑洞着色器 + VOID/PLATE 双主题",
+      "构建期图片本地化 + 虚拟化图像透镜场",
+      "PC Word 级富文本工作台 + 手机端 /write/ PWA"
+    ]
+  },
+  {
+    "id": "wmu-schedule",
+    "name": "温医大课表",
+    "tagline": "纯前端浏览器本地解析教务系统 PDF 课表，支持 PWA 与标准 .ics 日历导出",
+    "description": "面向温州医科大学的零后端课表工具：直接读取教务 PDF 文字层与坐标恢复星期列与单双周，内置茶山/学院路/滨海三校区作息及跨校区冲突检测、GitHub 自动同步与 ICS 导出。",
+    "status": "active",
+    "kind": "web",
+    "stack": ["Vanilla JS", "PDF.js", "PWA", "Service Worker", "ICS / RFC 5545"],
+    "repoUrl": "https://github.com/AnAcretiondisk9986/WMU-Class-Schedule",
+    "demoUrl": "https://wmu.kb.acretiondisk.top/",
+    "cover": "",
+    "featured": true,
+    "order": 2,
+    "postSlugs": [],
+    "postTags": [],
+    "highlights": [
+      "浏览器本地解析 PDF 坐标，原始课表不上传应用服务器",
+      "多课表切换、自定义日程、课程别名与冲突检测",
+      "已原生整合进本博客「07 日程」频道"
+    ]
+  },
+  {
+    "id": "clinmedagent-rag",
+    "name": "ClinMedAgent-RAG",
+    "tagline": "将医学教材转为可执行、可溯源推理的本地 RAG 知识库引擎",
+    "description": "针对临床医学与基础医学教材构建的混合检索与 Agent 知识库系统，支持章节结构化切分、本地 SQLite 索引与多 Agent 协作优化。",
+    "status": "active",
+    "kind": "ai",
+    "stack": ["Python", "SQLite", "RAG", "AI Agent"],
+    "repoUrl": "https://github.com/AnAcretiondisk9986/ClinMedAgent-RAG",
+    "demoUrl": "",
+    "cover": "/images/clinmedagent-rag-optimization-20261117.svg",
+    "featured": true,
+    "order": 3,
+    "postSlugs": [
+      "clinmedagent-rag-multi-agent-optimization-report",
+      "把教材变成可以解题的本地知识库-一次医学rag实现记录"
+    ],
+    "postTags": ["RAG", "SQLite"],
+    "highlights": [
+      "多层协作审计与查询性能从 104.3 ms 优化至 50.2 ms",
+      "面向医学教材问答的精准章节定位与溯源"
+    ]
+  },
+  {
+    "id": "ac-ledger",
+    "name": "Ac记账 (AcLedger)",
+    "tagline": "面向个人多端使用的桌面 + Web 双端记账应用",
+    "description": "从 0 到 1 打造的个人记账软件，覆盖桌面端与网页端双形态，强调本地可控账本结构与高效率流水录入。",
+    "status": "maintaining",
+    "kind": "app",
+    "stack": ["Electron", "React", "TypeScript"],
+    "repoUrl": "https://github.com/AnAcretiondisk9986/ac-ledger",
+    "demoUrl": "",
+    "cover": "",
+    "featured": false,
+    "order": 4,
+    "postSlugs": [
+      "acledger记账软件开发复盘"
+    ],
+    "postTags": ["Electron", "React"],
+    "highlights": [
+      "双端架构复用核心账务状态模型",
+      "完整复盘从 0 到 1 迭代难点与工程约束"
+    ]
+  },
+  {
+    "id": "bili-screenshot",
+    "name": "Bili-Screenshot",
+    "tagline": "Chrome 商店过审的 B 站视频无损静默截图扩展",
+    "description": "支持快捷键静默截图、原始分辨率导出、JPEG 质量压缩、弹幕开关、连拍与自定义文件名模板的 Chrome MV3 扩展。",
+    "status": "maintaining",
+    "kind": "extension",
+    "stack": ["Chrome MV3", "JavaScript", "Canvas"],
+    "repoUrl": "https://github.com/AnAcretiondisk9986/Bili-Screenshot",
+    "demoUrl": "",
+    "cover": "",
+    "featured": false,
+    "order": 5,
+    "postSlugs": [
+      "bili-screenshot开发复盘",
+      "bili-screenshot已在谷歌应用商店过审-欢迎访客下载使用"
+    ],
+    "postTags": ["Chrome扩展"],
+    "highlights": [
+      "已上架 Google Chrome Web Store",
+      "双截图管线与 macOS 下载降级兼容"
+    ]
+  },
+  {
+    "id": "wmu-calc",
+    "name": "温医大综测、转专业计算器",
+    "tagline": "零依赖纯前端综测绩点与转专业加权计算工具",
+    "description": "依据温医大综测与转专业细则打造的纯静态单页计算器，零外部框架与后端依赖，支持本地即时计算与规则核对。",
+    "status": "maintaining",
+    "kind": "web",
+    "stack": ["HTML", "CSS", "Vanilla JS"],
+    "repoUrl": "",
+    "demoUrl": "http://wmu.calc.acretiondisk.top/",
+    "cover": "",
+    "featured": false,
+    "order": 6,
+    "postSlugs": [
+      "wmu综测计算器技术栈总结与开发复盘"
+    ],
+    "postTags": ["零依赖"],
+    "highlights": [
+      "零构建、零第三方运行依赖的纯前端形态",
+      "多视口响应式界面与本地即时算分"
+    ]
+  },
+  {
+    "id": "ds-harness-desktop",
+    "name": "DS Harness Desktop Version",
+    "tagline": "用 Go + go-webview2 打包的 Agent 运行时桌面版",
+    "description": "为 Agent 运行时打造的原生 Windows 桌面封装，内嵌便携运行时与无边框交互窗口，实现双击即用。",
+    "status": "maintaining",
+    "kind": "app",
+    "stack": ["Go", "WebView2", "Node.js"],
+    "repoUrl": "https://github.com/AnAcretiondisk9986/deepseek-harness-Personal-EDIT",
+    "demoUrl": "",
+    "cover": "",
+    "featured": false,
+    "order": 7,
+    "postSlugs": [
+      "dsh桌面版开发复盘",
+      "moss提示词闭环-comfyui-dsh-工程实践"
+    ],
+    "postTags": ["DSH", "Go", "桌面应用"],
+    "highlights": [
+      "go:embed 内嵌便携运行时，消除环境配置门槛",
+      "解决 Windows WndProc 无边框窗口与多版本兼容踩坑"
+    ]
+  },
+  {
+    "id": "wezmux-agent-mcp",
+    "name": "wezmux-agent-mcp",
+    "tagline": "让 WezTerm / Wezmux 多窗格内的 AI Agent 真正开口协作的 MCP 插件",
+    "description": "基于 Model Context Protocol 的终端多 Agent 协作桥梁，配合 WezTerm 驾驶舱实现窗格编排、消息路由与防误触发保护。",
+    "status": "experiment",
+    "kind": "cli",
+    "stack": ["MCP", "WezTerm", "Lua", "Agent CLI"],
+    "repoUrl": "",
+    "demoUrl": "",
+    "cover": "/images/wezmux-agent-mcp/cover.webp",
+    "featured": false,
+    "order": 8,
+    "postSlugs": [
+      "wezmux-agent-mcp-多agent终端协作插件介绍与实战",
+      "wezterm-终端推荐与使用说明-agent-cli-时代的终端驾驶舱"
+    ],
+    "postTags": ["WezTerm", "Wezmux", "MCP", "多Agent协作"],
+    "highlights": [
+      "打通 Claude Code / Codex / 多窗格终端 Agent 通信",
+      "内建 spawn guard 安全防护与实战驾驶舱配置"
+    ]
+  },
+  {
+    "id": "exam-schedule",
+    "name": "期末考试日程轨道",
+    "tagline": "结合医学心电/轨道元素重构的考期倒计时与日期矩阵",
+    "description": "原独立考试日程页经 HORIZON 视觉重塑后并入本博客 `/schedule/exams/`，支持 33 天考期矩阵筛选、同课多场次识别、倒计时与 .ics 导出。",
+    "status": "maintaining",
+    "kind": "web",
+    "stack": ["Astro", "TypeScript", "ICS"],
+    "repoUrl": "",
+    "demoUrl": "https://blog.acretiondisk.top/schedule/exams/",
+    "cover": "",
+    "featured": false,
+    "order": 9,
+    "postSlugs": [],
+    "postTags": [],
+    "highlights": [
+      "实时本地倒计时 + 开课学院分布",
+      "支持一键导出完整考期 .ics 与 A4 打印"
+    ]
+  }
+]

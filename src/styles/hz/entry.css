@@ -784,7 +784,9 @@ dialog.hz-entry-viewer::backdrop {
   .hz-toc,
   .hz-entry__note,
   .hz-endmark__top,
-  .hz-pager {
+  .hz-pager,
+  .hz-related,
+  .hz-cmt {
     display: none !important;
   }
   html,
@@ -823,4 +825,52 @@ dialog.hz-entry-viewer::backdrop {
     color: #111 !important;
     border-bottom: 1px solid #888;
   }
+}
+
+.hz-tag--cat {
+  color: var(--hz-hot-ink);
+  border-color: rgb(255 90 26 / 0.45);
+  background: rgb(255 90 26 / 0.12);
+}
+
+.hz-related {
+  margin-top: var(--s-7);
+  display: grid;
+  gap: var(--s-3);
+}
+
+.hz-related__head {
+  font-size: var(--t-micro);
+  color: var(--hz-ink-3);
+}
+
+.hz-related__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: var(--s-3);
+}
+
+.hz-related__card {
+  display: grid;
+  gap: 5px;
+  padding: var(--s-4);
+  border: 1px solid var(--hz-line);
+  border-radius: 10px;
+  background: var(--hz-bg-2);
+  transition: border-color var(--d-1), transform var(--d-1);
+}
+
+.hz-related__card:hover {
+  border-color: var(--hz-hot);
+  transform: translateY(-1px);
+}
+
+.hz-related__meta {
+  font-size: 0.68rem;
+  color: var(--hz-hot-ink);
+}
+
+.hz-related__card strong {
+  font-size: 0.92rem;
+  line-height: 1.4;
 }
