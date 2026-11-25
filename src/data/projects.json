@@ -3,10 +3,10 @@
     "id": "prism-time",
     "name": "澄镜 · PrismTime",
     "tagline": "7.59 MB 原生内存、100% 本地优先的 Windows 屏幕时长、网页洞察与跨设备同步工具",
-    "description": "基于 Rust + Tauri v2 + Win32/UIA + React 19 构建的极简桌面屏幕时间记录仪。支持 1 Hz 无感前台探测、浅层 UIA 浏览器网页识别与隐私域名净化、四级软件百科与自定义进程规则、澄白/曜石双主题手绘 SVG 图表体系，以及零 C 依赖的 WebDAV / GitHub 私有仓库双向无损合并同步。",
+    "description": "基于 Rust + Tauri v2 + Win32/UIA + React 19 构建的桌面屏幕时间记录仪。支持 1 Hz 无感探测、浅层 UIA 网页洞察、四级软件百科与 WebDAV / GitHub 双向无损合并同步。",
     "status": "active",
     "kind": "app",
-    "stack": ["Rust", "Tauri v2", "React 19", "TypeScript", "Win32 / UIA", "SVG"],
+    "stack": ["Rust", "Tauri v2", "React 19", "TypeScript", "Win32 / UIA"],
     "repoUrl": "https://github.com/AnAcretiondisk9986/prism-time",
     "demoUrl": "https://www.bilibili.com/video/BV12aykz4E3S/",
     "cover": "/images/prism-time/cover.webp",
@@ -17,190 +17,338 @@
     ],
     "postTags": ["PrismTime", "Rust", "Tauri"],
     "highlights": [
-      "Rust 监控核心仅占 7.59 MB 内存与 0.02% CPU，单条会话 ~271 Bytes",
-      "浅层 UIA 浏览器站点识别（绝不唤醒全量 DOM 树）+ 四级自定义进程规则",
-      "纯 Rust WinHTTP 原生 WebDAV / GitHub 私有仓库跨设备按日无损并集同步"
+      "Rust 监控核心仅占 7.59 MB 内存与 0.02% CPU，V0.3.0 已发布",
+      "纯 Rust WinHTTP 原生 WebDAV / GitHub 私有仓库按日无损并集同步"
     ]
   },
   {
     "id": "horizon-blog",
     "name": "个人博客 · HORIZON",
     "tagline": "Astro 静态架构 × WebGL 史瓦西黑洞观测仪器 × 本地/移动端双端工作台",
-    "description": "基于 Astro 构建的全自托管个人站，包含 HORIZON（视界）全站设计系统、Tiptap v3 本地管理后台、Electron 桌面端、CLI/TUI 管理工具与手机端 /write/ 发文 PWA。",
+    "description": "基于 Astro 7 构建的全自托管个人站，包含 HORIZON（视界）设计系统、Tiptap v3 本地管理后台、Electron 桌面端、CLI/TUI 管理工具与手机端 /write/ 发文 PWA。",
     "status": "active",
     "kind": "web",
-    "stack": ["Astro", "TypeScript", "WebGL", "Tiptap", "Express", "Electron"],
+    "stack": ["Astro", "TypeScript", "WebGL", "Tiptap", "Electron"],
     "repoUrl": "https://github.com/AnAcretiondisk9986/AnAcretiondisk9986.github.io",
     "demoUrl": "https://blog.acretiondisk.top/",
     "cover": "/images/horizon-rewrite/cover.webp",
     "featured": true,
-    "order": 1,
+    "order": 2,
     "postSlugs": [
       "horizon-视界全站重构技术复盘",
-      "博客图片压缩优化"
+      "博客图片压缩优化技术报告"
     ],
     "postTags": ["Astro", "博客搭建", "WebGL", "设计系统"],
     "highlights": [
-      "112 步光线步进史瓦西黑洞着色器 + VOID/PLATE 双主题",
-      "构建期图片本地化 + 虚拟化图像透镜场",
-      "PC Word 级富文本工作台 + 手机端 /write/ PWA"
+      "112 步光线步进史瓦西黑洞着色器 + VOID / PLATE 双主题",
+      "PC 端管理面板 / Electron 桌面版 + 手机端 /write/ PWA"
     ]
   },
   {
     "id": "wmu-schedule",
     "name": "温医大课表",
     "tagline": "纯前端浏览器本地解析教务系统 PDF 课表，支持 PWA 与标准 .ics 日历导出",
-    "description": "面向温州医科大学的零后端课表工具：直接读取教务 PDF 文字层与坐标恢复星期列与单双周，内置茶山/学院路/滨海三校区作息及跨校区冲突检测、GitHub 自动同步与 ICS 导出。",
+    "description": "面向温州医科大学的零后端课表工具（v0.3.1）：直接读取教务 PDF 文字层与坐标恢复星期列与单双周，内置三校区作息冲突检测、GitHub 配置同步与 ICS 导出。",
     "status": "active",
     "kind": "web",
-    "stack": ["Vanilla JS", "PDF.js", "PWA", "Service Worker", "ICS / RFC 5545"],
+    "stack": ["Vanilla JS", "PDF.js", "PWA", "Service Worker", "ICS"],
     "repoUrl": "https://github.com/AnAcretiondisk9986/WMU-Class-Schedule",
     "demoUrl": "https://wmu.kb.acretiondisk.top/",
     "cover": "",
     "featured": true,
-    "order": 2,
+    "order": 3,
     "postSlugs": [],
     "postTags": [],
     "highlights": [
-      "浏览器本地解析 PDF 坐标，原始课表不上传应用服务器",
-      "多课表切换、自定义日程、课程别名与冲突检测",
-      "已原生整合进本博客「07 日程」频道"
+      "浏览器本地解析 PDF 坐标，原始课表不上传任何应用服务器",
+      "已原生整合进本博客「07 日程」频道并支持多端配置同步"
     ]
   },
   {
     "id": "clinmedagent-rag",
     "name": "ClinMedAgent-RAG",
     "tagline": "将医学教材转为可执行、可溯源推理的本地 RAG 知识库引擎",
-    "description": "针对临床医学与基础医学教材构建的混合检索与 Agent 知识库系统，支持章节结构化切分、本地 SQLite 索引与多 Agent 协作优化。",
+    "description": "针对临床与基础医学教材构建的混合检索与 Agent 知识库，支持章节结构化切分、OCR 流水线、SQLite FTS5 二元组索引，并提供 Web、CLI、MCP 与 JSON Bridge。",
     "status": "active",
     "kind": "ai",
-    "stack": ["Python", "SQLite", "RAG", "AI Agent"],
+    "stack": ["Python", "SQLite FTS5", "RAG", "MCP", "AI Agent"],
     "repoUrl": "https://github.com/AnAcretiondisk9986/ClinMedAgent-RAG",
     "demoUrl": "",
     "cover": "/images/clinmedagent-rag-optimization-20261117.svg",
     "featured": true,
-    "order": 3,
+    "order": 4,
     "postSlugs": [
       "clinmedagent-rag-multi-agent-optimization-report",
-      "把教材变成可以解题的本地知识库-一次医学rag实现记录"
+      "目前所做的最有用的一个产物-clinmedagent-rag",
+      "把教材变成可以解题的本地知识库-一次医学RAG实现记录"
     ],
     "postTags": ["RAG", "SQLite"],
     "highlights": [
-      "多层协作审计与查询性能从 104.3 ms 优化至 50.2 ms",
-      "面向医学教材问答的精准章节定位与溯源"
+      "检索结果精确校准到原书页码与章节，查询延迟优化至 50.2 ms",
+      "同一本地检索库同时接入本地 Web 工作台、MCP 与 pi 扩展"
     ]
   },
   {
-    "id": "ac-ledger",
-    "name": "Ac记账 (AcLedger)",
-    "tagline": "面向个人多端使用的桌面 + Web 双端记账应用",
-    "description": "从 0 到 1 打造的个人记账软件，覆盖桌面端与网页端双形态，强调本地可控账本结构与高效率流水录入。",
-    "status": "maintaining",
-    "kind": "app",
-    "stack": ["Electron", "React", "TypeScript"],
-    "repoUrl": "https://github.com/AnAcretiondisk9986/ac-ledger",
-    "demoUrl": "",
-    "cover": "",
-    "featured": false,
-    "order": 4,
-    "postSlugs": [
-      "acledger记账软件开发复盘"
-    ],
-    "postTags": ["Electron", "React"],
-    "highlights": [
-      "双端架构复用核心账务状态模型",
-      "完整复盘从 0 到 1 迭代难点与工程约束"
-    ]
-  },
-  {
-    "id": "bili-screenshot",
-    "name": "Bili-Screenshot",
-    "tagline": "Chrome 商店过审的 B 站视频无损静默截图扩展",
-    "description": "支持快捷键静默截图、原始分辨率导出、JPEG 质量压缩、弹幕开关、连拍与自定义文件名模板的 Chrome MV3 扩展。",
-    "status": "maintaining",
-    "kind": "extension",
-    "stack": ["Chrome MV3", "JavaScript", "Canvas"],
-    "repoUrl": "https://github.com/AnAcretiondisk9986/Bili-Screenshot",
-    "demoUrl": "",
+    "id": "jpt",
+    "name": "冬、東へ。｜2027 日本冬季 8 日行程",
+    "tagline": "东京进、大阪出的日本 8 日行程互动矢量地图与逐日交通指南",
+    "description": "面向 2027 年冬季日本行（东京、秩父、镰仓、京都、大阪）的零构建静态旅行手册，集成 MapLibre GL + OpenFreeMap 矢量地图、逐日配色筛选与换乘指南。",
+    "status": "active",
+    "kind": "web",
+    "stack": ["JavaScript", "MapLibre GL", "OpenFreeMap", "HTML / CSS"],
+    "repoUrl": "https://github.com/AnAcretiondisk9986/jpt",
+    "demoUrl": "https://blog.acretiondisk.top/jpt/",
     "cover": "",
     "featured": false,
     "order": 5,
-    "postSlugs": [
-      "bili-screenshot开发复盘",
-      "bili-screenshot已在谷歌应用商店过审-欢迎访客下载使用"
-    ],
-    "postTags": ["Chrome扩展"],
+    "postSlugs": [],
+    "postTags": [],
     "highlights": [
-      "已上架 Google Chrome Web Store",
-      "双截图管线与 macOS 下载降级兼容"
-    ]
-  },
-  {
-    "id": "wmu-calc",
-    "name": "温医大综测、转专业计算器",
-    "tagline": "零依赖纯前端综测绩点与转专业加权计算工具",
-    "description": "依据温医大综测与转专业细则打造的纯静态单页计算器，零外部框架与后端依赖，支持本地即时计算与规则核对。",
-    "status": "maintaining",
-    "kind": "web",
-    "stack": ["HTML", "CSS", "Vanilla JS"],
-    "repoUrl": "",
-    "demoUrl": "http://wmu.calc.acretiondisk.top/",
-    "cover": "",
-    "featured": false,
-    "order": 6,
-    "postSlugs": [
-      "wmu综测计算器技术栈总结与开发复盘"
-    ],
-    "postTags": ["零依赖"],
-    "highlights": [
-      "零构建、零第三方运行依赖的纯前端形态",
-      "多视口响应式界面与本地即时算分"
-    ]
-  },
-  {
-    "id": "ds-harness-desktop",
-    "name": "DS Harness Desktop Version",
-    "tagline": "用 Go + go-webview2 打包的 Agent 运行时桌面版",
-    "description": "为 Agent 运行时打造的原生 Windows 桌面封装，内嵌便携运行时与无边框交互窗口，实现双击即用。",
-    "status": "maintaining",
-    "kind": "app",
-    "stack": ["Go", "WebView2", "Node.js"],
-    "repoUrl": "https://github.com/AnAcretiondisk9986/deepseek-harness-Personal-EDIT",
-    "demoUrl": "",
-    "cover": "",
-    "featured": false,
-    "order": 7,
-    "postSlugs": [
-      "dsh桌面版开发复盘",
-      "moss提示词闭环-comfyui-dsh-工程实践"
-    ],
-    "postTags": ["DSH", "Go", "桌面应用"],
-    "highlights": [
-      "go:embed 内嵌便携运行时，消除环境配置门槛",
-      "解决 Windows WndProc 无边框窗口与多版本兼容踩坑"
+      "按日筛选行程轨迹与景点锚点，串联新干线与城市交通转移方案",
+      "零构建纯静态结构，自托管 Anthropic Serif 与 BIZ UDPMincho 字库"
     ]
   },
   {
     "id": "wezmux-agent-mcp",
     "name": "wezmux-agent-mcp",
     "tagline": "让 WezTerm / Wezmux 多窗格内的 AI Agent 真正开口协作的 MCP 插件",
-    "description": "基于 Model Context Protocol 的终端多 Agent 协作桥梁，配合 WezTerm 驾驶舱实现窗格编排、消息路由与防误触发保护。",
+    "description": "基于 Node.js 22 内置 SQLite WAL 与 MCP 协议的终端多 Agent 协作桥梁（v1.1.0），支持跨窗口窗格发现、点对点/广播消息、空闲唤醒与 OSC 7777 侧边栏桥接。",
     "status": "experiment",
     "kind": "cli",
-    "stack": ["MCP", "WezTerm", "Lua", "Agent CLI"],
-    "repoUrl": "",
+    "stack": ["Node.js", "MCP", "SQLite WAL", "WezTerm", "OSC 7777"],
+    "repoUrl": "https://github.com/AnAcretiondisk9986/wezmux-agent-mcp",
     "demoUrl": "",
     "cover": "/images/wezmux-agent-mcp/cover.webp",
     "featured": false,
-    "order": 8,
+    "order": 6,
     "postSlugs": [
       "wezmux-agent-mcp-多agent终端协作插件介绍与实战",
       "wezterm-终端推荐与使用说明-agent-cli-时代的终端驾驶舱"
     ],
     "postTags": ["WezTerm", "Wezmux", "MCP", "多Agent协作"],
     "highlights": [
-      "打通 Claude Code / Codex / 多窗格终端 Agent 通信",
-      "内建 spawn guard 安全防护与实战驾驶舱配置"
+      "打通 Claude Code / Codex / OpenCode / Gemini 多窗格通信与文件锁",
+      "内建「已有窗体优先」三层 spawn guard 安全防护"
+    ]
+  },
+  {
+    "id": "cut-screen",
+    "name": "Cut-Screen · 宿舍夜间灭屏工具",
+    "tagline": "Windows 托盘工具：只关显示器、系统照常跑任务，免掉合盖散热受阻",
+    "description": "使用 C# / .NET 10 WinForms 编写的极简托盘程序（V1.1），提供休眠 / 挂机 / 午睡三档，通过 PowerRequestSystemRequired + DPMS 灭屏并支持任意输入秒唤醒。",
+    "status": "maintaining",
+    "kind": "app",
+    "stack": ["C#", ".NET 10", "WinForms", "Win32 API"],
+    "repoUrl": "https://github.com/AnAcretiondisk9986/Cut-Screen4nap",
+    "demoUrl": "",
+    "cover": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/main-window_1793977896013.webp",
+    "featured": false,
+    "order": 7,
+    "postSlugs": [
+      "cut-screen-开发日志"
+    ],
+    "postTags": ["Windows", "C#"],
+    "highlights": [
+      "仅挂 SystemRequired 不挂 DisplayRequired，DPMS 灭屏后任务照常运行",
+      "动态枚举多显示器并支持静默开机自启，无需安装器与管理员权限"
+    ]
+  },
+  {
+    "id": "histology-guide-zh",
+    "name": "组织学显微镜复习站 (中文改编版)",
+    "tagline": "取得 Histology Guide 原作者团队书面许可的纯静态中文组织学复习站",
+    "description": "以 Histology Guide 章节体系与标本编号为索引构建的非官方中文学习改编版，中文要点与自测题全部独立编写，逐张保留原始署名并支持在线或离线直接打开。",
+    "status": "maintaining",
+    "kind": "web",
+    "stack": ["HTML", "CSS", "JavaScript", "GitHub Pages"],
+    "repoUrl": "https://github.com/AnAcretiondisk9986/histology-guide-zh",
+    "demoUrl": "https://blog.acretiondisk.top/histology-guide-zh/",
+    "cover": "",
+    "featured": false,
+    "order": 8,
+    "postSlugs": [],
+    "postTags": [],
+    "highlights": [
+      "2026-10 获 Histology Guide Team 书面许可公开托管非商业中文学习版",
+      "纯静态零后端设计，可在线复习也可本地双击直接浏览切片要点"
+    ]
+  },
+  {
+    "id": "folia-atdk",
+    "name": "Folia-Atdk · 播放器自用定制版",
+    "tagline": "基于 Folia 音乐播放器的自用定制分支，新增专属词标开屏与直达歌单",
+    "description": "在开源 Folia 播放器基础上维护的个人定制版本（v0.7.18-atdk.1），定制 Anthropic Serif 词标开屏动画、PWA 字体预缓存与「启动直达指定歌单」功能并部署托管。",
+    "status": "maintaining",
+    "kind": "web",
+    "stack": ["TypeScript", "React", "Vite", "PWA", "Electron"],
+    "repoUrl": "https://github.com/AnAcretiondisk9986/folia-Atdk",
+    "demoUrl": "https://folia-site.cielaniska.top/",
+    "cover": "",
+    "featured": false,
+    "order": 9,
+    "postSlugs": [],
+    "postTags": [],
+    "highlights": [
+      "自制 Anthropic Serif 可变字体开屏词标与退出时序单测",
+      "支持配置启动直达在线或本地歌单，并补齐多语言命令面板文案"
+    ]
+  },
+  {
+    "id": "dsh-font-master",
+    "name": "dsh-font-master · DSH 字体插件",
+    "tagline": "DeepSeek Harness 字体插件：中西文分别指定，界面 / 内容 / 代码三区独立",
+    "description": "基于 Cordis 插件机制为 DeepSeek Harness 打造的排版扩展，将西文与中文字体按侧栏界面、会话正文与代码块三处拆开独立配置，并提供本机字体实时预览菜单。",
+    "status": "maintaining",
+    "kind": "cli",
+    "stack": ["JavaScript", "Cordis", "DeepSeek Harness", "CSS"],
+    "repoUrl": "https://github.com/AnAcretiondisk9986/dsh-font-master",
+    "demoUrl": "",
+    "cover": "",
+    "featured": false,
+    "order": 10,
+    "postSlugs": [],
+    "postTags": [],
+    "highlights": [
+      "同一句话内自动实现拉丁字母走西文字体、汉字走中文字体",
+      "枚举本机已安装字体族并以真实字面渲染选择器，互不牵制"
+    ]
+  },
+  {
+    "id": "shenzhen-hong-kong-route",
+    "name": "深圳 × 香港路线图",
+    "tagline": "MapLibre GL + GeoJSON 驱动的国庆三日深港出行互动矢量地图",
+    "description": "记录深圳与香港国庆行程的纯静态互动路线图，内置 30 个路线站点、晴天完整版与雨天替代版切换、双住宿锚点、车票信息卡片与亮暗双主题。",
+    "status": "archived",
+    "kind": "web",
+    "stack": ["JavaScript", "MapLibre GL", "GeoJSON", "OpenFreeMap"],
+    "repoUrl": "https://github.com/AnAcretiondisk9986/shenzhen-hong-kong-route",
+    "demoUrl": "https://blog.acretiondisk.top/shenzhen-hong-kong-route/",
+    "cover": "",
+    "featured": false,
+    "order": 11,
+    "postSlugs": [
+      "港深游记ep1-初抵深圳",
+      "港深游记ep2-探索深圳",
+      "港深游记ep3-莅临香港",
+      "港深游记ep4-告别港深"
+    ],
+    "postTags": [],
+    "highlights": [
+      "支持按 10/1–10/4 日期与晴雨两套路线一键筛选展示",
+      "全部路线、站点与交通提示由 GeoJSON 驱动，双端自适应"
+    ]
+  },
+  {
+    "id": "ac-ledger",
+    "name": "Ac记账 (AcLedger)",
+    "tagline": "面向个人多端使用的桌面 + Web 双端记账应用",
+    "description": "从 0 到 1 打造的个人记账 Monorepo（core / storage / bill-import），桌面与网页共享同一套 React 前端，数据以 JSON 存放在 GitHub 私有库、WebDAV 或本地目录。",
+    "status": "maintaining",
+    "kind": "app",
+    "stack": ["Electron", "React", "TypeScript", "Vite", "WebDAV"],
+    "repoUrl": "https://github.com/AnAcretiondisk9986/ac-ledger",
+    "demoUrl": "",
+    "cover": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/acledger-01-setup.webp",
+    "featured": false,
+    "order": 12,
+    "postSlugs": [
+      "AcLedger记账软件开发复盘"
+    ],
+    "postTags": ["Electron", "React"],
+    "highlights": [
+      "双端架构复用核心账务模型，支持微信与支付宝账单直接导入",
+      "无需自建后端服务器，通过 GitHub / WebDAV 乐观锁跨设备同步"
+    ]
+  },
+  {
+    "id": "bili-screenshot",
+    "name": "Bili-Screenshot",
+    "tagline": "Chrome 商店过审的 B 站视频无损静默截图扩展",
+    "description": "支持快捷键静默截图、原始分辨率导出、JPEG 质量压缩、弹幕开关、连拍与自定义文件名模板的 Chrome MV3 扩展，已上架 Chrome Web Store。",
+    "status": "maintaining",
+    "kind": "extension",
+    "stack": ["Chrome MV3", "JavaScript", "Canvas"],
+    "repoUrl": "https://github.com/AnAcretiondisk9986/Bili-Screenshot",
+    "demoUrl": "https://chromewebstore.google.com/detail/kanknafafahjljhejpjmegbnaonphnmo",
+    "cover": "/images/bili-screenshot/options.webp",
+    "featured": false,
+    "order": 13,
+    "postSlugs": [
+      "bili-screenshot开发复盘",
+      "bili-screenshot已在谷歌应用商店过审-欢迎访客下载使用"
+    ],
+    "postTags": ["Chrome扩展"],
+    "highlights": [
+      "已上架 Google Chrome Web Store，支持各类 Chromium 浏览器",
+      "双截图管线与 macOS 下载降级兼容，不打断播放静默导出原帧"
+    ]
+  },
+  {
+    "id": "wmu-calc",
+    "name": "温医大综测、转专业计算器",
+    "tagline": "零依赖纯前端综测绩点与转专业加权计算工具",
+    "description": "依据温医大本部与仁济两套细则打造的纯静态计算器，零框架与构建依赖，支持教务成绩粘贴导入、13 学院转专业加权核算及 81 项 Node 内置单测。",
+    "status": "maintaining",
+    "kind": "web",
+    "stack": ["HTML", "CSS", "Vanilla JS", "GitHub Pages"],
+    "repoUrl": "https://github.com/AnAcretiondisk9986/WMU-C.A.-Calculator",
+    "demoUrl": "https://wmu.calc.acretiondisk.top/",
+    "cover": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/cover_1786715883452_1786715883456.webp",
+    "featured": false,
+    "order": 14,
+    "postSlugs": [
+      "WMU综测计算器技术栈总结与开发复盘"
+    ],
+    "postTags": ["零依赖"],
+    "highlights": [
+      "零构建、零第三方运行依赖的纯前端形态，双击 HTML 即可运行",
+      "支持本部/仁济双方案切换、体测降档判定与本地持久化"
+    ]
+  },
+  {
+    "id": "ds-harness-desktop",
+    "name": "DS Harness Desktop Version",
+    "tagline": "用 Go + go-webview2 打包的 Agent 运行时桌面版",
+    "description": "为 DeepSeek Harness 打造的原生 Windows 桌面封装，通过 go:embed 内嵌便携 Node 运行时与完整依赖树，实现自解压自安装与无边框窗口双击即用。",
+    "status": "maintaining",
+    "kind": "app",
+    "stack": ["Go", "WebView2", "Node.js", "go:embed"],
+    "repoUrl": "https://github.com/AnAcretiondisk9986/deepseek-harness-Personal-EDIT",
+    "demoUrl": "",
+    "cover": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/cover_1786715273185_1786715273187.webp",
+    "featured": false,
+    "order": 15,
+    "postSlugs": [
+      "DSH桌面版开发复盘",
+      "moss提示词闭环-comfyui-dsh-工程实践"
+    ],
+    "postTags": ["DSH", "Go", "桌面应用"],
+    "highlights": [
+      "go:embed 内嵌便携运行时，消除 Windows 环境配置门槛",
+      "解决 WndProc 无边框自绘标题栏与多版本兼容踩坑"
+    ]
+  },
+  {
+    "id": "blog-template",
+    "name": "Astro 个人博客模板 (blog-template)",
+    "tagline": "开箱即用的 Astro 博客模板：GitHub Pages 部署 + 本地管理面板 + Waline",
+    "description": "将本博客早期编目册架构抽离出的可复刻开源模板（v1.5.2），内置 Markdown/Obsidian 写作流、本地可视化管理面板、HEIC 兼容图片上传与一键推送上线。",
+    "status": "maintaining",
+    "kind": "web",
+    "stack": ["Astro", "Node.js", "GitHub Actions", "Waline"],
+    "repoUrl": "https://github.com/AnAcretiondisk9986/blog-template",
+    "demoUrl": "",
+    "cover": "https://cdn.jsdelivr.net/gh/AnAcretiondisk9986/blog-images@main/image/tutorial2-home.webp",
+    "featured": false,
+    "order": 16,
+    "postSlugs": [
+      "我的博客是怎么搭起来的技术栈总结与从零搭建教程",
+      "我的博客是怎么搭起来的续篇-从v14到v32"
+    ],
+    "postTags": ["博客搭建"],
+    "highlights": [
+      "5 分钟内即可部署 GitHub Pages 静态博客并附带本地管理后台",
+      "支持 Windows / macOS 一键启动脚本、图床推送与 HEIC 方向修复"
     ]
   },
   {
@@ -215,12 +363,52 @@
     "demoUrl": "https://blog.acretiondisk.top/schedule/exams/",
     "cover": "",
     "featured": false,
-    "order": 9,
+    "order": 17,
     "postSlugs": [],
     "postTags": [],
     "highlights": [
-      "实时本地倒计时 + 开课学院分布",
+      "实时本地倒计时 + 开课学院分布筛选",
       "支持一键导出完整考期 .ics 与 A4 打印"
+    ]
+  },
+  {
+    "id": "p2p-chat",
+    "name": "Acretiondisk P2P Chat",
+    "tagline": "基于 WebRTC + ECDH + AES-256-GCM 的端到端加密点对点聊天工具",
+    "description": "无需中心消息服务器的浏览器直连加密聊天原型：Node.js WebSocket 仅负责建连期转发 SDP/ICE 信令，正式消息经 WebRTC Data Channel 端到端加密传输。",
+    "status": "experiment",
+    "kind": "web",
+    "stack": ["JavaScript", "WebRTC", "WebSocket", "Node.js"],
+    "repoUrl": "https://github.com/AnAcretiondisk9986/Acretiondisk-p2p-chat",
+    "demoUrl": "",
+    "cover": "",
+    "featured": false,
+    "order": 18,
+    "postSlugs": [],
+    "postTags": [],
+    "highlights": [
+      "ECDH 密钥协商 + AES-256-GCM 对称加密，信令服务不接触明文",
+      "支持通过 pkg 打包为独立 Win-x64 服务端可执行文件"
+    ]
+  },
+  {
+    "id": "wmu-rms-course-project",
+    "name": "餐厅管理系统 · C# 课程项目",
+    "tagline": "WMU 面向对象程序设计课程结业作业（C# WinForms）",
+    "description": "大学面向对象程序设计课程的结业实践作品，使用 C# WinForms 编写桌面端餐厅点餐与营业管理流程，作为早期工程留档保存于 GitHub。",
+    "status": "archived",
+    "kind": "app",
+    "stack": ["C#", "WinForms", ".NET"],
+    "repoUrl": "https://github.com/AnAcretiondisk9986/Restaurant-Management-System_Course-Project",
+    "demoUrl": "",
+    "cover": "",
+    "featured": false,
+    "order": 19,
+    "postSlugs": [],
+    "postTags": [],
+    "highlights": [
+      "面向对象的桌面表单交互与点餐管理流程实现",
+      "早期桌面客户端开发课程结业归档项目"
     ]
   }
 ]

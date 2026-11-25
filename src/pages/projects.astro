@@ -76,7 +76,11 @@ const activeCount = statusCounts.get('active') ?? 0;
     <div class="hz-lab-grid" data-lab-grid>
       {projects.map((proj, idx) => {
         const linkedPosts = matchProjectPosts(proj, posts);
+        const shownPosts = linkedPosts.slice(0, 2);
+        const shownHighlights = proj.highlights.slice(0, 2);
+        const shownStack = proj.stack.slice(0, 5);
         const searchStr = `${proj.name} ${proj.tagline} ${proj.description} ${proj.stack.join(' ')}`.toLowerCase();
+        const codeIndex = `LAB-${String(idx + 1).padStart(2, '0')}`;
         return (
           <article
             id={proj.id}
@@ -86,15 +90,31 @@ const activeCount = statusCounts.get('active') ?? 0;
             data-kind={proj.kind}
             data-search={searchStr}
           >
-            {proj.cover && (
+            {proj.cover ? (
               <div class="hz-proj__cover">
                 <img src={proj.cover} alt={proj.name} loading="lazy" decoding="async" />
+              </div>
+            ) : (
+              <div class="hz-proj__cover hz-proj__cover--placeholder" aria-hidden="true">
+                <span class="hz-proj__plate-grid"></span>
+                <div class="hz-proj__plate-top hz-mono">
+                  <span>{codeIndex}</span>
+                  <span>{PROJECT_KIND_LABELS[proj.kind]}</span>
+                </div>
+                <div class="hz-proj__plate-core">
+                  <span class="hz-proj__plate-ring"></span>
+                  <span class="hz-proj__plate-id hz-mono">{proj.id.toUpperCase()}</span>
+                </div>
+                <div class="hz-proj__plate-foot hz-mono">
+                  <span>{PROJECT_STATUS_LABELS[proj.status]}</span>
+                  <span>NO PREVIEW PLATE</span>
+                </div>
               </div>
             )}
 
             <div class="hz-proj__body">
               <div class="hz-proj__meta hz-mono">
-                <span>LAB-{String(idx + 1).padStart(2, '0')}</span>
+                <span>{codeIndex}</span>
                 <span class={`hz-proj__status hz-proj__status--${proj.status}`}>
                   {PROJECT_STATUS_LABELS[proj.status]}
                 </span>
@@ -102,37 +122,39 @@ const activeCount = statusCounts.get('active') ?? 0;
                 {proj.featured && <span class="hz-proj__feat">★ FEATURED</span>}
               </div>
 
-              <h2 class="hz-proj__title">{proj.name}</h2>
-              {proj.tagline && <p class="hz-proj__tagline">{proj.tagline}</p>}
-              {proj.description && <p class="hz-proj__desc">{proj.description}</p>}
+              <h2 class="hz-proj__title" title={proj.name}>{proj.name}</h2>
+              <p class="hz-proj__tagline" title={proj.tagline || undefined}>{proj.tagline || '—'}</p>
+              <p class="hz-proj__desc" title={proj.description || undefined}>{proj.description || '—'}</p>
 
-              {proj.highlights.length > 0 && (
-                <ul class="hz-proj__highlights">
-                  {proj.highlights.map((h) => <li>{h}</li>)}
-                </ul>
-              )}
+              <ul class:list={['hz-proj__highlights', { 'hz-proj__highlights--empty': shownHighlights.length === 0 }]}>
+                {shownHighlights.length > 0 ? (
+                  shownHighlights.map((h) => <li title={h}>{h}</li>)
+                ) : (
+                  <li>暂无补充要点</li>
+                )}
+              </ul>
 
-              {proj.stack.length > 0 && (
-                <div class="hz-proj__stack hz-mono">
-                  {proj.stack.map((tech) => <span>{tech}</span>)}
-                </div>
-              )}
+              <div class="hz-proj__stack hz-mono">
+                {shownStack.map((tech) => <span>{tech}</span>)}
+              </div>
 
-              {linkedPosts.length > 0 && (
-                <div class="hz-proj__posts">
-                  <span class="hz-mono hz-proj__posts-k">ASSOCIATED LOGS · 相关记录</span>
+              <div class:list={['hz-proj__posts', { 'hz-proj__posts--empty': shownPosts.length === 0 }]}>
+                <span class="hz-mono hz-proj__posts-k">ASSOCIATED LOGS · 相关记录</span>
+                {shownPosts.length > 0 ? (
                   <ul>
-                    {linkedPosts.slice(0, 4).map((post) => (
+                    {shownPosts.map((post) => (
                       <li>
-                        <a href={`/blog/${encodeURI(post.id)}/`}>
+                        <a href={`/blog/${encodeURI(post.id)}/`} title={post.data.title}>
                           <span>{post.data.title}</span>
                           <time class="hz-mono">{post.data.pubDate.toISOString().split('T')[0]}</time>
                         </a>
                       </li>
                     ))}
                   </ul>
-                </div>
-              )}
+                ) : (
+                  <p class="hz-proj__posts-none hz-mono">暂无关联博文 · NO LOGS LINKED</p>
+                )}
+              </div>
 
               <div class="hz-proj__links hz-mono">
                 {proj.demoUrl && (
@@ -149,6 +171,9 @@ const activeCount = statusCounts.get('active') ?? 0;
                   <a class="hz-proj__btn" href={proj.repoUrl} target="_blank" rel="noopener noreferrer">
                     源码仓库 / SOURCE ↗
                   </a>
+                )}
+                {!proj.demoUrl && !proj.repoUrl && (
+                  <span class="hz-proj__btn hz-proj__btn--muted">ARCHIVE ONLY</span>
                 )}
               </div>
             </div>
