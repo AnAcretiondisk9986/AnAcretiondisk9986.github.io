@@ -1,5 +1,28 @@
 [
   {
+    "id": "prism-time",
+    "name": "澄镜 · PrismTime",
+    "tagline": "7.59 MB 原生内存、100% 本地优先的 Windows 屏幕时长、网页洞察与跨设备同步工具",
+    "description": "基于 Rust + Tauri v2 + Win32/UIA + React 19 构建的极简桌面屏幕时间记录仪。支持 1 Hz 无感前台探测、浅层 UIA 浏览器网页识别与隐私域名净化、四级软件百科与自定义进程规则、澄白/曜石双主题手绘 SVG 图表体系，以及零 C 依赖的 WebDAV / GitHub 私有仓库双向无损合并同步。",
+    "status": "active",
+    "kind": "app",
+    "stack": ["Rust", "Tauri v2", "React 19", "TypeScript", "Win32 / UIA", "SVG"],
+    "repoUrl": "https://github.com/AnAcretiondisk9986/prism-time",
+    "demoUrl": "https://www.bilibili.com/video/BV12aykz4E3S/",
+    "cover": "/images/prism-time/cover.webp",
+    "featured": true,
+    "order": 1,
+    "postSlugs": [
+      "澄镜-prismtime-轻量本地windows屏幕时长与网页洞察工具"
+    ],
+    "postTags": ["PrismTime", "Rust", "Tauri"],
+    "highlights": [
+      "Rust 监控核心仅占 7.59 MB 内存与 0.02% CPU，单条会话 ~271 Bytes",
+      "浅层 UIA 浏览器站点识别（绝不唤醒全量 DOM 树）+ 四级自定义进程规则",
+      "纯 Rust WinHTTP 原生 WebDAV / GitHub 私有仓库跨设备按日无损并集同步"
+    ]
+  },
+  {
     "id": "horizon-blog",
     "name": "个人博客 · HORIZON",
     "tagline": "Astro 静态架构 × WebGL 史瓦西黑洞观测仪器 × 本地/移动端双端工作台",
