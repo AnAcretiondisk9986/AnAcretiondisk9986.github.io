@@ -28,6 +28,12 @@ access: public
 
 <figure class="hz-figure" data-align="center"><img src="/images/scrna-agent-journey/cover.webp" alt="单细胞聚簇穿过棱镜门控：红色融合双细胞被折射拦截，纯净单细胞流向神经网络节点" /><figcaption>单细胞自动化注释的神经-符号双阶段门控隐喻：先让确定性物理与统计门控把融合双细胞、高线粒体垂死细胞折射拦截，再把干净的单细胞交给大语言模型做细粒度亚型判别。</figcaption></figure>
 
+<div class="hz-callout" data-callout="note" data-title="姊妹篇 · 论文全文在线 LaTeX / KaTeX 渲染版（v2.3.2）">
+
+本文记录的是这项研究背后 24 小时的真实探索与投稿心路。如果你想直接阅读完整的英文论文正文（包含全部 LaTeX/KaTeX 数学公式、6 张主表、7 张高分辨率主图与 23 篇可点击 DOI 参考文献），请移步姊妹篇 [《Neuro-Symbolic Guardrails Reduce Doublet Hallucination and Tool-Alert Override in Single-Cell RNA-seq Annotation (Preprint v2.3.2)》](/blog/neuro-symbolic-guardrails-scrna-seq-annotation-paper/)。
+
+</div>
+
 ---
 
 ## 一、避开生信「水文套路」，10 分钟在 RStudio 跑出第一张单细胞 UMAP
@@ -131,7 +137,7 @@ access: public
 
 <figure class="hz-figure" data-align="center"><img src="/images/scrna-agent-journey/override-bias.webp" alt="跨模型档位的 Tool-Alert Override Bias 对比柱状图" /><figcaption>Tool-Alert Override Bias 量化结果：即使质控工具明确抛出异常告警，DeepSeek V4.1 Flash（63.6%）、Claude Haiku 5.5（40.9%）乃至旗舰 Claude Opus 5.5（22.7%, 5/22）仍会强行覆盖工具警告；仅在启用确定性 Stage-1 Gate 后彻底归零（0/22）。</figcaption></figure>
 
-看到这两张图定稿的那一刻，凌晨零点半心里那股「我是不是在造垃圾」的虚劲儿，才算真正落地了。
+看到这两张图定稿的那一刻，凌晨零点半心里那股「我是不是在造垃圾」的虚劲儿，才算真正落地了。关于 *TRAC* 注释缺失消融实验、三器官 42 种方法完整对照表以及 6 款模型工具告警覆盖率的逐项数据，均完整收录在 [论文全文在线版（第 3.1–3.3 节与主表 1–3）](/blog/neuro-symbolic-guardrails-scrna-seq-annotation-paper/) 中。
 
 ---
 
@@ -153,7 +159,7 @@ access: public
 
 <figure class="hz-figure" data-align="center"><img src="/images/scrna-agent-journey/biorxiv-pdf-p1.webp" alt="使用 Tectonic 0.17.0 与 HenriquesLab bioRxiv LaTeX 模板重新编译的论文首页" /><figcaption>推倒 HTML-to-PDF 方案后，使用 Tectonic 0.17.0 搭配 HenriquesLab bioRxiv LaTeX 模板编译出的双栏论文首页——克制的学术版式、斜体基因符号与规范摘要排版瞬间洗掉了廉价的「AI 味」。</figcaption></figure>
 
-重新编出这页双栏 PDF 的时候，那种「终于像篇正经论文了」的踏实感，跟之前看网页导出稿完全是两码事。
+重新编出这页双栏 PDF 的时候，那种「终于像篇正经论文了」的踏实感，跟之前看网页导出稿完全是两码事。现在除了 GitHub Release 上的两份 PDF，我也已经把整篇 `v2.3.2` 论文搬上了本博客——通过 KaTeX 直接在网页端忠实渲染全部公式、主表与 7 张主图，点击即可在线阅读：[论文全文 LaTeX / KaTeX 在线版（Preprint v2.3.2）](/blog/neuro-symbolic-guardrails-scrna-seq-annotation-paper/)。
 
 ---
 
@@ -214,7 +220,7 @@ access: public
 | 相比强基线 `scDblFinder 0.30` 的真实增量价值是什么？ | <strong>Main Table 6</strong>（全部 `30` 个 `res=0.80` 聚类簇全量盘点） | 额外检出 <strong>`+0`</strong> 个 $\ge 50\%$ 高占比双细胞簇、<strong>`+6`</strong> 个非单细胞异常/混合态簇、以及 <strong>`+2`</strong> 个单细胞主导的误报簇 → 共计新增 <strong>`+8`</strong> 个进入人工复核队列的簇 |
 | 提分究竟来自确定性硬门控，还是重调 LLM 的随机波动？ | <strong>Table S11</strong>（Fixed-Output Arm 4 固定输出反事实分析） | 锁定同一批 LLM 原始输出做反事实剥离：纯 Stage-1 硬门控贡献的确定性净收益为 <strong>`+0.044` 至 `+0.137`</strong>；而一次重新调用 LLM 产生的观测分差波动甚至可能低至 <strong>`-0.011`</strong> |
 
-最后，又把摘要逐句拧干水分、严格压进 **`260` 词**，用自动化核验脚本把 GitHub 仓库里所有原始 CSV、LaTeX 表格和正文里出现的每一个百分比、样本量与置信区间全部逐字节核对通过。至此，代码与手稿正式封板为 **`v2.3.2`**。
+最后，又把摘要逐句拧干水分、严格压进 **`260` 词**，用自动化核验脚本把 GitHub 仓库里所有原始 CSV、LaTeX 表格和正文里出现的每一个百分比、样本量与置信区间全部逐字节核对通过。至此，代码与手稿正式封板为 **`v2.3.2`**。对具体数学定义和湿实验逐簇数据感兴趣的读者，可以直接对照 [论文全文在线版中的 Tool #5 正式数学公式（第 2.6 节）与主表 5–6（第 3.7 节）](/blog/neuro-symbolic-guardrails-scrna-seq-annotation-paper/)。
 
 ---
 
@@ -291,6 +297,7 @@ access: public
 
 这项探索的全部代码、原始预测 CSV、统计复算脚本、图表源码与最终版 LaTeX 手稿，都已经以开源形式归档在 GitHub 上，欢迎路过的同行或同样好奇的同学随时检视、挑刺甚至直接复现：
 
+- **论文全文在线 LaTeX / KaTeX 渲染版（`v2.3.2`）**：[Neuro-Symbolic Guardrails Reduce Doublet Hallucination and Tool-Alert Override in Single-Cell RNA-seq Annotation (Preprint v2.3.2)](/blog/neuro-symbolic-guardrails-scrna-seq-annotation-paper/)
 - **开源代码与完整复现归档（`v2.3.2`）**：[AnAcretiondisk9986/scRNA-differential-diagnosis-agent (Release v2.3.2)](https://github.com/AnAcretiondisk9986/scRNA-differential-diagnosis-agent/releases/tag/v2.3.2)
 
 这篇博客就算给这段 24 小时的「来时路」立一块里程碑。眼下，我还是得老老实实回到大一临床医学生的日常课表里——把解剖、组胚和即将到来的期末考啃下来，再等着下学期把《生物化学与分子生物学》一章一章学透。
