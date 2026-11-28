@@ -10,13 +10,12 @@
     },
     {
       "label": "身份",
-      "value": "全日制本科学生"
+      "value": "临床医学五年制学生"
     }
   ],
   "lead": "你好，这里是 Acretiondisk。",
   "paragraphs": [
-    "这是我的个人博客网站，用于记录我的想法和一些成果",
-    "它不是一份完成的履历，而是一册不断增补的个人行记，用来收藏学习笔记、项目记录、作品与仍未得到答案的问题。"
+    "这是我的个人博客网站，用于记录我的想法和一些成果"
   ],
   "quoteLabel": "编目原则",
   "quoteText": "“忠实记录此刻所见，也允许未来的自己重新修订。”",
@@ -41,57 +40,13 @@
       "index": "04",
       "name": "Pixiv",
       "note": "https://www.pixiv.net/users/51488954"
+    },
+    {
+      "index": "05",
+      "name": "ORCID",
+      "note": "https://orcid.org/0009-0006-9347-7300"
     }
   ],
   "projectsTitle": "我的项目",
-  "projects": [
-    {
-      "index": "1",
-      "name": "Ac记账",
-      "url": "https://github.com/AnAcretiondisk9986/ac-ledger",
-      "title": "ac-ledger: AcLedger bookkeeping app (desktop + web) · GitHub"
-    },
-    {
-      "index": "2",
-      "name": "个人博客",
-      "url": "https://blog.acretiondisk.top/",
-      "title": "Acretiondisk Blog"
-    },
-    {
-      "index": "3",
-      "name": "Bili-Screenshot",
-      "url": "https://github.com/AnAcretiondisk9986/Bili-Screenshot",
-      "title": "Bili-Screenshot: B站视频截图 Chrome 扩展：快捷键静默截图、原始分辨率导出、JPEG质量压缩、弹幕开关、连拍、文件名模板、一键安装器 · GitHub"
-    },
-    {
-      "index": "4",
-      "name": "温医大综测、转专业计算器",
-      "url": "http://wmu.calc.acretiondisk.top/",
-      "title": "WMU综测转专业计算器"
-    },
-    {
-      "index": "5",
-      "name": "DS Harness Desktop Version",
-      "url": "https://github.com/AnAcretiondisk9986/deepseek-harness-Personal-EDIT",
-      "title": "Deepseek Harness Personal EDIT"
-    },
-    {
-      "index": "6",
-      "name": "温医大课表",
-      "url": "http://wmu.kb.acretiondisk.top/",
-      "title": "温医大课表"
-    },
-    {
-      "index": "7",
-      "name": "ClinMedAgent-RAG",
-      "url": "https://github.com/AnAcretiondisk9986/ClinMedAgent-RAG",
-      "title": "ClinMedAgent-RAG：医学Agent知识库"
-    },
-    {
-      "index": "8",
-      "name": "考试日程表",
-      "url": "https://blog.acretiondisk.top/schedule/exams/",
-      "title": "期末考试时间表 · 2026–2027 学年第一学期"
-    }
-  ]
+  "projects": []
 }
