@@ -89,6 +89,28 @@
     ]
   },
   {
+    "id": "scrna-differential-diagnosis-agent",
+    "name": "scRNA-differential-diagnosis-agent",
+    "tagline": "面向单细胞测序注释的神经-符号双阶段门控与跨模型 LLM 幻觉评测基准（v2.3.2）",
+    "description": "针对 scRNA-seq 大模型自动化细胞注释中的双细胞与垂死高线粒体细胞幻觉，构建确定性 Stage-1 门控与 Stage-2 LLM 细粒度亚型注释解耦架构；涵盖跨 3 器官 91 盲测簇、6 模型 2,184 次评估与 28,814 个真实湿实验 PBMC 细胞验证，已开源完整代码、CSV 与 LaTeX 手稿。",
+    "status": "active",
+    "kind": "ai",
+    "stack": ["R", "Seurat", "Python", "Pi Agent", "LaTeX"],
+    "repoUrl": "https://github.com/AnAcretiondisk9986/scRNA-differential-diagnosis-agent",
+    "demoUrl": "https://github.com/AnAcretiondisk9986/scRNA-differential-diagnosis-agent/releases/tag/v2.3.2",
+    "cover": "/images/scrna-agent-journey/cover.webp",
+    "featured": true,
+    "order": 5,
+    "postSlugs": [
+      "从零到投稿-大一临床生的24小时单细胞agent探索与来时路"
+    ],
+    "postTags": ["单细胞测序", "AI Agent", "生物信息学"],
+    "highlights": [
+      "跨 6 款快/旗舰模型定量揭示 Tool-Alert Override Bias（22.7%–63.6% → Stage-1 硬门控 0/22）",
+      "覆盖 GSE96583 / GSE108313 28,814 个真实湿实验 PBMC 细胞与四轮逐字节复算（v2.3.2）"
+    ]
+  },
+  {
     "id": "jpt",
     "name": "冬、東へ。｜2027 日本冬季 8 日行程",
     "tagline": "东京进、大阪出的日本 8 日行程互动矢量地图与逐日交通指南",
